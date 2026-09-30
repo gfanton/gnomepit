@@ -1,0 +1,499 @@
+/* Gnomehall page styles. Tokens come in two tiers: --gh-palette-* holds the Endesga 32
+   primitives, --gh-* the semantic names every component uses. See client/DESIGN.md. */
+
+@font-face {
+  font-family: "Press Start 2P";
+  src: url("fonts/PressStart2P-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("fonts/IBMPlexMono-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("fonts/IBMPlexMono-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  /* ---- Primitives: Endesga 32 */
+  --gh-palette-slate-900: #181425;
+  --gh-palette-slate-800: #262b44;
+  --gh-palette-slate-700: #3a4466;
+  --gh-palette-slate-600: #5a6988;
+  --gh-palette-slate-500: #8b9bb4;
+  --gh-palette-slate-300: #c0cbdc;
+  --gh-palette-white: #ffffff;
+  --gh-palette-ember: #f77622;
+  --gh-palette-gold: #feae34;
+  --gh-palette-sun: #fee761;
+  --gh-palette-red: #e43b44;
+  --gh-palette-parchment: #ead4aa;
+  --gh-palette-wood: #733e39;
+  --gh-palette-ink: #3e2731;
+  --gh-palette-blue: #0099db;
+  --gh-palette-teal: #2ce8f5;
+  --gh-palette-green: #63c74d;
+  --gh-palette-purple: #b55088;
+
+  /* ---- Semantic: colour roles */
+  --gh-color-canvas: var(--gh-palette-slate-900);
+  --gh-color-surface: var(--gh-palette-slate-800);
+  --gh-color-surface-raised: var(--gh-palette-slate-700);
+  --gh-color-frame: var(--gh-palette-slate-500);
+  --gh-color-frame-dim: var(--gh-palette-slate-600);
+  --gh-color-text: var(--gh-palette-white);
+  --gh-color-text-muted: var(--gh-palette-slate-300);
+  --gh-color-text-dim: var(--gh-palette-slate-500);
+  --gh-color-accent: var(--gh-palette-ember); /* the acting side, the primary action, the current beat */
+  --gh-color-accent-hover: var(--gh-palette-gold);
+  --gh-color-on-accent: var(--gh-palette-slate-900);
+  --gh-color-card: var(--gh-palette-parchment); /* playing cards only */
+  --gh-color-card-ink: var(--gh-palette-ink);
+  --gh-color-card-frame: var(--gh-palette-wood);
+  --gh-color-card-rare: var(--gh-palette-gold);
+  --gh-color-tier-quick: var(--gh-palette-sun);
+  --gh-color-tier-slow: var(--gh-palette-slate-500);
+  --gh-color-hp: var(--gh-palette-red);
+  --gh-color-hp-track: var(--gh-palette-ink);
+  --gh-color-block: var(--gh-palette-blue);
+  --gh-color-counter: var(--gh-palette-teal);
+  --gh-color-vulnerable: var(--gh-palette-purple);
+  --gh-color-strength: var(--gh-palette-green);
+  --gh-color-focus: var(--gh-palette-sun);
+
+  /* ---- Semantic: type */
+  --gh-font-display: "Press Start 2P", monospace;
+  --gh-font-body: "IBM Plex Mono", monospace;
+  --gh-text-body: 14px;
+  --gh-text-body-lg: 16px;
+  --gh-text-label: 10px;
+  --gh-text-number: 14px;
+  --gh-text-heading: 16px;
+  --gh-text-title: 28px;
+  --gh-leading: 1.5;
+
+  /* ---- Semantic: space, 4px base */
+  --gh-space-1: 4px;
+  --gh-space-2: 8px;
+  --gh-space-3: 12px;
+  --gh-space-4: 16px;
+  --gh-space-6: 24px;
+  --gh-space-8: 32px;
+  --gh-space-12: 48px;
+
+  /* ---- Semantic: shape and motion */
+  --gh-border: 3px;
+  --gh-shadow: 3px 3px 0 var(--gh-color-canvas);
+  --gh-board-width: 960px;
+  --gh-card-width: 132px;
+  --gh-card-height: 168px;
+  --gh-sprite-size: 64px; /* 16px drawn, scaled by 4 */
+  --gh-opacity-dim: 0.38;
+  --gh-motion-fast: 120ms;
+  --gh-motion-base: 200ms;
+  --gh-motion-step: 700ms;
+}
+
+/* ---- Base */
+
+html {
+  background: var(--gh-color-canvas);
+  color: var(--gh-color-text);
+  font-family: var(--gh-font-body);
+  font-size: var(--gh-text-body);
+  line-height: var(--gh-leading);
+}
+body {
+  margin: 0;
+}
+* {
+  box-sizing: border-box;
+}
+img,
+.sprite {
+  image-rendering: pixelated;
+}
+button {
+  font: inherit;
+  color: inherit;
+}
+:focus-visible {
+  outline: var(--gh-border) solid var(--gh-color-focus);
+  outline-offset: 2px;
+}
+
+.board {
+  max-width: var(--gh-board-width);
+  margin: 0 auto;
+  padding: var(--gh-space-6) var(--gh-space-4) var(--gh-space-12);
+  display: grid;
+  gap: var(--gh-space-6);
+}
+
+/* ---- Type */
+
+.title,
+.heading,
+.label,
+.number {
+  font-family: var(--gh-font-display);
+  line-height: 1.4;
+  margin: 0;
+}
+.title {
+  font-size: var(--gh-text-title);
+  text-transform: uppercase;
+}
+.heading {
+  font-size: var(--gh-text-heading);
+}
+.label {
+  font-size: var(--gh-text-label);
+  color: var(--gh-color-text-muted);
+  text-transform: uppercase;
+}
+.number {
+  font-size: var(--gh-text-number);
+}
+.muted {
+  color: var(--gh-color-text-muted);
+}
+
+/* ---- Window frame: the panel of this page */
+
+.frame {
+  background: var(--gh-color-surface);
+  border: var(--gh-border) solid var(--gh-color-frame);
+  box-shadow: var(--gh-shadow);
+  padding: var(--gh-space-4);
+}
+.frame--acting {
+  border-color: var(--gh-color-accent);
+}
+.frame__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gh-space-4);
+  margin-bottom: var(--gh-space-3);
+}
+
+/* ---- Buttons */
+
+.button {
+  font-family: var(--gh-font-display);
+  font-size: var(--gh-text-label);
+  text-transform: uppercase;
+  background: var(--gh-color-accent);
+  color: var(--gh-color-on-accent);
+  border: var(--gh-border) solid var(--gh-color-canvas);
+  box-shadow: var(--gh-shadow);
+  padding: var(--gh-space-3) var(--gh-space-4);
+  cursor: pointer;
+  transition: background var(--gh-motion-fast) linear, transform var(--gh-motion-fast) linear, box-shadow var(--gh-motion-fast) linear;
+}
+.button:hover:not(:disabled) {
+  background: var(--gh-color-accent-hover);
+}
+.button:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+.button:disabled {
+  background: var(--gh-color-surface-raised);
+  color: var(--gh-color-text-dim);
+  box-shadow: none;
+  cursor: default;
+}
+.button--secondary {
+  background: var(--gh-color-surface-raised);
+  color: var(--gh-color-text);
+  border-color: var(--gh-color-frame);
+}
+.button--secondary:hover:not(:disabled) {
+  background: var(--gh-color-frame-dim);
+}
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gh-space-3);
+  align-items: center;
+}
+
+/* ---- Playing cards: the only light surfaces on the page */
+
+.card {
+  width: var(--gh-card-width);
+  height: var(--gh-card-height);
+  background: var(--gh-color-card);
+  color: var(--gh-color-card-ink);
+  border: var(--gh-border) solid var(--gh-color-card-frame);
+  box-shadow: var(--gh-shadow);
+  padding: var(--gh-space-2);
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: var(--gh-space-1);
+  text-align: left;
+  transition: transform var(--gh-motion-fast) linear, box-shadow var(--gh-motion-fast) linear, opacity var(--gh-motion-fast) linear, outline-color var(--gh-motion-fast) linear;
+}
+button.card {
+  cursor: pointer;
+}
+button.card:hover:not(:disabled),
+button.card:focus-visible {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--gh-color-canvas);
+}
+.card--rare {
+  border-color: var(--gh-color-card-rare);
+}
+.card--basic {
+  border-color: var(--gh-color-frame-dim);
+}
+.card--dimmed,
+.card:disabled {
+  opacity: var(--gh-opacity-dim);
+  cursor: default;
+}
+.card--selected {
+  outline: var(--gh-border) solid var(--gh-color-accent);
+  outline-offset: 2px;
+}
+.card--small {
+  --gh-card-width: 96px;
+  --gh-card-height: 40px;
+  grid-template-rows: auto;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--gh-space-2);
+  padding: var(--gh-space-1) var(--gh-space-2);
+}
+.card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--gh-space-2);
+}
+.card__cost {
+  font-family: var(--gh-font-display);
+  font-size: var(--gh-text-number);
+  background: var(--gh-color-card-ink);
+  color: var(--gh-color-card);
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.card__name {
+  font-family: var(--gh-font-display);
+  font-size: var(--gh-text-label);
+  line-height: 1.3;
+}
+.card__text {
+  font-size: var(--gh-text-body);
+  line-height: 1.35;
+}
+.card__foot {
+  display: flex;
+  gap: var(--gh-space-1);
+  min-height: 16px;
+}
+.badge {
+  font-family: var(--gh-font-display);
+  font-size: 8px;
+  text-transform: uppercase;
+  padding: 3px 5px;
+  border: 2px solid var(--gh-color-card-ink);
+  background: var(--gh-color-card);
+  color: var(--gh-color-card-ink);
+}
+.badge--quick {
+  background: var(--gh-color-tier-quick);
+}
+.badge--slow {
+  background: var(--gh-color-tier-slow);
+  color: var(--gh-color-canvas);
+}
+.badge--rare {
+  background: var(--gh-color-card-rare);
+}
+.card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gh-space-4);
+}
+
+/* ---- Beat slots and the timeline */
+
+.slots {
+  display: grid;
+  grid-template-columns: repeat(3, var(--gh-card-width));
+  gap: var(--gh-space-4);
+}
+.slot {
+  display: grid;
+  gap: var(--gh-space-2);
+  justify-items: start;
+}
+.slot__well {
+  width: var(--gh-card-width);
+  height: var(--gh-card-height);
+  border: var(--gh-border) dashed var(--gh-color-frame-dim);
+  display: grid;
+  place-items: center;
+  color: var(--gh-color-text-dim);
+}
+.slot__well--wind {
+  border-style: solid;
+  border-color: var(--gh-color-card-frame);
+  background: var(--gh-color-surface-raised);
+}
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gh-space-4);
+}
+.timeline__beat {
+  display: grid;
+  gap: var(--gh-space-2);
+  padding: var(--gh-space-2);
+  border: var(--gh-border) solid transparent;
+  transition: border-color var(--gh-motion-base) linear;
+}
+.timeline__beat--current {
+  border-color: var(--gh-color-accent);
+}
+
+/* ---- Vitals: HP bars and status chips */
+
+.gnome {
+  display: grid;
+  grid-template-columns: var(--gh-sprite-size) 1fr;
+  gap: var(--gh-space-4);
+  align-items: center;
+}
+.gnome--mirror .sprite {
+  transform: scaleX(-1);
+}
+.sprite {
+  width: var(--gh-sprite-size);
+  height: var(--gh-sprite-size);
+  transition: transform var(--gh-motion-fast) linear, filter var(--gh-motion-fast) linear;
+}
+.sprite--hit {
+  transform: translateX(-6px);
+  filter: brightness(1.8);
+}
+.gnome--mirror .sprite--hit {
+  transform: scaleX(-1) translateX(-6px);
+}
+.hp {
+  display: grid;
+  gap: var(--gh-space-1);
+}
+.hp__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.hp__bar {
+  height: 14px;
+  background: var(--gh-color-hp-track);
+  border: var(--gh-border) solid var(--gh-color-canvas);
+}
+.hp__fill {
+  height: 100%;
+  background: var(--gh-color-hp);
+  transition: width var(--gh-motion-base) linear;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gh-space-2);
+  min-height: 24px;
+}
+.chip {
+  font-family: var(--gh-font-display);
+  font-size: var(--gh-text-label);
+  background: var(--gh-color-surface-raised);
+  border: 2px solid var(--gh-color-canvas);
+  padding: var(--gh-space-1) var(--gh-space-2);
+}
+.chip--block {
+  color: var(--gh-color-block);
+}
+.chip--counter {
+  color: var(--gh-color-counter);
+}
+.chip--vulnerable {
+  color: var(--gh-color-vulnerable);
+}
+.chip--strength {
+  color: var(--gh-color-strength);
+}
+
+/* ---- Log and curtain */
+
+.log {
+  max-height: 240px;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  font-size: var(--gh-text-body);
+}
+.log__line--new {
+  color: var(--gh-color-accent-hover);
+}
+.curtain {
+  position: fixed;
+  inset: 0;
+  background: var(--gh-color-canvas);
+  display: grid;
+  place-items: center;
+  padding: var(--gh-space-4);
+}
+.curtain .frame {
+  display: grid;
+  gap: var(--gh-space-6);
+  justify-items: center;
+  text-align: center;
+  min-width: 320px;
+}
+
+/* ---- Layout helpers */
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gh-space-4);
+  align-items: center;
+}
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gh-space-6);
+}
+.stack {
+  display: grid;
+  gap: var(--gh-space-3);
+}
+.banner {
+  font-family: var(--gh-font-display);
+  font-size: var(--gh-text-heading);
+  color: var(--gh-color-accent-hover);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
+}
