@@ -36,12 +36,20 @@ var effectKinds = map[string]engine.EffectKind{
 
 var tiers = map[string]engine.Tier{"Quick": engine.Quick, "Normal": engine.Normal, "Slow": engine.Slow}
 
+const (
+	maxCards = 64 // the engine keys card sets by bits of a uint64
+	maxCost  = 3  // a card occupies 1 to 3 beats, a whole round at most
+)
+
 // Load parses a card file into a ruleset. Starting HP is Rules.HP when set; otherwise
 // it and the caps are the proof of concept's. Clans come out sorted by name.
 func Load(data []byte) (*engine.Ruleset, error) {
 	var f file
 	if err := json.Unmarshal(data, &f); err != nil {
 		return nil, fmt.Errorf("parse card file: %w", err)
+	}
+	if len(f.Cards) > maxCards {
+		return nil, fmt.Errorf("%d cards, at most %d", len(f.Cards), maxCards)
 	}
 	rs := engine.ProofOfConcept()
 	rs.Cards, rs.Clans = nil, nil
@@ -55,6 +63,9 @@ func Load(data []byte) (*engine.Ruleset, error) {
 		tier, ok := tiers[c.Tier]
 		if !ok {
 			return nil, fmt.Errorf("card %s: tier %q", c.Name, c.Tier)
+		}
+		if c.Cost < 1 || c.Cost > maxCost {
+			return nil, fmt.Errorf("card %s: cost %d, want 1 to %d", c.Name, c.Cost, maxCost)
 		}
 		card := engine.Card{Name: c.Name, Cost: c.Cost, Tier: tier, Special: c.Special, Rare: c.Rare, Interrupt: c.Interrupt, Parry: c.Parry}
 		parts := []struct {

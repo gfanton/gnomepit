@@ -2,8 +2,10 @@ package cardfile
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -50,15 +52,39 @@ func TestLoadDefaultsHP(t *testing.T) {
 	assert.Equal(t, 15, rs.HP)
 }
 
+// oneCard is a card file holding one basic card of the given cost.
+func oneCard(cost int) []byte {
+	return []byte(fmt.Sprintf(`{"Cards": [{"Name": "Jab", "Cost": %d, "Tier": "Normal", "Damage": [["Hit", 1]]}], "Clans": {}, "Rules": {}}`, cost))
+}
+
+// manyCards is a card file holding n distinct basic cards.
+func manyCards(n int) []byte {
+	cards := make([]string, 0, n)
+	for i := range n {
+		cards = append(cards, fmt.Sprintf(`{"Name": "Jab %d", "Cost": 1, "Tier": "Normal", "Damage": [["Hit", 1]]}`, i))
+	}
+	return []byte(`{"Cards": [` + strings.Join(cards, ",") + `], "Clans": {}, "Rules": {}}`)
+}
+
+func TestLoadAcceptsSixtyFourCards(t *testing.T) {
+	rs, err := Load(manyCards(64))
+	require.NoError(t, err)
+	assert.Len(t, rs.Cards, 64)
+}
+
 func TestLoadErrors(t *testing.T) {
 	cases := map[string]struct {
 		data []byte
 		want string
 	}{
-		"bad tier":   {fixture(t, "bad-tier.cards.json"), `card Jab: tier "Fast"`},
-		"bad effect": {fixture(t, "bad-effect.cards.json"), "card Jab: effect"},
-		"bad clan":   {fixture(t, "bad-clan.cards.json"), `clan Alpha: no card "Nobody"`},
-		"not JSON":   {[]byte("{"), "parse card file"},
+		"bad tier":       {fixture(t, "bad-tier.cards.json"), `card Jab: tier "Fast"`},
+		"bad effect":     {fixture(t, "bad-effect.cards.json"), "card Jab: effect"},
+		"bad clan":       {fixture(t, "bad-clan.cards.json"), `clan Alpha: no card "Nobody"`},
+		"not JSON":       {[]byte("{"), "parse card file"},
+		"cost zero":      {oneCard(0), "card Jab: cost 0, want 1 to 3"},
+		"cost negative":  {oneCard(-1), "card Jab: cost -1, want 1 to 3"},
+		"cost four":      {oneCard(4), "card Jab: cost 4, want 1 to 3"},
+		"too many cards": {manyCards(65), "65 cards, at most 64"},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
