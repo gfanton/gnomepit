@@ -1,25 +1,138 @@
+// The page: renders the flow's screens into #app and turns clicks into flow actions. Every
+// rule comes from the engine; this module only draws and routes.
+
 import { loadEngine } from "./engine.mjs";
+import { initial, reduce, botTurn } from "./flow.mjs";
+import { newDeck, toggle, rareOf } from "./deck.mjs";
+import { randomDeck, randomPlan } from "./bot.mjs";
+import { sideNames } from "./log.mjs";
 
 const engine = await loadEngine("engine.wasm", "cards.json");
-const kneecap = engine.cards.find((c) => c.name === "Kneecap");
-const undermine = engine.cards.find((c) => c.name === "Undermine");
+const app = document.getElementById("app");
 
-const card = (c, extra = "") => `
-  <button class="card ${c.rare ? "card--rare" : ""} ${extra}" type="button">
+let flow = initial;
+let deck = null; // the deck being picked on the deck screen
+
+// ---- Actions
+
+function dispatch(action) {
+  const before = flow;
+  flow = reduce(flow, action);
+  enter(before);
+  render();
+}
+
+// enter runs what a screen needs on arrival: a fresh deck to pick, or the bot's move.
+function enter(before) {
+  const arrived = flow.screen !== before.screen || flow.acting !== before.acting;
+  if (flow.screen === "deck" && arrived) {
+    if (botTurn(flow)) {
+      const clan = engine.clans[Math.floor(Math.random() * engine.clans.length)];
+      dispatch({ type: "deckReady", clan: clan.name, deck: randomDeck(clan, engine.cards, Math.random) });
+      return;
+    }
+    deck = newDeck(engine.clans[0], engine.cards);
+  }
+  if (flow.screen === "plan" && botTurn(flow)) {
+    const plans = engine.legalPlans({ state: flow.state, side: 1, deck: flow.decks[1] });
+    dispatch({ type: "planSealed", plan: randomPlan(plans, Math.random) });
+  }
+}
+
+const handlers = {
+  start: ({ mode }) => dispatch({ type: "start", mode, hp: engine.hp }),
+  clan: ({ name }) => {
+    deck = newDeck(clanNamed(name), engine.cards);
+    render();
+  },
+  toggle: ({ id }) => {
+    deck = toggle(deck, Number(id), clanNamed(deck.clan), engine.cards);
+    render();
+  },
+  deckReady: () => dispatch({ type: "deckReady", clan: deck.clan, deck: [...deck.picks].sort((a, b) => a - b) }),
+  handoffDone: () => dispatch({ type: "handoffDone" }),
+};
+
+app.addEventListener("click", (event) => {
+  const target = event.target.closest("[data-action]");
+  if (!target || target.disabled) return;
+  handlers[target.dataset.action]?.(target.dataset);
+});
+
+// ---- Rendering
+
+function render() {
+  const screens = { title, deck: deckScreen, handoff, plan: placeholder("Plan"), playback: placeholder("Playback"), result: placeholder("Result") };
+  app.innerHTML = screens[flow.screen]();
+}
+
+function title() {
+  return `
+    <h1 class="title">Gnomehall</h1>
+    <section class="frame stack">
+      <p class="muted">Two gnomes, three rounds of three beats. Seal a plan, watch the plans collide.</p>
+      <div class="button-row">
+        <button class="button" type="button" data-action="start" data-mode="hotseat">Two players</button>
+        <button class="button button--secondary" type="button" data-action="start" data-mode="bot">Versus bot</button>
+      </div>
+    </section>`;
+}
+
+function deckScreen() {
+  const clan = clanNamed(deck.clan);
+  const rare = rareOf(clan, engine.cards);
+  const picked = deck.picks.length - 1;
+  const legal = engine.legalDeck({ clan: deck.clan, deck: deck.picks });
+  const heading = flow.mode === "bot" ? "Pick your deck" : `Player ${flow.acting + 1} picks a deck`;
+  const tabs = engine.clans
+    .map((c) => `<button class="button ${c.name === deck.clan ? "" : "button--secondary"}" type="button" data-action="clan" data-name="${c.name}">${c.name}</button>`)
+    .join("");
+  const pool = clan.cards
+    .map((id) => cardHTML(engine.cards[id], { selected: deck.picks.includes(id), action: id === rare ? null : "toggle" }))
+    .join("");
+  return `
+    <h1 class="title">Gnomehall</h1>
+    <section class="frame frame--acting stack">
+      <div class="frame__head"><h2 class="heading">${heading}</h2><span class="label">The Rare stays in. Pick 7 more.</span></div>
+      <div class="button-row">${tabs}</div>
+      <div class="card-grid">${pool}</div>
+      <div class="button-row"><button class="button" type="button" data-action="deckReady" ${legal ? "" : "disabled"}>Ready ${picked} / 7</button></div>
+    </section>`;
+}
+
+function handoff() {
+  const next = flow.after.acting + 1;
+  return `
+    <div class="curtain">
+      <div class="frame">
+        <p class="heading">Pass to Player ${next}</p>
+        <p class="muted">Player ${3 - next}, look away.</p>
+        <button class="button" type="button" data-action="handoffDone">I am Player ${next}</button>
+      </div>
+    </div>`;
+}
+
+function placeholder(name) {
+  return () => `<h1 class="title">Gnomehall</h1><section class="frame"><p class="heading">${name}</p><p class="muted">${sideNames(flow.clans, flow.mode).join(" against ")}</p></section>`;
+}
+
+// cardHTML draws a playing card; with an action it is a button, otherwise a plain card.
+function cardHTML(c, { selected = false, dimmed = false, action = null, data = "" } = {}) {
+  const classes = ["card", c.rare ? "card--rare" : "", c.special ? "" : "card--basic", selected ? "card--selected" : "", dimmed ? "card--dimmed" : ""].join(" ");
+  const badges = [
+    c.tier !== "Normal" ? `<span class="badge badge--${c.tier.toLowerCase()}">${c.tier}</span>` : "",
+    c.rare ? `<span class="badge badge--rare">Rare</span>` : "",
+  ].join("");
+  const body = `
     <div class="card__head"><span class="card__cost">${c.cost}</span><span class="card__name">${c.name}</span></div>
-    <div class="card__foot">${c.tier !== "Normal" ? `<span class="badge badge--${c.tier.toLowerCase()}">${c.tier}</span>` : ""}${c.rare ? `<span class="badge badge--rare">Rare</span>` : ""}</div>
-    <div class="card__text">${c.text}</div>
-  </button>`;
+    <div class="card__foot">${badges}</div>
+    <div class="card__text">${c.text}</div>`;
+  if (action === null) return `<div class="${classes}">${body}</div>`;
+  return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${data} ${dimmed ? "disabled" : ""}>${body}</button>`;
+}
 
-document.getElementById("app").innerHTML = `
-  <h1 class="title">Gnomehall</h1>
-  <section class="frame">
-    <div class="frame__head"><h2 class="heading">Smoke</h2><span class="label">HP ${engine.hp}</span></div>
-    <div class="card-grid">${card(kneecap)}${card(undermine)}${card(engine.cards[0], "card--basic")}</div>
-  </section>
-  <section class="frame split">
-    <div class="gnome"><img class="sprite" src="sprites/gnome-a.svg" alt="Pickers gnome"><div class="hp"><div class="hp__row"><span class="label">Pickers</span><span class="number">11 / 15</span></div><div class="hp__bar"><div class="hp__fill" style="width: 73%"></div></div><div class="chips"><span class="chip chip--block">Block 5</span><span class="chip chip--vulnerable">Vulnerable 1</span></div></div></div>
-    <div class="gnome gnome--mirror"><img class="sprite" src="sprites/gnome-b.svg" alt="Ironhide gnome"><div class="hp"><div class="hp__row"><span class="label">Ironhide</span><span class="number">15 / 15</span></div><div class="hp__bar"><div class="hp__fill" style="width: 100%"></div></div><div class="chips"><span class="chip chip--counter">Counter 1</span><span class="chip chip--strength">Strength 1</span></div></div></div>
-  </section>
-  <div class="button-row"><button class="button" type="button">Two players</button><button class="button button--secondary" type="button">Versus bot</button><button class="button" type="button" disabled>Ready 3 / 7</button></div>
-  <pre id="smoke" class="muted">${engine.cards.length} cards loaded</pre>`;
+function clanNamed(name) {
+  return engine.clans.find((c) => c.name === name);
+}
+
+render();

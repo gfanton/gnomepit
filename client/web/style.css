@@ -90,8 +90,8 @@
   --gh-border: 3px;
   --gh-shadow: 3px 3px 0 var(--gh-color-canvas);
   --gh-board-width: 960px;
-  --gh-card-width: 132px;
-  --gh-card-height: 168px;
+  --gh-card-width: 144px;
+  --gh-card-height: 204px;
   --gh-sprite-size: 64px; /* 16px drawn, scaled by 4 */
   --gh-opacity-dim: 0.38;
   --gh-motion-fast: 120ms;
