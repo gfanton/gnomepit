@@ -39,6 +39,7 @@ type Card struct {
 	Cost      int
 	Tier      Tier
 	Special   bool // spent once played; basics are not
+	Rare      bool // the clan's signature card; a deck holds exactly one
 	Interrupt bool
 	Parry     int      // Parry N: attacks it cancels while active; 0 for no Parry
 	Block     []Effect // Block phase
