@@ -3,7 +3,7 @@
 
 import { loadEngine } from "./engine.mjs";
 import { initial, reduce, botTurn } from "./flow.mjs";
-import { newDeck, toggle, rareOf } from "./deck.mjs";
+import { deckSize, newDeck, toggle, rareOf } from "./deck.mjs";
 import { randomDeck, randomPlan } from "./bot.mjs";
 import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.mjs";
 import { sentences, matchLog, resultLine, sideNames } from "./log.mjs";
@@ -202,13 +202,17 @@ function deckScreen() {
   const tabs = engine.clans
     .map((c) => `<button class="button ${c.name === deck.clan ? "" : "button--secondary"}" type="button" data-action="clan" data-name="${c.name}">${c.name}</button>`)
     .join("");
+  const full = deck.picks.length >= deckSize;
   const pool = clan.cards
-    .map((id) => cardHTML(engine.cards[id], { selected: deck.picks.includes(id), action: id === rare ? null : "toggle" }))
+    .map((id) => {
+      const picked = deck.picks.includes(id);
+      return cardHTML(engine.cards[id], { selected: picked, pressed: picked, locked: id === rare, dimmed: full && !picked, action: "toggle" });
+    })
     .join("");
   return `
     <h1 class="title">Gnomehall</h1>
     <section class="frame frame--acting stack">
-      <div class="frame__head"><h2 class="heading">${heading}</h2><span class="label">The Rare stays in. Pick 7 more.</span></div>
+      <div class="frame__head"><h2 class="heading">${heading}</h2><span class="hint">The Rare stays in. Pick 7 more.</span></div>
       <div class="button-row">${tabs}</div>
       <div class="card-grid">${pool}</div>
       <div class="button-row"><button class="button" type="button" data-action="deckReady" ${legal ? "" : "disabled"}>Ready ${picked} / 7</button></div>
@@ -249,18 +253,20 @@ function planScreen() {
         <span class="label">Spent cards</span>
         <div class="row">${spentCards || `<span class="muted">None yet.</span>`}</div>
       </div>
-      ${history ? `<div class="stack"><span class="label">Earlier rounds</span><ul class="muted">${history}</ul></div>` : ""}
+      ${history ? `<div class="stack"><span class="label">Earlier rounds</span><ul class="plain-list muted">${history}</ul></div>` : ""}
     </section>
     <section class="frame frame--acting stack">
-      <div class="frame__head"><h2 class="heading">${names[me]}: seal a plan</h2><span class="label">Three beats. Click a card to add it, a slot to clear from there.</span></div>
+      <div class="frame__head"><h2 class="heading">${names[me]}: seal a plan</h2><span class="hint">Click a card to add it to the next free beat, a beat to clear from there.</span></div>
       ${gnomeHTML(me, gnomes[me], names[me])}
-      ${slotsHTML()}
+      <div class="plan-band">
+        ${slotsHTML()}
+        <div class="button-row">
+          <button class="button" type="button" data-action="seal" ${isSealable(plan, legalPlans) ? "" : "disabled"}>Seal plan</button>
+          <span class="label">${used} / 3 beats</span>
+        </div>
+      </div>
       <span class="label">Your hand</span>
       <div class="card-grid">${hand}</div>
-      <div class="button-row">
-        <button class="button" type="button" data-action="seal" ${isSealable(plan, legalPlans) ? "" : "disabled"}>Seal plan</button>
-        <span class="number">${used} / 3 beats</span>
-      </div>
     </section>`;
 }
 
@@ -272,7 +278,7 @@ function slotsHTML() {
     const c = engine.cards[id];
     const start = beat;
     beat += c.cost;
-    return `<div class="slot" style="grid-column: span ${c.cost}">${cardHTML(c, { action: "clearFrom", data: `data-beat="${start}"` })}</div>`;
+    return `<div class="slot" style="grid-column: span ${c.cost}">${cardHTML(c, { small: true, action: "clearFrom", data: `data-beat="${start}"` })}</div>`;
   });
   const empty = Array.from({ length: 3 - beat }, () => `<div class="slot"><div class="slot__well"><span class="label">empty</span></div></div>`);
   return `<div class="slots">${labels}${filled.join("")}${empty.join("")}</div>`;
@@ -281,33 +287,39 @@ function slotsHTML() {
 function playbackScreen() {
   const round = flow.rounds.at(-1);
   const names = sideNames(flow.clans, flow.mode);
-  const laid = round.plans.map((p) => slots(p, engine.cards));
-  const beats = [1, 2, 3]
-    .map((b) => {
-      const sides = [0, 1]
-        .map((side) => {
-          const slot = laid[side][b - 1];
-          const c = engine.cards[slot.cardId];
-          const state = slot.lands ? "lands" : c.parry > 0 ? "guards" : "winds up";
-          return `<div class="timeline__side">${cardHTML(c, { small: true, data: `data-beat="${b}" data-side="${side}"` })}<span class="label">${names[side]} · ${state}</span></div>`;
+  const heads = [1, 2, 3].map((b) => `<span class="label timeline__beat" id="beat-${b}">Beat ${b}</span>`).join("");
+  // Each side's row lays its plan over the three beats, a card spanning the beats it occupies.
+  const rows = round.plans
+    .map((p, side) => {
+      let beat = 0;
+      return p
+        .map((id, index) => {
+          const c = engine.cards[id];
+          const from = beat + 1;
+          beat += c.cost;
+          const note = c.parry > 0 ? `guards ${from === beat ? `beat ${beat}` : `beats ${from} to ${beat}`}` : c.cost > 1 ? `lands on beat ${beat}` : "";
+          return `
+            <div class="timeline__play" style="grid-column: span ${c.cost}">
+              ${cardHTML(c, { small: true, data: `data-side="${side}" data-index="${index}"` })}
+              <span class="label">${names[side]}${note ? ` · ${note}` : ""}</span>
+            </div>`;
         })
         .join("");
-      return `<div class="timeline__beat" id="beat-${b}"><span class="label">Beat ${b}</span>${sides}</div>`;
     })
     .join("");
   return `
     <div class="frame__head"><h1 class="title">Gnomehall</h1><span class="heading">Round ${round.state.round - 1}</span></div>
     <section class="frame stack">
       <div class="split">${gnomeHTML(0, playback.start[0], names[0])}${gnomeHTML(1, playback.start[1], names[1])}</div>
-      <div class="timeline">${beats}</div>
+      <div class="timeline">${heads}${rows}</div>
       <div class="button-row">
         <button class="button" type="button" data-action="next" id="next">Next step</button>
         <button class="button button--secondary" type="button" data-action="play" id="play">Play</button>
         <button class="button button--secondary" type="button" data-action="skip" id="skip">Skip</button>
-        <span class="number" id="progress"></span>
+        <span class="label" id="progress"></span>
       </div>
-      <div id="finish" class="stack"></div>
       <div class="log log--grid" id="log"></div>
+      <div id="finish" class="stack"></div>
     </section>`;
 }
 
@@ -326,10 +338,12 @@ function patchPlayback() {
     byId(`chips-${side}`).innerHTML = chipsHTML(vitals[side]);
     byId(`sprite-${side}`).classList.toggle("sprite--hit", playback.hit[side]);
   }
-  const acting = new Set(current ? round.events.slice(current.from, current.to).map((ev) => `${current.beat}:${ev.side}`) : []);
+  // The acting cards are the ones occupying the current beat for the sides that acted this step.
+  const laid = round.plans.map((p) => slots(p, engine.cards));
+  const acting = new Set(current ? round.events.slice(current.from, current.to).map((ev) => `${ev.side}:${laid[ev.side][current.beat - 1].index}`) : []);
   for (const b of [1, 2, 3]) byId(`beat-${b}`).classList.toggle("timeline__beat--current", current?.beat === b);
-  for (const el of app.querySelectorAll("[data-beat][data-side]")) {
-    el.classList.toggle("card--selected", acting.has(`${el.dataset.beat}:${el.dataset.side}`));
+  for (const el of app.querySelectorAll("[data-side][data-index]")) {
+    el.classList.toggle("card--acting", acting.has(`${el.dataset.side}:${el.dataset.index}`));
   }
   byId("log").innerHTML = logHTML(round, steps, shown, lines);
   const done = shown >= steps.length;
@@ -426,9 +440,11 @@ function hpWidth(hp) {
   return `${Math.max(0, Math.min(100, (hp / flow.hp) * 100))}%`;
 }
 
-// cardHTML draws a playing card; with an action it is a button, otherwise a plain card.
-function cardHTML(c, { selected = false, dimmed = false, small = false, action = null, data = "" } = {}) {
-  const classes = ["card", c.rare ? "card--rare" : "", c.special ? "" : "card--basic", selected ? "card--selected" : "", dimmed ? "card--dimmed" : "", small ? "card--small" : ""].join(" ");
+// cardHTML draws a playing card; with an action it is a button, otherwise a plain card. A
+// pressed value marks a toggle's state; locked marks a toggle that does nothing.
+function cardHTML(c, { selected = false, dimmed = false, small = false, locked = false, pressed = null, action = null, data = "" } = {}) {
+  const classes = ["card", c.rare ? "card--rare" : "", c.special ? "" : "card--basic", selected ? "card--selected" : "", dimmed ? "card--dimmed" : "", small ? "card--small" : "", locked ? "card--locked" : ""].join(" ");
+  const state = [pressed === null ? "" : `aria-pressed="${pressed}"`, locked ? `aria-disabled="true" title="The Rare stays in"` : ""].join(" ");
   const badges = [
     c.tier !== "Normal" ? `<span class="badge badge--${c.tier.toLowerCase()}">${c.tier}</span>` : "",
     c.rare ? `<span class="badge badge--rare">Rare</span>` : "",
@@ -440,7 +456,7 @@ function cardHTML(c, { selected = false, dimmed = false, small = false, action =
     <div class="card__foot">${badges}</div>
     <div class="card__text">${c.text}</div>`;
   if (action === null) return `<div class="${classes}" ${data}>${body}</div>`;
-  return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${data} ${dimmed ? "disabled" : ""}>${body}</button>`;
+  return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${state} ${data} ${dimmed ? "disabled" : ""}>${body}</button>`;
 }
 
 function planNames(ids) {

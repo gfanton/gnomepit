@@ -164,6 +164,12 @@ button {
 .muted {
   color: var(--gh-color-text-muted);
 }
+.hint {
+  font-size: var(--gh-text-body);
+  color: var(--gh-color-text-muted);
+  text-align: right;
+  max-width: 50%;
+}
 
 /* ---- Window frame: the panel of this page */
 
@@ -262,6 +268,17 @@ button.card:focus-visible {
   cursor: default;
 }
 .card--selected {
+  outline: var(--gh-border) solid var(--gh-color-text);
+  outline-offset: 2px;
+}
+button.card--locked {
+  cursor: default;
+}
+button.card--locked:hover {
+  transform: none;
+  box-shadow: var(--gh-shadow);
+}
+.card--acting {
   outline: var(--gh-border) solid var(--gh-color-accent);
   outline-offset: 2px;
 }
@@ -344,9 +361,19 @@ button.card:focus-visible {
 .slot > .card {
   width: 100%;
 }
+.plan-band {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--gh-color-surface);
+  display: grid;
+  gap: var(--gh-space-3);
+  padding: var(--gh-space-2) 0 var(--gh-space-3);
+  border-bottom: var(--gh-border) solid var(--gh-color-frame-dim);
+}
 .slot__well {
   width: var(--gh-card-width);
-  height: var(--gh-card-height);
+  height: 56px;
   border: var(--gh-border) dashed var(--gh-color-frame-dim);
   display: grid;
   place-items: center;
@@ -360,22 +387,24 @@ button.card:focus-visible {
 .timeline {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--gh-space-4);
+  gap: var(--gh-space-2) var(--gh-space-4);
+  align-items: start;
 }
 .timeline__beat {
-  display: grid;
-  gap: var(--gh-space-2);
-  padding: var(--gh-space-2);
+  padding: var(--gh-space-1) var(--gh-space-2);
   border: var(--gh-border) solid transparent;
-  transition: border-color var(--gh-motion-base) linear;
+  transition: border-color var(--gh-motion-base) linear, color var(--gh-motion-base) linear;
 }
 .timeline__beat--current {
   border-color: var(--gh-color-accent);
+  color: var(--gh-color-accent);
 }
-.timeline__side {
+.timeline__play {
   display: grid;
   gap: var(--gh-space-1);
-  min-height: 64px;
+}
+.timeline__play > .card {
+  width: 100%;
 }
 
 /* ---- Vitals: HP bars and status chips */
@@ -489,7 +518,7 @@ button.card:focus-visible {
   background: var(--gh-color-canvas);
   border: var(--gh-border) solid var(--gh-color-frame-dim);
   padding: var(--gh-space-2);
-  resize: vertical;
+  resize: none;
 }
 .curtain {
   position: fixed;
@@ -524,6 +553,11 @@ button.card:focus-visible {
   display: grid;
   align-content: start;
   gap: var(--gh-space-3);
+}
+.plain-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 .banner {
   font-family: var(--gh-font-display);
