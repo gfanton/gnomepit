@@ -1,0 +1,425 @@
+{
+  "Cards": [
+    {
+      "Name": "Pick",
+      "Cost": 1,
+      "Tier": "Normal",
+      "Special": false,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "Hit",
+          1
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Brace",
+      "Cost": 1,
+      "Tier": "Normal",
+      "Special": false,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [
+        [
+          "GainBlock",
+          1
+        ]
+      ],
+      "Damage": [],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Pickaxe Flurry",
+      "Cost": 1,
+      "Tier": "Quick",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "Hit",
+          1
+        ],
+        [
+          "Hit",
+          1
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Kneecap",
+      "Cost": 1,
+      "Tier": "Quick",
+      "Special": true,
+      "Interrupt": true,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "Hit",
+          1
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Sling Stone",
+      "Cost": 1,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "Hit",
+          2
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Dodge Roll",
+      "Cost": 2,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 1,
+      "Block": [],
+      "Damage": [],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Chalk Dust",
+      "Cost": 1,
+      "Tier": "Quick",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "ApplyVulnerable",
+          1
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Double Tap",
+      "Cost": 2,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "Hit",
+          1
+        ],
+        [
+          "Hit",
+          1
+        ],
+        [
+          "Hit",
+          1
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Momentum",
+      "Cost": 1,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "GainStrength",
+          1
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Undermine",
+      "Cost": 1,
+      "Tier": "Quick",
+      "Special": true,
+      "Interrupt": true,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "VulnerableIfCancelled",
+          2
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": [],
+      "Rare": true
+    },
+    {
+      "Name": "Hunker Down",
+      "Cost": 3,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 2,
+      "Block": [],
+      "Damage": [],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Boot and Heel",
+      "Cost": 2,
+      "Tier": "Slow",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "Hit",
+          2
+        ],
+        [
+          "Hit",
+          2
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Stone Guard",
+      "Cost": 3,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 2,
+      "Block": [],
+      "Damage": [],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Bulwark",
+      "Cost": 2,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [
+        [
+          "GainBlock",
+          5
+        ]
+      ],
+      "Damage": [],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Hammer Blow",
+      "Cost": 2,
+      "Tier": "Slow",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "Hit",
+          5
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Cobble Throw",
+      "Cost": 1,
+      "Tier": "Slow",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "Hit",
+          2
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Spiked Shield",
+      "Cost": 1,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [
+        [
+          "GainBlock",
+          1
+        ],
+        [
+          "GainCounter",
+          1
+        ]
+      ],
+      "Damage": [],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Anvil Stomp",
+      "Cost": 2,
+      "Tier": "Slow",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "Hit",
+          2
+        ],
+        [
+          "ApplyVulnerable",
+          1
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Feint",
+      "Cost": 2,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "Hit",
+          4
+        ]
+      ],
+      "OnCancel": [
+        [
+          "GainBlock",
+          4
+        ]
+      ],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Avalanche",
+      "Cost": 1,
+      "Tier": "Slow",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "HitBlock",
+          0
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": [],
+      "Rare": true
+    },
+    {
+      "Name": "Shield Catch",
+      "Cost": 2,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 1,
+      "Block": [],
+      "Damage": [],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Loose Timbers",
+      "Cost": 2,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [
+        [
+          "GainBlock",
+          3
+        ]
+      ],
+      "Damage": [],
+      "OnCancel": [],
+      "CancelDamage": [
+        [
+          "Hit",
+          4
+        ]
+      ]
+    }
+  ],
+  "Clans": {
+    "Pickers": [
+      "Pickaxe Flurry",
+      "Kneecap",
+      "Sling Stone",
+      "Dodge Roll",
+      "Chalk Dust",
+      "Double Tap",
+      "Momentum",
+      "Undermine",
+      "Hunker Down",
+      "Boot and Heel"
+    ],
+    "Ironhide": [
+      "Stone Guard",
+      "Bulwark",
+      "Hammer Blow",
+      "Cobble Throw",
+      "Spiked Shield",
+      "Anvil Stomp",
+      "Feint",
+      "Avalanche",
+      "Shield Catch",
+      "Loose Timbers"
+    ]
+  },
+  "Rules": {
+    "VulnerableDoublesOneHit": true,
+    "StrengthLastsTheRound": true,
+    "VulnerableLastsTheRound": false
+  }
+}
