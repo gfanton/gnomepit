@@ -338,7 +338,9 @@ button.card:focus-visible {
 .slot {
   display: grid;
   gap: var(--gh-space-2);
-  justify-items: start;
+}
+.slot > .card {
+  width: 100%;
 }
 .slot__well {
   width: var(--gh-card-width);
