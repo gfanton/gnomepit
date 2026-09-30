@@ -60,6 +60,7 @@
   --gh-color-tier-slow: var(--gh-palette-slate-500);
   --gh-color-hp: var(--gh-palette-red);
   --gh-color-hp-track: var(--gh-palette-ink);
+  --gh-color-hp-ghost: var(--gh-palette-slate-500); /* what the last step took away */
   --gh-color-block: var(--gh-palette-blue);
   --gh-color-counter: var(--gh-palette-teal);
   --gh-color-vulnerable: var(--gh-palette-purple);
@@ -265,8 +266,9 @@ button.card:focus-visible {
   outline-offset: 2px;
 }
 .card--small {
-  --gh-card-width: 96px;
-  --gh-card-height: 40px;
+  width: auto;
+  min-width: 120px;
+  --gh-card-height: 44px;
   grid-template-rows: auto;
   grid-template-columns: auto 1fr;
   align-items: center;
@@ -370,6 +372,11 @@ button.card:focus-visible {
 .timeline__beat--current {
   border-color: var(--gh-color-accent);
 }
+.timeline__side {
+  display: grid;
+  gap: var(--gh-space-1);
+  min-height: 64px;
+}
 
 /* ---- Vitals: HP bars and status chips */
 
@@ -404,12 +411,23 @@ button.card:focus-visible {
   align-items: baseline;
 }
 .hp__bar {
+  position: relative;
   height: 14px;
   background: var(--gh-color-hp-track);
   border: var(--gh-border) solid var(--gh-color-canvas);
 }
+.hp__ghost,
 .hp__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
   height: 100%;
+}
+.hp__ghost {
+  background: var(--gh-color-hp-ghost);
+  transition: width var(--gh-motion-base) linear var(--gh-motion-base);
+}
+.hp__fill {
   background: var(--gh-color-hp);
   transition: width var(--gh-motion-base) linear;
 }
@@ -451,6 +469,27 @@ button.card:focus-visible {
 }
 .log__line--new {
   color: var(--gh-color-accent-hover);
+}
+.log--grid {
+  grid-template-columns: auto 1fr;
+  column-gap: var(--gh-space-3);
+}
+.log__beat {
+  font-family: var(--gh-font-display);
+  font-size: var(--gh-text-label);
+  color: var(--gh-color-text-dim);
+  padding-top: 2px;
+  border-right: var(--gh-border) solid var(--gh-color-frame-dim);
+  padding-right: var(--gh-space-2);
+}
+.log-text {
+  width: 100%;
+  font: inherit;
+  color: var(--gh-color-text);
+  background: var(--gh-color-canvas);
+  border: var(--gh-border) solid var(--gh-color-frame-dim);
+  padding: var(--gh-space-2);
+  resize: vertical;
 }
 .curtain {
   position: fixed;

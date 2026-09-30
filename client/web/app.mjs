@@ -5,17 +5,20 @@ import { loadEngine } from "./engine.mjs";
 import { initial, reduce, botTurn } from "./flow.mjs";
 import { newDeck, toggle, rareOf } from "./deck.mjs";
 import { randomDeck, randomPlan } from "./bot.mjs";
-import { addCard, beatsUsed, canAdd, clearFrom, isSealable } from "./plan.mjs";
-import { sideNames } from "./log.mjs";
+import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.mjs";
+import { sentences, matchLog, resultLine, sideNames } from "./log.mjs";
 
 const engine = await loadEngine("engine.wasm", "cards.json");
 const app = document.getElementById("app");
 const basics = engine.cards.filter((c) => !c.special).map((c) => c.id);
+const stepMs = 700;
+const hitFlashMs = 150;
 
 let flow = initial;
 let deck = null; // the deck being picked on the deck screen
 let plan = []; // the plan being built on the plan screen
 let legalPlans = []; // the acting player's legal plans this round
+let playback = null; // {start, steps, lines, shown, timer, hit} for the round being played back
 
 // ---- Actions
 
@@ -27,10 +30,11 @@ function dispatch(action) {
 }
 
 // enter runs what a screen needs on arrival: a fresh deck or plan to build, the legal
-// plans from the engine, or the bot's move.
+// plans from the engine, the bot's move, or the round's resolution.
 function enter(before) {
   const arrived = flow.screen !== before.screen || flow.acting !== before.acting;
   if (!arrived) return;
+  if (before.screen === "playback") stopPlaying();
   if (flow.screen === "deck") {
     if (botTurn(flow)) {
       const clan = engine.clans[Math.floor(Math.random() * engine.clans.length)];
@@ -48,6 +52,32 @@ function enter(before) {
     legalPlans = plans;
     plan = [];
   }
+  if (flow.screen === "playback") {
+    const start = flow.state.gnomes.map((g) => ({ hp: g.hp, block: 0, counter: 0, vulnerable: g.vulnerable, strength: g.strength }));
+    const { state, result, events } = engine.resolve({ state: flow.state, decks: flow.decks, a: flow.plans[0], b: flow.plans[1] });
+    const names = sideNames(flow.clans, flow.mode);
+    playback = {
+      start,
+      steps: groupSteps(events),
+      lines: sentences(events, { cards: engine.cards, names, plans: flow.plans }),
+      shown: 0,
+      timer: null,
+      hit: [false, false],
+    };
+    dispatch({ type: "resolved", state, result, events });
+  }
+}
+
+// groupSteps turns the event list into [from, to) ranges of events that resolve together.
+function groupSteps(events) {
+  const steps = [];
+  events.forEach((ev, i) => {
+    const last = steps.at(-1);
+    const same = last && ["beat", "phase", "tier", "step"].every((k) => ev[k] === last[k]);
+    if (same) last.to = i + 1;
+    else steps.push({ beat: ev.beat, phase: ev.phase, tier: ev.tier, step: ev.step, from: i, to: i + 1 });
+  });
+  return steps;
 }
 
 const handlers = {
@@ -71,6 +101,13 @@ const handlers = {
     render();
   },
   seal: () => dispatch({ type: "planSealed", plan }),
+  next: () => showStep(playback.shown + 1),
+  play: () => (playback.timer ? stopPlaying() : startPlaying()),
+  skip: () => showStep(playback.steps.length),
+  playbackDone: () => dispatch({ type: "playbackDone" }),
+  rematch: () => dispatch({ type: "rematch" }),
+  newMatch: () => dispatch({ type: "newMatch" }),
+  copyLog: () => copyMatchLog(),
 };
 
 app.addEventListener("click", (event) => {
@@ -85,11 +122,63 @@ function available() {
   return [...basics, ...flow.decks[flow.acting].filter((id) => !spent.includes(id))];
 }
 
+// ---- Playback
+
+function showStep(n) {
+  const round = flow.rounds.at(-1);
+  const target = Math.min(n, playback.steps.length);
+  const hit = [false, false];
+  if (target === playback.shown + 1) {
+    const step = playback.steps[target - 1];
+    for (const ev of round.events.slice(step.from, step.to)) {
+      if (ev.kind === "HitLanded") hit[1 - ev.side] = true;
+      if (ev.kind === "CounterHit") hit[ev.side] = true;
+    }
+  }
+  playback.shown = target;
+  playback.hit = hit;
+  if (target === playback.steps.length) stopPlaying();
+  patchPlayback();
+  if (hit.some(Boolean)) {
+    setTimeout(() => {
+      playback.hit = [false, false];
+      if (flow.screen === "playback") patchPlayback();
+    }, hitFlashMs);
+  }
+}
+
+function startPlaying() {
+  if (playback.shown >= playback.steps.length) return;
+  playback.timer = setInterval(() => showStep(playback.shown + 1), stepMs);
+  showStep(playback.shown + 1);
+}
+
+function stopPlaying() {
+  if (playback?.timer) clearInterval(playback.timer);
+  if (playback) playback.timer = null;
+  if (flow.screen === "playback") patchPlayback();
+}
+
+// copyMatchLog copies the log shown on the result screen; the text stays visible either way.
+function copyMatchLog() {
+  const area = byId("match-log");
+  area.select();
+  const done = () => {
+    byId("copied").textContent = "Copied.";
+  };
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(area.value).then(done, () => done(document.execCommand("copy")));
+  else done(document.execCommand("copy"));
+}
+
 // ---- Rendering
 
 function render() {
-  const screens = { title, deck: deckScreen, handoff, plan: planScreen, playback: placeholder("Playback"), result: placeholder("Result") };
+  const screens = { title, deck: deckScreen, handoff, plan: planScreen, playback: playbackScreen, result: resultScreen };
+  // The playback screen renders once and is then patched, so its bars and marker animate.
+  if (flow.screen === "playback" && app.dataset.screen === "playback") return;
   app.innerHTML = screens[flow.screen]();
+  app.dataset.screen = flow.screen;
+  if (flow.screen === "playback") patchPlayback();
 }
 
 function title() {
@@ -189,14 +278,140 @@ function slotsHTML() {
   return `<div class="slots">${labels}${filled.join("")}${empty.join("")}</div>`;
 }
 
-function placeholder(name) {
-  return () => `<h1 class="title">Gnomehall</h1><section class="frame"><p class="heading">${name}</p><p class="muted">${sideNames(flow.clans, flow.mode).join(" against ")}: ${planNames(flow.plans[0])} against ${planNames(flow.plans[1])}</p></section>`;
+function playbackScreen() {
+  const round = flow.rounds.at(-1);
+  const names = sideNames(flow.clans, flow.mode);
+  const laid = round.plans.map((p) => slots(p, engine.cards));
+  const beats = [1, 2, 3]
+    .map((b) => {
+      const sides = [0, 1]
+        .map((side) => {
+          const slot = laid[side][b - 1];
+          const c = engine.cards[slot.cardId];
+          const state = slot.lands ? "lands" : c.parry > 0 ? "guards" : "winds up";
+          return `<div class="timeline__side">${cardHTML(c, { small: true, data: `data-beat="${b}" data-side="${side}"` })}<span class="label">${names[side]} · ${state}</span></div>`;
+        })
+        .join("");
+      return `<div class="timeline__beat" id="beat-${b}"><span class="label">Beat ${b}</span>${sides}</div>`;
+    })
+    .join("");
+  return `
+    <div class="frame__head"><h1 class="title">Gnomehall</h1><span class="heading">Round ${round.state.round - 1}</span></div>
+    <section class="frame stack">
+      <div class="split">${gnomeHTML(0, playback.start[0], names[0])}${gnomeHTML(1, playback.start[1], names[1])}</div>
+      <div class="timeline">${beats}</div>
+      <div class="button-row">
+        <button class="button" type="button" data-action="next" id="next">Next step</button>
+        <button class="button button--secondary" type="button" data-action="play" id="play">Play</button>
+        <button class="button button--secondary" type="button" data-action="skip" id="skip">Skip</button>
+        <span class="number" id="progress"></span>
+      </div>
+      <div id="finish" class="stack"></div>
+      <div class="log log--grid" id="log"></div>
+    </section>`;
+}
+
+// patchPlayback updates the parts of the playback screen that change with each step.
+function patchPlayback() {
+  const round = flow.rounds.at(-1);
+  const { steps, shown, lines } = playback;
+  const vitalsAt = (n) => (n === 0 ? playback.start : round.events[steps[n - 1].to - 1].after);
+  const vitals = vitalsAt(shown);
+  const previous = vitalsAt(Math.max(0, shown - 1));
+  const current = shown > 0 ? steps[shown - 1] : null;
+  for (const side of [0, 1]) {
+    byId(`hp-fill-${side}`).style.width = hpWidth(vitals[side].hp);
+    byId(`hp-ghost-${side}`).style.width = hpWidth(previous[side].hp);
+    byId(`hp-num-${side}`).textContent = `${vitals[side].hp} / ${flow.hp}`;
+    byId(`chips-${side}`).innerHTML = chipsHTML(vitals[side]);
+    byId(`sprite-${side}`).classList.toggle("sprite--hit", playback.hit[side]);
+  }
+  const acting = new Set(current ? round.events.slice(current.from, current.to).map((ev) => `${current.beat}:${ev.side}`) : []);
+  for (const b of [1, 2, 3]) byId(`beat-${b}`).classList.toggle("timeline__beat--current", current?.beat === b);
+  for (const el of app.querySelectorAll("[data-beat][data-side]")) {
+    el.classList.toggle("card--selected", acting.has(`${el.dataset.beat}:${el.dataset.side}`));
+  }
+  byId("log").innerHTML = logHTML(round, steps, shown, lines);
+  const done = shown >= steps.length;
+  byId("next").disabled = done;
+  byId("skip").disabled = done;
+  byId("play").disabled = done;
+  byId("play").textContent = playback.timer ? "Pause" : "Play";
+  byId("progress").textContent = `${shown} / ${steps.length} steps`;
+  byId("finish").innerHTML = done ? finishHTML() : "";
+}
+
+function logHTML(round, steps, shown, lines) {
+  const until = shown > 0 ? steps[shown - 1].to : 0;
+  const fresh = shown > 0 ? steps[shown - 1].from : 0;
+  const groups = [];
+  for (let i = 0; i < until; i++) {
+    const beat = round.events[i].beat;
+    const last = groups.at(-1);
+    const line = `<span class="log__line ${i >= fresh ? "log__line--new" : ""}">${lines[i]}</span>`;
+    if (last && last.beat === beat) last.lines.push(line);
+    else groups.push({ beat, lines: [line] });
+  }
+  if (until === 0) return `<span class="muted">Press Next to resolve the first step.</span>`;
+  return groups.map((g) => `<span class="log__beat" style="grid-row: span ${g.lines.length}">Beat ${g.beat}</span>${g.lines.join("")}`).join("");
+}
+
+function finishHTML() {
+  const names = sideNames(flow.clans, flow.mode);
+  if (flow.result === "ongoing") {
+    return `<div class="button-row"><button class="button" type="button" data-action="playbackDone">Round ${flow.state.round}</button></div>`;
+  }
+  const knockout = flow.state.gnomes.some((g) => g.hp <= 0);
+  return `
+    <p class="banner">${knockout ? "Knockout!" : "Three rounds played."} ${resultLine(flow.result, names)}</p>
+    <div class="button-row"><button class="button" type="button" data-action="playbackDone">Continue</button></div>`;
+}
+
+function resultScreen() {
+  const names = sideNames(flow.clans, flow.mode);
+  const sides = [0, 1]
+    .map((side) => {
+      const g = flow.state.gnomes[side];
+      const unplayed = flow.decks[side].filter((id) => !g.spent.includes(id)).map((id) => cardHTML(engine.cards[id], { small: true })).join("");
+      return `
+        <div class="stack">
+          <div class="frame__head"><span class="heading">${names[side]}</span><span class="number">HP ${g.hp}</span></div>
+          <span class="label">Never played</span>
+          <div class="row">${unplayed || `<span class="muted">Every card.</span>`}</div>
+        </div>`;
+    })
+    .join("");
+  return `
+    <h1 class="title">Gnomehall</h1>
+    <section class="frame stack">
+      <p class="banner">${resultLine(flow.result, names)}</p>
+      <div class="split">${sides}</div>
+      <div class="button-row">
+        <button class="button" type="button" data-action="rematch">Rematch</button>
+        <button class="button button--secondary" type="button" data-action="newMatch">New match</button>
+      </div>
+      <div class="stack">
+        <div class="frame__head"><span class="label">Match log</span><span class="button-row"><button class="button button--secondary" type="button" data-action="copyLog">Copy match log</button><span class="muted" id="copied"></span></span></div>
+        <textarea class="log-text" id="match-log" readonly rows="10">${escapeHTML(matchLog(flow.rounds, flow.result, { cards: engine.cards, names }))}</textarea>
+      </div>
+    </section>`;
 }
 
 // gnomeHTML draws a side's sprite, HP bar and status chips from a gnome or vitals object.
 function gnomeHTML(side, vitals, name) {
-  const width = Math.max(0, Math.min(100, (vitals.hp / flow.hp) * 100));
-  const chips = [
+  return `
+    <div class="gnome ${side === 1 ? "gnome--mirror" : ""}">
+      <img class="sprite" id="sprite-${side}" src="sprites/gnome-${side === 0 ? "a" : "b"}.svg" alt="${name}">
+      <div class="hp">
+        <div class="hp__row"><span class="label">${name}</span><span class="number" id="hp-num-${side}">${vitals.hp} / ${flow.hp}</span></div>
+        <div class="hp__bar"><div class="hp__ghost" id="hp-ghost-${side}" style="width: ${hpWidth(vitals.hp)}"></div><div class="hp__fill" id="hp-fill-${side}" style="width: ${hpWidth(vitals.hp)}"></div></div>
+        <div class="chips" id="chips-${side}">${chipsHTML(vitals)}</div>
+      </div>
+    </div>`;
+}
+
+function chipsHTML(vitals) {
+  return [
     ["block", "Block"],
     ["counter", "Counter"],
     ["vulnerable", "Vulnerable"],
@@ -205,15 +420,10 @@ function gnomeHTML(side, vitals, name) {
     .filter(([key]) => vitals[key] > 0)
     .map(([key, label]) => `<span class="chip chip--${key}">${label} ${vitals[key]}</span>`)
     .join("");
-  return `
-    <div class="gnome ${side === 1 ? "gnome--mirror" : ""}">
-      <img class="sprite" id="sprite-${side}" src="sprites/gnome-${side === 0 ? "a" : "b"}.svg" alt="${name}">
-      <div class="hp">
-        <div class="hp__row"><span class="label">${name}</span><span class="number">${vitals.hp} / ${flow.hp}</span></div>
-        <div class="hp__bar"><div class="hp__fill" style="width: ${width}%"></div></div>
-        <div class="chips">${chips}</div>
-      </div>
-    </div>`;
+}
+
+function hpWidth(hp) {
+  return `${Math.max(0, Math.min(100, (hp / flow.hp) * 100))}%`;
 }
 
 // cardHTML draws a playing card; with an action it is a button, otherwise a plain card.
@@ -229,7 +439,7 @@ function cardHTML(c, { selected = false, dimmed = false, small = false, action =
     <div class="card__head"><span class="card__cost">${c.cost}</span><span class="card__name">${c.name}</span></div>
     <div class="card__foot">${badges}</div>
     <div class="card__text">${c.text}</div>`;
-  if (action === null) return `<div class="${classes}">${body}</div>`;
+  if (action === null) return `<div class="${classes}" ${data}>${body}</div>`;
   return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${data} ${dimmed ? "disabled" : ""}>${body}</button>`;
 }
 
@@ -239,6 +449,14 @@ function planNames(ids) {
 
 function clanNamed(name) {
   return engine.clans.find((c) => c.name === name);
+}
+
+function byId(id) {
+  return document.getElementById(id);
+}
+
+function escapeHTML(text) {
+  return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;");
 }
 
 render();

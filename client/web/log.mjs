@@ -57,9 +57,9 @@ export function sideNames(clans, mode) {
 export function resultLine(result, names) {
   switch (result) {
     case "a":
-      return `${names[0]} wins.`;
+      return `Winner: ${names[0]}.`;
     case "b":
-      return `${names[1]} wins.`;
+      return `Winner: ${names[1]}.`;
     case "draw":
       return "Draw.";
     default:

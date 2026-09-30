@@ -76,7 +76,7 @@ test("matchLog prints each round's plans, sentences and HP, then the result", ()
   const rounds = [{ plans, events, state }];
   const text = matchLog(rounds, "b", { cards, names: ["Pickers", "Ironhide"] });
   assert.ok(text.startsWith("Round 1\nPickers: Chalk Dust, Double Tap\nIronhide: Hammer Blow, Spiked Shield\nChalk Dust: Ironhide is Vulnerable 1.\n"), text);
-  assert.ok(text.endsWith("Counter deals 1 to Pickers. Pickers 7.\nPickers 7, Ironhide 11\n\nIronhide wins.\n"), text);
+  assert.ok(text.endsWith("Counter deals 1 to Pickers. Pickers 7.\nPickers 7, Ironhide 11\n\nWinner: Ironhide.\n"), text);
   assert.ok(matchLog(rounds, "draw", { cards, names: ["Pickers", "Ironhide"] }).endsWith("Draw.\n"));
-  assert.ok(matchLog(rounds, "a", { cards, names: ["Pickers", "Ironhide"] }).endsWith("Pickers wins.\n"));
+  assert.ok(matchLog(rounds, "a", { cards, names: ["Pickers", "Ironhide"] }).endsWith("Winner: Pickers.\n"));
 });
