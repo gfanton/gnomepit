@@ -20,7 +20,9 @@ const playbackDone = { type: "playbackDone" };
 const play = (actions, from = initial) => actions.reduce(reduce, from);
 const bothDecks = (mode) => {
   const base = [start(mode), deckReady("Pickers", deckA)];
-  return mode === "hotseat" ? [...base, handoffDone, deckReady("Ironhide", deckB)] : [...base, deckReady("Ironhide", deckB)];
+  return mode === "hotseat"
+    ? [...base, handoffDone, deckReady("Ironhide", deckB), handoffDone]
+    : [...base, deckReady("Ironhide", deckB)];
 };
 const bothPlans = (mode) => {
   const first = planSealed([0, 0, 0]);
@@ -54,12 +56,22 @@ test("bot: player 1's deck leads straight to the bot's deck turn", () => {
   assert.equal(botTurn(f), true);
 });
 
-test("player 2's deck leads to player 1's plan", () => {
-  const f = play(bothDecks("hotseat"));
+test("hot-seat: player 2's deck hands off before player 1's plan", () => {
+  let f = play([start("hotseat"), deckReady("Pickers", deckA), handoffDone, deckReady("Ironhide", deckB)]);
+  assert.equal(f.screen, "handoff");
+  assert.deepEqual(f.after, { screen: "plan", acting: 0 });
+  f = reduce(f, handoffDone);
   assert.equal(f.screen, "plan");
   assert.equal(f.acting, 0);
   assert.deepEqual(f.decks, [deckA, deckB]);
   assert.deepEqual(f.clans, ["Pickers", "Ironhide"]);
+});
+
+test("bot: the bot's deck leads straight to player 1's plan", () => {
+  const f = play(bothDecks("bot"));
+  assert.equal(f.screen, "plan");
+  assert.equal(f.acting, 0);
+  assert.deepEqual(f.decks, [deckA, deckB]);
 });
 
 test("hot-seat: player 1's plan leads to a hand-off, then player 2's plan", () => {

@@ -45,8 +45,9 @@ export function sentences(events, { cards, names, plans }) {
   });
 }
 
-// Both sides can play the same basic in one round, so hits are counted per side and card.
-const hitKey = (ev) => `${ev.side}:${ev.card}`;
+// A basic can be played by both sides and more than once in a plan, so hits are counted per
+// side, card and beat: a card's hits all land on one beat.
+const hitKey = (ev) => `${ev.side}:${ev.card}:${ev.beat}`;
 
 // sideNames names the sides by clan, or by player when both play the same clan.
 export function sideNames(clans, mode) {

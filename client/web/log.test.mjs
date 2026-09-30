@@ -65,6 +65,15 @@ test("a single-hit card gets no hit number", () => {
   assert.equal(sentences(events, ctx)[1], "Hammer Blow: 4 damage. Pickers 11.");
 });
 
+test("the same basic played twice in a round counts hits per beat", () => {
+  const picks = [
+    e(1, "Damage", "Normal", 1, "HitLanded", 0, "Pick", 1, 0, false, [A(15), B(14, 0, 0, 0)]),
+    e(2, "Damage", "Normal", 1, "HitLanded", 0, "Pick", 1, 0, false, [A(15), B(13, 0, 0, 0)]),
+  ];
+  const pickPlans = [[id("Pick"), id("Pick"), id("Sling Stone")], [id("Brace"), id("Brace"), id("Brace")]];
+  assert.deepEqual(sentences(picks, { ...ctx, plans: pickPlans }), ["Pick: 1 damage. Ironhide 14.", "Pick: 1 damage. Ironhide 13."]);
+});
+
 test("sideNames uses clan names, or player names in a mirror", () => {
   assert.deepEqual(sideNames(["Pickers", "Ironhide"], "hotseat"), ["Pickers", "Ironhide"]);
   assert.deepEqual(sideNames(["Pickers", "Pickers"], "hotseat"), ["Player 1", "Player 2"]);

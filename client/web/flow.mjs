@@ -26,7 +26,7 @@ export function reduce(flow, action) {
       return { ...initial, screen: "deck", mode: action.mode, hp: action.hp, state: freshState(action.hp) };
     case "deck/deckReady": {
       const next = { ...flow, clans: withAt(flow.clans, flow.acting, action.clan), decks: withAt(flow.decks, flow.acting, action.deck) };
-      return flow.acting === 0 ? toward(next, "deck", 1) : { ...next, screen: "plan", acting: 0 };
+      return flow.acting === 0 ? toward(next, "deck", 1) : toward(next, "plan", 0);
     }
     case "handoff/handoffDone":
       return { ...flow, screen: flow.after.screen, acting: flow.after.acting, after: null };
