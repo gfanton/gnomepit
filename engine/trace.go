@@ -39,8 +39,8 @@ type Event struct {
 	Side    Side
 	Card    CardID
 	N       int
-	Blocked int  // Hit and CounterHit: damage absorbed by Block
-	Doubled bool // Hit: the defender's Vulnerable doubled it
+	Blocked int       // HitLanded and CounterHit: damage absorbed by Block
+	Doubled bool      // HitLanded: the defender's Vulnerable doubled it
 	After   [2]Vitals // both gnomes once the whole step has resolved
 }
 
