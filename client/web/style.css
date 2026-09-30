@@ -522,6 +522,7 @@ button.card:focus-visible {
 }
 .stack {
   display: grid;
+  align-content: start;
   gap: var(--gh-space-3);
 }
 .banner {
