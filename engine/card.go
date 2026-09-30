@@ -1,0 +1,74 @@
+// Package engine holds the duel rules. The same source compiles as Go and as Gno, so it
+// stays inside the Go 1.17 subset: no generics, no min or max builtins, no range over
+// an integer, no maps and no imports.
+package engine
+
+const beatsPerRound = 3
+
+// Tier orders effects inside a phase.
+type Tier int
+
+const (
+	Quick Tier = iota
+	Normal
+	Slow
+)
+
+type EffectKind int
+
+const (
+	GainBlock EffectKind = iota
+	GainCounter
+	Hit      // deal N damage
+	HitBlock // deal damage equal to your Block
+	ApplyVulnerable
+	GainStrength
+	VulnerableIfCancelled // apply N Vulnerable if this card cancelled a card this beat
+)
+
+type Effect struct {
+	Kind EffectKind
+	N    int
+}
+
+// CardID indexes Ruleset.Cards.
+type CardID int
+
+type Card struct {
+	Name      string
+	Cost      int
+	Tier      Tier
+	Special   bool // spent once played; basics are not
+	Interrupt bool
+	Parry     int      // Parry N: attacks it cancels while active; 0 for no Parry
+	Block     []Effect // Block phase
+	Damage    []Effect // Damage phase, in printed order
+	OnCancel  []Effect // Block phase of the beat the card is cancelled on
+	// CancelDamage resolves in the card's tier, in the Damage phase of the beat it is
+	// cancelled on.
+	CancelDamage []Effect
+}
+
+// Attack reports whether the card's text deals damage, including when it is cancelled.
+func (c *Card) Attack() bool {
+	return dealsDamage(c.Damage) || dealsDamage(c.CancelDamage)
+}
+
+func dealsDamage(effects []Effect) bool {
+	for _, e := range effects {
+		if e.Kind == Hit || e.Kind == HitBlock {
+			return true
+		}
+	}
+	return false
+}
+
+// Plan is the ordered cards of one round; their costs sum to 3.
+type Plan []CardID
+
+type Side int
+
+const (
+	SideA Side = iota
+	SideB
+)
