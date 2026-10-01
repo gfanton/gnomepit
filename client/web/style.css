@@ -287,10 +287,16 @@ button.card--locked:hover {
   min-width: 120px;
   --gh-card-height: 44px;
   grid-template-rows: auto;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: var(--gh-space-2);
   padding: var(--gh-space-1) var(--gh-space-2);
+}
+.card--small > .card__foot {
+  min-height: 0;
+}
+.card--small:not(button) {
+  cursor: help;
 }
 .card__head {
   display: flex;
@@ -340,6 +346,20 @@ button.card--locked:hover {
 }
 .badge--rare {
   background: var(--gh-color-card-rare);
+}
+.badge--spent {
+  background: var(--gh-color-card-ink);
+  color: var(--gh-color-card);
+}
+.badge[data-kw],
+.chip[data-kw] {
+  cursor: help;
+}
+.kw {
+  text-decoration: underline dotted;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  cursor: help;
 }
 .card-grid {
   display: flex;
@@ -484,6 +504,45 @@ button.card--locked:hover {
 }
 .chip--strength {
   color: var(--gh-color-strength);
+}
+
+/* ---- Tips: the card behind a small card, the rule behind a keyword */
+
+.tip {
+  position: fixed;
+  z-index: 2;
+  max-width: 320px;
+  background: var(--gh-color-surface-raised);
+  color: var(--gh-color-text);
+  border: var(--gh-border) solid var(--gh-color-frame);
+  box-shadow: var(--gh-shadow);
+  padding: var(--gh-space-3);
+  font-size: var(--gh-text-body);
+  line-height: 1.4;
+  pointer-events: none;
+}
+.tip--card {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+.tip__title {
+  display: block;
+  font-family: var(--gh-font-display);
+  font-size: var(--gh-text-label);
+  text-transform: uppercase;
+  color: var(--gh-color-text-muted);
+  margin-bottom: var(--gh-space-2);
+}
+
+/* ---- Earlier rounds: both plans per round as small cards */
+
+.round {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr;
+  gap: var(--gh-space-3);
+  align-items: start;
 }
 
 /* ---- Log and curtain */

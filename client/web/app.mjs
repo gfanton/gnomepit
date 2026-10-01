@@ -7,9 +7,12 @@ import { deckSize, newDeck, toggle, rareOf } from "./deck.mjs";
 import { randomDeck, randomPlan } from "./bot.mjs";
 import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.mjs";
 import { sentences, matchLog, resultLine, sideNames } from "./log.mjs";
+import { glossary, markKeywords, escapeHTML } from "./keywords.mjs";
+import { unseen, spentIn } from "./table.mjs";
 
 const engine = await loadEngine("engine.wasm", "cards.json");
 const app = document.getElementById("app");
+const tip = document.getElementById("tip");
 const basics = engine.cards.filter((c) => !c.special).map((c) => c.id);
 const stepMs = 700;
 const hitFlashMs = 150;
@@ -116,6 +119,49 @@ app.addEventListener("click", (event) => {
   handlers[target.dataset.action]?.(target.dataset);
 });
 
+// ---- Tips: the full card behind a small one, and the rule behind a keyword or badge
+
+const tipAnchors = "[data-peek], [data-kw]";
+const tipTitles = { cancel: "Cancelled" };
+let tipAnchor = null;
+
+app.addEventListener("mouseover", (event) => showTip(event.target.closest(tipAnchors)));
+app.addEventListener("mouseout", (event) => {
+  if (tipAnchor && !tipAnchor.contains(event.relatedTarget)) showTip(null);
+});
+app.addEventListener("focusin", (event) => showTip(event.target.closest(tipAnchors)));
+app.addEventListener("focusout", () => showTip(null));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") showTip(null);
+});
+
+function showTip(anchor) {
+  if (anchor === tipAnchor) return;
+  tipAnchor = anchor;
+  tip.hidden = anchor === null;
+  if (anchor === null) return;
+  const peek = anchor.dataset.peek;
+  tip.classList.toggle("tip--card", peek !== undefined);
+  if (peek !== undefined) tip.innerHTML = cardHTML(engine.cards[Number(peek)]);
+  else {
+    const key = anchor.dataset.kw;
+    tip.innerHTML = `<span class="tip__title">${tipTitles[key] ?? key}</span>${glossary[key]}`;
+  }
+  placeTip(anchor);
+}
+
+// placeTip puts the tip under the anchor, or above it when the viewport ends first, and keeps
+// it inside the viewport sideways.
+function placeTip(anchor) {
+  const gap = 8;
+  const at = anchor.getBoundingClientRect();
+  let top = at.bottom + gap;
+  if (top + tip.offsetHeight > window.innerHeight && at.top - gap - tip.offsetHeight >= 0) top = at.top - gap - tip.offsetHeight;
+  const left = Math.max(gap, Math.min(at.left, window.innerWidth - tip.offsetWidth - gap));
+  tip.style.top = `${top}px`;
+  tip.style.left = `${left}px`;
+}
+
 // available lists the ids the acting player may play: the basics and the deck's unspent specials.
 function available() {
   const spent = flow.state.gnomes[flow.acting].spent;
@@ -179,6 +225,12 @@ function render() {
   app.innerHTML = screens[flow.screen]();
   app.dataset.screen = flow.screen;
   if (flow.screen === "playback") patchPlayback();
+  dropStaleTip();
+}
+
+// dropStaleTip hides the tip once its anchor has been rendered away.
+function dropStaleTip() {
+  if (tipAnchor && !tipAnchor.isConnected) showTip(null);
 }
 
 function title() {
@@ -236,12 +288,21 @@ function planScreen() {
   const opp = 1 - me;
   const names = sideNames(flow.clans, flow.mode);
   const gnomes = flow.state.gnomes;
-  const spentCards = gnomes[opp].spent.map((id) => cardHTML(engine.cards[id], { small: true })).join("");
+  const pack = clanNamed(flow.clans[opp]).cards;
+  const held = unseen(pack, gnomes[opp].spent, engine.cards);
+  const rareHeld = held.some((id) => engine.cards[id].rare);
+  const notSeen = held.map((id) => cardHTML(engine.cards[id], { small: true })).join("");
   const history = flow.rounds
-    .map((round, i) => `<li>Round ${i + 1}: ${names[0]} played ${planNames(round.plans[0])}; ${names[1]} played ${planNames(round.plans[1])}.</li>`)
+    .map(
+      (round, i) => `
+        <div class="round">
+          <span class="label">Round ${i + 1}</span>
+          ${[0, 1].map((side) => `<div class="stack"><span class="label">${names[side]}</span><div class="row">${smallCards(round.plans[side])}</div></div>`).join("")}
+        </div>`,
+    )
     .join("");
-  const hand = available()
-    .map((id) => cardHTML(engine.cards[id], { action: "addCard", dimmed: !canAdd(plan, id, engine.cards, available()) }))
+  const hand = [...basics, ...flow.decks[me]]
+    .map((id) => cardHTML(engine.cards[id], { action: "addCard", dimmed: !canAdd(plan, id, engine.cards, available()), spentRound: spentIn(flow.rounds, me, id) }))
     .join("");
   const used = beatsUsed(plan, engine.cards);
   return `
@@ -250,10 +311,10 @@ function planScreen() {
       <div class="frame__head"><h2 class="heading">${names[opp]}</h2><span class="label">Opponent</span></div>
       ${gnomeHTML(opp, gnomes[opp], names[opp])}
       <div class="stack">
-        <span class="label">Spent cards</span>
-        <div class="row">${spentCards || `<span class="muted">None yet.</span>`}</div>
+        <div class="frame__head"><span class="label">Not yet seen</span><span class="hint">${deckSize - gnomes[opp].spent.length} of these ${held.length} are in their deck.${rareHeld ? " The Rare always is." : ""}</span></div>
+        <div class="row">${notSeen || `<span class="muted">Every card is spent.</span>`}</div>
       </div>
-      ${history ? `<div class="stack"><span class="label">Earlier rounds</span><ul class="plain-list muted">${history}</ul></div>` : ""}
+      ${history ? `<div class="stack"><span class="label">Earlier rounds</span>${history}</div>` : ""}
     </section>
     <section class="frame frame--acting stack">
       <div class="frame__head"><h2 class="heading">${names[me]}: seal a plan</h2><span class="hint">Click a card to add it to the next free beat, a beat to clear from there.</span></div>
@@ -353,6 +414,7 @@ function patchPlayback() {
   byId("play").textContent = playback.timer ? "Pause" : "Play";
   byId("progress").textContent = `${shown} / ${steps.length} steps`;
   byId("finish").innerHTML = done ? finishHTML() : "";
+  dropStaleTip();
 }
 
 function logHTML(round, steps, shown, lines) {
@@ -432,7 +494,7 @@ function chipsHTML(vitals) {
     ["strength", "Strength"],
   ]
     .filter(([key]) => vitals[key] > 0)
-    .map(([key, label]) => `<span class="chip chip--${key}">${label} ${vitals[key]}</span>`)
+    .map(([key, label]) => `<span class="chip chip--${key}" data-kw="${key}" tabindex="0">${label} ${vitals[key]}</span>`)
     .join("");
 }
 
@@ -441,26 +503,29 @@ function hpWidth(hp) {
 }
 
 // cardHTML draws a playing card; with an action it is a button, otherwise a plain card. A
-// pressed value marks a toggle's state; locked marks a toggle that does nothing.
-function cardHTML(c, { selected = false, dimmed = false, small = false, locked = false, pressed = null, action = null, data = "" } = {}) {
+// pressed value marks a toggle's state; locked marks a toggle that does nothing. A small card
+// shows cost, name and badges and peeks the full card on hover or focus. spentRound, when
+// above 0, marks the round the card was played in.
+function cardHTML(c, { selected = false, dimmed = false, small = false, locked = false, pressed = null, action = null, data = "", spentRound = 0 } = {}) {
   const classes = ["card", c.rare ? "card--rare" : "", c.special ? "" : "card--basic", selected ? "card--selected" : "", dimmed ? "card--dimmed" : "", small ? "card--small" : "", locked ? "card--locked" : ""].join(" ");
-  const state = [pressed === null ? "" : `aria-pressed="${pressed}"`, locked ? `aria-disabled="true" title="The Rare stays in"` : ""].join(" ");
+  const state = [pressed === null ? "" : `aria-pressed="${pressed}"`, locked ? `aria-disabled="true" title="The Rare stays in"` : "", small ? `data-peek="${c.id}"` : ""].join(" ");
   const badges = [
-    c.tier !== "Normal" ? `<span class="badge badge--${c.tier.toLowerCase()}">${c.tier}</span>` : "",
-    c.rare ? `<span class="badge badge--rare">Rare</span>` : "",
+    c.tier !== "Normal" ? `<span class="badge badge--${c.tier.toLowerCase()}" data-kw="${c.tier.toLowerCase()}">${c.tier}</span>` : "",
+    c.rare ? `<span class="badge badge--rare" data-kw="rare">Rare</span>` : "",
+    spentRound > 0 ? `<span class="badge badge--spent">Spent R${spentRound}</span>` : "",
   ].join("");
   const body = small
-    ? `<span class="card__cost">${c.cost}</span><span class="card__name">${c.name}</span>`
+    ? `<span class="card__cost">${c.cost}</span><span class="card__name">${c.name}</span><span class="card__foot">${badges}</span>`
     : `
     <div class="card__head"><span class="card__cost">${c.cost}</span><span class="card__name">${c.name}</span></div>
     <div class="card__foot">${badges}</div>
-    <div class="card__text">${c.text}</div>`;
-  if (action === null) return `<div class="${classes}" ${data}>${body}</div>`;
+    <div class="card__text">${markKeywords(c.text)}</div>`;
+  if (action === null) return `<div class="${classes}" ${state} ${small ? `tabindex="0"` : ""} ${data}>${body}</div>`;
   return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${state} ${data} ${dimmed ? "disabled" : ""}>${body}</button>`;
 }
 
-function planNames(ids) {
-  return ids ? ids.map((id) => engine.cards[id].name).join(", ") : "";
+function smallCards(ids) {
+  return ids.map((id) => cardHTML(engine.cards[id], { small: true })).join("");
 }
 
 function clanNamed(name) {
@@ -469,10 +534,6 @@ function clanNamed(name) {
 
 function byId(id) {
   return document.getElementById(id);
-}
-
-function escapeHTML(text) {
-  return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;");
 }
 
 render();
