@@ -32,10 +32,10 @@ func TestLegalPlanCounts(t *testing.T) {
 		deck uint64
 		want int
 	}{
-		"Pickers pool":          {pickers, 305},
-		"Ironhide pool":         {ironhide, 213},
-		"Pickers starter deck":  {pickers &^ cardBits(t, rs, "Hunker Down", "Boot and Heel"), 290},
-		"Ironhide starter deck": {ironhide &^ cardBits(t, rs, "Shield Catch", "Loose Timbers"), 189},
+		"Pickers pool":          {pickers, 429},
+		"Ironhide pool":         {ironhide, 147},
+		"Pickers starter deck":  {pickers &^ cardBits(t, rs, "Hunker Down", "Boot and Heel"), 412},
+		"Ironhide starter deck": {ironhide &^ cardBits(t, rs, "Shield Catch", "Loose Timbers"), 127},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -75,11 +75,11 @@ func TestLegalPlansSkipSpent(t *testing.T) {
 	s.Gnomes[SideA].Spent = spent
 
 	plansA := rs.LegalPlans(s, SideA, pickers)
-	assert.Len(t, plansA, 189)
+	assert.Len(t, plansA, 277)
 	for _, p := range plansA {
 		for _, id := range p {
 			assert.Zero(t, spent&(1<<uint(id)), "side A plan %v holds a spent card", p)
 		}
 	}
-	assert.Len(t, rs.LegalPlans(s, SideB, pickers), 305)
+	assert.Len(t, rs.LegalPlans(s, SideB, pickers), 429)
 }

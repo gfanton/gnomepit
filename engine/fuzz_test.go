@@ -86,10 +86,10 @@ func FuzzResolve(f *testing.F) {
 	}{
 		{fresh, []string{"Chalk Dust", "Double Tap"}, []string{"Hammer Blow", "Spiked Shield"}},
 		{fresh, []string{"Pick", "Pick", "Sling Stone"}, []string{"Stone Guard"}},
-		{fresh, []string{"Pickaxe Flurry", "Dodge Roll"}, []string{"Anvil Stomp", "Hammer Blow"}},
+		{fresh, []string{"Pickaxe Flurry", "Dodge Roll"}, []string{"Anvil Stomp", "Cobble Throw"}},
 		{bothAtOne, []string{"Pickaxe Flurry", "Pick", "Pick"}, []string{"Pickaxe Flurry", "Pick", "Pick"}},
 		{lastRound, []string{"Brace", "Brace", "Brace"}, []string{"Brace", "Brace", "Brace"}},
-		{capped, []string{"Momentum", "Chalk Dust"}, []string{"Brace", "Brace", "Brace"}},
+		{capped, []string{"Momentum", "Chalk Dust", "Brace"}, []string{"Brace", "Brace", "Brace"}},
 	}
 	for _, sd := range seeds {
 		in := d.seed(f, sd.in, sd.a, sd.b)

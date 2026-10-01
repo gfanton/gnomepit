@@ -49,8 +49,8 @@ func TestWorkedExample(t *testing.T) {
 		hpA, hpB    int
 		vulnerableB int
 	}{
-		"printed pair":            {[]string{"Chalk Dust", "Double Tap"}, []string{"Hammer Blow", "Spiked Shield"}, 7, 11, 0},
-		"Kneecap cancels Hammer":  {[]string{"Kneecap", "Double Tap"}, []string{"Hammer Blow", "Spiked Shield"}, 11, 11, 0},
+		"printed pair":            {[]string{"Chalk Dust", "Double Tap"}, []string{"Hammer Blow", "Spiked Shield"}, 7, 12, 0},
+		"Kneecap cancels Hammer":  {[]string{"Kneecap", "Double Tap"}, []string{"Hammer Blow", "Spiked Shield"}, 12, 12, 0},
 		"Stone Guard cancels Tap": {[]string{"Chalk Dust", "Double Tap"}, []string{"Stone Guard"}, 15, 15, 1},
 		"Parry 2 runs out":        {[]string{"Pick", "Pick", "Sling Stone"}, []string{"Stone Guard"}, 15, 13, 0},
 	}
@@ -89,7 +89,7 @@ func TestRoundThreeDecidesByHP(t *testing.T) {
 
 func BenchmarkResolve(b *testing.B) {
 	rs := ProofOfConcept()
-	pa, _ := rs.PlanOf("Chalk Dust", "Momentum")
+	pa, _ := rs.PlanOf("Chalk Dust", "Momentum", "Pickaxe Flurry")
 	pb, _ := rs.PlanOf("Pickaxe Flurry", "Dodge Roll")
 	s := rs.Start()
 	b.ReportAllocs()
@@ -116,9 +116,9 @@ func withRiposte() *Ruleset {
 func TestParryResolvesItsEffectsOnItsLastCancel(t *testing.T) {
 	rs := withRiposte()
 	// Beat 3: Riposte cancels the Pick (2 damage with Momentum) and lands its own 2.
-	o := rs.Resolve(rs.Start(), mustPlan(t, rs, "Pick", "Riposte"), mustPlan(t, rs, "Momentum", "Pick"))
+	o := rs.Resolve(rs.Start(), mustPlan(t, rs, "Pick", "Riposte"), mustPlan(t, rs, "Pick", "Momentum", "Pick"))
 	require.Equal(t, Ongoing, o.Result)
-	assert.Equal(t, 15, o.State.Gnomes[SideA].HP)
+	assert.Equal(t, 14, o.State.Gnomes[SideA].HP)
 	assert.Equal(t, 12, o.State.Gnomes[SideB].HP)
 }
 
@@ -187,14 +187,14 @@ func TestCancelDamage(t *testing.T) {
 	}
 }
 
-// Chalk Dust, then Double Tap's four hits of 1 against a Vulnerable gnome.
+// Chalk Dust, then Double Tap's three hits of 1 against a Vulnerable gnome.
 func TestVulnerableDoubling(t *testing.T) {
 	cases := map[string]struct {
 		oneHit bool
 		hpB    int
 	}{
-		"every hit of the next card": {false, 7},
-		"the next hit only":          {true, 10},
+		"every hit of the next card": {false, 9},
+		"the next hit only":          {true, 11},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -209,7 +209,7 @@ func TestVulnerableDoubling(t *testing.T) {
 	}
 }
 
-// Momentum, then Pickaxe Flurry's two hits of 1 plus 1 Strength into three Braces' Block.
+// Momentum, then Pickaxe Flurry's two hits of 1 plus 1 Strength into two Braces' Block.
 func TestStrengthDuration(t *testing.T) {
 	cases := map[string]struct {
 		lastsTheRound bool
@@ -222,9 +222,9 @@ func TestStrengthDuration(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			rs := ProofOfConcept()
 			rs.StrengthLastsTheRound = tc.lastsTheRound
-			o := rs.Resolve(rs.Start(), mustPlan(t, rs, "Momentum", "Pickaxe Flurry"), mustPlan(t, rs, "Brace", "Brace", "Brace"))
+			o := rs.Resolve(rs.Start(), mustPlan(t, rs, "Momentum", "Pickaxe Flurry", "Brace"), mustPlan(t, rs, "Brace", "Brace", "Brace"))
 			require.Equal(t, Ongoing, o.Result)
-			assert.Equal(t, 14, o.State.Gnomes[SideB].HP)
+			assert.Equal(t, 13, o.State.Gnomes[SideB].HP)
 			assert.Equal(t, tc.strengthA, o.State.Gnomes[SideA].Strength)
 		})
 	}
