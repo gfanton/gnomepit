@@ -42,27 +42,40 @@ func (rs *Ruleset) slotsOf(p Plan) [beatsPerRound]slot {
 	return out
 }
 
-// fighter is one gnome during a round.
-type fighter struct {
-	hp, block, counter, vulnerable, strength int
-}
-
-func (f *fighter) take(damage int) {
+// take applies damage through Block and returns what Block absorbed.
+func (v *Vitals) take(damage int) int {
 	absorbed := damage
-	if f.block < absorbed {
-		absorbed = f.block
+	if v.Block < absorbed {
+		absorbed = v.Block
 	}
-	f.block -= absorbed
-	f.hp -= damage - absorbed
+	v.Block -= absorbed
+	v.HP -= damage - absorbed
+	return absorbed
 }
 
-func (f *fighter) gainAll(rs *Ruleset, effects []Effect) {
+// gain applies a Block-phase effect and returns the change after the cap.
+func (v *Vitals) gain(rs *Ruleset, e Effect) int {
+	switch e.Kind {
+	case GainBlock:
+		before := v.Block
+		v.Block = capped(v.Block+e.N, rs.BlockCap)
+		return v.Block - before
+	case GainCounter:
+		before := v.Counter
+		v.Counter = capped(v.Counter+e.N, rs.CounterCap)
+		return v.Counter - before
+	}
+	return 0
+}
+
+func (rs *Ruleset) gainAll(v *Vitals, effects []Effect, tr *tracer, side Side, card CardID) {
 	for _, e := range effects {
+		n := v.gain(rs, e)
 		switch e.Kind {
 		case GainBlock:
-			f.block = capped(f.block+e.N, rs.BlockCap)
+			tr.emit(BlockGained, side, card, n, 0, false)
 		case GainCounter:
-			f.counter = capped(f.counter+e.N, rs.CounterCap)
+			tr.emit(CounterGained, side, card, n, 0, false)
 		}
 	}
 }
@@ -77,16 +90,21 @@ func capped(v, limit int) int {
 // Resolve plays round s.Round. Both plans must be legal for their side in s
 // (LegalPlans); an illegal plan is a caller error.
 func (rs *Ruleset) Resolve(s State, a, b Plan) Outcome {
+	return rs.resolve(s, a, b, nil)
+}
+
+func (rs *Ruleset) resolve(s State, a, b Plan, events *[]Event) Outcome {
 	plans := [2]Plan{a, b}
 	next := s
 	next.Round = s.Round + 1
-	var f [2]fighter
+	tr := tracer{events: events}
+	var f [2]Vitals
 	var slots [2][beatsPerRound]slot
 	var gone [2][maxPlanSize]bool   // cancelled, or a Parry that used up its cancels
 	var parried [2][maxPlanSize]int // cancels made by each Parry card this round
 	for side := 0; side < 2; side++ {
 		g := s.Gnomes[side]
-		f[side] = fighter{hp: g.HP, vulnerable: g.Vulnerable, strength: g.Strength}
+		f[side] = Vitals{HP: g.HP, Vulnerable: g.Vulnerable, Strength: g.Strength}
 		slots[side] = rs.slotsOf(plans[side])
 		for _, id := range plans[side] {
 			if rs.Cards[id].Special {
@@ -98,10 +116,12 @@ func (rs *Ruleset) Resolve(s State, a, b Plan) Outcome {
 	for beat := 0; beat < beatsPerRound; beat++ {
 		var cur [2]*Card // nil once cancelled or ended
 		var sl [2]slot
+		var cards [2]CardID
 		for side := 0; side < 2; side++ {
 			sl[side] = slots[side][beat]
+			cards[side] = plans[side][sl[side].index]
 			if !gone[side][sl[side].index] {
-				cur[side] = &rs.Cards[plans[side][sl[side].index]]
+				cur[side] = &rs.Cards[cards[side]]
 			}
 		}
 
@@ -125,28 +145,35 @@ func (rs *Ruleset) Resolve(s State, a, b Plan) Outcome {
 					parryDone[side] = parried[side][sl[side].index] >= me.Parry
 				}
 			}
+			tr.at(beat+1, InterruptPhase, tier, 1)
 			for side := 0; side < 2; side++ {
 				if hit[side] {
 					cancelledNow[side] = cur[side]
 					gone[side][sl[side].index] = true
 					cur[side] = nil
+					tr.emit(Cancelled, Side(side), cards[side], 0, 0, false)
 				}
 				if parryDone[side] && cur[side] != nil {
 					// Its later beats stay empty; this beat's effects still resolve.
 					gone[side][sl[side].index] = true
+					tr.emit(ParryEnded, Side(side), cards[side], 0, 0, false)
 				}
 			}
+			tr.close(&f)
 		}
 
 		// Block phase
 		for side := 0; side < 2; side++ {
 			if cur[side] != nil && sl[side].lands {
-				f[side].gainAll(rs, cur[side].Block)
+				tr.at(beat+1, BlockPhase, cur[side].Tier, 1)
+				rs.gainAll(&f[side], cur[side].Block, &tr, Side(side), cards[side])
 			}
 			if cancelledNow[side] != nil {
-				f[side].gainAll(rs, cancelledNow[side].OnCancel)
+				tr.at(beat+1, BlockPhase, cancelledNow[side].Tier, 1)
+				rs.gainAll(&f[side], cancelledNow[side].OnCancel, &tr, Side(side), cards[side])
 			}
 		}
+		tr.close(&f)
 
 		// Damage phase
 		for tier := Quick; tier <= Slow; tier++ {
@@ -159,7 +186,8 @@ func (rs *Ruleset) Resolve(s State, a, b Plan) Outcome {
 					effects[side] = c.CancelDamage
 				}
 			}
-			if result := rs.resolveDamageTier(&f, effects, didCancel); result != Ongoing {
+			tr.at(beat+1, DamagePhase, tier, 0)
+			if result := rs.resolveDamageTier(&f, effects, cards, didCancel, &tr); result != Ongoing {
 				return Outcome{State: rs.settle(next, f), Result: result}
 			}
 		}
@@ -173,11 +201,11 @@ func (rs *Ruleset) Resolve(s State, a, b Plan) Outcome {
 }
 
 // settle copies the round's carried values into the next state.
-func (rs *Ruleset) settle(next State, f [2]fighter) State {
+func (rs *Ruleset) settle(next State, f [2]Vitals) State {
 	for side := 0; side < 2; side++ {
-		next.Gnomes[side].HP = f[side].hp
-		next.Gnomes[side].Vulnerable = f[side].vulnerable
-		next.Gnomes[side].Strength = f[side].strength
+		next.Gnomes[side].HP = f[side].HP
+		next.Gnomes[side].Vulnerable = f[side].Vulnerable
+		next.Gnomes[side].Strength = f[side].Strength
 		if rs.StrengthLastsTheRound {
 			next.Gnomes[side].Strength = 0
 		}
@@ -199,9 +227,10 @@ func byHP(a, b int) Result {
 }
 
 // resolveDamageTier resolves both gnomes' effects of one tier in steps: step k applies
-// effect k of each card together, every value read at the start of the step. It
-// returns the knockout result as soon as a step leaves a gnome at 0 HP or less.
-func (rs *Ruleset) resolveDamageTier(f *[2]fighter, effects [2][]Effect, didCancel [2]bool) Result {
+// effect k of each card together, every value read at the start of the step. A gnome
+// takes the opponent's hit before the Counter damage its own hit triggered. It returns
+// the knockout result as soon as a step leaves a gnome at 0 HP or less.
+func (rs *Ruleset) resolveDamageTier(f *[2]Vitals, effects [2][]Effect, cards [2]CardID, didCancel [2]bool, tr *tracer) Result {
 	var hitsTotal, hitsDone [2]int
 	var doubled, doubleDecided [2]bool
 	for side := 0; side < 2; side++ {
@@ -217,7 +246,8 @@ func (rs *Ruleset) resolveDamageTier(f *[2]fighter, effects [2][]Effect, didCanc
 	}
 
 	for k := 0; k < steps; k++ {
-		var incoming, addVulnerable, addStrength, usedVulnerable [2]int
+		tr.step = k + 1
+		var hitIn, counterIn, addVulnerable, addStrength, usedVulnerable [2]int
 		for side := 0; side < 2; side++ {
 			if k >= len(effects[side]) {
 				continue
@@ -227,20 +257,20 @@ func (rs *Ruleset) resolveDamageTier(f *[2]fighter, effects [2][]Effect, didCanc
 			switch e.Kind {
 			case Hit, HitBlock:
 				if rs.VulnerableDoublesOneHit {
-					doubled[side] = f[o].vulnerable > 0
+					doubled[side] = f[o].Vulnerable > 0
 				} else if !doubleDecided[side] {
-					doubled[side], doubleDecided[side] = f[o].vulnerable > 0, true
+					doubled[side], doubleDecided[side] = f[o].Vulnerable > 0, true
 				}
 				amount := e.N
 				if e.Kind == HitBlock {
-					amount = f[side].block
+					amount = f[side].Block
 				}
-				amount += f[side].strength
+				amount += f[side].Strength
 				if doubled[side] {
 					amount *= 2
 				}
-				incoming[o] += amount
-				incoming[side] += f[o].counter
+				hitIn[o] += amount
+				counterIn[side] += f[o].Counter
 				hitsDone[side]++
 				if doubled[side] && (rs.VulnerableDoublesOneHit || hitsDone[side] == hitsTotal[side]) {
 					usedVulnerable[o]++
@@ -255,16 +285,43 @@ func (rs *Ruleset) resolveDamageTier(f *[2]fighter, effects [2][]Effect, didCanc
 				}
 			}
 		}
+		var hitAbsorbed, counterAbsorbed, vulnerableGained, strengthGained [2]int
 		for side := 0; side < 2; side++ {
-			f[side].take(incoming[side])
-			v := f[side].vulnerable - usedVulnerable[side]
+			hitAbsorbed[side] = f[side].take(hitIn[side])
+			counterAbsorbed[side] = f[side].take(counterIn[side])
+			v := f[side].Vulnerable - usedVulnerable[side]
 			if v < 0 {
 				v = 0
 			}
-			f[side].vulnerable = capped(v+addVulnerable[side], rs.VulnerableCap)
-			f[side].strength = capped(f[side].strength+addStrength[side], rs.StrengthCap)
+			f[side].Vulnerable = capped(v+addVulnerable[side], rs.VulnerableCap)
+			vulnerableGained[side] = f[side].Vulnerable - v
+			before := f[side].Strength
+			f[side].Strength = capped(before+addStrength[side], rs.StrengthCap)
+			strengthGained[side] = f[side].Strength - before
 		}
-		outA, outB := f[SideA].hp <= 0, f[SideB].hp <= 0
+		for side := 0; side < 2; side++ {
+			if k >= len(effects[side]) {
+				continue
+			}
+			o := 1 - side
+			switch e := effects[side][k]; e.Kind {
+			case Hit, HitBlock:
+				tr.emit(HitLanded, Side(side), cards[side], hitIn[o]-hitAbsorbed[o], hitAbsorbed[o], doubled[side])
+				if counterIn[side] > 0 {
+					tr.emit(CounterHit, Side(side), cards[side], counterIn[side]-counterAbsorbed[side], counterAbsorbed[side], false)
+				}
+			case ApplyVulnerable:
+				tr.emit(VulnerableApplied, Side(side), cards[side], vulnerableGained[o], 0, false)
+			case VulnerableIfCancelled:
+				if didCancel[side] {
+					tr.emit(VulnerableApplied, Side(side), cards[side], vulnerableGained[o], 0, false)
+				}
+			case GainStrength:
+				tr.emit(StrengthGained, Side(side), cards[side], strengthGained[side], 0, false)
+			}
+		}
+		tr.close(f)
+		outA, outB := f[SideA].HP <= 0, f[SideB].HP <= 0
 		switch {
 		case outA && outB:
 			return Draw

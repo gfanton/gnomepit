@@ -96,7 +96,7 @@ func ProofOfConcept() *Ruleset {
 		{Name: "Chalk Dust", Cost: 1, Tier: Quick, Special: true, Damage: []Effect{{ApplyVulnerable, 1}}},
 		{Name: "Double Tap", Cost: 2, Tier: Normal, Special: true, Damage: hits(3, 1)},
 		{Name: "Momentum", Cost: 1, Tier: Normal, Special: true, Damage: []Effect{{GainStrength, 1}}},
-		{Name: "Undermine", Cost: 1, Tier: Quick, Special: true, Interrupt: true, Damage: []Effect{{VulnerableIfCancelled, 2}}},
+		{Name: "Undermine", Cost: 1, Tier: Quick, Special: true, Rare: true, Interrupt: true, Damage: []Effect{{VulnerableIfCancelled, 2}}},
 		{Name: "Hunker Down", Cost: 3, Tier: Normal, Special: true, Parry: 2},
 		{Name: "Boot and Heel", Cost: 2, Tier: Slow, Special: true, Damage: hits(2, 2)},
 
@@ -107,7 +107,7 @@ func ProofOfConcept() *Ruleset {
 		{Name: "Spiked Shield", Cost: 1, Tier: Normal, Special: true, Block: []Effect{{GainBlock, 1}, {GainCounter, 1}}},
 		{Name: "Anvil Stomp", Cost: 2, Tier: Slow, Special: true, Damage: []Effect{{Hit, 2}, {ApplyVulnerable, 1}}},
 		{Name: "Feint", Cost: 2, Tier: Normal, Special: true, Damage: hits(1, 4), OnCancel: []Effect{{GainBlock, 4}}},
-		{Name: "Avalanche", Cost: 1, Tier: Slow, Special: true, Damage: []Effect{{HitBlock, 0}}},
+		{Name: "Avalanche", Cost: 1, Tier: Slow, Special: true, Rare: true, Damage: []Effect{{HitBlock, 0}}},
 		{Name: "Shield Catch", Cost: 2, Tier: Normal, Special: true, Parry: 1},
 		{Name: "Loose Timbers", Cost: 2, Tier: Normal, Special: true, Block: []Effect{{GainBlock, 3}}, CancelDamage: hits(1, 4)},
 	}
