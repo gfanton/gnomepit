@@ -10,7 +10,7 @@ import (
 
 	"gnomehall/cardfile"
 	"gnomehall/cardtext"
-	"gnomehall/engine"
+	"gnomehall/p/engine"
 )
 
 // Bridge holds the ruleset loaded by Load. The other methods fail until then.

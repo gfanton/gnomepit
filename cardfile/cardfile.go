@@ -7,7 +7,7 @@ import (
 	"maps"
 	"slices"
 
-	"gnomehall/engine"
+	"gnomehall/p/engine"
 )
 
 // file is the card file's shape: every card with its engine fields, each clan's pool by

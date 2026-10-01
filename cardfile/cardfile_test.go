@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"gnomehall/engine"
+	"gnomehall/p/engine"
 )
 
 func fixture(t *testing.T, name string) []byte {

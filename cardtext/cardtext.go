@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gnomehall/engine"
+	"gnomehall/p/engine"
 )
 
 // Text writes the card's printed text: keywords first, then one sentence per effect in
