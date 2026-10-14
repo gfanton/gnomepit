@@ -1,0 +1,213 @@
+{
+  "generation_tool": "built-in image_gen",
+  "assets": [
+    {
+      "name": "Pick",
+      "clan": "Shared",
+      "kind": "card",
+      "master": "pick-v2.png",
+      "display": "pick-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Brace",
+      "clan": "Shared",
+      "kind": "card",
+      "master": "brace-v2.png",
+      "display": "brace-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Pickaxe Flurry",
+      "clan": "Pickers",
+      "kind": "card",
+      "master": "pickaxe-flurry-v2.png",
+      "display": "pickaxe-flurry-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Kneecap",
+      "clan": "Pickers",
+      "kind": "card",
+      "master": "kneecap-v2.png",
+      "display": "kneecap-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Sling Stone",
+      "clan": "Pickers",
+      "kind": "card",
+      "master": "sling-stone-v2.png",
+      "display": "sling-stone-v2.jpg",
+      "prompts": "variance-prompts.json"
+    },
+    {
+      "name": "Dodge Roll",
+      "clan": "Pickers",
+      "kind": "card",
+      "master": "dodge-roll-v2.png",
+      "display": "dodge-roll-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Chalk Dust",
+      "clan": "Pickers",
+      "kind": "card",
+      "master": "chalk-dust-v2.png",
+      "display": "chalk-dust-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Double Tap",
+      "clan": "Pickers",
+      "kind": "card",
+      "master": "double-tap-v2.png",
+      "display": "double-tap-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Momentum",
+      "clan": "Pickers",
+      "kind": "card",
+      "master": "momentum-v2.png",
+      "display": "momentum-v2.jpg",
+      "prompts": "variance-prompts.json"
+    },
+    {
+      "name": "Undermine",
+      "clan": "Pickers",
+      "kind": "card",
+      "master": "undermine-v2.png",
+      "display": "undermine-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Hunker Down",
+      "clan": "Pickers",
+      "kind": "card",
+      "master": "hunker-down-v2.png",
+      "display": "hunker-down-v2.jpg",
+      "prompts": "variance-prompts.json"
+    },
+    {
+      "name": "Boot and Heel",
+      "clan": "Pickers",
+      "kind": "card",
+      "master": "boot-and-heel-v2.png",
+      "display": "boot-and-heel-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Stone Guard",
+      "clan": "Ironhide",
+      "kind": "card",
+      "master": "stone-guard-v2.png",
+      "display": "stone-guard-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Bulwark",
+      "clan": "Ironhide",
+      "kind": "card",
+      "master": "bulwark-v2.png",
+      "display": "bulwark-v2.jpg",
+      "prompts": "variance-prompts.json"
+    },
+    {
+      "name": "Hammer Blow",
+      "clan": "Ironhide",
+      "kind": "card",
+      "master": "hammer-blow-v2.png",
+      "display": "hammer-blow-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Cobble Throw",
+      "clan": "Ironhide",
+      "kind": "card",
+      "master": "cobble-throw-v2.png",
+      "display": "cobble-throw-v2.jpg",
+      "prompts": "variance-prompts.json"
+    },
+    {
+      "name": "Spiked Shield",
+      "clan": "Ironhide",
+      "kind": "card",
+      "master": "spiked-shield-v2.png",
+      "display": "spiked-shield-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Anvil Stomp",
+      "clan": "Ironhide",
+      "kind": "card",
+      "master": "anvil-stomp-v2.png",
+      "display": "anvil-stomp-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Feint",
+      "clan": "Ironhide",
+      "kind": "card",
+      "master": "feint-v2.png",
+      "display": "feint-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Avalanche",
+      "clan": "Ironhide",
+      "kind": "card",
+      "master": "avalanche-v2.png",
+      "display": "avalanche-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Shield Catch",
+      "clan": "Ironhide",
+      "kind": "card",
+      "master": "shield-catch-v2.png",
+      "display": "shield-catch-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Loose Timbers",
+      "clan": "Ironhide",
+      "kind": "card",
+      "master": "loose-timbers-v2.png",
+      "display": "loose-timbers-v2.jpg",
+      "prompts": "variance-prompts.json"
+    },
+    {
+      "name": "Pickers portrait",
+      "clan": "Pickers",
+      "kind": "portrait",
+      "master": "pickers-portrait-v2.png",
+      "display": "pickers-portrait-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Ironhide portrait",
+      "clan": "Ironhide",
+      "kind": "portrait",
+      "master": "ironhide-portrait-v2.png",
+      "display": "ironhide-portrait-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Gnomehall hero",
+      "clan": "Both",
+      "kind": "hero",
+      "master": "hall-hero-v2.png",
+      "display": "hall-hero-v2.jpg",
+      "prompts": "remaining-variance-prompts.json"
+    },
+    {
+      "name": "Duel table",
+      "clan": "Both",
+      "kind": "background",
+      "master": "duel-table.png",
+      "display": "duel-table.jpg",
+      "prompts": "duel-table-prompt.txt"
+    }
+  ]
+}
