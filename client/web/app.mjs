@@ -338,7 +338,7 @@ function animateStep(events) {
     byId(`float-${side}`).innerHTML = labels;
     const portrait = byId(`sprite-${side}`);
     if (f.damage > 0) animateElement(portrait, [{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-7px)", filter: "brightness(1.5)" }, { transform: "translateX(5px)" }, { transform: "translateX(0)", filter: "brightness(1)" }], { duration: 320 });
-    if (f.blocked > 0 || f.block > 0) animateElement(byId(`portrait-frame-${side}`), [{ boxShadow: "0 0 0 0 #9ad8ef00" }, { boxShadow: "0 0 0 9px #9ad8ef88" }, { boxShadow: "0 0 0 15px #9ad8ef00" }], { duration: 600 });
+    if (f.blocked > 0 || f.block > 0) animateElement(byId(`portrait-frame-${side}`), [{ boxShadow: "0 0 0 0 transparent" }, { boxShadow: "0 0 0 9px color-mix(in srgb, var(--gh-color-block) 53%, transparent)" }, { boxShadow: "0 0 0 15px transparent" }], { duration: 600 });
     if (f.strength || f.counter || f.vulnerable) animateElement(byId(`chips-${side}`), [{ opacity: .3, transform: "translateY(4px)" }, { opacity: 1, transform: "translateY(0)" }]);
   }
   const active = new Set();
