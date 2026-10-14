@@ -170,6 +170,7 @@ const handlers = {
   },
   playedCards: () => { if (flow.screen === "playback") stopPlaying(); openDialog(byId("played-cards")); },
   intel: () => { if (flow.screen === "playback") stopPlaying(); openDialog(byId("battle-info")); },
+  roundLog: () => { stopPlaying(); openDialog(byId("round-log")); },
   closeDialog: () => closeBattleDialogs(),
   seal: () => { closeBattleDialogs(); dispatch({ type: "planSealed", plan }); },
   next: () => { stopPlaying(); showStep(playback.shown + 1); },
@@ -490,8 +491,8 @@ function handoff() {
     </div>`;
 }
 
-function battleHeaderHTML() {
-  return `<header class="battle-header"><a class="wordmark" href="./">Gnomehall</a><span class="battle-header__note">A quarrel in three rounds</span>
+function battleHeaderHTML(round, phase) {
+  return `<header class="battle-header"><span class="battle-header__brand"><a class="wordmark" href="./">Gnomehall</a><span class="battle-header__note">A quarrel in three rounds</span></span>${roundHTML(round, phase)}
     <button class="button button--secondary battle-intel-button" type="button" data-action="intel">Opponent & history</button></header>`;
 }
 
@@ -535,17 +536,21 @@ function planScreen() {
       <button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Details: ${c.name}">Details</button></div>`;
   }).join("");
   const backs = [1, 2, 3].map(() => `<div class="card-back card-back--${flow.clans[opponent].toLowerCase()}" aria-hidden="true"><span>${emblem(flow.clans[opponent])}</span></div>`).join("");
-  return `${battleHeaderHTML()}
+  return `${battleHeaderHTML(flow.state.round, "Planning")}
     <section class="duel-table" aria-label="Round ${flow.state.round} battle table">
-      <div class="duel-fighters">${gnomeHTML(me, flow.state.gnomes[me], names[me])}${roundHTML(flow.state.round, "Planning")}${gnomeHTML(opponent, flow.state.gnomes[opponent], names[opponent])}</div>
-      <div class="track-row track-row--opponent"><div class="track-row__label"><span class="label">${possessive(names[opponent])} plan</span><span class="track-hint">Sealed in secret</span></div><div class="plan-track plan-track--hidden" aria-label="Opponent plan hidden">${backs}</div></div>
-      ${beatMarkersHTML()}
-      <div class="track-row track-row--yours"><div class="track-row__label"><span class="label">Your plan</span><span class="track-hint">${used} of 3 beats filled</span></div>${slotsHTML()}</div>
-      <p class="table-caption">Choose the order. Anticipate their move.</p>
+      <div class="duel-fighters">${gnomeHTML(me, flow.state.gnomes[me], names[me])}${gnomeHTML(opponent, flow.state.gnomes[opponent], names[opponent])}</div>
+      <div class="duel-center">
+        <div class="track-row track-row--opponent"><div class="track-row__label"><span class="label">${possessive(names[opponent])} plan</span><span class="track-hint">Sealed in secret</span></div><div class="plan-track plan-track--hidden" aria-label="Opponent plan hidden">${backs}</div></div>
+        ${beatMarkersHTML()}
+        <div class="track-row track-row--yours"><div class="track-row__label"><span class="label">Your plan</span><span class="track-hint">${used} of 3 beats filled</span></div>${slotsHTML()}</div>
+        <p class="table-caption">Choose the order. Anticipate their move.</p>
+      </div>
     </section>
-    <div class="battle-controls"><div><h2 class="heading">Plot your next move</h2><span class="muted" id="plan-status" role="status">${sealable ? "Your plan is ready. Seal it when you're sure." : "Play cards to fill all three beats."}</span></div>
+    <section class="hand-zone" aria-label="Your hand"><div class="hand-zone__heading">
+      <div class="hand-zone__title"><h2 class="heading">Plot your next move</h2><span class="muted" id="plan-status" role="status">${sealable ? "Your plan is ready. Seal it when you're sure." : "Play cards to fill all three beats."}</span></div>
+      <div class="hand-zone__hint"><span class="label">Your hand <span>${handIds.length} cards</span></span><span class="muted">Lift a card to read · click to play · tap to inspect</span></div>
       <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable ? "" : "disabled"}>Seal plan</button></div></div>
-    <section class="hand-zone" aria-label="Your hand"><div class="hand-zone__heading"><span class="label">Your hand <span>${handIds.length} cards</span></span><span class="muted">Lift a card to read · click to play · tap to inspect</span></div><div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount ? "" : "disabled"} aria-label="Open played cards, ${playedCount} cards"><span class="pile-back card-back card-back--${flow.clans[me].toLowerCase()}"><span>${emblem(flow.clans[me])}</span></span><span class="label">Played cards</span><span class="muted">${playedCount} cards · inspect</span></button></div></section>
+      <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount ? "" : "disabled"} aria-label="Open played cards, ${playedCount} cards"><span class="pile-back card-back card-back--${flow.clans[me].toLowerCase()}"><span>${emblem(flow.clans[me])}</span></span><span class="label">Played cards</span><span class="muted">${playedCount} cards · inspect</span></button></div></section>
     ${battleDialogsHTML(me)}`;
 }
 
@@ -572,15 +577,17 @@ function playbackScreen() {
       return `<div class="slot card-reveal" style="grid-column:span ${c.cost};--reveal-delay:${index * 120}ms">${cardHTML(c, { track: true, action: "inspectCard", data: `data-side="${side}" data-index="${index}"` })}<span class="track-note">${note}</span></div>`;
     }).join("")}</div></div>`;
   };
-  return `${battleHeaderHTML()}
+  return `${battleHeaderHTML(round.state.round - 1, "The clash")}
     <section class="duel-table duel-table--playback" aria-label="Round ${round.state.round - 1} battle table">
-      <div class="duel-fighters">${gnomeHTML(me, playback.start[me], names[me])}${roundHTML(round.state.round - 1, "The clash")}${gnomeHTML(opponent, playback.start[opponent], names[opponent])}</div>
-      ${row(opponent)}${beatMarkersHTML()}${row(me)}
-      <p class="battle-event" id="battle-event" role="status" aria-live="polite">Both plans revealed. The clash begins.</p>
+      <div class="duel-fighters">${gnomeHTML(me, playback.start[me], names[me])}${gnomeHTML(opponent, playback.start[opponent], names[opponent])}</div>
+      <div class="duel-center">
+        ${row(opponent)}${beatMarkersHTML()}${row(me)}
+        <p class="battle-event" id="battle-event" role="status" aria-live="polite">Both plans revealed. The clash begins.</p>
+      </div>
     </section>
     <div class="battle-controls playback-controls"><div class="button-row"><button class="button" type="button" data-action="play" id="play">Pause</button><button class="button button--secondary" type="button" data-action="next" id="next">Next step</button><button class="button button--secondary" type="button" data-action="skip" id="skip">Skip</button></div>
-      <div class="playback-meta"><span class="label" id="progress"></span><label class="speed-control">Speed <select id="playback-speed"><option value=".7">Slow</option><option value="1" selected>Normal</option><option value="1.7">Fast</option></select></label></div><div class="battle-finish" id="finish"></div></div>
-    <details class="battle-log"><summary>Round details <span class="muted">Every hit, block and interruption</span></summary><div class="log log--grid" id="log"></div></details>
+      <div class="playback-meta"><span class="label" id="progress"></span><button class="button button--secondary round-log-button" type="button" data-action="roundLog">Round details</button><label class="speed-control">Speed <select id="playback-speed"><option value=".7">Slow</option><option value="1" selected>Normal</option><option value="1.7">Fast</option></select></label></div><div class="battle-finish" id="finish"></div></div>
+    <dialog class="battle-drawer" id="round-log" aria-labelledby="log-title"><div class="dialog-heading"><h2 class="heading" id="log-title">Round details</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close round details">×</button></div><p class="muted">Every hit, block and interruption so far.</p><div class="log log--grid" id="log"></div></dialog>
     ${battleDialogsHTML(me)}`;
 }
 
