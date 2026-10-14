@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { cards, id } from "./fixture.mjs";
-import { sentences, matchLog, sideNames } from "./log.mjs";
+import { sentences, matchLog, sideNames, possessive } from "./log.mjs";
 
 const A = (hp) => ({ hp, block: 0, counter: 0, vulnerable: 0, strength: 0 });
 const B = (hp, block, counter, vulnerable) => ({ hp, block, counter, vulnerable, strength: 0 });
@@ -78,6 +78,13 @@ test("sideNames uses clan names, or player names in a mirror", () => {
   assert.deepEqual(sideNames(["Pickers", "Ironhide"], "hotseat"), ["Pickers", "Ironhide"]);
   assert.deepEqual(sideNames(["Pickers", "Pickers"], "hotseat"), ["Player 1", "Player 2"]);
   assert.deepEqual(sideNames(["Ironhide", "Ironhide"], "bot"), ["You", "Bot"]);
+});
+
+test("possessive reads naturally for every side name", () => {
+  assert.deepEqual(
+    ["You", "Bot", "Player 1", "Pickers", "Ironhide"].map(possessive),
+    ["Your", "Bot's", "Player 1's", "Pickers'", "Ironhide's"],
+  );
 });
 
 test("matchLog prints each round's plans, sentences and HP, then the result", () => {

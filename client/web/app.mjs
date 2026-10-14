@@ -6,12 +6,14 @@ import { initial, reduce, botTurn } from "./flow.mjs";
 import { deckSize, newDeck, toggle, rareOf } from "./deck.mjs";
 import { randomDeck, randomPlan } from "./bot.mjs";
 import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.mjs";
-import { sentences, matchLog, resultLine, sideNames } from "./log.mjs";
+import { sentences, matchLog, resultLine, sideNames, possessive } from "./log.mjs";
 import { glossary, markKeywords, escapeHTML } from "./keywords.mjs";
-import { unseen, spentIn } from "./table.mjs";
-import { stepFeedback } from "./battle-feedback.mjs";
+import { knownCards } from "./table.mjs";
+import { stepFeedback, cardBehind } from "./battle-feedback.mjs";
+import { artIndex } from "./art.mjs";
 
 const engine = await loadEngine("engine.wasm", "cards.json");
+const art = artIndex(await (await fetch("art/assets.json")).json());
 const app = document.getElementById("app");
 const tip = document.getElementById("tip");
 const basics = engine.cards.filter((c) => !c.special).map((c) => c.id);
@@ -24,45 +26,33 @@ let flow = initial;
 let deck = null; // the deck being picked on the deck screen
 let plan = []; // the plan being built on the plan screen
 let legalPlans = []; // the acting player's legal plans this round
-let playback = null; // {start, steps, lines, shown, timer, hit} for the round being played back
+let playback = null; // {start, steps, lines, shown, speed, timer, revealTimer, revealAt, viewer} for the round being played back
 
-// Every card has an individual illustration; display JPEGs retain separate PNG masters.
-const cardArt = {
-  "Pick": "pick-v2",
-  "Brace": "brace-v2",
-  "Pickaxe Flurry": "pickaxe-flurry-v2",
-  "Kneecap": "kneecap-v2",
-  "Sling Stone": "sling-stone-v2",
-  "Dodge Roll": "dodge-roll-v2",
-  "Chalk Dust": "chalk-dust-v2",
-  "Double Tap": "double-tap-v2",
-  "Momentum": "momentum-v2",
-  "Undermine": "undermine-v2",
-  "Hunker Down": "hunker-down-v2",
-  "Boot and Heel": "boot-and-heel-v2",
-  "Stone Guard": "stone-guard-v2",
-  "Bulwark": "bulwark-v2",
-  "Hammer Blow": "hammer-blow-v2",
-  "Cobble Throw": "cobble-throw-v2",
-  "Spiked Shield": "spiked-shield-v2",
-  "Anvil Stomp": "anvil-stomp-v2",
-  "Feint": "feint-v2",
-  "Avalanche": "avalanche-v2",
-  "Shield Catch": "shield-catch-v2",
-  "Loose Timbers": "loose-timbers-v2"
+// Shared cards, and any clan missing here, get no emblem and no blurb.
+const clanLook = {
+  Pickers: {
+    emblem: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 26 23 6M5 7c9-5 16-3 23 5M12 26 24 12"/></svg>',
+    blurb: "Quick hands. Dirty tricks. A miner’s tools, a duelist’s timing.",
+  },
+  Ironhide: {
+    emblem: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 6 16 3 26 6v12c0 5-6 9-10 12C12 27 6 23 6 18Z"/><path d="M16 8v15M10 15h12"/></svg>',
+    blurb: "Stand firm. Strike hard. Iron shields and the weight of the mountain.",
+  },
 };
 function cardClan(c) {
   return engine.clans.find((clan) => clan.cards.includes(c.id))?.name ?? "Shared";
 }
 function emblem(clan) {
-  return clan === "Pickers"
-    ? '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 26 23 6M5 7c9-5 16-3 23 5M12 26 24 12"/></svg>'
-    : '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 6 16 3 26 6v12c0 5-6 9-10 12C12 27 6 23 6 18Z"/><path d="M16 8v15M10 15h12"/></svg>';
+  return clanLook[clan]?.emblem ?? "";
+}
+function portraitHTML(clan, attributes) {
+  const file = art.portrait(clan);
+  return file === undefined ? "" : `<img ${attributes} src="art/${file}" alt="${clan} clan champion">`;
 }
 function artHTML(c) {
-  const art = cardArt[c.name];
-  return art
-    ? `<div class="card__art"><img src="art/${art}.jpg" alt="" loading="lazy"></div>`
+  const file = art.card(c.name);
+  return file !== undefined
+    ? `<div class="card__art"><img src="art/${file}" alt="" loading="lazy"></div>`
     : `<div class="card__art card__art--pending">${emblem(cardClan(c))}<span>Clan study · art to come</span></div>`;
 }
 function collectionHTML() {
@@ -275,7 +265,7 @@ function showStep(n, animate = true) {
   if (animate && sequential && target > 0) {
     const step = playback.steps[target - 1];
     animateStep(round.events.slice(step.from, step.to));
-  }
+  } else for (const side of [0, 1]) byId(`float-${side}`).replaceChildren();
 }
 
 function queueReveal(session, delay) {
@@ -353,10 +343,9 @@ function animateStep(events) {
   }
   const active = new Set();
   for (const event of events) {
-    const actor = event.kind === "Cancelled" ? 1 - event.side : event.side;
-    const index = laid[actor][event.beat - 1]?.index;
-    const key = `${actor}:${index}`;
-    if (!active.has(key)) animateElement(app.querySelector(`.card--track[data-side="${actor}"][data-index="${index}"]`), [{ transform: "translateY(0)" }, { transform: "translateY(-7px) scale(1.03)" }, { transform: "translateY(0)" }], { duration: 500 });
+    const { side, index } = cardBehind(event, round.plans, engine.cards);
+    const key = `${side}:${index}`;
+    if (!active.has(key)) animateElement(app.querySelector(`.card--track[data-side="${side}"][data-index="${index}"]`), [{ transform: "translateY(0)" }, { transform: "translateY(-7px) scale(1.03)" }, { transform: "translateY(0)" }], { duration: 500 });
     active.add(key);
   }
   for (const cancelled of feedback.cancelled) {
@@ -443,7 +432,9 @@ function dropStaleTip() {
 
 function title() {
   const studies = ["Sling Stone", "Momentum", "Hunker Down", "Bulwark", "Cobble Throw", "Loose Timbers"]
-    .map((name) => cardHTML(engine.cards.find((c) => c.name === name))).join("");
+    .map((name) => engine.cards.find((c) => c.name === name))
+    .filter((c) => c !== undefined)
+    .map((c) => cardHTML(c)).join("");
   return `${masthead("Two clans. One unsettled score.")}
     <section class="intro">
       <div class="intro__copy"><span class="eyebrow">A TACTICAL CARD DUEL</span>
@@ -481,7 +472,7 @@ function deckScreen() {
     ${masthead()}
     <section class="frame frame--acting stack">
       <div class="frame__head"><h2 class="heading">${heading}</h2><span class="hint">The Rare stays in. Pick 7 more.</span></div>
-      <div class="clan-banner clan-banner--${deck.clan.toLowerCase()}"><img class="clan-banner__portrait" src="art/${deck.clan.toLowerCase()}-portrait-v2.jpg" alt="${deck.clan} clan champion"><div><span class="eyebrow">CHOOSE YOUR ALLEGIANCE</span><h3 class="heading clan-banner__name">${emblem(deck.clan)}${deck.clan}</h3><p>${deck.clan === "Pickers" ? "Quick hands. Dirty tricks. A miner’s tools, a duelist’s timing." : "Stand firm. Strike hard. Iron shields and the weight of the mountain."}</p></div><div class="button-row">${tabs}</div></div>
+      <div class="clan-banner clan-banner--${deck.clan.toLowerCase()}">${portraitHTML(deck.clan, `class="clan-banner__portrait"`)}<div><span class="eyebrow">CHOOSE YOUR ALLEGIANCE</span><h3 class="heading clan-banner__name">${emblem(deck.clan)}${deck.clan}</h3><p>${clanLook[deck.clan]?.blurb ?? ""}</p></div><div class="button-row">${tabs}</div></div>
       <div class="card-grid">${pool}</div>
       <div class="button-row"><button class="button" type="button" data-action="deckReady" ${legal ? "" : "disabled"}>Ready ${picked} / 7</button></div>
     </section>`;
@@ -516,13 +507,16 @@ function beatMarkersHTML() {
 function battleDialogsHTML(viewer) {
   const opponent = 1 - viewer;
   const names = sideNames(flow.clans, flow.mode);
-  const held = unseen(clanNamed(flow.clans[opponent]).cards, flow.state.gnomes[opponent].spent, engine.cards);
   const past = flow.screen === "playback" ? flow.rounds.slice(0, -1) : flow.rounds;
+  const known = knownCards(past, opponent, clanNamed(flow.clans[opponent]).cards, flow.decks[opponent], engine.cards);
+  const knownHead = known.open
+    ? `<h3 class="heading">${possessive(names[opponent])} deck</h3><p class="muted">Decks are open from round 2. Spent cards show the round they were played in; the current plan stays hidden until the reveal.</p>`
+    : `<h3 class="heading">${possessive(names[opponent])} clan pool</h3><p class="muted">${deckSize} of these ${known.cards.length} cards are in their deck. The Rare always is. Decks open from round 2; the current plan stays hidden until the reveal.</p>`;
   const history = past.map((round, i) => `<section class="stack"><h3 class="heading">Round ${i + 1}</h3>${[0, 1].map(side => `<div><span class="label">${names[side]}</span><div class="row">${smallCards(round.plans[side])}</div></div>`).join("")}</section>`).join("");
   const played = past.map((round, i) => `<section class="stack"><h3 class="heading">Round ${i + 1}</h3><div class="card-grid">${round.plans[viewer].map(id => cardHTML(engine.cards[id])).join("")}</div></section>`).join("");
   return `<dialog class="battle-drawer" id="played-cards" aria-labelledby="played-title"><div class="dialog-heading"><h2 class="heading" id="played-title">Your played cards</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close played cards">×</button></div>${played || `<p class="muted">No cards played yet.</p>`}</dialog><dialog class="battle-drawer" id="battle-info" aria-labelledby="intel-title"><div class="dialog-heading"><h2 class="heading" id="intel-title">Across the table</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close opponent information">×</button></div>
-    <section class="stack"><h3 class="heading">${names[opponent]}'s unspent pool</h3><p class="muted">${deckSize - flow.state.gnomes[opponent].spent.length} of these ${held.length} cards are in their deck. Unspent pool cards are public; their current plan stays hidden until the reveal.</p>
-      <div class="card-grid">${held.map(id => cardHTML(engine.cards[id])).join("") || `<p class="muted">Every card is spent.</p>`}</div></section>
+    <section class="stack">${knownHead}
+      <div class="card-grid">${known.cards.map(({ id, spentRound }) => cardHTML(engine.cards[id], { spentRound })).join("")}</div></section>
     <section class="stack intel-history"><h3 class="heading">Earlier rounds</h3>${history || `<p class="muted">No rounds played yet.</p>`}</section></dialog>
     <dialog class="card-reader" id="card-reader" aria-label="Card details"><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close card details">×</button><div id="reader-content" class="stack"></div></dialog>`;
 }
@@ -536,17 +530,15 @@ function planScreen() {
   const playedCount = flow.rounds.reduce((n, round) => n + round.plans[me].length, 0);
   const hand = handIds.map((id, index) => {
     const c = engine.cards[id];
-    const spentRound = c.special ? spentIn(flow.rounds, me, id) : 0;
-    const inPlan = c.special && plan.includes(id);
     return `<div class="hand-entry" style="--hand-order:${index};--hand-tilt:${(index - (handIds.length - 1) / 2) * 4}deg;--hand-rise:${Math.pow(index - (handIds.length - 1) / 2, 2) * 2}px">
-      ${cardHTML(c, { action: matchMedia("(hover: none)").matches ? "inspectCard" : "addCard", hand: true, dimmed: !canAdd(plan, id, engine.cards, available()), spentRound, inPlan })}
-      <button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Inspect ${c.name}">Details</button></div>`;
+      ${cardHTML(c, { action: matchMedia("(hover: none)").matches ? "inspectCard" : "addCard", hand: true, dimmed: !canAdd(plan, id, engine.cards, available()) })}
+      <button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Details: ${c.name}">Details</button></div>`;
   }).join("");
   const backs = [1, 2, 3].map(() => `<div class="card-back card-back--${flow.clans[opponent].toLowerCase()}" aria-hidden="true"><span>${emblem(flow.clans[opponent])}</span></div>`).join("");
   return `${battleHeaderHTML()}
     <section class="duel-table" aria-label="Round ${flow.state.round} battle table">
-      <div class="duel-fighters">${gnomeHTML(me, flow.state.gnomes[me], names[me], true)}${roundHTML(flow.state.round, "Planning")}${gnomeHTML(opponent, flow.state.gnomes[opponent], names[opponent], true)}</div>
-      <div class="track-row track-row--opponent"><div class="track-row__label"><span class="label">${names[opponent]}'s plan</span><span class="track-hint">Sealed in secret</span></div><div class="plan-track plan-track--hidden" aria-label="Opponent plan hidden">${backs}</div></div>
+      <div class="duel-fighters">${gnomeHTML(me, flow.state.gnomes[me], names[me])}${roundHTML(flow.state.round, "Planning")}${gnomeHTML(opponent, flow.state.gnomes[opponent], names[opponent])}</div>
+      <div class="track-row track-row--opponent"><div class="track-row__label"><span class="label">${possessive(names[opponent])} plan</span><span class="track-hint">Sealed in secret</span></div><div class="plan-track plan-track--hidden" aria-label="Opponent plan hidden">${backs}</div></div>
       ${beatMarkersHTML()}
       <div class="track-row track-row--yours"><div class="track-row__label"><span class="label">Your plan</span><span class="track-hint">${used} of 3 beats filled</span></div>${slotsHTML()}</div>
       <p class="table-caption">Choose the order. Anticipate their move.</p>
@@ -574,7 +566,7 @@ function playbackScreen() {
   const me = playback.viewer, opponent = 1 - me;
   const row = side => {
     let beat = 0;
-    return `<div class="track-row ${side === me ? "track-row--yours" : "track-row--opponent"}"><div class="track-row__label"><span class="label">${names[side]}'s plan</span><span class="track-hint">Revealed</span></div><div class="plan-track">${round.plans[side].map((id, index) => {
+    return `<div class="track-row ${side === me ? "track-row--yours" : "track-row--opponent"}"><div class="track-row__label"><span class="label">${possessive(names[side])} plan</span><span class="track-hint">Revealed</span></div><div class="plan-track">${round.plans[side].map((id, index) => {
       const c = engine.cards[id];const from = beat + 1;beat += c.cost;
       const note = c.parry > 0 ? `Guards ${from === beat ? `beat ${beat}` : `beats ${from}–${beat}`}` : c.cost > 1 ? `Lands on beat ${beat}` : `Beat ${beat}`;
       return `<div class="slot card-reveal" style="grid-column:span ${c.cost};--reveal-delay:${index * 120}ms">${cardHTML(c, { track: true, action: "inspectCard", data: `data-side="${side}" data-index="${index}"` })}<span class="track-note">${note}</span></div>`;
@@ -582,7 +574,7 @@ function playbackScreen() {
   };
   return `${battleHeaderHTML()}
     <section class="duel-table duel-table--playback" aria-label="Round ${round.state.round - 1} battle table">
-      <div class="duel-fighters">${gnomeHTML(me, playback.start[me], names[me], true)}${roundHTML(round.state.round - 1, "The clash")}${gnomeHTML(opponent, playback.start[opponent], names[opponent], true)}</div>
+      <div class="duel-fighters">${gnomeHTML(me, playback.start[me], names[me])}${roundHTML(round.state.round - 1, "The clash")}${gnomeHTML(opponent, playback.start[opponent], names[opponent])}</div>
       ${row(opponent)}${beatMarkersHTML()}${row(me)}
       <p class="battle-event" id="battle-event" role="status" aria-live="polite">Both plans revealed. The clash begins.</p>
     </section>
@@ -607,7 +599,7 @@ function patchPlayback() {
     byId(`fighter-${side}`).classList.toggle("fighter--defeated", vitals[side].hp <= 0);
   }
   const laid = round.plans.map(p => slots(p, engine.cards));
-  const acting = new Set(current ? round.events.slice(current.from, current.to).map(ev => { const side = ev.kind === "Cancelled" ? 1 - ev.side : ev.side; return `${side}:${laid[side][current.beat - 1]?.index}`; }) : []);
+  const acting = new Set(current ? round.events.slice(current.from, current.to).map(ev => { const { side, index } = cardBehind(ev, round.plans, engine.cards); return `${side}:${index}`; }) : []);
   const until = shown > 0 ? steps[shown - 1].to : 0;
   const cancelled = new Set(round.events.slice(0, until).filter(ev => ev.kind === "Cancelled").map(ev => `${ev.side}:${laid[ev.side][ev.beat - 1]?.index}`));
   for (const b of [1, 2, 3]) {
@@ -688,22 +680,13 @@ function resultScreen() {
     </section>`;
 }
 
-// gnomeHTML draws a side's sprite, HP bar and status chips from a gnome or vitals object.
-function gnomeHTML(side, vitals, name, fighter = false) {
+// gnomeHTML draws a side's portrait, HP bar and status chips from a gnome or vitals object.
+function gnomeHTML(side, vitals, name) {
   const clan = flow.clans[side];
-  if (fighter) return `<div class="fighter fighter--${clan.toLowerCase()}" id="fighter-${side}">
-    <div class="fighter__portrait" id="portrait-frame-${side}"><img class="sprite" id="sprite-${side}" src="art/${clan.toLowerCase()}-portrait-v2.jpg" alt="${clan} champion"><span class="fighter__crest">${emblem(clan)}</span><div class="combat-floats" id="float-${side}" aria-hidden="true"></div></div>
+  return `<div class="fighter fighter--${clan.toLowerCase()}" id="fighter-${side}">
+    <div class="fighter__portrait" id="portrait-frame-${side}">${portraitHTML(clan, `class="sprite" id="sprite-${side}"`)}<span class="fighter__crest">${emblem(clan)}</span><div class="combat-floats" id="float-${side}" aria-hidden="true"></div></div>
     <div class="fighter__vitals"><div class="fighter__name"><h2>${name}</h2><span class="label">${clan}</span></div><div class="hp__row"><span class="fighter__health-label">Health</span><span class="number" id="hp-num-${side}">${vitals.hp} / ${flow.hp}</span></div>
     <div class="hp__bar"><div class="hp__ghost" id="hp-ghost-${side}" style="width:${hpWidth(vitals.hp)}"></div><div class="hp__fill" id="hp-fill-${side}" style="width:${hpWidth(vitals.hp)}"></div></div><div class="chips" id="chips-${side}">${chipsHTML(vitals)}</div></div></div>`;
-  return `
-    <div class="gnome ${side === 1 ? "gnome--mirror" : ""}">
-      <img class="sprite" id="sprite-${side}" src="art/${flow.clans[side] === "Pickers" ? "pickers-portrait-v2" : "ironhide-portrait-v2"}.jpg" alt="${name}">
-      <div class="hp">
-        <div class="hp__row"><span class="label">${name}</span><span class="number" id="hp-num-${side}">${vitals.hp} / ${flow.hp}</span></div>
-        <div class="hp__bar"><div class="hp__ghost" id="hp-ghost-${side}" style="width: ${hpWidth(vitals.hp)}"></div><div class="hp__fill" id="hp-fill-${side}" style="width: ${hpWidth(vitals.hp)}"></div></div>
-        <div class="chips" id="chips-${side}">${chipsHTML(vitals)}</div>
-      </div>
-    </div>`;
 }
 
 function chipsHTML(vitals) {
@@ -726,17 +709,17 @@ function hpWidth(hp) {
 // pressed value marks a toggle's state; locked marks a toggle that does nothing. A small card
 // shows cost, name and badges and peeks the full card on hover or focus. spentRound, when
 // above 0, marks the round the card was played in.
-function cardHTML(c, { selected = false, dimmed = false, small = false, locked = false, pressed = null, action = null, data = "", spentRound = 0, hand = false, track = false, inPlan = false } = {}) {
+function cardHTML(c, { selected = false, dimmed = false, small = false, locked = false, pressed = null, action = null, data = "", spentRound = 0, hand = false, track = false } = {}) {
   const clan = cardClan(c);
-  const classes = ["card", `card--${clan.toLowerCase()}`, hand ? "card--hand" : "", track ? "card--track" : "", inPlan ? "card--in-plan" : "", c.rare ? "card--rare" : "", c.special ? "" : "card--basic", selected ? "card--selected" : "", dimmed ? "card--dimmed" : "", small ? "card--small" : "", locked ? "card--locked" : ""].join(" ");
+  const classes = ["card", `card--${clan.toLowerCase()}`, hand ? "card--hand" : "", track ? "card--track" : "", c.rare ? "card--rare" : "", c.special ? "" : "card--basic", selected ? "card--selected" : "", dimmed ? "card--dimmed" : "", small ? "card--small" : "", locked ? "card--locked" : ""].join(" ");
   const state = [pressed === null ? "" : `aria-pressed="${pressed}"`, locked ? `aria-disabled="true" title="The Rare stays in"` : "", small ? `data-peek="${c.id}"` : ""].join(" ");
   const badges = [
     c.tier !== "Normal" ? `<span class="badge badge--${c.tier.toLowerCase()}" data-kw="${c.tier.toLowerCase()}">${c.tier}</span>` : "",
     c.rare ? `<span class="badge badge--rare" data-kw="rare"><span aria-hidden="true">✦</span> Rare</span>` : "",
-    spentRound > 0 ? `<span class="badge badge--spent">Spent R${spentRound}</span>` : inPlan ? `<span class="badge badge--spent">In plan</span>` : "",
+    spentRound > 0 ? `<span class="badge badge--spent">Spent R${spentRound}</span>` : "",
   ].join("");
   const body = small
-    ? `${track ? `<span class="card__thumb"><img src="art/${cardArt[c.name]}.jpg" alt=""></span>` : ""}<span class="card__cost">${c.cost}</span><span class="card__name">${c.name}</span><span class="card__foot">${badges}</span>`
+    ? `<span class="card__cost">${c.cost}</span><span class="card__name">${c.name}</span><span class="card__foot">${badges}</span>`
     : `
     <span class="card__ornament" aria-hidden="true"></span>
     <div class="card__head"><span class="card__cost" aria-label="${c.cost} beats">${c.cost}</span><span class="card__name">${c.name}</span></div>

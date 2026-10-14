@@ -43,7 +43,6 @@ svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width:
 .wordmark { font: bold 30px/1 var(--gh-font-display); letter-spacing: -.7px; text-decoration: none; }
 .wordmark span { display: block; font: 9px/1.4 var(--gh-font-body); letter-spacing: 3px; margin-top: 9px; color: #bea477; }
 .masthead__note { font: italic 15px var(--gh-font-display); color: var(--gh-color-text-muted); }
-.title { font: bold 30px/1.2 var(--gh-font-display); margin: 0; }
 .heading { font: bold 23px/1.2 var(--gh-font-display); margin: 0; }
 .label, .eyebrow { font: 11px/1.4 var(--gh-font-body); font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--gh-color-text-muted); }
 .eyebrow { color: #d2ae76; display: block; margin-bottom: 8px; }
@@ -61,6 +60,8 @@ svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width:
 .button--secondary { background: #253537; color: #eee7d5; border-color: #62716c; box-shadow: none; }
 .button--secondary:hover:not(:disabled) { background: #344748; }
 .button:disabled { background: #35423e; color: #a3aea1; border-color: #536259; box-shadow: none; cursor: default; }
+
+/* ---- Title */
 .intro { display: grid; grid-template-columns: .85fr 1.15fr; min-height: 360px; gap: 36px; align-items: center; padding: 12px 0; }
 .intro h1 { font: bold clamp(38px, 4.3vw, 62px)/1.04 var(--gh-font-display); letter-spacing: -2px; margin: 16px 0 20px; }
 .intro p { max-width: 365px; font-size: 15px; line-height: 1.7; color: #bbc1b4; margin: 0 0 24px; }
@@ -77,16 +78,28 @@ svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width:
 .showcase .card:nth-child(2) { transform: rotate(-1deg); }
 .showcase .card:nth-child(3) { transform: rotate(1deg); }
 .showcase .card:nth-child(4) { transform: rotate(3deg); }
+/* Six scenes let each clan's cast and environments read together. */
+.showcase--roster .showcase__cards { display: grid; grid-template-columns: repeat(3, minmax(0, 220px)); justify-content: center; gap: 24px; }
+.showcase--roster .card:nth-child(n) { transform: none; }
+.collection { border: 1px solid #77876d50; border-radius: 7px; background: #1a282a; }
+.collection > summary { cursor: pointer; padding: 16px 20px; color: #eac382; font-weight: bold; }
+.collection > summary span { float: right; color: #b5bdae; font-weight: normal; font-size: 12px; }
+.collection__groups { display: grid; gap: 28px; padding: 12px 20px 24px; }
 .hall-footer { border-top: 1px solid #b3986630; padding-top: 16px; display: flex; justify-content: space-between; color: #99a79c; font-size: 11px; }
 .hall-footer b { margin: 0 8px; color: #c49f67; }
+
+/* ---- Deck */
 .clan-banner { display: flex; align-items: center; gap: 18px; padding: 18px 20px; border: 1px solid #b38b4d55; border-radius: 7px; background: linear-gradient(100deg, #66503955, #1b282a); }
 .clan-banner--ironhide { border-color: #7595a360; background: linear-gradient(100deg, #3e586555, #1b282a); }
-.clan-banner__emblem { color: #d6b077; }
-.clan-banner--ironhide .clan-banner__emblem { color: #adc7d8; }
-.clan-banner__emblem svg { width: 45px; height: 45px; }
 .clan-banner p { margin: 6px 0 0; color: #b8c0b4; font-size: 13px; }
 .clan-banner .button-row { margin-left: auto; flex-shrink: 0; }
-/* Clan owns the material; rarity refines that same material. */
+.clan-banner__portrait { width: 72px; height: 72px; object-fit: cover; flex: none; border: 2px solid #b88852; border-radius: 50%; }
+.clan-banner--ironhide .clan-banner__portrait { border-color: #8ca9b8; }
+.clan-banner__name { display: flex; align-items: center; gap: 8px; }
+.clan-banner__name svg { width: 20px; height: 20px; color: #d6b077; }
+.clan-banner--ironhide .clan-banner__name svg { color: #adc7d8; }
+
+/* ---- Cards: clan owns the material; rarity refines that same material */
 .card {
   --clan-edge: #99734e;
   --card-stock: #f0e2c6;
@@ -165,7 +178,7 @@ button.card:hover:not(:disabled), button.card:focus-visible { transform: transla
 .card--ironhide .card__art--pending { background: radial-gradient(ellipse, #54707b, #263339); color: #bcc8c4; }
 .card__art--pending svg { width: 44px; height: 44px; }
 .card__art--pending span { font-size: 9px; letter-spacing: .5px; }
-.card__text { padding: 10px 5px 4px; font: 13px/1.35 var(--gh-font-body); }
+.card__text { padding: 10px 5px 4px; font: 14px/1.35 var(--gh-font-body); }
 .card__foot { display: flex; align-items: center; gap: 4px; border-top: 1px solid #79664435; padding-top: 4px; }
 .card__clan { display: flex; align-items: center; gap: 3px; margin-right: auto; font-size: 9px; text-transform: uppercase; letter-spacing: .8px; color: var(--card-label); }
 .card__clan svg { width: 14px; height: 14px; }
@@ -180,25 +193,16 @@ button.card:hover:not(:disabled), button.card:focus-visible { transform: transla
 .badge[data-kw], .chip[data-kw], .kw { cursor: help; }
 .kw { text-decoration: underline dotted; text-underline-offset: 3px; }
 .card-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; padding: 5px; }
-.card-grid > .card { width: 100%; }
+/* Narrow grid columns wrap rules text onto more lines, so grid cards may grow past the standard height. */
+.card-grid > .card { width: 100%; height: auto; min-height: var(--gh-card-height); }
 .card--small { width: auto; min-width: 110px; height: auto; min-height: 42px; grid-template-rows: auto; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; padding: 6px 8px; border-width: 1px; border-radius: 5px; box-shadow: 0 2px 5px #0002; }
 .card--small .card__name { font-size: 12px; }
 .card--small .card__cost { width: 21px; height: 21px; font-size: 14px; }
 .card--small .card__foot { border: 0; padding: 0; }
 .card--small:not(button) { cursor: help; }
-.slots, .timeline { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 16px; }
-.slot { display: grid; min-width: 0; }
-.slot > .card, .timeline__play > .card { width: 100%; }
-.slot__well { height: 52px; border: 1px dashed #7f89775e; border-radius: 5px; display: grid; place-items: center; background: #101d2055; }
-.plan-band { position: sticky; top: 0; z-index: 1; background: #1d2b2df5; backdrop-filter: blur(12px); display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: center; padding: 12px; border: 1px solid #a5895655; border-radius: 7px; }
-.plan-band .button-row { flex-direction: column; }
-.timeline__beat { padding: 8px; border: 1px solid transparent; border-radius: 4px; }
-.timeline__beat--current { border-color: #d6af70; color: #eac382; background: #d6af7015; }
-.timeline__play { display: grid; gap: 8px; }
-.gnome { display: grid; grid-template-columns: 64px 1fr; gap: 16px; align-items: center; }
+
+/* ---- Fighters, log and the rest */
 .sprite { width: 64px; height: 64px; object-fit: cover; border: 1px solid #b39a6260; border-radius: 50%; transition: transform 160ms, filter 160ms; }
-.sprite--hit { transform: translateX(-4px); filter: brightness(1.7); }
-.hp { display: grid; gap: 5px; }
 .hp__row { display: flex; justify-content: space-between; align-items: baseline; }
 .hp__bar { position: relative; height: 8px; background: #0f1b1c; border: 1px solid #a2967050; border-radius: 4px; overflow: hidden; }
 .hp__fill, .hp__ghost { position: absolute; inset: 0 auto 0 0; height: 100%; }
@@ -207,16 +211,10 @@ button.card:hover:not(:disabled), button.card:focus-visible { transform: transla
 .chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 18px; }
 .chip { background: #2b3b3d; font-size: 11px; border-radius: 4px; padding: 2px 6px; border: 1px solid #a4b0a32a; }
 .chip--block { color: var(--gh-color-block); }.chip--counter { color: var(--gh-color-counter); }.chip--vulnerable { color: var(--gh-color-vulnerable); }.chip--strength { color: var(--gh-color-strength); }
-.opponent-panel { padding: 14px 20px; }
-.opponent-panel .gnome { max-width: 550px; }
-.opponent-intel summary { cursor: pointer; color: #d2b78d; font-size: 12px; }
-.opponent-intel summary .muted { float: right; }
-.opponent-intel[open] .frame__head { margin: 12px 0; }
-.tip { position: fixed; z-index: 5; max-width: 320px; background: #28383a; border: 1px solid #7e8976; border-radius: 6px; padding: 12px; box-shadow: 0 8px 24px #0006; pointer-events: none; }
+.tip { position: fixed; z-index: 100; max-width: 320px; background: #28383a; border: 1px solid #7e8976; border-radius: 6px; padding: 12px; box-shadow: 0 8px 24px #0006; pointer-events: none; }
 .tip--card { background: none; border: 0; padding: 0; box-shadow: none; }
 .tip--card .card { width: 240px; height: 330px; grid-template-rows: 36px 155px 1fr 25px; }
 .tip__title { display: block; font-weight: bold; margin-bottom: 6px; text-transform: capitalize; }
-.round { display: grid; grid-template-columns: 80px 1fr 1fr; gap: 12px; }
 .log { max-height: 240px; overflow-y: auto; display: grid; gap: 3px; font-size: 13px; }
 .log--grid { grid-template-columns: auto 1fr; column-gap: 12px; }
 .log__line--new { color: #edc584; }
@@ -228,6 +226,7 @@ button.card:hover:not(:disabled), button.card:focus-visible { transform: transla
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .stack { display: grid; align-content: start; gap: 14px; }
 .banner { font: bold 24px var(--gh-font-display); color: #eac382; text-align: center; }
+
 @media (max-width: 1050px) {
   .board { padding: 20px; }
   .card-grid { gap: 12px; }
@@ -239,45 +238,25 @@ button.card:hover:not(:disabled), button.card:focus-visible { transform: transla
   .intro { grid-template-columns: 1fr 1fr; gap: 20px; }.intro__art { height: 320px; }
   .showcase__cards { display: grid; grid-template-columns: repeat(2, 220px); gap: 24px; }
   .showcase .card { width: 220px; transform: none !important; }
+  .showcase--roster .showcase__cards { grid-template-columns: repeat(2, minmax(0, 220px)); }
   .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .clan-banner { flex-wrap: wrap; }.clan-banner .button-row { margin-left: 0; }
-  .plan-band { grid-template-columns: 1fr; }.plan-band .button-row { flex-direction: row; }
 }
 @media (max-width: 540px) {
   .board { padding: 16px 12px; gap: 18px; }.masthead__note { display: none; }
   .intro { grid-template-columns: 1fr; }.intro h1 { font-size: 48px; }.intro__art { height: 260px; }
   .showcase__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .showcase .card { width: 100%; height: 274px; grid-template-rows: 32px 120px 1fr 23px; }
+  .showcase--roster .showcase__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .frame { padding: 14px; }.frame__head { flex-wrap: wrap; }.hint { max-width: 100%; text-align: left; }
-  .split { grid-template-columns: 1fr; }.slots, .timeline { gap: 6px; }
+  .split { grid-template-columns: 1fr; }
   .card--small { min-width: 0; grid-template-columns: auto 1fr; }.card--small .card__foot { grid-column: 2; }
-  .round { grid-template-columns: 1fr; }.hall-footer { gap: 12px; flex-wrap: wrap; }
-}
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }
-/* Card archive and dedicated clan portraits. */
-.collection { border: 1px solid #77876d50; border-radius: 7px; background: #1a282a; }
-.collection > summary { cursor: pointer; padding: 16px 20px; color: #eac382; font-weight: bold; }
-.collection > summary span { float: right; color: #b5bdae; font-weight: normal; font-size: 12px; }
-.collection__groups { display: grid; gap: 28px; padding: 12px 20px 24px; }
-.clan-banner__portrait { width: 72px; height: 72px; object-fit: cover; flex: none; border: 2px solid #b88852; border-radius: 50%; }
-.clan-banner--ironhide .clan-banner__portrait { border-color: #8ca9b8; }
-.clan-banner__name { display: flex; align-items: center; gap: 8px; }
-.clan-banner__name svg { width: 20px; height: 20px; color: #d6b077; }
-.clan-banner--ironhide .clan-banner__name svg { color: #adc7d8; }
-@media (max-width: 540px) {
+  .hall-footer { gap: 12px; flex-wrap: wrap; }
   .collection > summary span { float: none; display: block; margin: 5px 0 0 16px; }
   .collection__groups { padding: 8px 10px 18px; }
   .clan-banner { padding: 14px; gap: 12px; }
   .clan-banner__portrait { width: 54px; height: 54px; }
   .clan-banner > div { flex: 1; min-width: 0; }
 }
-/* Six scenes let each clan's cast and environments read together. */
-.showcase--roster .showcase__cards { display: grid; grid-template-columns: repeat(3, minmax(0, 220px)); justify-content: center; gap: 24px; }
-.showcase--roster .card:nth-child(n) { transform: none; }
-@media (max-width: 800px) {
-  .showcase--roster .showcase__cards { grid-template-columns: repeat(2, minmax(0, 220px)); }
-}
-@media (max-width: 540px) {
-  .showcase--roster .showcase__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }

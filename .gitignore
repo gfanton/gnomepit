@@ -1,2 +1,10 @@
 client/web/engine.wasm
 client/web/wasm_exec.js
+# The page loads only the -v2 JPEG exports and the table background; masters, first-pass
+# images and preview captures stay out of git.
+client/web/art/*.png
+client/web/art/*.jpg
+!client/web/art/*-v2.jpg
+!client/web/art/duel-table.jpg
+client/*.png
+client/*.webm

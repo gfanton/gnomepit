@@ -1,9 +1,12 @@
-// What is public on the table: the cards a side may still hold and the round a card was
+// What is public on the table: the cards a side is known to hold and the round a card was
 // spent in. `rounds` is the flow's played rounds, each with its two plans.
 
-// unseen lists the pack cards the side has not spent, cheapest first.
-export function unseen(pack, spent, cards) {
-  return pack.filter((id) => !spent.includes(id)).sort((a, b) => cards[a].cost - cards[b].cost || a - b);
+// knownCards is what the other side knows of a side's cards: its clan pack until the first
+// reveal, its open deck after that (decision 32). Cheapest first, each with its spentIn round.
+export function knownCards(rounds, side, pack, deck, cards) {
+  const open = rounds.length > 0;
+  const ids = [...(open ? deck : pack)].sort((a, b) => cards[a].cost - cards[b].cost || a - b);
+  return { open, cards: ids.map((id) => ({ id, spentRound: spentIn(rounds, side, id) })) };
 }
 
 // spentIn is the 1-based round in which the side played the card, or 0 if it has not.

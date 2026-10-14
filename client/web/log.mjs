@@ -1,7 +1,7 @@
 // Log sentences, one per event, and the plain-text match log for playtest notes.
 // ctx is {cards, names: [nameA, nameB], plans: [a, b]} for the round the events belong to.
 
-import { slots } from "./plan.mjs";
+import { cardBehind } from "./battle-feedback.mjs";
 
 export function sentences(events, { cards, names, plans }) {
   const hitsTotal = new Map();
@@ -15,8 +15,8 @@ export function sentences(events, { cards, names, plans }) {
     const other = names[1 - ev.side];
     switch (ev.kind) {
       case "Cancelled": {
-        const canceller = slots(plans[1 - ev.side], cards)[ev.beat - 1];
-        return `${cards[canceller.cardId].name} cancels ${card}.`;
+        const by = cardBehind(ev, plans, cards);
+        return `${cards[plans[by.side][by.index]].name} cancels ${card}.`;
       }
       case "ParryEnded":
         return `${card}'s Parry ends.`;
@@ -53,6 +53,11 @@ const hitKey = (ev) => `${ev.side}:${ev.card}:${ev.beat}`;
 export function sideNames(clans, mode) {
   if (clans[0] !== clans[1]) return [...clans];
   return mode === "bot" ? ["You", "Bot"] : ["Player 1", "Player 2"];
+}
+
+export function possessive(name) {
+  if (name === "You") return "Your";
+  return name.endsWith("s") ? `${name}'` : `${name}'s`;
 }
 
 export function resultLine(result, names) {
