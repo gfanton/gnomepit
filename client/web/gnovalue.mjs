@@ -1,6 +1,8 @@
 // Turns vm/qeval_json answers into plain values. An answer is amino JSON of gno typed
 // values: struct fields come by index, and vm/qtype_json gives their names.
 
+import { fromBase64 } from "./encoding.mjs";
+
 const stringKind = "16";
 const boolKind = "4";
 // int and int64, whose value fills all 8 bytes of N; narrower kinds fill only their
@@ -70,17 +72,14 @@ function sliceItems(value) {
 
 function primitive(kind, { N, V }) {
   if (kind === stringKind) return V?.value ?? "";
-  if (kind === boolKind) return N !== undefined && bytes(N)[0] !== 0;
+  if (kind === boolKind) return N !== undefined && fromBase64(N)[0] !== 0;
   if (intKinds.has(kind)) {
     if (N === undefined) return 0;
-    return Number(new DataView(bytes(N).buffer).getBigInt64(0, true));
+    return Number(new DataView(fromBase64(N).buffer).getBigInt64(0, true));
   }
   throw new Error(`unsupported primitive type ${kind}`);
 }
 
-function bytes(base64) {
-  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-}
 
 // walk calls visit on every object inside node, node included.
 function walk(node, visit) {

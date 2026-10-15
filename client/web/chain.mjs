@@ -1,6 +1,8 @@
 // A gno node over JSON-RPC: queries, accounts, simulation and broadcast. Transactions
 // arrive signed, as base64 amino binary; this module only carries them.
 
+import { fromBase64, toBase64 } from "./encoding.mjs";
+
 // ChainError's type says how far a request got: "network" when no usable answer came
 // back, "rejected" when the node refused a transaction before running it, "failed"
 // when a transaction or query ran and failed. reason is the chain's own words.
@@ -40,7 +42,7 @@ export function createChain({ rpc, fetch = globalThis.fetch.bind(globalThis) }) 
     if (base.Error !== null) throw new ChainError("failed", reasonOf(base.Error, base.Log));
     return response;
   }
-  const query = async (path, text = "") => decodeText((await abci(path, toBase64(text))).ResponseBase.Data);
+  const query = async (path, text = "") => decodeText((await abci(path, toBase64(new TextEncoder().encode(text)))).ResponseBase.Data);
 
   return {
     // evalJSON returns the typed values of a read-only call such as `pkg.F("1")`.
@@ -214,10 +216,3 @@ function decodeText(base64) {
   return base64 === null ? null : new TextDecoder().decode(fromBase64(base64));
 }
 
-function fromBase64(base64) {
-  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-}
-
-function toBase64(text) {
-  return btoa(String.fromCharCode(...new TextEncoder().encode(text)));
-}
