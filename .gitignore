@@ -8,3 +8,5 @@ client/web/art/*.jpg
 !client/web/art/duel-table.jpg
 client/*.png
 client/*.webm
+# The gnotif registry, copied by make deps.
+deps/
