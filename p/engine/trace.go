@@ -25,11 +25,13 @@ const (
 	CounterHit                         // the opponent's Counter dealt N to Side's HP after Card hit
 	VulnerableApplied                  // Card applied N Vulnerable to the opponent
 	StrengthGained                     // Side gained N Strength from Card
+	VulnerableMoved                    // Card moved Side's N Vulnerable to the opponent, who keeps up to the cap
 )
 
 // Event is one effect of a round's resolution. Side owns Card. A HitLanded or a
-// VulnerableApplied lands on the other gnome; every other kind changes Side's own
-// Vitals. N is the change after caps, or the damage that reached HP.
+// VulnerableApplied lands on the other gnome, a VulnerableMoved changes both, and every
+// other kind changes Side's own Vitals. N is the change after caps, the damage that
+// reached HP, or the tokens that left the mover.
 type Event struct {
 	Beat    int // 1 to 3
 	Phase   Phase

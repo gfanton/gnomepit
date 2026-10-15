@@ -82,8 +82,9 @@ func hits(n, damage int) []Effect {
 	return out
 }
 
-// ProofOfConcept is the proof-of-concept ruleset: the two basics, and the Pickers and
-// Ironhide 10-card starter packs of the duel spec (candidate AS2-HB5-F4).
+// ProofOfConcept is the proof-of-concept ruleset: the two basics, the Pickers and
+// Ironhide 10-card starter packs of the duel spec (candidate AS2-HB5-F4), and the Delvers
+// pack, a draft not yet in the spec.
 func ProofOfConcept() *Ruleset {
 	cards := []Card{
 		{Name: "Pick", Cost: 1, Tier: Normal, Damage: hits(1, 1)},
@@ -110,13 +111,25 @@ func ProofOfConcept() *Ruleset {
 		{Name: "Avalanche", Cost: 1, Tier: Slow, Special: true, Rare: true, Damage: []Effect{{HitBlock, 0}}},
 		{Name: "Shield Catch", Cost: 2, Tier: Normal, Special: true, Parry: 1},
 		{Name: "Loose Timbers", Cost: 2, Tier: Normal, Special: true, Block: []Effect{{GainBlock, 3}}, CancelDamage: hits(1, 4)},
+
+		{Name: "Blowback", Cost: 2, Tier: Normal, Special: true, Rare: true, Block: []Effect{{MoveVulnerable, 0}}},
+		{Name: "Earth Ear", Cost: 1, Tier: Normal, Special: true, Interrupt: true, Block: []Effect{{GainBlock, 1}}},
+		{Name: "Deadfall", Cost: 2, Tier: Normal, Special: true, Parry: 1, Damage: []Effect{{VulnerableIfCancelled, 1}}},
+		{Name: "Fool's Gold", Cost: 1, Tier: Normal, Special: true, Damage: hits(1, 1), CancelDamage: []Effect{{ApplyVulnerable, 1}}},
+		{Name: "Chisel Jab", Cost: 1, Tier: Normal, Special: true, Damage: hits(1, 2)},
+		{Name: "Rockfall", Cost: 2, Tier: Slow, Special: true, Damage: hits(1, 5)},
+		{Name: "Cribbing", Cost: 1, Tier: Normal, Special: true, Block: []Effect{{GainBlock, 2}}},
+		{Name: "Snare", Cost: 1, Tier: Normal, Special: true, Block: []Effect{{GainCounter, 1}}},
+		{Name: "Timber Set", Cost: 3, Tier: Normal, Special: true, Parry: 2, Damage: []Effect{{VulnerableIfCancelled, 1}}},
+		{Name: "Cave Echo", Cost: 1, Tier: Normal, Special: true, Interrupt: true, Damage: []Effect{{VulnerableIfCancelled, 1}}},
 	}
-	const firstPickers, firstIronhide, end = 2, 12, 22
+	const firstPickers, firstIronhide, firstDelvers, end = 2, 12, 22, 32
 	return &Ruleset{
 		Cards: cards,
 		Clans: []Clan{
 			{Name: "Pickers", Pool: bitRange(firstPickers, firstIronhide)},
-			{Name: "Ironhide", Pool: bitRange(firstIronhide, end)},
+			{Name: "Ironhide", Pool: bitRange(firstIronhide, firstDelvers)},
+			{Name: "Delvers", Pool: bitRange(firstDelvers, end)},
 		},
 		HP:            15,
 		BlockCap:      20,

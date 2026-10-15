@@ -32,6 +32,7 @@ var effectKinds = map[string]engine.EffectKind{
 	"GainBlock": engine.GainBlock, "GainCounter": engine.GainCounter, "Hit": engine.Hit,
 	"HitBlock": engine.HitBlock, "ApplyVulnerable": engine.ApplyVulnerable,
 	"GainStrength": engine.GainStrength, "VulnerableIfCancelled": engine.VulnerableIfCancelled,
+	"MoveVulnerable": engine.MoveVulnerable,
 }
 
 var tiers = map[string]engine.Tier{"Quick": engine.Quick, "Normal": engine.Normal, "Slow": engine.Slow}

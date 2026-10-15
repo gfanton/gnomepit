@@ -249,3 +249,62 @@ func TestVulnerableDuration(t *testing.T) {
 		})
 	}
 }
+
+// The Delvers pack's lines of play, with the Delvers as side A.
+func TestDelversLines(t *testing.T) {
+	fresh := [2][3]int{{15, 0, 0}, {15, 0, 0}}
+	cases := map[string]struct {
+		a, b       []string
+		round      int
+		start, end [2][3]int
+		result     Result
+	}{
+		"Blowback moves both tokens past a guard": {
+			[]string{"Blowback", "Chisel Jab"}, []string{"Stone Guard"}, 2,
+			[2][3]int{{11, 2, 0}, {13, 0, 0}}, [2][3]int{{11, 0, 0}, {13, 2, 0}}, Ongoing},
+		"Kneecap cancels Blowback's wind-up": {
+			[]string{"Blowback", "Chisel Jab"}, []string{"Kneecap", "Pickaxe Flurry", "Sling Stone"}, 2,
+			[2][3]int{{11, 2, 0}, {13, 0, 0}}, [2][3]int{{4, 0, 0}, {11, 0, 0}}, Ongoing},
+		"a hit on the wind-up beat uses a token before it moves": {
+			[]string{"Blowback", "Chisel Jab"}, []string{"Cobble Throw", "Hammer Blow"}, 2,
+			[2][3]int{{11, 2, 0}, {13, 0, 0}}, [2][3]int{{2, 0, 0}, {9, 0, 0}}, Ongoing},
+		"two moves on one beat swap the tokens": {
+			[]string{"Blowback", "Brace"}, []string{"Blowback", "Brace"}, 1,
+			[2][3]int{{15, 2, 0}, {15, 1, 0}}, [2][3]int{{15, 1, 0}, {15, 2, 0}}, Ongoing},
+		"tokens over the receiver's cap are lost": {
+			[]string{"Blowback", "Brace"}, []string{"Brace", "Brace", "Brace"}, 1,
+			[2][3]int{{15, 3, 0}, {15, 2, 0}}, [2][3]int{{15, 0, 0}, {15, 3, 0}}, Ongoing},
+		"a token applied in the Damage phase stays": {
+			[]string{"Blowback", "Brace"}, []string{"Brace", "Chalk Dust", "Brace"}, 1,
+			[2][3]int{{15, 1, 0}, {15, 0, 0}}, [2][3]int{{15, 1, 0}, {15, 1, 0}}, Ongoing},
+		"Earth Ear cancels Hammer Blow's wind-up": {
+			[]string{"Earth Ear", "Rockfall"}, []string{"Hammer Blow", "Cobble Throw"}, 1,
+			fresh, [2][3]int{{14, 0, 0}, {10, 0, 0}}, Ongoing},
+		"Deadfall catches Double Tap on its last beat": {
+			[]string{"Chisel Jab", "Deadfall"}, []string{"Momentum", "Double Tap"}, 1,
+			fresh, [2][3]int{{15, 0, 0}, {13, 1, 0}}, Ongoing},
+		"Fool's Gold baits Shield Catch": {
+			[]string{"Cribbing", "Fool's Gold", "Chisel Jab"}, []string{"Cobble Throw", "Shield Catch"}, 1,
+			fresh, [2][3]int{{15, 0, 0}, {11, 0, 0}}, Ongoing},
+		"Snare returns every Pickers hit": {
+			[]string{"Snare", "Rockfall"}, []string{"Kneecap", "Pickaxe Flurry", "Sling Stone"}, 1,
+			fresh, [2][3]int{{10, 0, 0}, {6, 0, 0}}, Ongoing},
+		"Cave Echo's token doubles Rockfall": {
+			[]string{"Cave Echo", "Rockfall"}, []string{"Bulwark", "Avalanche"}, 1,
+			fresh, [2][3]int{{15, 0, 0}, {5, 0, 0}}, Ongoing},
+		"Timber Set cancels twice and holds the lead": {
+			[]string{"Timber Set"}, []string{"Pick", "Hammer Blow"}, 3,
+			[2][3]int{{9, 0, 0}, {8, 0, 0}}, [2][3]int{{9, 0, 0}, {8, 1, 0}}, AWins},
+	}
+	rs := ProofOfConcept()
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			o := rs.Resolve(stateOf(tc.round, tc.start), mustPlan(t, rs, tc.a...), mustPlan(t, rs, tc.b...))
+			require.Equal(t, tc.result, o.Result)
+			for side := range o.State.Gnomes {
+				g := o.State.Gnomes[side]
+				assert.Equal(t, tc.end[side], [3]int{g.HP, g.Vulnerable, g.Strength}, "side %d", side)
+			}
+		})
+	}
+}

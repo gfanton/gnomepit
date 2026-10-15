@@ -32,6 +32,7 @@ var (
 		engine.BlockGained: "BlockGained", engine.CounterGained: "CounterGained",
 		engine.HitLanded: "HitLanded", engine.CounterHit: "CounterHit",
 		engine.VulnerableApplied: "VulnerableApplied", engine.StrengthGained: "StrengthGained",
+		engine.VulnerableMoved: "VulnerableMoved",
 	}
 	resultNames = [...]string{engine.Ongoing: "ongoing", engine.AWins: "a", engine.BWins: "b", engine.Draw: "draw"}
 )

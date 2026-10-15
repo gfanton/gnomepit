@@ -80,6 +80,36 @@ func (rs *Ruleset) gainAll(v *Vitals, effects []Effect, tr *tracer, side Side, c
 	}
 }
 
+func movesVulnerable(effects []Effect) bool {
+	for _, e := range effects {
+		if e.Kind == MoveVulnerable {
+			return true
+		}
+	}
+	return false
+}
+
+// moveVulnerable puts all of each mover's Vulnerable on the other gnome; movers[side] is
+// nil when that side moves nothing. Both amounts are read before either changes, so two
+// moves on one beat swap the tokens. The receiver's cap applies.
+func (rs *Ruleset) moveVulnerable(f *[2]Vitals, movers [2]*Card, cards [2]CardID, tr *tracer, beat int) {
+	var held [2]int
+	for side := 0; side < 2; side++ {
+		if movers[side] != nil {
+			held[side], f[side].Vulnerable = f[side].Vulnerable, 0
+		}
+	}
+	for side := 0; side < 2; side++ {
+		if movers[side] == nil {
+			continue
+		}
+		o := 1 - side
+		f[o].Vulnerable = capped(f[o].Vulnerable+held[side], rs.VulnerableCap)
+		tr.at(beat, BlockPhase, movers[side].Tier, 1)
+		tr.emit(VulnerableMoved, Side(side), cards[side], held[side], 0, false)
+	}
+}
+
 func capped(v, limit int) int {
 	if v > limit {
 		return limit
@@ -163,16 +193,21 @@ func (rs *Ruleset) resolve(s State, a, b Plan, events *[]Event) Outcome {
 		}
 
 		// Block phase
+		var movers [2]*Card
 		for side := 0; side < 2; side++ {
 			if cur[side] != nil && sl[side].lands {
 				tr.at(beat+1, BlockPhase, cur[side].Tier, 1)
 				rs.gainAll(&f[side], cur[side].Block, &tr, Side(side), cards[side])
+				if movesVulnerable(cur[side].Block) {
+					movers[side] = cur[side]
+				}
 			}
 			if cancelledNow[side] != nil {
 				tr.at(beat+1, BlockPhase, cancelledNow[side].Tier, 1)
 				rs.gainAll(&f[side], cancelledNow[side].OnCancel, &tr, Side(side), cards[side])
 			}
 		}
+		rs.moveVulnerable(&f, movers, cards, &tr, beat+1)
 		tr.close(&f)
 
 		// Damage phase

@@ -186,3 +186,20 @@ func TestErrors(t *testing.T) {
 		})
 	}
 }
+
+// Blowback lands on beat 2 and moves side A's 2 Vulnerable to side B.
+func TestResolveNamesTheVulnerableMove(t *testing.T) {
+	const cards = `{"Cards": [
+		{"Name": "Brace", "Cost": 1, "Tier": "Normal", "Block": [["GainBlock", 1]]},
+		{"Name": "Blowback", "Cost": 2, "Tier": "Normal", "Special": true, "Block": [["MoveVulnerable", 0]]}
+	], "Clans": {"Delvers": ["Blowback"]}, "Rules": {}}`
+	b := New()
+	require.NotContains(t, b.Load(cards), `"error"`)
+	s := StateView{Round: 1, Gnomes: [2]GnomeView{{HP: 15, Vulnerable: 2}, {HP: 15}}}
+	out := b.Resolve(encode(t, ResolveRequest{State: s, Decks: [2][]int{{1}, {}}, A: []int{1, 0}, B: []int{0, 0, 0}}))
+	resp := decode[ResolveResponse](t, out)
+	i := slices.IndexFunc(resp.Events, func(e EventView) bool { return e.Kind == "VulnerableMoved" })
+	require.GreaterOrEqual(t, i, 0, out)
+	assert.Equal(t, 2, resp.Events[i].N)
+	assert.Equal(t, [2]int{0, 2}, [2]int{resp.Events[i].After[0].Vulnerable, resp.Events[i].After[1].Vulnerable})
+}

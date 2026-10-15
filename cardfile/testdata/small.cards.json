@@ -7,7 +7,7 @@
     {"Name": "Wall", "Cost": 2, "Tier": "Slow", "Special": true, "Interrupt": false, "Parry": 0,
      "Block": [["GainBlock", 5], ["GainCounter", 1]], "Damage": [], "OnCancel": [], "CancelDamage": [["Hit", 4]]},
     {"Name": "Crest", "Cost": 1, "Tier": "Normal", "Special": true, "Rare": true, "Interrupt": false, "Parry": 0,
-     "Block": [], "Damage": [["HitBlock", 0], ["ApplyVulnerable", 1], ["GainStrength", 1], ["VulnerableIfCancelled", 2]],
+     "Block": [["MoveVulnerable", 0]], "Damage": [["HitBlock", 0], ["ApplyVulnerable", 1], ["GainStrength", 1], ["VulnerableIfCancelled", 2]],
      "OnCancel": [], "CancelDamage": []}
   ],
   "Clans": {"Zeta": ["Wall"], "Alpha": ["Riposte", "Crest"]},

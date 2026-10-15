@@ -166,3 +166,26 @@ func TestResolveDoesNotAllocate(t *testing.T) {
 	s := rs.Start()
 	assert.Zero(t, testing.AllocsPerRun(1000, func() { rs.Resolve(s, a, b) }))
 }
+
+// Two Blowbacks land on beat 2 and swap their tokens in the Block phase.
+func TestTraceBlowbackSwap(t *testing.T) {
+	rs := ProofOfConcept()
+	p := mustPlan(t, rs, "Blowback", "Brace")
+	o, events := rs.Trace(stateOf(1, [2][3]int{{15, 2, 0}, {15, 1, 0}}), p, p)
+	require.Equal(t, Ongoing, o.Result)
+	swapped := [2]Vitals{vit(15, 0, 0, 1, 0), vit(15, 0, 0, 2, 0)}
+	want := []Event{
+		ev(t, rs, 2, BlockPhase, Normal, 1, VulnerableMoved, SideA, "Blowback", 2, 0, false, swapped),
+		ev(t, rs, 2, BlockPhase, Normal, 1, VulnerableMoved, SideB, "Blowback", 1, 0, false, swapped),
+	}
+	assert.Equal(t, want, events[:2])
+}
+
+// Tokens over the receiver's cap are lost; N counts every token that left the mover.
+func TestTraceMoveIntoTheCap(t *testing.T) {
+	rs := ProofOfConcept()
+	o, events := rs.Trace(stateOf(1, [2][3]int{{15, 3, 0}, {15, 2, 0}}), mustPlan(t, rs, "Blowback", "Brace"), mustPlan(t, rs, "Brace", "Brace", "Brace"))
+	require.Equal(t, Ongoing, o.Result)
+	want := ev(t, rs, 2, BlockPhase, Normal, 1, VulnerableMoved, SideA, "Blowback", 3, 0, false, [2]Vitals{vit(15, 0, 0, 0, 0), vit(15, 2, 0, 3, 0)})
+	assert.Contains(t, events, want)
+}

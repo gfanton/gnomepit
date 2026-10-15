@@ -32,7 +32,7 @@ type fuzzInput struct {
 
 type fuzzDecoder struct {
 	rs       *Ruleset
-	matchups [3][2]uint64
+	matchups [6][2]uint64
 }
 
 func (d fuzzDecoder) state(in fuzzInput) (State, [2]uint64) {
@@ -68,18 +68,30 @@ func FuzzResolve(f *testing.F) {
 	rs := ProofOfConcept()
 	pickers, okP := rs.ClanByName("Pickers")
 	ironhide, okI := rs.ClanByName("Ironhide")
-	require.True(f, okP && okI)
-	const pickersMirror, ironhideMirror, pickersAgainstIronhide = 0, 1, 2
-	d := fuzzDecoder{rs: rs, matchups: [3][2]uint64{
+	delvers, okD := rs.ClanByName("Delvers")
+	require.True(f, okP && okI && okD)
+	const (
+		pickersMirror = iota
+		ironhideMirror
+		delversMirror
+		pickersAgainstIronhide
+		delversAgainstPickers
+		delversAgainstIronhide
+	)
+	d := fuzzDecoder{rs: rs, matchups: [6][2]uint64{
 		pickersMirror:          {pickers.Pool, pickers.Pool},
 		ironhideMirror:         {ironhide.Pool, ironhide.Pool},
+		delversMirror:          {delvers.Pool, delvers.Pool},
 		pickersAgainstIronhide: {pickers.Pool, ironhide.Pool},
+		delversAgainstPickers:  {delvers.Pool, pickers.Pool},
+		delversAgainstIronhide: {delvers.Pool, ironhide.Pool},
 	}}
 
 	fresh := fuzzInput{matchup: pickersAgainstIronhide, round: 0, hpA: 14, hpB: 14}
 	lastRound := fuzzInput{matchup: pickersMirror, round: 2, hpA: 14, hpB: 14}
 	bothAtOne := fuzzInput{matchup: pickersMirror, round: 0, hpA: 0, hpB: 0}
 	capped := fuzzInput{matchup: pickersAgainstIronhide, round: 0, hpA: 14, strA: 8, hpB: 14, vulnB: 3}
+	tokens := fuzzInput{matchup: delversMirror, round: 1, hpA: 14, vulnA: 2, hpB: 14, vulnB: 1}
 	seeds := []struct {
 		in   fuzzInput
 		a, b []string
@@ -90,6 +102,7 @@ func FuzzResolve(f *testing.F) {
 		{bothAtOne, []string{"Pickaxe Flurry", "Pick", "Pick"}, []string{"Pickaxe Flurry", "Pick", "Pick"}},
 		{lastRound, []string{"Brace", "Brace", "Brace"}, []string{"Brace", "Brace", "Brace"}},
 		{capped, []string{"Momentum", "Chalk Dust", "Brace"}, []string{"Brace", "Brace", "Brace"}},
+		{tokens, []string{"Blowback", "Brace"}, []string{"Blowback", "Brace"}},
 	}
 	for _, sd := range seeds {
 		in := d.seed(f, sd.in, sd.a, sd.b)

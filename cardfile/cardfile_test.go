@@ -35,6 +35,7 @@ func TestLoadSmallFile(t *testing.T) {
 			Block:        []engine.Effect{{Kind: engine.GainBlock, N: 5}, {Kind: engine.GainCounter, N: 1}},
 			CancelDamage: []engine.Effect{{Kind: engine.Hit, N: 4}}},
 		{Name: "Crest", Cost: 1, Tier: engine.Normal, Special: true, Rare: true,
+			Block:  []engine.Effect{{Kind: engine.MoveVulnerable}},
 			Damage: []engine.Effect{{Kind: engine.HitBlock}, {Kind: engine.ApplyVulnerable, N: 1}, {Kind: engine.GainStrength, N: 1}, {Kind: engine.VulnerableIfCancelled, N: 2}}},
 	}
 	want.Clans = []engine.Clan{{Name: "Alpha", Pool: 1<<1 | 1<<3}, {Name: "Zeta", Pool: 1 << 2}}

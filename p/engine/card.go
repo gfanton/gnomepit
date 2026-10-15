@@ -24,6 +24,7 @@ const (
 	ApplyVulnerable
 	GainStrength
 	VulnerableIfCancelled // apply N Vulnerable if this card cancelled a card this beat
+	MoveVulnerable        // Block phase: move all your Vulnerable to the opponent
 )
 
 type Effect struct {

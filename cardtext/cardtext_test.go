@@ -28,6 +28,16 @@ func TestText(t *testing.T) {
 		"Feint":          "If this card is cancelled, gain 4 Block. Otherwise, deal 4 damage.",
 		"Avalanche":      "Deal damage equal to your Block.",
 		"Loose Timbers":  "If this card is cancelled, deal 4 damage. Otherwise, gain 3 Block.",
+		"Blowback":       "Move your Vulnerable to the opponent.",
+		"Earth Ear":      "Interrupt. Gain 1 Block.",
+		"Deadfall":       "Parry 1. If it cancels on its last beat, apply 1 Vulnerable.",
+		"Fool's Gold":    "If this card is cancelled, apply 1 Vulnerable. Otherwise, deal 1 damage.",
+		"Chisel Jab":     "Deal 2 damage.",
+		"Rockfall":       "Deal 5 damage.",
+		"Cribbing":       "Gain 2 Block.",
+		"Snare":          "Counter 1.",
+		"Timber Set":     "Parry 2. If it cancels on its last beat, apply 1 Vulnerable.",
+		"Cave Echo":      "Interrupt. If this cancels a card, apply 1 Vulnerable.",
 	}
 	for name, want := range cases {
 		t.Run(name, func(t *testing.T) {

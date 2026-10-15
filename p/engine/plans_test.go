@@ -27,15 +27,17 @@ func cardBits(t *testing.T, rs *Ruleset, names ...string) uint64 {
 
 func TestLegalPlanCounts(t *testing.T) {
 	rs := ProofOfConcept()
-	pickers, ironhide := clanPool(t, rs, "Pickers"), clanPool(t, rs, "Ironhide")
+	pickers, ironhide, delvers := clanPool(t, rs, "Pickers"), clanPool(t, rs, "Ironhide"), clanPool(t, rs, "Delvers")
 	cases := map[string]struct {
 		deck uint64
 		want int
 	}{
 		"Pickers pool":          {pickers, 429},
 		"Ironhide pool":         {ironhide, 147},
+		"Delvers pool":          {delvers, 429},
 		"Pickers starter deck":  {pickers &^ cardBits(t, rs, "Hunker Down", "Boot and Heel"), 412},
 		"Ironhide starter deck": {ironhide &^ cardBits(t, rs, "Shield Catch", "Loose Timbers"), 127},
+		"Delvers starter deck":  {delvers &^ cardBits(t, rs, "Timber Set", "Cave Echo"), 290},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -46,7 +48,7 @@ func TestLegalPlanCounts(t *testing.T) {
 
 func TestLegalPlansAreLegal(t *testing.T) {
 	rs := ProofOfConcept()
-	for _, clan := range []string{"Pickers", "Ironhide"} {
+	for _, clan := range []string{"Pickers", "Ironhide", "Delvers"} {
 		deck := clanPool(t, rs, clan)
 		for _, p := range rs.LegalPlans(rs.Start(), SideA, deck) {
 			beats := 0
