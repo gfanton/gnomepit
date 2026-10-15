@@ -4,8 +4,13 @@ WEB := client/web
 # The gnotif checkout whose registry the arena imports, at its development path.
 GNOTIF_DIR ?= $(HOME)/code/gfanton/gnotif
 REGISTRY := deps/gnotif/v0
+# The local chain: ports clear of a default gnodev, and the dev wallet's two players
+# (client/web/devwallet.mjs), each funded with 10,000 GNOT.
+DEV_RPC := 127.0.0.1:36657
+DEV_WEB := 127.0.0.1:8890
+DEV_ACCOUNTS := g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w g1h3cka3ya6jw3yr64erpklnhvrgh5l4du6w0faw
 
-.PHONY: all wasm serve test realm-test deps clean help
+.PHONY: all wasm serve dev capture test realm-test deps clean help
 
 all: wasm ## Build the page's engine (default)
 
@@ -15,6 +20,14 @@ wasm: ## Compile the engine to WebAssembly and copy the Go runtime glue next to 
 
 serve: ## Serve the page on 127.0.0.1:8080
 	go run ./client/serve -dir $(WEB)
+
+dev: deps ## Run gnodev with the engine, the arena, the gnotif registry and the dev accounts
+	gnodev local -node-rpc-listener $(DEV_RPC) -web-listener $(DEV_WEB) \
+		$(foreach a,$(DEV_ACCOUNTS),-add-account $(a)=10000000000ugnot) \
+		./p/engine ./r/arena ./$(REGISTRY)
+
+capture: ## Record the arena's query answers from a running make dev
+	RPC=$(DEV_RPC) scripts/capture.sh $(WEB)/testdata/qeval
 
 test: realm-test ## Run the Gno, Go and script tests
 	go vet ./...

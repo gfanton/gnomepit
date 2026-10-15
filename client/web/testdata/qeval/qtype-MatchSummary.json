@@ -1,0 +1,90 @@
+{
+  "typeid": "gno.land/r/gfanton/gnomehall/arena.MatchSummary",
+  "type": {
+    "@type": "/gno.DeclaredType",
+    "PkgPath": "gno.land/r/gfanton/gnomehall/arena",
+    "Name": "MatchSummary",
+    "Base": {
+      "@type": "/gno.StructType",
+      "Fields": [
+        {
+          "Name": "ID",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "Phase",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "Round",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "32"
+          }
+        },
+        {
+          "Name": "Challenger",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "Acceptor",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "ChallengerClan",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "AcceptorClan",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "ToMove",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "Deadline",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "1024"
+          }
+        },
+        {
+          "Name": "Result",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "Reason",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        }
+      ]
+    }
+  }
+}

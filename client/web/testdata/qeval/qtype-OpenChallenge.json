@@ -1,0 +1,55 @@
+{
+  "typeid": "gno.land/r/gfanton/gnomehall/arena.OpenChallenge",
+  "type": {
+    "@type": "/gno.DeclaredType",
+    "PkgPath": "gno.land/r/gfanton/gnomehall/arena",
+    "Name": "OpenChallenge",
+    "Base": {
+      "@type": "/gno.StructType",
+      "Fields": [
+        {
+          "Name": "ID",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "Challenger",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "Clan",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "Opponent",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "Posted",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "1024"
+          }
+        },
+        {
+          "Name": "Expires",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "1024"
+          }
+        }
+      ]
+    }
+  }
+}
