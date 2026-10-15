@@ -41,12 +41,14 @@ function endingArena(view) {
   return arena;
 }
 
-// lobbyOf is a lobby for the player at address, which records each clash it plays.
+// lobbyOf is a lobby for the player at address, which records each clash it plays;
+// shown draws it and returns the page.
 function lobbyOf(arena, address, storage = memory()) {
-  const played = [];
-  const lobby = createLobby({app:app(),arena,storage,onRender(){},onPlay(raw, who, review) { played.push({phase:raw.Phase,review}); }});
+  const played = [], page = app();
+  const lobby = createLobby({app:page,arena,storage,onRender(){},onPlay(raw, who, review) { played.push({phase:raw.Phase,review}); },portrait:()=>'',emblem:()=>''});
   if (address) lobby.model.account = {address,state:'active'};
-  return {lobby, played};
+  const shown = () => { lobby.render(); return page.innerHTML; };
+  return {lobby, played, shown};
 }
 
 test('the challenger who finishes the match watches its last clash', async t => {
@@ -114,6 +116,37 @@ test('a match that ended without a clash, or that someone else played, opens on 
     await lobby.action('Open', {id:'4'});
     assert.deepEqual(played, [], `${view.Reason} for ${address}`);
   }
+});
+
+// Before round 3, a finish instead of a move would tell the challenger the match is over.
+test('a challenger whose clash ends the match early sees an ordinary move until it plays', async t => {
+  stubPage(t);
+  const early = {...lastTurn,Round:2,Plans:[ended.Plans[0],['','Pick,Pick,Pick']],HP:ended.HP.slice(0,1),action:'finish'};
+  const {lobby, shown} = lobbyOf(endingArena(early), 'g1alice');
+  lobby.model.account.state = 'sessionExpired';
+  await lobby.enter();
+  await lobby.action('Open', {id:'4'});
+  assert.match(shown(), /<h1>Your move<\/h1>/);
+  assert.doesNotMatch(shown(), /finish/i);
+  lobby.model.account.state = 'active';
+  assert.match(shown(), /data-action="onlineFinish"[^>]*>Watch clash &amp; plan</);
+});
+
+test("the board hides an ended match's result until its last clash has played", async t => {
+  stubPage(t);
+  const arena = endingArena(ended);
+  const {Plans, HP, ...summary} = ended;
+  arena.myMatches = async () => [summary, {...summary,ID:'5',Reason:'resign'}];
+  const {lobby, shown} = lobbyOf(arena, 'g1bob');
+  await lobby.enter();
+  const before = shown();
+  assert.match(before, /Match over.*Watch the last clash/s);
+  assert.equal(before.match(/You won/g).length, 1, 'only the resigned match shows its result');
+  assert.doesNotMatch(before, /Decided by HP/);
+  await lobby.action('Open', {id:'4'});
+  await lobby.action('Board');
+  assert.equal(shown().match(/You won/g).length, 2);
+  assert.match(shown(), /Decided by HP/);
 });
 
 test('a match opened from its link is watched', async t => {
