@@ -197,6 +197,12 @@ func (rs *Ruleset) resolve(s State, a, b Plan, events *[]Event) Outcome {
 			tr.close(&f)
 		}
 
+		facts := beatFacts{didCancel: didCancel}
+		for side := 0; side < 2; side++ {
+			o := 1 - side
+			facts.attacked[side] = cur[o] != nil && sl[o].lands && cur[o].Attack()
+		}
+
 		// Block phase
 		var movers [2]*Card
 		for side := 0; side < 2; side++ {
@@ -227,7 +233,7 @@ func (rs *Ruleset) resolve(s State, a, b Plan, events *[]Event) Outcome {
 				}
 			}
 			tr.at(beat+1, DamagePhase, tier, 0)
-			if result := rs.resolveDamageTier(&f, &hardest, effects, cards, didCancel, &tr); result != Ongoing {
+			if result := rs.resolveDamageTier(&f, &hardest, effects, cards, facts, &tr); result != Ongoing {
 				return Outcome{State: rs.settle(next, f), Result: result}
 			}
 		}
@@ -266,17 +272,23 @@ func byHP(a, b int) Result {
 	return Draw
 }
 
+// beatFacts are what a beat's Damage phase reads from its Interrupt phase.
+type beatFacts struct {
+	didCancel [2]bool // the gnome's card cancelled an opponent card this beat
+	attacked  [2]bool // an opponent attack lands on the gnome this beat, not cancelled
+}
+
 // resolveDamageTier resolves both gnomes' effects of one tier in steps: step k applies
 // effect k of each card together, every value read at the start of the step. A gnome
 // takes the opponent's hit before the Counter damage its own hit triggered. hardest
 // carries each gnome's hardest hit taken this round across tiers and beats. It returns
 // the knockout result as soon as a step leaves a gnome at 0 HP or less.
-func (rs *Ruleset) resolveDamageTier(f *[2]Vitals, hardest *[2]int, effects [2][]Effect, cards [2]CardID, didCancel [2]bool, tr *tracer) Result {
+func (rs *Ruleset) resolveDamageTier(f *[2]Vitals, hardest *[2]int, effects [2][]Effect, cards [2]CardID, facts beatFacts, tr *tracer) Result {
 	var hitsTotal, hitsDone [2]int
 	var doubled, doubleDecided [2]bool
 	for side := 0; side < 2; side++ {
 		for _, e := range effects[side] {
-			if e.Kind.isHit() {
+			if e.Kind.isHit() && !skipsHit(e, facts, side) {
 				hitsTotal[side]++
 			}
 		}
@@ -297,7 +309,10 @@ func (rs *Ruleset) resolveDamageTier(f *[2]Vitals, hardest *[2]int, effects [2][
 			o := 1 - side
 			e := effects[side][k]
 			switch e.Kind {
-			case Hit, HitBlock, HitPerVulnerable, HitHardest:
+			case Hit, HitBlock, HitPerVulnerable, HitHardest, HitIfNotAttacked:
+				if skipsHit(e, facts, side) {
+					continue
+				}
 				if rs.VulnerableDoublesOneHit {
 					doubled[side] = f[o].Vulnerable > 0
 				} else if !doubleDecided[side] {
@@ -332,7 +347,7 @@ func (rs *Ruleset) resolveDamageTier(f *[2]Vitals, hardest *[2]int, effects [2][
 			case GainStrength:
 				addStrength[side] += e.N
 			case VulnerableIfCancelled:
-				if didCancel[side] {
+				if facts.didCancel[side] {
 					addVulnerable[o] += e.N
 				}
 			case StripBlock:
@@ -369,7 +384,10 @@ func (rs *Ruleset) resolveDamageTier(f *[2]Vitals, hardest *[2]int, effects [2][
 			}
 			o := 1 - side
 			switch e := effects[side][k]; e.Kind {
-			case Hit, HitBlock, HitPerVulnerable, HitHardest:
+			case Hit, HitBlock, HitPerVulnerable, HitHardest, HitIfNotAttacked:
+				if skipsHit(e, facts, side) {
+					break
+				}
 				tr.emit(HitLanded, Side(side), cards[side], hitIn[o]-hitAbsorbed[o], hitAbsorbed[o], doubled[side])
 				if counterIn[side] > 0 {
 					tr.emit(CounterHit, Side(side), cards[side], counterIn[side]-counterAbsorbed[side], counterAbsorbed[side], false)
@@ -381,7 +399,7 @@ func (rs *Ruleset) resolveDamageTier(f *[2]Vitals, hardest *[2]int, effects [2][
 			case StripBlock:
 				tr.emit(BlockStripped, Side(side), cards[side], stripped[o], 0, false)
 			case VulnerableIfCancelled:
-				if didCancel[side] {
+				if facts.didCancel[side] {
 					tr.emit(VulnerableApplied, Side(side), cards[side], vulnerableGained[o], 0, false)
 				}
 			case GainStrength:
@@ -400,4 +418,9 @@ func (rs *Ruleset) resolveDamageTier(f *[2]Vitals, hardest *[2]int, effects [2][
 		}
 	}
 	return Ongoing
+}
+
+// skipsHit reports whether a conditional hit of side's card deals nothing this beat.
+func skipsHit(e Effect, facts beatFacts, side int) bool {
+	return e.Kind == HitIfNotAttacked && facts.attacked[side]
 }

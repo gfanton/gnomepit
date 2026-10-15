@@ -21,6 +21,7 @@ var effectCards = []Card{
 	{Name: "Brace Up", Cost: 1, Tier: Normal, Special: true, Block: []Effect{{BlockPerVulnerable, 2}}},
 	{Name: "Sap", Cost: 2, Tier: Normal, Special: true, Damage: []Effect{{StripBlock, 0}, {Hit, 2}}},
 	{Name: "Kickback", Cost: 1, Tier: Slow, Special: true, Damage: []Effect{{HitHardest, 5}}},
+	{Name: "Sneak", Cost: 1, Tier: Normal, Special: true, Damage: []Effect{{GainVulnerable, 1}, {HitIfNotAttacked, 5}}},
 }
 
 func TestSelfRiskEffects(t *testing.T) {
@@ -59,6 +60,15 @@ func TestSelfRiskEffects(t *testing.T) {
 		"Kickback counts what got through Block": {
 			[]string{"Brace", "Brace", "Kickback"}, []string{"Sling Stone", "Cobble Throw", "Pick"},
 			fresh, [2][3]int{{12, 0, 0}, {14, 0, 0}}},
+		"the bet pays when no attack lands": {
+			[]string{"Sneak", "Brace", "Brace"}, []string{"Brace", "Pick", "Pick"},
+			fresh, [2][3]int{{14, 0, 0}, {11, 0, 0}}},
+		"the bet loses when an attack lands": {
+			[]string{"Sneak", "Brace", "Brace"}, []string{"Pick", "Pick", "Pick"},
+			fresh, [2][3]int{{13, 0, 0}, {15, 0, 0}}},
+		"a Parry cancels the bet before it costs anything": {
+			[]string{"Sneak", "Pick", "Pick"}, []string{"Stone Guard"},
+			fresh, [2][3]int{{15, 0, 0}, {14, 0, 0}}},
 		"Kickback does not see a hit in its own step": {
 			[]string{"Kickback", "Pick", "Pick"}, []string{"Cobble Throw", "Brace", "Brace"},
 			fresh, [2][3]int{{13, 0, 0}, {15, 0, 0}}},
@@ -78,7 +88,7 @@ func TestSelfRiskEffects(t *testing.T) {
 
 func TestScaledAndReturnedHitsAreAttacks(t *testing.T) {
 	rs := withCards(effectCards...)
-	for _, name := range []string{"Deep Swing", "Kickback"} {
+	for _, name := range []string{"Deep Swing", "Kickback", "Sneak"} {
 		id, ok := rs.CardByName(name)
 		require.True(t, ok)
 		assert.True(t, rs.Cards[id].Attack(), name)

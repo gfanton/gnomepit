@@ -30,6 +30,7 @@ const (
 	BlockPerVulnerable    // Block phase: gain N Block, and N more for each Vulnerable on you
 	StripBlock            // the opponent loses all Block at the end of the step
 	HitHardest            // deal the HP the hardest opponent hit took from you this round, up to N
+	HitIfNotAttacked      // deal N damage if no opponent attack lands this beat
 )
 
 type Effect struct {
@@ -71,7 +72,7 @@ func dealsDamage(effects []Effect) bool {
 }
 
 func (k EffectKind) isHit() bool {
-	return k == Hit || k == HitBlock || k == HitPerVulnerable || k == HitHardest
+	return k == Hit || k == HitBlock || k == HitPerVulnerable || k == HitHardest || k == HitIfNotAttacked
 }
 
 // Plan is the ordered cards of one round; their costs sum to 3.

@@ -108,6 +108,8 @@ func sentence(e engine.Effect, parry bool) string {
 		return "The opponent loses all Block."
 	case engine.HitHardest:
 		return "Deal damage equal to the hardest hit you took this round, up to " + n + "."
+	case engine.HitIfNotAttacked:
+		return "If no opponent attack lands this beat, deal " + n + " damage."
 	}
 	panic("cardtext: unknown effect kind " + strconv.Itoa(int(e.Kind)))
 }
