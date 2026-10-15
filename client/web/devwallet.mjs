@@ -18,6 +18,11 @@ export const devAccounts = {
   },
 };
 
+// Adena signs a session message without simulating it, with the fee the page names or,
+// without one, these.
+const adenaGasWanted = 2_000_000_000;
+const adenaGasFee = 100_000; // ugnot
+
 // devWallet is the dev account name's wallet; signer is the engine, chain a chain.mjs
 // client of the chain chainId names.
 export function devWallet({ name, signer, chain, chainId }) {
@@ -25,10 +30,13 @@ export function devWallet({ name, signer, chain, chainId }) {
   const success = (data, type = "SUCCESS") => ({ status: "success", type, message: "", data });
   const failure = (type, message) => ({ status: "failure", type, message, data: null });
 
-  async function sign({ messages, memo = "" }) {
+  async function sign({ messages, memo = "", gasWanted, gasFee }) {
     const account = await chain.account(address);
     const msgs = messages.map(toSignerMsg);
     const base = { chainId, accountNumber: account.accountNumber, sequence: account.sequence, privKey: key, memo, msgs };
+    if (msgs.every((msg) => msg.type === "/auth.m_create_session")) {
+      return signer.signTx({ ...base, fee: { gasWanted: gasWanted || adenaGasWanted, gasFee: `${gasFee || adenaGasFee}ugnot` } });
+    }
     return payFor(chain, (fee) => signer.signTx({ ...base, fee }));
   }
 

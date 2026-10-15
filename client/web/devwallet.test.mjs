@@ -68,6 +68,21 @@ test("a call in Adena's form gets the fields Adena leaves out", () => {
 
 const call = { type: "/vm.m_call", value: { caller: alice, send: "", pkg_path: "gno.land/r/x", func: "F", args: [] } };
 
+// A page that names too low a session fee, or none, then fails here as it fails in Adena.
+test("a session creation is signed with the fee it names, as Adena signs it", async () => {
+  const fees = [];
+  const signer = { signTx: (tx) => (fees.push(tx.fee), engine.signTx(tx)) };
+  const keys = await deriveKeys(btoa("root signature"), 0, engine);
+  const session = sessionMessage(alice, keys.sessionPubKey, 1_800_000_000, "gno.land/r/x");
+  const wallet = devWallet({ name: "alice", signer, chain: replayChain("account", "account"), chainId: "dev" });
+  assert.equal((await wallet.SignTx({ messages: [session], gasWanted: 3_000_000, gasFee: 3_000 })).status, "success");
+  assert.equal((await wallet.SignTx({ messages: [session] })).status, "success");
+  assert.deepEqual(fees, [
+    { gasWanted: 3_000_000, gasFee: "3000ugnot" },
+    { gasWanted: 2_000_000_000, gasFee: "100000ugnot" },
+  ]);
+});
+
 test("SignTx signs for the account's sequence and the simulated gas", async () => {
   const wallet = devWallet({ name: "alice", signer: engine, chain: replayChain("account", "gasprice", "simulate"), chainId: "dev" });
   const signed = await wallet.SignTx({ messages: [call] });
