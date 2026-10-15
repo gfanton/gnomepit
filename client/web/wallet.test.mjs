@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 
 import { nodeEngine } from "./engine-node.mjs";
 import {
-  WalletError, connect, deriveKeys, findSession, newSalt, openBox, rootText, sealBox, sealOf, sessionMessage,
+  WalletError, connect, deriveKeys, findSession, newSalt, openBox, rootText, sealBox, sealOf, sessionMessage, waitForAdena,
 } from "./wallet.mjs";
 
 const engine = await nodeEngine();
@@ -14,6 +14,15 @@ const realm = "gno.land/r/gfanton/gnomehall/arena";
 const now = 1_800_000_000;
 
 const failure = (type) => (err) => err instanceof WalletError && err.type === type;
+
+test("waitForAdena returns Adena once the extension injects it, and nothing without it", async (t) => {
+  globalThis.window = {};
+  t.after(() => delete globalThis.window);
+  assert.equal(await waitForAdena(0), undefined);
+  const adena = { AddEstablish() {} };
+  setTimeout(() => (globalThis.window.adena = adena), 100);
+  assert.equal(await waitForAdena(2000), adena);
+});
 
 test("the root text names Gnomehall and the site", () => {
   assert.equal(

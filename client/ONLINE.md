@@ -7,8 +7,9 @@ Online matches run through the arena realm, `r/arena`, on a gno chain. The page 
 1. `make dev` starts gnodev with the engine, the arena and the gnotif registry. The RPC listens on `127.0.0.1:36657` and gnoweb on `127.0.0.1:8890`. It copies the registry from a gnotif checkout, `~/code/gfanton/gnotif` unless `GNOTIF_DIR` names another. It funds two dev accounts, alice and bob, with 10,000 GNOT each.
 2. `make indexer` runs tx-indexer v1.3.0 on that chain, answering on `127.0.0.1:8546`. The page learns of the other player's moves from it.
 3. `make wasm` builds `engine.wasm`, then `make serve` serves the page on `http://127.0.0.1:8080/`.
-4. Open `online-dev.html?dev=alice` in one browser and `online-dev.html?dev=bob` in another. This console picks decks and plans at random; it stands in for the lobby. Add `&contract=1` to have the wallet sign every move instead of a session, and `&indexer=` with no value to poll the node instead of the indexer.
-5. `make e2e` plays a whole match from node: alice through a session, bob through his wallet on each move. It also checks that the indexer reports every call of the match.
+4. Open `http://127.0.0.1:8080/?dev=alice` in one browser and `?dev=bob` in another, then **Play online**: the lobby, with a dev wallet in place of Adena. Without `dev`, the lobby uses Adena.
+5. `online-dev.html?dev=alice` and `?dev=bob` open a bare console instead, which picks decks and plans at random. Add `&contract=1` to have the wallet sign every move instead of a session, and `&indexer=` with no value to poll the node instead of the indexer.
+6. `make e2e` plays a whole match from node: alice through a session, bob through his wallet on each move. It also checks that the indexer reports every call of the match.
 
 gnodev keeps the chain in memory, so a restart starts from an empty arena. gnodev also watches `deps/`, which `make deps` and `make test` rewrite: it then reloads, replaying the chain's transactions from height 0. Start `make indexer` again after either, since its index holds the old heights.
 
@@ -41,6 +42,7 @@ Without an indexer, or while it does not answer, `subscribe` polls the node inst
 | Module | Job |
 |---|---|
 | `arena.mjs` | The account state, the board, a player's matches, one match with its action, and every move |
+| `arena-provider.mjs` | The arena the lobby (`lobby.mjs`, `online-model.mjs`) plays through, built from the page's query string |
 | `wallet.mjs` | Connecting a wallet, the root signature, key derivation, sessions and boxes |
 | `chain.mjs` | JSON-RPC to the node: queries, accounts, sessions, simulation, broadcast, and `payFor` |
 | `indexer.mjs` | Polling a tx-indexer for the arena's calls |
@@ -62,7 +64,7 @@ const arena = createArena({ chain, wallet, engine, realm, chainId, origin, stora
 |---|---|
 | `connect()` | `{state, address, mode, expiresAt, fallback}`. `state` is `noWallet`, `wrongNetwork`, `missing` (this device has not authorized), `active` or `expired`. `noWallet` and `wrongNetwork` return `{state, reason}` and no address. |
 | `authorize()` | Asks for the root signature once per device, then for a session; returns the new state |
-| `openChallenges(page)` | Open challenges, newest first, 20 a page, each with `action` (`accept`, `wait` for one's own, `done`) |
+| `openChallenges(page)` | Open challenges, newest first, 50 a page, each with `action` (`accept`, `wait` for one's own, `done`) |
 | `myMatches(page)` | This player's matches, newest first, each with `action` and `deadline` |
 | `match(id)` | The match view, plus `rounds` (each resolved round replayed: plans, events, state, result), `state`, `pending` (the challenger's next clash, when it is their move), `planning` (`{state, side, deck}` to plan from when the action is `move`) and `action` |
 | `challenge({clan, deck, plan, opponent})` | Posts a challenge and returns its id. Deck and plan are card ids. |

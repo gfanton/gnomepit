@@ -9,6 +9,7 @@ import { createChain } from "./chain.mjs";
 import { devWallet } from "./devwallet.mjs";
 import { loadEngine } from "./engine.mjs";
 import { createIndexer } from "./indexer.mjs";
+import { waitForAdena } from "./wallet.mjs";
 
 const params = new URLSearchParams(location.search);
 const rpc = params.get("rpc") ?? "http://127.0.0.1:36657";
@@ -20,7 +21,7 @@ const devName = params.get("dev");
 const $ = (id) => document.getElementById(id);
 const engine = await loadEngine("engine.wasm", "cards.json");
 const chain = createChain({ rpc });
-const wallet = devName === null ? await adena() : devWallet({ name: devName, signer: engine, chain, chainId });
+const wallet = devName === null ? await waitForAdena() : devWallet({ name: devName, signer: engine, chain, chainId });
 const indexer = indexerURL === "" ? undefined : createIndexer({ url: indexerURL });
 const arena = createArena({
   chain, wallet, engine, realm, chainId, origin: location.origin, storage: localStorage, indexer, signEachMove: params.get("contract") === "1",
@@ -28,15 +29,6 @@ const arena = createArena({
 let connected = false;
 
 for (const clan of engine.clans) $("clan").append(new Option(clan.name, clan.name));
-
-// adena waits up to 5 s for the extension to inject window.adena.
-async function adena() {
-  for (let waited = 0; waited < 5000; waited += 250) {
-    if (typeof window.adena?.AddEstablish === "function") return window.adena;
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  return undefined;
-}
 
 function log(text) {
   const line = document.createElement("li");

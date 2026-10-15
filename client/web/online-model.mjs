@@ -43,7 +43,8 @@ export function replayView(view, engine, address, ownDeck = []) {
   const v = viewOf(view,address);
   if(engine.clans && v.clans.some(name=>name && !engine.clans.some(c=>c.name===name))) throw new Error('This page’s card file does not match the chain’s engine. Reload before playing.');
   const decks = [cardIds(v.challengerDeck,engine.cards),cardIds(v.acceptorDeck,engine.cards)];
-  if (v.side >= 0 && !decks[v.side].length) decks[v.side] = cardIds(v.ownDeck,engine.cards).length ? cardIds(v.ownDeck,engine.cards) : ownDeck;
+  const recovered = v.ownDeck ?? view.planning?.deck; // the arena opens the challenger's deck from their box
+  if (v.side >= 0 && !decks[v.side].length) decks[v.side] = cardIds(recovered,engine.cards).length ? cardIds(recovered,engine.cards) : ownDeck;
   let state = {round:1,gnomes:[0,1].map(()=>({hp:engine.hp,vulnerable:0,strength:0,spent:[]}))};
   const rounds=[];
   let result='ongoing';
@@ -58,5 +59,7 @@ export function replayView(view, engine, address, ownDeck = []) {
     if (!Array.isArray(chainHP) || chainHP.length!==2 || resolved.state.gnomes.some((g,s)=>g.hp!==chainHP[s])) throw new Error('This page’s card file does not match the chain’s engine. Reload before playing.');
     state=resolved.state;result=resolved.result;rounds.push({plans,events:resolved.events,state,start});
   }
+  const pending=view.pending; // the challenger's clash, which the arena resolves from their opened box
+  if (pending) {rounds.push({plans:pending.plans,events:pending.events,state:pending.state,start:state});state=pending.state;result=pending.result;}
   return {view:v,decks,state,rounds,result};
 }

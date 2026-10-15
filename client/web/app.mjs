@@ -72,7 +72,7 @@ function masthead(note = "A duel beneath the mountain") {
   return `<header class="masthead"><a class="wordmark" href="./">Gnomehall<span>UNDER THE MOUNTAIN</span></a><span class="masthead__note">${note}</span></header>`;
 }
 
-const arena = await loadArena();
+const arena = await loadArena(engine);
 const lobby = createLobby({
   app, arena, onRender: render, portrait: portraitHTML, emblem,
   onResume: () => {
@@ -92,7 +92,7 @@ const lobby = createLobby({
   onPlay: (raw, address, review) => {
     const restored = replayView(raw, engine, address);
     const { view, decks, state, rounds, result } = restored;
-    if(!review && view.side === 0 && view.phase === "reveal") throw new Error("The arena adapter must open your pending plan and resolve the latest clash before this turn can be resumed. This integration is not available in this build yet.");
+    if(!review && view.side === 0 && view.phase === "reveal" && !raw.pending) throw new Error("This device cannot open your sealed plan yet. Approve the session on this device, then open the match again.");
     if (!review && (view.side < 0 || !decks[view.side]?.length)) throw new Error("Your private deck is needed to resume this turn. The arena adapter must recover it before play.");
     if (!review && rounds.length === 0 && view.round > 1) throw new Error("The arena has not supplied the resolved round yet. Refresh this match.");
     onlineContext = {intent: "move", view, account: address, review}; onlineError = "";

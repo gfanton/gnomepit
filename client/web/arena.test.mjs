@@ -332,6 +332,29 @@ test("chain and wallet errors become the arena's typed errors", () => {
   assert.equal(errorFrom(new ArenaError("outOfStep", "x")).type, "outOfStep");
 });
 
+test("notifications without a gnotif client fail with a readable reason", async () => {
+  const arena = createArena({ chain: null, wallet: walletFor(alice), engine, realm, chainId: "dev", origin: "http://x", storage: memory() });
+  await arena.connect();
+  await assert.rejects(arena.notify(), (err) => err instanceof ArenaError && err.type === "failed" && err.reason === "Notifications are not set up for this network");
+});
+
+// The lobby's pager offers a next page after a full one.
+test("the board and a player's matches come 50 a page, the most the realm returns", async () => {
+  const asked = [];
+  const chain = {
+    evalJSON: async (expr) => {
+      asked.push(expr);
+      return load(expr.includes(".Open(") ? "open" : "matches").results;
+    },
+    typeJSON: async (id) => load(id.endsWith("OpenChallenge") ? "qtype-OpenChallenge" : "qtype-MatchSummary"),
+  };
+  const arena = createArena({ chain, wallet: walletFor(alice), engine, realm, chainId: "dev", origin: "http://x", storage: memory() });
+  await arena.connect();
+  await arena.openChallenges(1);
+  await arena.myMatches(1);
+  assert.deepEqual(asked, [`${realm}.Open(50, 50)`, `${realm}.Matches("${alice}", 50, 50)`]);
+});
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // fakeIndexer hands the test the handlers the arena gives the indexer.

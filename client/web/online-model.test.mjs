@@ -27,6 +27,18 @@ test('replay verifies every round against chain HP and never resolves a sealed p
  assert.throws(()=>replayView({...view,HP:[[19,17]]},engine,account),/card file/);
  assert.throws(()=>replayView({...view,HP:[]},engine,account),/card file/);
 });
+test('the challenger replays their pending clash last, with the deck the arena opened',()=>{
+ const engine={hp:20,cards:[{id:0,name:'Pick'},{id:1,name:'Brace'}],resolve:()=>{throw new Error('the arena resolved the pending clash already');}};
+ const start={round:1,gnomes:[0,1].map(()=>({hp:20,vulnerable:0,strength:0,spent:[]}))};
+ const after={round:2,gnomes:[{hp:18},{hp:17}]};
+ const view={Phase:'reveal',Round:1,Challenger:account,Acceptor:'g1other',ToMove:account,ChallengerDeck:'',AcceptorDeck:'Brace',Plans:[['','Brace']],HP:[],
+  pending:{round:1,plans:[[0],[1]],events:['clash'],state:after,result:'ongoing'},planning:{state:after,side:0,deck:[0]}};
+ const r=replayView(view,engine,account);
+ assert.deepEqual(r.decks,[[0],[1]]);
+ assert.deepEqual(r.rounds,[{plans:[[0],[1]],events:['clash'],state:after,start}]);
+ assert.deepEqual(r.state,after);
+ assert.equal(r.result,'ongoing');
+});
 test('deadline labels never round a still-active deadline to expired',()=>{
  assert.equal(timeLeft(100,99),'0h 1m left');assert.equal(timeLeft(100,100),'Deadline passed');
 });

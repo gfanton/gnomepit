@@ -10,7 +10,7 @@ import {
   sessionGas, sessionMessage,
 } from "./wallet.mjs";
 
-const pageSize = 20;
+const pageSize = 50; // the realm's maxPage
 
 // ArenaError's type is one of: noWallet, wrongNetwork, refused, unauthorized, wrongPhase,
 // sealMismatch, illegalPlan, deadlinePassed, sessionExpired, insufficientFunds,
@@ -481,6 +481,7 @@ export function createArena({
     // Ended notifications for this wallet. Call it from a click.
     async notify() {
       requireAddress();
+      if (notifier === undefined) throw new ArenaError("failed", "Notifications are not set up for this network");
       await notifier.enable();
       const triggers = (await notifier.triggers(realm)).filter((t) => t.event === "Turn" || t.event === "Ended");
       await notifier.setOptins(triggers.map((t) => ({ trigger: t.id, value: address })));

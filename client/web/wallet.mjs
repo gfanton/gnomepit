@@ -28,6 +28,16 @@ export class WalletError extends Error {
 }
 
 // connect asks the wallet to connect the page, on chainId, and returns its address.
+// waitForAdena returns window.adena once the extension has injected it, or undefined
+// after ms milliseconds without it.
+export async function waitForAdena(ms = 5000) {
+  for (let waited = 0; waited < ms; waited += 250) {
+    if (typeof globalThis.window?.adena?.AddEstablish === "function") return globalThis.window.adena;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  return undefined;
+}
+
 export async function connect(wallet, chainId) {
   if (typeof wallet?.AddEstablish !== "function") throw new WalletError("noWallet", "No Adena wallet in this browser");
   answer(await wallet.AddEstablish("Gnomehall"), ["ALREADY_CONNECTED"]);
