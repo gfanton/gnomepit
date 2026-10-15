@@ -10,7 +10,7 @@ DEV_RPC := 127.0.0.1:36657
 DEV_WEB := 127.0.0.1:8890
 DEV_ACCOUNTS := g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w g1h3cka3ya6jw3yr64erpklnhvrgh5l4du6w0faw
 
-.PHONY: all wasm serve dev capture test realm-test deps clean help
+.PHONY: all wasm serve dev capture fund record e2e test realm-test deps clean help
 
 all: wasm ## Build the page's engine (default)
 
@@ -29,7 +29,16 @@ dev: deps ## Run gnodev with the engine, the arena, the gnotif registry and the 
 capture: ## Record the arena's query answers from a running make dev
 	RPC=$(DEV_RPC) scripts/capture.sh $(WEB)/testdata/qeval
 
-test: realm-test ## Run the Gno, Go and script tests
+fund: ## Send 1,000 GNOT on a running make dev to ADDRESS, such as an Adena account
+	RPC=$(DEV_RPC) scripts/fund.sh $(ADDRESS)
+
+record: wasm ## Record the RPC answers the script tests replay, from a running make dev
+	node scripts/record-rpc.mjs http://$(DEV_RPC)
+
+e2e: wasm ## Play a whole arena match on a running make dev, with both signing paths
+	node client/e2e/match.mjs http://$(DEV_RPC)
+
+test: realm-test wasm ## Run the Gno, Go and script tests; script tests run engine.wasm
 	go vet ./...
 	go test ./...
 	node --test '$(WEB)/*.test.mjs'
