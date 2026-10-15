@@ -331,3 +331,99 @@ test("chain and wallet errors become the arena's typed errors", () => {
   assert.equal(other.reason, "something new");
   assert.equal(errorFrom(new ArenaError("outOfStep", "x")).type, "outOfStep");
 });
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// fakeIndexer hands the test the handlers the arena gives the indexer.
+function fakeIndexer() {
+  const feed = { stopped: false };
+  feed.watchCalls = (watched, onCall, onState) => {
+    Object.assign(feed, { watched, onCall, onState });
+    return () => {
+      feed.stopped = true;
+    };
+  };
+  return feed;
+}
+
+test("subscribe reports each arena call with the match it touches; a new challenge touches none", () => {
+  const indexer = fakeIndexer();
+  const arena = createArena({ chain: null, wallet: null, engine, realm, chainId: "dev", origin: "http://x", storage: memory(), indexer });
+  const changes = [];
+  const stop = arena.subscribe((c) => changes.push(c));
+  assert.equal(indexer.watched, realm);
+
+  indexer.onCall({ height: 5, caller: alice, func: "Play", args: ["7", picks] });
+  indexer.onCall({ height: 6, caller: bob, func: "Challenge", args: ["Ironhide", "seal", "seal", "box", ""] });
+  assert.deepEqual(changes, [
+    { match: "7", func: "Play", caller: alice, height: 5 },
+    { match: null, func: "Challenge", caller: bob, height: 6 },
+  ]);
+  stop();
+  assert.equal(indexer.stopped, true);
+});
+
+// The indexer reports only calls indexed after its first answer, so each time it starts
+// answering the feed reports a change that names no match; polling the node stands in
+// while it does not answer.
+test("each time the indexer starts answering a change is reported, and polling runs only while it does not", async () => {
+  const indexer = fakeIndexer();
+  const arena = createArena({ chain: null, wallet: null, engine, realm, chainId: "dev", origin: "http://x", storage: memory(), indexer });
+  const changes = [];
+  const stop = arena.subscribe((c) => changes.push(c), { interval: 5 });
+  await sleep(30);
+  assert.deepEqual(changes, []);
+
+  indexer.onState("up");
+  assert.deepEqual(changes, [{}]);
+  await sleep(30);
+  assert.equal(changes.length, 1);
+
+  indexer.onState("down");
+  await sleep(40);
+  assert.ok(changes.length >= 4, `polled ${changes.length - 1} times`);
+  assert.ok(changes.every((c) => c.match === undefined));
+
+  indexer.onState("up");
+  const reconnected = changes.length;
+  await sleep(30);
+  assert.equal(changes.length, reconnected);
+  stop();
+});
+
+test("without an indexer, subscribe polls every interval until stopped", async () => {
+  const arena = createArena({ chain: null, wallet: null, engine, realm, chainId: "dev", origin: "http://x", storage: memory() });
+  const changes = [];
+  const stop = arena.subscribe((c) => changes.push(c), { interval: 5 });
+  await sleep(40);
+  stop();
+  const polled = changes.length;
+  assert.ok(polled >= 3, `polled ${polled} times`);
+  assert.deepEqual(changes[0], {});
+  await sleep(20);
+  assert.equal(changes.length, polled);
+});
+
+test("watch reads a match again on a call to it, and not on a call to another match", async () => {
+  let reads = 0;
+  const chain = {
+    evalJSON: async () => {
+      reads++;
+      return load("match-play").results;
+    },
+    typeJSON: async () => load("qtype-MatchView"),
+  };
+  const indexer = fakeIndexer();
+  const arena = createArena({ chain, wallet: null, engine, realm, chainId: "dev", origin: "http://x", storage: memory(), indexer });
+  const stop = arena.watch("1", () => {});
+  await sleep(10);
+  assert.equal(reads, 1);
+
+  indexer.onCall({ height: 9, caller: bob, func: "Play", args: ["2", picks] });
+  await sleep(10);
+  assert.equal(reads, 1);
+  indexer.onCall({ height: 9, caller: bob, func: "Play", args: ["1", picks] });
+  await sleep(10);
+  assert.equal(reads, 2);
+  stop();
+});

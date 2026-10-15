@@ -174,7 +174,7 @@ function resolve(engine, state, decks, [a, b]) {
 // is a gnotif client. origin names the site in the root signature's text. signEachMove
 // skips the session: the wallet signs every move.
 export function createArena({
-  chain, wallet, engine, realm, chainId, origin, storage, notifier, signEachMove = false, now = () => Math.floor(Date.now() / 1000),
+  chain, wallet, engine, realm, chainId, origin, storage, notifier, indexer, signEachMove = false, now = () => Math.floor(Date.now() / 1000),
 }) {
   let address = null;
   const fields = new Map();
@@ -407,16 +407,54 @@ export function createArena({
       await send("ClaimForfeit", [id]);
     },
 
-    // watch calls onChange(view) whenever match id changes, polling every interval ms
-    // while the page is visible, or onChange(null, error) when a read fails. It returns
-    // a function that stops it.
+    // subscribe calls onChange(change) when the arena may have changed, and returns a
+    // function that stops it. Through the indexer, change is {match, func, caller,
+    // height} for each call, match being null for a new challenge, and {} each time the
+    // indexer starts answering, since it reports only calls indexed after its first
+    // answer. While no indexer answers, change is {} every interval ms the page is
+    // visible.
+    subscribe(onChange, { interval = 4000 } = {}) {
+      let timer = null;
+      const poll = () => {
+        if (globalThis.document?.visibilityState !== "hidden") onChange({});
+        timer = setTimeout(poll, interval);
+      };
+      const startPolling = () => {
+        if (timer === null) timer = setTimeout(poll, interval);
+      };
+      const stopPolling = () => {
+        clearTimeout(timer);
+        timer = null;
+      };
+      if (indexer === undefined) {
+        startPolling();
+        return stopPolling;
+      }
+      const stopFeed = indexer.watchCalls(
+        realm,
+        ({ height, caller, func, args }) => onChange({ match: func === "Challenge" ? null : (args[0] ?? null), func, caller, height }),
+        (state) => {
+          if (state === "down") return startPolling();
+          stopPolling();
+          onChange({});
+        },
+      );
+      return () => {
+        stopFeed();
+        stopPolling();
+      };
+    },
+
+    // watch calls onChange(view) whenever match id changes, or onChange(null, error) when
+    // a read fails; subscribe says when to read it again. It returns a function that
+    // stops it.
     watch(id, onChange, { interval = 4000 } = {}) {
       let last = "";
       let stopped = false;
-      let timer;
-      const tick = async () => {
-        if (stopped) return;
-        if (globalThis.document?.visibilityState !== "hidden") {
+      let reading = Promise.resolve();
+      const read = () => {
+        reading = reading.then(async () => {
+          if (stopped) return;
           try {
             const view = await arena.match(id);
             const seen = JSON.stringify([view.Phase, view.Round, view.ToMove, view.Plans, view.HP, view.Result, view.DeadlinePassed]);
@@ -427,13 +465,15 @@ export function createArena({
           } catch (err) {
             if (!stopped) onChange(null, errorFrom(err));
           }
-        }
-        if (!stopped) timer = setTimeout(tick, interval);
+        });
       };
-      void tick();
+      const unsubscribe = arena.subscribe((change) => {
+        if (change.match === undefined || change.match === id) read();
+      }, { interval });
+      read();
       return () => {
         stopped = true;
-        clearTimeout(timer);
+        unsubscribe();
       };
     },
 

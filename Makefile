@@ -9,8 +9,12 @@ REGISTRY := deps/gnotif/v0
 DEV_RPC := 127.0.0.1:36657
 DEV_WEB := 127.0.0.1:8890
 DEV_ACCOUNTS := g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w g1h3cka3ya6jw3yr64erpklnhvrgh5l4du6w0faw
+# The indexer that pushes the local chain's arena calls to the page.
+DEV_INDEXER := 127.0.0.1:8546
+TX_INDEXER := github.com/gnolang/tx-indexer/cmd@v1.3.0
+INDEXER_DB := .indexer
 
-.PHONY: all wasm serve dev capture fund record e2e test realm-test deps clean help
+.PHONY: all wasm serve dev indexer capture fund record e2e test realm-test deps clean help
 
 all: wasm ## Build the page's engine (default)
 
@@ -26,6 +30,11 @@ dev: deps ## Run gnodev with the engine, the arena, the gnotif registry and the 
 		$(foreach a,$(DEV_ACCOUNTS),-add-account $(a)=10000000000ugnot) \
 		./p/engine ./r/arena ./$(REGISTRY)
 
+# gnodev starts every chain from height 0, so the index starts empty each time.
+indexer: ## Index a running make dev for the page's live updates; start it again after gnodev restarts or reloads
+	rm -rf $(INDEXER_DB)
+	go run $(TX_INDEXER) start -remote http://$(DEV_RPC) -db-path $(abspath $(INDEXER_DB)) -listen-address $(DEV_INDEXER)
+
 capture: ## Record the arena's query answers from a running make dev
 	RPC=$(DEV_RPC) scripts/capture.sh $(WEB)/testdata/qeval
 
@@ -35,8 +44,8 @@ fund: ## Send 1,000 GNOT on a running make dev to ADDRESS, such as an Adena acco
 record: wasm ## Record the RPC answers the script tests replay, from a running make dev
 	node scripts/record-rpc.mjs http://$(DEV_RPC)
 
-e2e: wasm ## Play a whole arena match on a running make dev, with both signing paths
-	node client/e2e/match.mjs http://$(DEV_RPC)
+e2e: wasm ## Play a whole arena match on a running make dev and make indexer, with both signing paths
+	node client/e2e/match.mjs http://$(DEV_RPC) http://$(DEV_INDEXER)/graphql/query
 
 test: realm-test wasm ## Run the Gno, Go and script tests; script tests run engine.wasm
 	go vet ./...

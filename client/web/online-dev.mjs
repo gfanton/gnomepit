@@ -1,26 +1,29 @@
 // A bare console for arena matches on a local chain, with no lobby: decks and plans are
 // picked at random. Two browsers, one with ?dev=alice and one with ?dev=bob, play a match
 // end to end. Without dev it uses Adena; &contract=1 has the wallet sign every move;
-// &rpc=, &chain= and &realm= point it elsewhere.
+// &rpc=, &chain=, &realm= and &indexer= point it elsewhere, and an empty &indexer= polls.
 
 import { ArenaError, createArena } from "./arena.mjs";
 import { randomDeck, randomPlan } from "./bot.mjs";
 import { createChain } from "./chain.mjs";
 import { devWallet } from "./devwallet.mjs";
 import { loadEngine } from "./engine.mjs";
+import { createIndexer } from "./indexer.mjs";
 
 const params = new URLSearchParams(location.search);
 const rpc = params.get("rpc") ?? "http://127.0.0.1:36657";
 const chainId = params.get("chain") ?? "dev";
 const realm = params.get("realm") ?? "gno.land/r/gfanton/gnomehall/arena";
+const indexerURL = params.get("indexer") ?? "http://127.0.0.1:8546/graphql/query";
 const devName = params.get("dev");
 
 const $ = (id) => document.getElementById(id);
 const engine = await loadEngine("engine.wasm", "cards.json");
 const chain = createChain({ rpc });
 const wallet = devName === null ? await adena() : devWallet({ name: devName, signer: engine, chain, chainId });
+const indexer = indexerURL === "" ? undefined : createIndexer({ url: indexerURL });
 const arena = createArena({
-  chain, wallet, engine, realm, chainId, origin: location.origin, storage: localStorage, signEachMove: params.get("contract") === "1",
+  chain, wallet, engine, realm, chainId, origin: location.origin, storage: localStorage, indexer, signEachMove: params.get("contract") === "1",
 });
 let connected = false;
 
@@ -142,6 +145,7 @@ $("post").onclick = () => run("post", () => arena.challenge({ ...opening(0), opp
 
 log(wallet === undefined ? "no Adena in this browser" : `wallet: ${devName ?? "Adena"}, chain ${chainId} at ${rpc}`);
 await refresh();
-setInterval(() => {
-  if (document.visibilityState === "visible") void refresh();
-}, 4000);
+arena.subscribe((change) => {
+  if (change.func !== undefined) log(`chain: ${short(change.caller)} called ${change.func}${change.match === null ? "" : ` on ${change.match}`}`);
+  void refresh();
+});

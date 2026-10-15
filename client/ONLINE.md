@@ -5,11 +5,12 @@ Online matches run through the arena realm, `r/arena`, on a gno chain. The page 
 ## Run a local chain
 
 1. `make dev` starts gnodev with the engine, the arena and the gnotif registry. The RPC listens on `127.0.0.1:36657` and gnoweb on `127.0.0.1:8890`. It copies the registry from a gnotif checkout, `~/code/gfanton/gnotif` unless `GNOTIF_DIR` names another. It funds two dev accounts, alice and bob, with 10,000 GNOT each.
-2. `make wasm` builds `engine.wasm`, then `make serve` serves the page on `http://127.0.0.1:8080/`.
-3. Open `online-dev.html?dev=alice` in one browser and `online-dev.html?dev=bob` in another. This console picks decks and plans at random; it stands in for the lobby. Add `&contract=1` to have the wallet sign every move instead of a session.
-4. `make e2e` plays a whole match from node: alice through a session, bob through his wallet on each move.
+2. `make indexer` runs tx-indexer v1.3.0 on that chain, answering on `127.0.0.1:8546`. The page learns of the other player's moves from it.
+3. `make wasm` builds `engine.wasm`, then `make serve` serves the page on `http://127.0.0.1:8080/`.
+4. Open `online-dev.html?dev=alice` in one browser and `online-dev.html?dev=bob` in another. This console picks decks and plans at random; it stands in for the lobby. Add `&contract=1` to have the wallet sign every move instead of a session, and `&indexer=` with no value to poll the node instead of the indexer.
+5. `make e2e` plays a whole match from node: alice through a session, bob through his wallet on each move. It also checks that the indexer reports every call of the match.
 
-gnodev keeps the chain in memory, so a restart starts from an empty arena.
+gnodev keeps the chain in memory, so a restart starts from an empty arena. gnodev also watches `deps/`, which `make deps` and `make test` rewrite: it then reloads, replaying the chain's transactions from height 0. Start `make indexer` again after either, since its index holds the old heights.
 
 ## Check Adena
 
@@ -29,6 +30,12 @@ A failed check 2 prints Adena's reason. The arena then falls back to check 3's p
 - **Boxes.** A challenger's sealed deck and plans travel to the chain encrypted with the box key, beside their seals. Any browser with the same wallet opens them, so a challenger can continue from another device.
 - **The fallback.** When Adena creates no session, or every generation already has one, Adena signs and sends each move through `DoContract`. The account state's `fallback` holds the reason, and the next `authorize()` asks for a session again.
 
+## Live updates
+
+The node pushes nothing, and tx-indexer refuses websockets from a page on another origin: its GraphQL websocket answers `403 unable to upgrade`, onyx's public indexer included. So the page polls the indexer's GraphQL API over HTTP every 3 s while it is visible. Each poll asks for the latest indexed height; when it moved, a second request asks for the arena's successful calls in the new blocks. A call shows up within about 3 s of its block being indexed. A poll that fails loses nothing: the next one that succeeds reads every block since the last height read.
+
+Without an indexer, or while it does not answer, `subscribe` polls the node instead: it reports a change every 4 s, and the page reads again what it shows.
+
 ## Modules
 
 | Module | Job |
@@ -36,6 +43,7 @@ A failed check 2 prints Adena's reason. The arena then falls back to check 3's p
 | `arena.mjs` | The account state, the board, a player's matches, one match with its action, and every move |
 | `wallet.mjs` | Connecting a wallet, the root signature, key derivation, sessions and boxes |
 | `chain.mjs` | JSON-RPC to the node: queries, accounts, sessions, simulation, broadcast, and `payFor` |
+| `indexer.mjs` | Polling a tx-indexer for the arena's calls |
 | `gnovalue.mjs` | Decoding `vm/qeval_json` answers into plain objects |
 | `devwallet.mjs` | A wallet with Adena's calls and public dev keys, for local chains only |
 | `encoding.mjs` | Hex and base64 |
@@ -45,10 +53,10 @@ A failed check 2 prints Adena's reason. The arena then falls back to check 3's p
 ## The arena API
 
 ```js
-const arena = createArena({ chain, wallet, engine, realm, chainId, origin, storage, notifier, signEachMove });
+const arena = createArena({ chain, wallet, engine, realm, chainId, origin, storage, notifier, indexer, signEachMove });
 ```
 
-`chain` comes from `createChain({ rpc })`, `wallet` is `window.adena` or a `devWallet`, `engine` from `loadEngine`, `storage` is `localStorage`, `notifier` a gnotif `Gnotif`. `signEachMove` skips the session.
+`chain` comes from `createChain({ rpc })`, `wallet` is `window.adena` or a `devWallet`, `engine` from `loadEngine`, `storage` is `localStorage`, `notifier` a gnotif `Gnotif`, and `indexer` comes from `createIndexer({ url })` with the indexer's GraphQL URL, such as `http://127.0.0.1:8546/graphql/query`. Without `indexer`, `subscribe` polls the node. `signEachMove` skips the session.
 
 | Call | Returns or does |
 |---|---|
@@ -62,7 +70,8 @@ const arena = createArena({ chain, wallet, engine, realm, chainId, origin, stora
 | `move(id, plan)` | Sends this player's turn: the challenger's reveal and next seal in one call, or the acceptor's plan |
 | `finish(id)` | Sends the challenger's last reveal, after round 3 or a knockout |
 | `resign(id)`, `claimForfeit(id)` | Resigns or withdraws; claims a passed deadline |
-| `watch(id, onChange)` | Polls the match every 4 s while the page is visible; returns a stop function |
+| `subscribe(onChange)` | Calls `onChange({match, func, caller, height})` for each arena call, `match` being `null` for a new challenge, and `onChange({})` when anything may have changed: each time the indexer starts answering, and on every poll of the node. Returns a stop function. |
+| `watch(id, onChange)` | Calls `onChange(view)` whenever match `id` changes, reading it again on each change `subscribe` reports for it; returns a stop function |
 | `notify()` | Opts the browser in to the arena's Turn and Ended notifications; call it from a click |
 
 `challenge`, `accept` and `move` check the deck and plan with the engine first: a deck or plan it refuses throws `illegalPlan` before anything is sealed or sent. Moves go out one at a time, so two calls in a row never sign with the same sequence.
@@ -86,4 +95,4 @@ The fee is the gas the move uses, plus a fifth and 100,000, at the chain's price
 ## Tests
 
 - `make test` runs the realm's tests, the Go tests and the script tests; the script tests run `engine.wasm`.
-- With `make dev` running: `make e2e` plays a match, `make capture` records the query answers `gnovalue.mjs`'s tests read, and `make record` records the RPC answers the other tests replay.
+- With `make dev` and `make indexer` running, `make e2e` plays a match. With `make dev` running, `make capture` records the query answers `gnovalue.mjs`'s tests read, and `make record` records the RPC answers the other tests replay.
