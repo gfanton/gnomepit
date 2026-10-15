@@ -31,6 +31,11 @@ test("markKeywords escapes the text before adding markup", () => {
   assert.equal(escapeHTML("<b>&</b>"), "&lt;b>&amp;&lt;/b>");
 });
 
+// A Parry card covers beats before its last, which the Interrupt rule alone reads as winding up.
+test("the Interrupt tip says a Parry card cannot be interrupted", () => {
+  assert.match(glossary.interrupt, /A Parry card never winds up, so Interrupt cannot cancel it\./);
+});
+
 test("every key the markup and the badges use has a glossary entry", () => {
   for (const key of ["interrupt", "parry", "block", "counter", "vulnerable", "strength", "cancel", "quick", "slow", "rare"]) {
     assert.equal(typeof glossary[key], "string", key);

@@ -3,7 +3,7 @@
 
 export const glossary = {
   interrupt:
-    "In the Interrupt phase, if the opponent is winding up a card (one that lands on a later beat), that card is cancelled. The Interrupt card's other effects still resolve in their phases.",
+    "In the Interrupt phase, if the opponent is winding up a card (one that lands on a later beat), that card is cancelled. A Parry card never winds up, so Interrupt cannot cancel it. The Interrupt card's other effects still resolve in their phases.",
   parry:
     "Parry N is active on every beat the card occupies. On each of those beats, an opponent attack that lands is cancelled. After N cancels the Parry ends and the card's later beats stay empty. Its other effects resolve on its last beat, unless the Parry ended before.",
   block: "Block absorbs damage point for point and is used up by what it absorbs. It lasts until the end of the round.",
