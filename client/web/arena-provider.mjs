@@ -17,7 +17,7 @@ export function lobbyAccount(account) {
 
 export async function loadArena(engine) {
   const params = new URLSearchParams(location.search);
-  const chainId = params.get("chain") ?? "dev";
+  const chainId = params.get("chain") ?? "gnomehall-dev";
   const indexerURL = params.get("indexer") ?? "http://127.0.0.1:8546/graphql/query";
   const devName = params.get("dev");
   const chain = createChain({ rpc: params.get("rpc") ?? "http://127.0.0.1:36657" });

@@ -2,7 +2,7 @@
 // every answer chain.mjs's tests and the dev wallet's tests replay. It signs as the dev
 // wallet's alice, and creates one more session for her on each run.
 //
-//   node scripts/record-rpc.mjs [rpc url]
+//   [CHAIN=<chain id>] node scripts/record-rpc.mjs [rpc url]
 
 import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -10,6 +10,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { nodeEngine } from "../client/web/engine-node.mjs";
 
 const rpc = process.argv[2] ?? "http://127.0.0.1:36657";
+const chainId = process.env.CHAIN ?? "gnomehall-dev";
 const out = new URL("../client/web/testdata/rpc/", import.meta.url);
 const arena = "gno.land/r/gfanton/gnomehall/arena";
 const devKey = (name) => createHash("sha256").update(`gnomehall dev ${name}`).digest("hex");
@@ -28,7 +29,7 @@ const record = (name, answer) => writeFile(new URL(`${name}.json`, out), `${JSON
 
 function call(func, args, sequence, accountNumber) {
   return engine.signTx({
-    chainId: "dev",
+    chainId,
     accountNumber,
     sequence,
     privKey: alice.key,
@@ -68,7 +69,7 @@ const session = engine.keyInfo(createHash("sha256").update(`gnomehall dev alice 
 const sessionKey = createHash("sha256").update(`gnomehall dev alice session ${sequence}`).digest("hex");
 await record("broadcast-session-create", await rpcCall("broadcast_tx_commit", {
   tx: engine.signTx({
-    chainId: "dev",
+    chainId,
     accountNumber: Number(accountNumber),
     sequence: Number(sequence) + 2,
     privKey: alice.key,
@@ -93,7 +94,7 @@ await record("session-missing", await query(`auth/accounts/${alice.address}/sess
 const { BaseAccount: s } = JSON.parse(atob(sessionAccount.result.response.ResponseBase.Data)).BaseSessionAccount;
 await record("broadcast-session-call", await rpcCall("broadcast_tx_commit", {
   tx: engine.signTx({
-    chainId: "dev",
+    chainId,
     accountNumber: Number(s.account_number),
     sequence: Number(s.sequence),
     privKey: sessionKey,

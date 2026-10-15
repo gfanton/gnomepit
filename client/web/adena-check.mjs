@@ -11,7 +11,7 @@ import { answer, rootText, waitForAdena } from "./wallet.mjs";
 
 const params = new URLSearchParams(location.search);
 const rpc = params.get("rpc") ?? "http://127.0.0.1:36657";
-const chainId = params.get("chain") ?? "dev";
+const chainId = params.get("chain") ?? "gnomehall-dev";
 const realm = params.get("realm") ?? "gno.land/r/gfanton/gnomehall/arena";
 const devName = params.get("dev");
 

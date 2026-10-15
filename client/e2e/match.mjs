@@ -3,7 +3,7 @@
 // result, and that the page's replay agrees with the realm's HP. Given an indexer, it
 // also checks that the indexer's feed reports every call of the match, in order.
 //
-//   node client/e2e/match.mjs [rpc url] [indexer GraphQL url]
+//   [CHAIN=<chain id>] node client/e2e/match.mjs [rpc url] [indexer GraphQL url]
 
 import assert from "node:assert/strict";
 
@@ -16,7 +16,7 @@ import { createIndexer } from "../web/indexer.mjs";
 const rpc = process.argv[2] ?? "http://127.0.0.1:36657";
 const indexerURL = process.argv[3];
 const realm = "gno.land/r/gfanton/gnomehall/arena";
-const chainId = "dev";
+const chainId = process.env.CHAIN ?? "gnomehall-dev";
 
 const engine = await nodeEngine();
 const chain = createChain({ rpc });

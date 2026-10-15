@@ -6,6 +6,7 @@ set -o errexit -o nounset -o pipefail
 
 readonly OUT="${1:?usage: capture.sh <out dir>}"
 readonly RPC="${RPC:-127.0.0.1:36657}"
+readonly CHAIN="${CHAIN:-gnomehall-dev}"
 readonly ARENA="gno.land/r/gfanton/gnomehall/arena"
 # gnodev premines test1 on every chain it starts; its mnemonic is public.
 readonly MNEMONIC="source bonus chronic canvas draft south burst lottery vacant surface solve popular case indicate oppose farm nothing bullet exhibit title speed wink action roast"
@@ -47,7 +48,7 @@ call() {
     args+=(-args "${arg}")
   done
   gnokey maketx call -pkgpath "${ARENA}" -func "${fn}" "${args[@]}" \
-    -gas-fee 1000000ugnot -gas-wanted 300000000 -broadcast -chainid dev \
+    -gas-fee 1000000ugnot -gas-wanted 300000000 -broadcast -chainid "${CHAIN}" \
     -remote "${RPC}" -insecure-password-stdin -home "${home}" -quiet test1 <<<""
 }
 
