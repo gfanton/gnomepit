@@ -74,7 +74,7 @@ function masthead(note = "A duel beneath the mountain") {
 
 const arena = await loadArena(engine);
 const lobby = createLobby({
-  app, arena, onRender: render, portrait: portraitHTML, emblem,
+  app, arena, storage: localStorage, onRender: render, portrait: portraitHTML, emblem,
   onResume: () => {
     const draft=lobby.model.draft; if(!draft)return;
     ({flow,deck,plan,legalPlans,onlineContext}=draft);lobby.model.inGame=true;app.classList.remove("lobby");render();

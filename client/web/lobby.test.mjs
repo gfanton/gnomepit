@@ -15,6 +15,126 @@ function followedArena() {
   return arena;
 }
 
+function memory() {
+  const items = new Map();
+  return {getItem: k => items.get(k) ?? null, setItem: (k, v) => items.set(k, String(v))};
+}
+
+function stubPage(t) {
+  globalThis.history = {replaceState(){}};
+  globalThis.location = {pathname:'/',search:'',origin:'http://page.local'};
+  t.after(() => { delete globalThis.history; delete globalThis.location; });
+}
+
+const ended = {ID:'4',Phase:'ended',Round:3,Challenger:'g1alice',Acceptor:'g1bob',Result:'b',Reason:'hp',
+  Plans:[['Stone Guard','Undermine,Double Tap'],['Pick,Pick,Pick','Pick,Pick,Pick'],['Bulwark,Avalanche','Momentum,Pickaxe Flurry,Pick']],
+  HP:[[15,15],[14,14],[13,14]],action:'done'};
+const lastTurn = {...ended,Phase:'reveal',ToMove:'g1alice',Result:'',Reason:'',Plans:[...ended.Plans.slice(0,2),['','Momentum,Pickaxe Flurry,Pick']],HP:ended.HP.slice(0,2)};
+
+// endingArena serves match 4 as arena.view says, and hands the test the lobby's watch.
+function endingArena(view) {
+  const arena = followedArena();
+  arena.view = view;
+  arena.match = async () => arena.view;
+  arena.finish = async id => { arena.finished = id; arena.view = ended; };
+  arena.watch = (id, fn) => { arena.onView = fn; return () => { arena.onView = null; }; };
+  return arena;
+}
+
+// lobbyOf is a lobby for the player at address, which records each clash it plays.
+function lobbyOf(arena, address, storage = memory()) {
+  const played = [];
+  const lobby = createLobby({app:app(),arena,storage,onRender(){},onPlay(raw, who, review) { played.push({phase:raw.Phase,review}); }});
+  if (address) lobby.model.account = {address,state:'active'};
+  return {lobby, played};
+}
+
+test('the challenger who finishes the match watches its last clash', async t => {
+  stubPage(t);
+  const arena = endingArena({...lastTurn,action:'finish'});
+  const {lobby, played} = lobbyOf(arena, 'g1alice');
+  await lobby.enter();
+  await lobby.action('Open', {id:'4'});
+  assert.equal(arena.finished, '4');
+  assert.deepEqual(played, [{phase:'ended',review:true}]);
+});
+
+test('finishing from the button plays the last clash too', async t => {
+  stubPage(t);
+  const arena = endingArena({...lastTurn,action:'finish'});
+  const {lobby, played} = lobbyOf(arena, 'g1alice');
+  lobby.model.account.state = 'sessionExpired';
+  await lobby.enter();
+  await lobby.action('Open', {id:'4'});
+  assert.equal(arena.finished, undefined);
+  lobby.model.account.state = 'active';
+  await lobby.action('Finish');
+  assert.deepEqual(played, [{phase:'ended',review:true}]);
+});
+
+test('a player watching the match sees its last clash when it ends', async t => {
+  stubPage(t);
+  const arena = endingArena({...lastTurn,action:'wait'});
+  const {lobby, played} = lobbyOf(arena, 'g1bob');
+  await lobby.enter();
+  await lobby.action('Open', {id:'4'});
+  assert.deepEqual(played, []);
+  await arena.onView(ended);
+  assert.deepEqual(played, [{phase:'ended',review:true}]);
+});
+
+test('an ended match plays its last clash only the first time its player opens it', async t => {
+  stubPage(t);
+  const arena = endingArena(ended);
+  const {lobby, played} = lobbyOf(arena, 'g1bob');
+  await lobby.enter();
+  await lobby.action('Open', {id:'4'});
+  await lobby.returnToBoard();
+  await lobby.action('Open', {id:'4'});
+  assert.deepEqual(played, [{phase:'ended',review:true}]);
+});
+
+// A fresh chain numbers its matches from 1 again.
+test('another match under a number already seen plays its last clash', async t => {
+  stubPage(t);
+  const arena = endingArena(ended);
+  const {lobby, played} = lobbyOf(arena, 'g1bob');
+  await lobby.enter();
+  await lobby.action('Open', {id:'4'});
+  arena.view = {...ended,Plans:[['Pick,Pick,Pick','Pick,Pick,Pick'],...ended.Plans.slice(1)]};
+  await lobby.action('Open', {id:'4'});
+  assert.equal(played.length, 2);
+});
+
+test('a match that ended without a clash, or that someone else played, opens on its result', async t => {
+  stubPage(t);
+  for (const [view, address] of [[{...ended,Reason:'resign'},'g1bob'],[{...ended,Reason:'forfeit'},'g1bob'],[ended,'g1carol']]) {
+    const {lobby, played} = lobbyOf(endingArena(view), address);
+    await lobby.enter();
+    await lobby.action('Open', {id:'4'});
+    assert.deepEqual(played, [], `${view.Reason} for ${address}`);
+  }
+});
+
+test('a match opened from its link is watched', async t => {
+  stubPage(t);
+  const arena = endingArena({...lastTurn,action:'wait'});
+  const {lobby} = lobbyOf(arena, 'g1bob');
+  await lobby.enter('4');
+  assert.equal(typeof arena.onView, 'function');
+});
+
+test('connecting on a match opened from its link plays its last clash', async t => {
+  stubPage(t);
+  const arena = endingArena(ended);
+  arena.connect = async () => ({address:'g1bob',state:'active'});
+  const {lobby, played} = lobbyOf(arena, '');
+  await lobby.enter('4');
+  assert.deepEqual(played, []);
+  await lobby.action('Authorize');
+  assert.deepEqual(played, [{phase:'ended',review:true}]);
+});
+
 test('the board reads its lists again on each change the arena reports', async () => {
   const arena = followedArena();
   const lobby = createLobby({app:app(),arena,onRender(){}});
