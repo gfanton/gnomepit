@@ -4,7 +4,13 @@
 export async function loadEngine(wasmUrl, cardsUrl) {
   const go = new globalThis.Go();
   const { instance } = await WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject);
-  go.run(instance);
+  return startEngine(go, instance, await (await fetch(cardsUrl)).text());
+}
+
+// startEngine runs an instantiated engine module with the card file's text and returns
+// the rules and the signer.
+export async function startEngine(go, instance, cardsText) {
+  void go.run(instance);
   await untilDefined(() => globalThis.gnomehall);
 
   const call = (name) => (request) => {
@@ -12,7 +18,6 @@ export async function loadEngine(wasmUrl, cardsUrl) {
     if (response.error) throw new Error(response.error);
     return response;
   };
-  const cardsText = await (await fetch(cardsUrl)).text();
   const view = JSON.parse(globalThis.gnomehall.load(cardsText));
   if (view.error) throw new Error(view.error);
 
@@ -23,6 +28,12 @@ export async function loadEngine(wasmUrl, cardsUrl) {
     legalDeck: (request) => call("legalDeck")(request).legal,
     legalPlans: (request) => call("legalPlans")(request).plans,
     resolve: call("resolve"),
+    // keyInfo returns {address, pubKey} of a hex private key.
+    keyInfo: (privKey) => call("keyInfo")({ privKey }),
+    // signTx signs the client/signer TxRequest and returns the base64 transaction.
+    signTx: (request) => call("signTx")(request).tx,
+    // signBytes signs base64 bytes and returns the base64 signature.
+    signBytes: (privKey, bytes) => call("signBytes")({ privKey, bytes }).signature,
   };
 }
 
