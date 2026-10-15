@@ -675,11 +675,11 @@ function patchPlayback() {
   const round = flow.rounds.at(-1);
   const { steps, shown, lines } = playback;
   const vitalsAt = n => n === 0 ? playback.start : round.events[steps[n - 1].to - 1].after;
-  const vitals = vitalsAt(shown), previous = vitalsAt(Math.max(0, shown - 1));
+  const vitals = vitalsAt(shown);
   const current = shown > 0 ? steps[shown - 1] : null;
   for (const side of [0, 1]) {
     byId(`hp-fill-${side}`).style.width = hpWidth(vitals[side].hp);
-    byId(`hp-ghost-${side}`).style.width = hpWidth(previous[side].hp);
+    byId(`hp-ghost-${side}`).style.width = hpWidth(vitals[side].hp);
     byId(`hp-num-${side}`).textContent = `${vitals[side].hp} / ${flow.hp}`;
     byId(`chips-${side}`).innerHTML = chipsHTML(vitals[side]);
     byId(`fighter-${side}`).classList.toggle("fighter--defeated", vitals[side].hp <= 0);
