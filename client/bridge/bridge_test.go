@@ -203,3 +203,21 @@ func TestResolveNamesTheVulnerableMove(t *testing.T) {
 	assert.Equal(t, 2, resp.Events[i].N)
 	assert.Equal(t, [2]int{0, 2}, [2]int{resp.Events[i].After[0].Vulnerable, resp.Events[i].After[1].Vulnerable})
 }
+
+func TestResolveNamesTheSelfRiskEvents(t *testing.T) {
+	const cards = `{"Cards": [
+		{"Name": "Brace", "Cost": 1, "Tier": "Normal", "Block": [["GainBlock", 1]]},
+		{"Name": "Sap", "Cost": 1, "Tier": "Normal", "Special": true, "Damage": [["StripBlock", 0], ["GainVulnerable", 1]]}
+	], "Clans": {"Delvers": ["Sap"]}, "Rules": {}}`
+	b := New()
+	require.NotContains(t, b.Load(cards), `"error"`)
+	s := StateView{Round: 1, Gnomes: [2]GnomeView{{HP: 15}, {HP: 15}}}
+	out := b.Resolve(encode(t, ResolveRequest{State: s, Decks: [2][]int{{1}, {}}, A: []int{1, 0, 0}, B: []int{0, 0, 0}}))
+	resp := decode[ResolveResponse](t, out)
+	var kinds []string
+	for _, e := range resp.Events {
+		kinds = append(kinds, e.Kind)
+	}
+	assert.Contains(t, kinds, "BlockStripped", out)
+	assert.Contains(t, kinds, "VulnerableGained", out)
+}

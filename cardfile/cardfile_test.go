@@ -95,3 +95,16 @@ func TestLoadErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadSelfRiskEffects(t *testing.T) {
+	rs, err := Load([]byte(`{"Cards": [
+		{"Name": "Rockfall", "Cost": 2, "Tier": "Slow", "Special": true,
+		 "Block": [["BlockPerVulnerable", 2]],
+		 "Damage": [["StripBlock", 0], ["HitPerVulnerable", 3], ["GainVulnerable", 1], ["HitHardest", 5]]}
+	], "Clans": {"Delvers": ["Rockfall"]}, "Rules": {}}`))
+	require.NoError(t, err)
+	c := rs.Cards[0]
+	assert.Equal(t, []engine.Effect{{Kind: engine.BlockPerVulnerable, N: 2}}, c.Block)
+	assert.Equal(t, []engine.Effect{{Kind: engine.StripBlock}, {Kind: engine.HitPerVulnerable, N: 3},
+		{Kind: engine.GainVulnerable, N: 1}, {Kind: engine.HitHardest, N: 5}}, c.Damage)
+}

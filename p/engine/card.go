@@ -25,6 +25,11 @@ const (
 	GainStrength
 	VulnerableIfCancelled // apply N Vulnerable if this card cancelled a card this beat
 	MoveVulnerable        // Block phase: move all your Vulnerable to the opponent
+	GainVulnerable        // gain N Vulnerable yourself
+	HitPerVulnerable      // deal N damage, and N more for each Vulnerable on you
+	BlockPerVulnerable    // Block phase: gain N Block, and N more for each Vulnerable on you
+	StripBlock            // the opponent loses all Block at the end of the step
+	HitHardest            // deal the HP the hardest opponent hit took from you this round, up to N
 )
 
 type Effect struct {
@@ -58,11 +63,15 @@ func (c *Card) Attack() bool {
 
 func dealsDamage(effects []Effect) bool {
 	for _, e := range effects {
-		if e.Kind == Hit || e.Kind == HitBlock {
+		if e.Kind.isHit() {
 			return true
 		}
 	}
 	return false
+}
+
+func (k EffectKind) isHit() bool {
+	return k == Hit || k == HitBlock || k == HitPerVulnerable || k == HitHardest
 }
 
 // Plan is the ordered cards of one round; their costs sum to 3.

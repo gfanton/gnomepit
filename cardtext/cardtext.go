@@ -98,6 +98,16 @@ func sentence(e engine.Effect, parry bool) string {
 		return "If this cancels a card, apply " + n + " Vulnerable."
 	case engine.MoveVulnerable:
 		return "Move your Vulnerable to the opponent."
+	case engine.GainVulnerable:
+		return "Gain " + n + " Vulnerable."
+	case engine.HitPerVulnerable:
+		return "Deal " + n + " damage, and " + n + " more for each Vulnerable on you."
+	case engine.BlockPerVulnerable:
+		return "Gain " + n + " Block, and " + n + " more for each Vulnerable on you."
+	case engine.StripBlock:
+		return "The opponent loses all Block."
+	case engine.HitHardest:
+		return "Deal damage equal to the hardest hit you took this round, up to " + n + "."
 	}
 	panic("cardtext: unknown effect kind " + strconv.Itoa(int(e.Kind)))
 }

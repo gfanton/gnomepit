@@ -56,9 +56,13 @@ func (v *Vitals) take(damage int) int {
 // gain applies a Block-phase effect and returns the change after the cap.
 func (v *Vitals) gain(rs *Ruleset, e Effect) int {
 	switch e.Kind {
-	case GainBlock:
+	case GainBlock, BlockPerVulnerable:
+		n := e.N
+		if e.Kind == BlockPerVulnerable {
+			n *= 1 + v.Vulnerable
+		}
 		before := v.Block
-		v.Block = capped(v.Block+e.N, rs.BlockCap)
+		v.Block = capped(v.Block+n, rs.BlockCap)
 		return v.Block - before
 	case GainCounter:
 		before := v.Counter
@@ -72,7 +76,7 @@ func (rs *Ruleset) gainAll(v *Vitals, effects []Effect, tr *tracer, side Side, c
 	for _, e := range effects {
 		n := v.gain(rs, e)
 		switch e.Kind {
-		case GainBlock:
+		case GainBlock, BlockPerVulnerable:
 			tr.emit(BlockGained, side, card, n, 0, false)
 		case GainCounter:
 			tr.emit(CounterGained, side, card, n, 0, false)
@@ -132,6 +136,7 @@ func (rs *Ruleset) resolve(s State, a, b Plan, events *[]Event) Outcome {
 	var slots [2][beatsPerRound]slot
 	var gone [2][maxPlanSize]bool   // cancelled, or a Parry that used up its cancels
 	var parried [2][maxPlanSize]int // cancels made by each Parry card this round
+	var hardest [2]int              // the most HP one opponent hit took from each gnome this round
 	for side := 0; side < 2; side++ {
 		g := s.Gnomes[side]
 		f[side] = Vitals{HP: g.HP, Vulnerable: g.Vulnerable, Strength: g.Strength}
@@ -222,7 +227,7 @@ func (rs *Ruleset) resolve(s State, a, b Plan, events *[]Event) Outcome {
 				}
 			}
 			tr.at(beat+1, DamagePhase, tier, 0)
-			if result := rs.resolveDamageTier(&f, effects, cards, didCancel, &tr); result != Ongoing {
+			if result := rs.resolveDamageTier(&f, &hardest, effects, cards, didCancel, &tr); result != Ongoing {
 				return Outcome{State: rs.settle(next, f), Result: result}
 			}
 		}
@@ -263,14 +268,15 @@ func byHP(a, b int) Result {
 
 // resolveDamageTier resolves both gnomes' effects of one tier in steps: step k applies
 // effect k of each card together, every value read at the start of the step. A gnome
-// takes the opponent's hit before the Counter damage its own hit triggered. It returns
+// takes the opponent's hit before the Counter damage its own hit triggered. hardest
+// carries each gnome's hardest hit taken this round across tiers and beats. It returns
 // the knockout result as soon as a step leaves a gnome at 0 HP or less.
-func (rs *Ruleset) resolveDamageTier(f *[2]Vitals, effects [2][]Effect, cards [2]CardID, didCancel [2]bool, tr *tracer) Result {
+func (rs *Ruleset) resolveDamageTier(f *[2]Vitals, hardest *[2]int, effects [2][]Effect, cards [2]CardID, didCancel [2]bool, tr *tracer) Result {
 	var hitsTotal, hitsDone [2]int
 	var doubled, doubleDecided [2]bool
 	for side := 0; side < 2; side++ {
 		for _, e := range effects[side] {
-			if e.Kind == Hit || e.Kind == HitBlock {
+			if e.Kind.isHit() {
 				hitsTotal[side]++
 			}
 		}
@@ -282,7 +288,8 @@ func (rs *Ruleset) resolveDamageTier(f *[2]Vitals, effects [2][]Effect, cards [2
 
 	for k := 0; k < steps; k++ {
 		tr.step = k + 1
-		var hitIn, counterIn, addVulnerable, addStrength, usedVulnerable [2]int
+		var hitIn, counterIn, addVulnerable, selfVulnerable, addStrength, usedVulnerable [2]int
+		var strip [2]bool
 		for side := 0; side < 2; side++ {
 			if k >= len(effects[side]) {
 				continue
@@ -290,15 +297,23 @@ func (rs *Ruleset) resolveDamageTier(f *[2]Vitals, effects [2][]Effect, cards [2
 			o := 1 - side
 			e := effects[side][k]
 			switch e.Kind {
-			case Hit, HitBlock:
+			case Hit, HitBlock, HitPerVulnerable, HitHardest:
 				if rs.VulnerableDoublesOneHit {
 					doubled[side] = f[o].Vulnerable > 0
 				} else if !doubleDecided[side] {
 					doubled[side], doubleDecided[side] = f[o].Vulnerable > 0, true
 				}
 				amount := e.N
-				if e.Kind == HitBlock {
+				switch e.Kind {
+				case HitBlock:
 					amount = f[side].Block
+				case HitPerVulnerable:
+					amount = e.N * (1 + f[side].Vulnerable)
+				case HitHardest:
+					amount = hardest[side]
+					if amount > e.N {
+						amount = e.N
+					}
 				}
 				amount += f[side].Strength
 				if doubled[side] {
@@ -312,24 +327,38 @@ func (rs *Ruleset) resolveDamageTier(f *[2]Vitals, effects [2][]Effect, cards [2
 				}
 			case ApplyVulnerable:
 				addVulnerable[o] += e.N
+			case GainVulnerable:
+				selfVulnerable[side] += e.N
 			case GainStrength:
 				addStrength[side] += e.N
 			case VulnerableIfCancelled:
 				if didCancel[side] {
 					addVulnerable[o] += e.N
 				}
+			case StripBlock:
+				strip[o] = true
 			}
 		}
-		var hitAbsorbed, counterAbsorbed, vulnerableGained, strengthGained [2]int
+		// vulnerableGained counts tokens from the opponent, selfGained a gnome's own; the
+		// opponent's count against the cap first.
+		var hitAbsorbed, counterAbsorbed, vulnerableGained, selfGained, strengthGained, stripped [2]int
 		for side := 0; side < 2; side++ {
 			hitAbsorbed[side] = f[side].take(hitIn[side])
 			counterAbsorbed[side] = f[side].take(counterIn[side])
+			if taken := hitIn[side] - hitAbsorbed[side]; taken > hardest[side] {
+				hardest[side] = taken
+			}
+			if strip[side] {
+				stripped[side], f[side].Block = f[side].Block, 0
+			}
 			v := f[side].Vulnerable - usedVulnerable[side]
 			if v < 0 {
 				v = 0
 			}
-			f[side].Vulnerable = capped(v+addVulnerable[side], rs.VulnerableCap)
-			vulnerableGained[side] = f[side].Vulnerable - v
+			applied := capped(v+addVulnerable[side], rs.VulnerableCap)
+			f[side].Vulnerable = capped(applied+selfVulnerable[side], rs.VulnerableCap)
+			vulnerableGained[side] = applied - v
+			selfGained[side] = f[side].Vulnerable - applied
 			before := f[side].Strength
 			f[side].Strength = capped(before+addStrength[side], rs.StrengthCap)
 			strengthGained[side] = f[side].Strength - before
@@ -340,13 +369,17 @@ func (rs *Ruleset) resolveDamageTier(f *[2]Vitals, effects [2][]Effect, cards [2
 			}
 			o := 1 - side
 			switch e := effects[side][k]; e.Kind {
-			case Hit, HitBlock:
+			case Hit, HitBlock, HitPerVulnerable, HitHardest:
 				tr.emit(HitLanded, Side(side), cards[side], hitIn[o]-hitAbsorbed[o], hitAbsorbed[o], doubled[side])
 				if counterIn[side] > 0 {
 					tr.emit(CounterHit, Side(side), cards[side], counterIn[side]-counterAbsorbed[side], counterAbsorbed[side], false)
 				}
 			case ApplyVulnerable:
 				tr.emit(VulnerableApplied, Side(side), cards[side], vulnerableGained[o], 0, false)
+			case GainVulnerable:
+				tr.emit(VulnerableGained, Side(side), cards[side], selfGained[side], 0, false)
+			case StripBlock:
+				tr.emit(BlockStripped, Side(side), cards[side], stripped[o], 0, false)
 			case VulnerableIfCancelled:
 				if didCancel[side] {
 					tr.emit(VulnerableApplied, Side(side), cards[side], vulnerableGained[o], 0, false)
