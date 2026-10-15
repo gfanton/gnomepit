@@ -1,0 +1,37 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "check_tx": {
+      "ResponseBase": {
+        "Error": null,
+        "Data": null,
+        "Events": null,
+        "Log": "",
+        "Info": ""
+      },
+      "GasWanted": "100000000",
+      "GasUsed": "625418"
+    },
+    "deliver_tx": {
+      "ResponseBase": {
+        "Error": null,
+        "Data": "KCI2IiBzdHJpbmcpCgo=",
+        "Events": [
+          {
+            "@type": "/tm.StorageDepositEvent",
+            "bytes_delta": "9078",
+            "fee_delta": "907800ugnot",
+            "pkg_path": "gno.land/r/gfanton/gnomehall/arena"
+          }
+        ],
+        "Log": "msg:0,success:true,log:,events:[]",
+        "Info": ""
+      },
+      "GasWanted": "100000000",
+      "GasUsed": "12499604"
+    },
+    "hash": "ttBcla3vLVNKokMB/hUOPrbX4hWG1Qjc9e1GbXyD1ew=",
+    "height": "30"
+  }
+}

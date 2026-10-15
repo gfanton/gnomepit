@@ -1,0 +1,22 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "response": {
+      "ResponseBase": {
+        "Error": {
+          "@type": "/abci.StringError",
+          "value": "unknown match"
+        },
+        "Data": null,
+        "Events": null,
+        "Log": "--= Error =--\nData: errors.FmtError{format:\"unknown match\", args:[]interface {}(nil)}\nMsg Traces:\n    0  gno/tm2/pkg/errors/errors.go:103 - VM panic: unknown match\nStacktrace:\npanic: unknown match\nfind at gno.land/r/gfanton/gnomehall/arena/play.gno:176\nMatch at gno.land/r/gfanton/gnomehall/arena/query.gno:52\n\n\nStack Trace:\n    0  gno/tm2/pkg/errors/errors.go:88\n    1  gno/tm2/pkg/errors/errors.go:103\n    2  gno/gno.land/pkg/sdk/vm/keeper.go:1453\n    3  gno/gno.land/pkg/sdk/vm/keeper.go:1432\n    4  /nix/store/9w6fm5c9v3lx0vxd4pqy7i8qmdfsmq7g-go-1.27.1/share/go/src/runtime/panic.go:859\n... 29 more lines elided",
+        "Info": ""
+      },
+      "Key": null,
+      "Value": null,
+      "Proof": null,
+      "Height": "0"
+    }
+  }
+}

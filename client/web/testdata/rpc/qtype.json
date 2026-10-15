@@ -1,0 +1,19 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "response": {
+      "ResponseBase": {
+        "Error": null,
+        "Data": "eyJ0eXBlaWQiOiJnbm8ubGFuZC9yL2dmYW50b24vZ25vbWVoYWxsL2FyZW5hLk9wZW5DaGFsbGVuZ2UiLCJ0eXBlIjp7IkB0eXBlIjoiL2duby5EZWNsYXJlZFR5cGUiLCJQa2dQYXRoIjoiZ25vLmxhbmQvci9nZmFudG9uL2dub21laGFsbC9hcmVuYSIsIk5hbWUiOiJPcGVuQ2hhbGxlbmdlIiwiQmFzZSI6eyJAdHlwZSI6Ii9nbm8uU3RydWN0VHlwZSIsIkZpZWxkcyI6W3siTmFtZSI6IklEIiwiVHlwZSI6eyJAdHlwZSI6Ii9nbm8uUHJpbWl0aXZlVHlwZSIsInZhbHVlIjoiMTYifX0seyJOYW1lIjoiQ2hhbGxlbmdlciIsIlR5cGUiOnsiQHR5cGUiOiIvZ25vLlByaW1pdGl2ZVR5cGUiLCJ2YWx1ZSI6IjE2In19LHsiTmFtZSI6IkNsYW4iLCJUeXBlIjp7IkB0eXBlIjoiL2duby5QcmltaXRpdmVUeXBlIiwidmFsdWUiOiIxNiJ9fSx7Ik5hbWUiOiJPcHBvbmVudCIsIlR5cGUiOnsiQHR5cGUiOiIvZ25vLlByaW1pdGl2ZVR5cGUiLCJ2YWx1ZSI6IjE2In19LHsiTmFtZSI6IlBvc3RlZCIsIlR5cGUiOnsiQHR5cGUiOiIvZ25vLlByaW1pdGl2ZVR5cGUiLCJ2YWx1ZSI6IjEwMjQifX0seyJOYW1lIjoiRXhwaXJlcyIsIlR5cGUiOnsiQHR5cGUiOiIvZ25vLlByaW1pdGl2ZVR5cGUiLCJ2YWx1ZSI6IjEwMjQifX1dfX19",
+        "Events": null,
+        "Log": "",
+        "Info": ""
+      },
+      "Key": null,
+      "Value": null,
+      "Proof": null,
+      "Height": "0"
+    }
+  }
+}
