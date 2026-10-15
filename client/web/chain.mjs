@@ -114,7 +114,12 @@ export async function payFor(chain, sign) {
   const price = await chain.gasPrice();
   const used = await chain.simulate(sign({ gasWanted: provisionalGas, gasFee: `1${price.denom}` }));
   const gasWanted = Math.ceil(used * 1.2) + 100_000;
-  return sign({ gasWanted, gasFee: `${Math.ceil((gasWanted * price.amount) / price.gas)}${price.denom}` });
+  return sign({ gasWanted, gasFee: `${feeFor(gasWanted, price)}${price.denom}` });
+}
+
+// feeFor is the fee, in price's denomination, for gasWanted gas at price.
+export function feeFor(gasWanted, price) {
+  return Math.ceil((gasWanted * price.amount) / price.gas);
 }
 
 // sessionOf reads a session account: the account number and sequence its key signs

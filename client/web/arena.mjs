@@ -3,11 +3,11 @@
 // every move. Seals, salts, boxes and reveals stay inside: a challenger's move opens the
 // sealed plan, reveals it and seals the next one in one call.
 
-import { ChainError, payFor } from "./chain.mjs";
+import { ChainError, feeFor, payFor } from "./chain.mjs";
 import { decode, structTypes, typeFields } from "./gnovalue.mjs";
 import {
   WalletError, connect as connectWallet, deriveKeys, findSession, newSalt, openBox, rootSignature, sealBox, sealOf,
-  sessionMessage,
+  sessionGas, sessionMessage,
 } from "./wallet.mjs";
 
 const pageSize = 20;
@@ -289,9 +289,12 @@ export function createArena({
           return await status();
         }
         if (found.state !== "active") {
+          const price = await chain.gasPrice();
           const response = await wallet.DoContract({
             messages: [sessionMessage(address, found.keys.sessionPubKey, now(), realm)],
             memo: "Gnomehall session",
+            gasWanted: sessionGas,
+            gasFee: feeFor(sessionGas, price),
           });
           if (response?.status !== "success") {
             store("mode", "contract");

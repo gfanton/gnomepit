@@ -8,6 +8,8 @@ import { fromBase64, fromHex, toBase64, toHex } from "./encoding.mjs";
 // locks about 0.9 GNOT of deposit.
 export const sessionSpendLimit = 10_000_000; // ugnot
 export const sessionLifetime = 7 * 24 * 60 * 60; // seconds
+// Creating a session uses about 1.4M gas.
+export const sessionGas = 3_000_000;
 // Below this much ugnot left, a session cannot pay for a challenge, the costliest call,
 // so it counts as spent.
 const sessionReserve = 1_500_000;

@@ -271,6 +271,30 @@ test("a refused session approval is asked for again on the next authorization", 
   assert.equal(accepted.fallback, null);
 });
 
+// Adena signs a session message with the fee the page gives, or else with 2,000,000,000
+// gas for 0.1 GNOT, which a chain at 1ugnot per 1000 gas refuses.
+test("the session request names its gas and a fee at the chain's gas price", async () => {
+  const signature = btoa("a root signature");
+  const master = devAccounts.alice.address;
+  const chain = await sessionChain(signature, master);
+  chain.gasPrice = async () => ({ gas: 1000, amount: 25, denom: "ugnot" });
+  let request;
+  const wallet = walletFor(master, {
+    SignArbitrary: async () => ({ status: "success", data: { signature: { signature } } }),
+    DoContract: async (params) => {
+      request = params;
+      chain.created = true;
+      return { status: "success" };
+    },
+  });
+  const arena = createArena({ chain, wallet, engine, realm, chainId: "dev", origin: "http://x", storage: memory() });
+  await arena.connect();
+
+  assert.equal((await arena.authorize()).mode, "session");
+  assert.equal(request.gasWanted, 3_000_000);
+  assert.equal(request.gasFee, 75_000);
+});
+
 test("session moves go out one at a time, each with the sequence the last one left", async () => {
   const signature = btoa("a root signature");
   const master = devAccounts.alice.address;
