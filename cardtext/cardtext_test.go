@@ -15,12 +15,12 @@ func TestText(t *testing.T) {
 		"Pick":           "Deal 1 damage.",
 		"Brace":          "Gain 1 Block.",
 		"Pickaxe Flurry": "Deal 1 damage twice.",
-		"Kneecap":        "Interrupt. Deal 1 damage.",
+		"Kneecap":        "Interrupt (cancels a card winding up). Deal 1 damage.",
 		"Dodge Roll":     "Parry 1.",
 		"Chalk Dust":     "Apply 1 Vulnerable.",
 		"Double Tap":     "Deal 1 damage 3 times.",
 		"Momentum":       "Gain 1 Strength.",
-		"Undermine":      "Interrupt. If this cancels a card, apply 2 Vulnerable.",
+		"Undermine":      "Interrupt (cancels a card winding up). If this cancels a card, apply 2 Vulnerable.",
 		"Hunker Down":    "Parry 2.",
 		"Boot and Heel":  "Deal 2 damage twice.",
 		"Spiked Shield":  "Gain 1 Block. Counter 1.",
@@ -29,7 +29,7 @@ func TestText(t *testing.T) {
 		"Avalanche":      "Deal damage equal to your Block.",
 		"Loose Timbers":  "If this card is cancelled, deal 4 damage. Otherwise, gain 3 Block.",
 		"Blowback":       "Move your Vulnerable to the opponent.",
-		"Earth Ear":      "Interrupt. Gain 1 Block.",
+		"Earth Ear":      "Interrupt (cancels a card winding up). Gain 1 Block.",
 		"Deadfall":       "Parry 1. If it cancels on its last beat, apply 1 Vulnerable.",
 		"Fool's Gold":    "If this card is cancelled, apply 1 Vulnerable. Otherwise, deal 1 damage.",
 		"Chisel Jab":     "Deal 2 damage.",
@@ -37,7 +37,7 @@ func TestText(t *testing.T) {
 		"Cribbing":       "Gain 2 Block.",
 		"Snare":          "Counter 1.",
 		"Timber Set":     "Parry 2. If it cancels on its last beat, apply 1 Vulnerable.",
-		"Cave Echo":      "Interrupt. If this cancels a card, apply 1 Vulnerable.",
+		"Cave Echo":      "Interrupt (cancels a card winding up). If this cancels a card, apply 1 Vulnerable.",
 	}
 	for name, want := range cases {
 		t.Run(name, func(t *testing.T) {

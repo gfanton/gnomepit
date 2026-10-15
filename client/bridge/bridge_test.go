@@ -98,7 +98,7 @@ func TestLoadView(t *testing.T) {
 	assert.True(t, undermine.Rare)
 	assert.True(t, undermine.Interrupt)
 	assert.Equal(t, "Quick", undermine.Tier)
-	assert.Equal(t, "Interrupt. If this cancels a card, apply 2 Vulnerable.", undermine.Text)
+	assert.Equal(t, "Interrupt (cancels a card winding up). If this cancels a card, apply 2 Vulnerable.", undermine.Text)
 	assert.Equal(t, "Deal 1 damage 3 times.", card(t, view, "Double Tap").Text)
 
 	require.Len(t, view.Clans, 2)

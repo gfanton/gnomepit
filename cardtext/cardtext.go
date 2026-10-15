@@ -13,7 +13,7 @@ import (
 func Text(c engine.Card) string {
 	var parts []string
 	if c.Interrupt {
-		parts = append(parts, "Interrupt.")
+		parts = append(parts, "Interrupt (cancels a card winding up).")
 	}
 	if c.Parry > 0 {
 		parts = append(parts, "Parry "+strconv.Itoa(c.Parry)+".")
