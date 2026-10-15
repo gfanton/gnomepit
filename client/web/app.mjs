@@ -11,6 +11,9 @@ import { glossary, markKeywords, escapeHTML } from "./keywords.mjs";
 import { knownCards } from "./table.mjs";
 import { stepFeedback, cardBehind } from "./battle-feedback.mjs";
 import { artIndex } from "./art.mjs";
+import { loadArena } from "./arena-provider.mjs";
+import { createLobby } from "./lobby.mjs";
+import { replayView, viewOf } from "./online-model.mjs";
 
 const engine = await loadEngine("engine.wasm", "cards.json");
 const art = artIndex(await (await fetch("art/assets.json")).json());
@@ -26,6 +29,9 @@ let flow = initial;
 let deck = null; // the deck being picked on the deck screen
 let plan = []; // the plan being built on the plan screen
 let legalPlans = []; // the acting player's legal plans this round
+let onlineContext = null;
+let onlineError = "";
+let onlineSending = false;
 let playback = null; // {start, steps, lines, shown, speed, timer, revealTimer, revealAt, viewer} for the round being played back
 
 // Shared cards, and any clan missing here, get no emblem and no blurb.
@@ -66,6 +72,58 @@ function masthead(note = "A duel beneath the mountain") {
   return `<header class="masthead"><a class="wordmark" href="./">Gnomehall<span>UNDER THE MOUNTAIN</span></a><span class="masthead__note">${note}</span></header>`;
 }
 
+const arena = await loadArena();
+const lobby = createLobby({
+  app, arena, onRender: render, portrait: portraitHTML, emblem,
+  onResume: () => {
+    const draft=lobby.model.draft; if(!draft)return;
+    ({flow,deck,plan,legalPlans,onlineContext}=draft);lobby.model.inGame=true;app.classList.remove("lobby");render();
+  },
+  onExit: () => { stopPlaying(); playback = null; onlineContext = null; flow = initial; render(); },
+  onCompose: context => {
+    onlineContext = context; onlineError = ""; lobby.model.draft=null; app.classList.remove("lobby");
+    const opponent = context.view?.clans[0] || "";
+    if(opponent && !clanNamed(opponent)) throw new Error("The arena returned an unknown clan. Reload before playing.");
+    flow = { ...initial, screen: "deck", mode: "online", hp: engine.hp, acting: context.intent === "accept" ? 1 : 0,
+      clans: context.intent === "accept" ? [opponent, null] : [null, ""], decks: [[], []],
+      state: {round: 1, gnomes: [0, 1].map(() => ({hp: engine.hp, vulnerable: 0, strength: 0, spent: []}))} };
+    deck = newDeck(engine.clans[0], engine.cards); render();
+  },
+  onPlay: (raw, address, review) => {
+    const restored = replayView(raw, engine, address);
+    const { view, decks, state, rounds, result } = restored;
+    if(!review && view.side === 0 && view.phase === "reveal") throw new Error("The arena adapter must open your pending plan and resolve the latest clash before this turn can be resumed. This integration is not available in this build yet.");
+    if (!review && (view.side < 0 || !decks[view.side]?.length)) throw new Error("Your private deck is needed to resume this turn. The arena adapter must recover it before play.");
+    if (!review && rounds.length === 0 && view.round > 1) throw new Error("The arena has not supplied the resolved round yet. Refresh this match.");
+    onlineContext = {intent: "move", view, account: address, review}; onlineError = "";
+    flow = {...initial, mode: "online", hp: engine.hp, acting: view.side >= 0 ? view.side : 0, clans: view.clans, decks,
+      state, rounds, result, screen: rounds.length ? "playback" : "plan"};
+    if (rounds.length) {
+      const round = rounds.at(-1);
+      playback = {start: round.start.gnomes.map(g => ({...g,block:0,counter:0})),steps:groupSteps(round.events),
+        lines:sentences(round.events,{cards:engine.cards,names:battleNames(),plans:round.plans}),shown:0,timer:null,revealTimer:null,speed:1,viewer:flow.acting};
+    } else { legalPlans=engine.legalPlans({state,side:flow.acting,deck:decks[flow.acting]}); plan=[]; }
+    lobby.model.inGame = true; app.classList.remove("lobby"); render();
+  },
+});
+function battleNames() {
+  return flow.mode === "online" ? flow.clans.map((clan, side) => side === flow.acting ? "You" : clan || "Rival to come") : sideNames(flow.clans, flow.mode);
+}
+function onlineBar() {
+  return flow.mode !== "online" ? "" : `<section class="online-match-bar"><button class="button button--secondary" data-action="onlineBack" ${onlineSending ? "disabled" : ""}>Back to board</button><span>${onlineContext?.view?.deadline ? `Your move deadline: ${escapeHTML(new Date(onlineContext.view.deadline * 1000).toLocaleString())}` : onlineContext?.intent === "accept" ? "Accepting a challenge · Round 1" : "Posting a challenge · Round 1"}</span><p role="status">${escapeHTML(onlineError || (onlineSending ? "Sending your move… Waiting for confirmation." : ""))}</p></section>`;
+}
+async function sendOnlinePlan() {
+  if (onlineSending || !isSealable(plan, legalPlans)) return;
+  onlineSending = true; onlineError = ""; render();
+  const saved = [...plan];
+  try {
+    const me = flow.acting;
+    await lobby.sendDraft(onlineContext, flow.clans[me], flow.decks[me], saved);
+    stopPlaying(); playback = null; flow = {...initial,screen:"lobby"};
+  } catch (error) { onlineError = error.message; }
+  finally { onlineSending = false; render(); }
+}
+
 // ---- Actions
 
 function dispatch(action) {
@@ -101,7 +159,7 @@ function enter(before) {
   if (flow.screen === "playback") {
     const start = flow.state.gnomes.map((g) => ({ hp: g.hp, block: 0, counter: 0, vulnerable: g.vulnerable, strength: g.strength }));
     const { state, result, events } = engine.resolve({ state: flow.state, decks: flow.decks, a: flow.plans[0], b: flow.plans[1] });
-    const names = sideNames(flow.clans, flow.mode);
+    const names = battleNames();
     playback = {
       start,
       steps: groupSteps(events),
@@ -130,6 +188,8 @@ function groupSteps(events) {
 
 const handlers = {
   start: ({ mode }) => dispatch({ type: "start", mode, hp: engine.hp }),
+  online: () => { flow = {...initial,screen:"lobby"}; lobby.enter(); },
+  onlineBack: () => { if(onlineSending)return; stopPlaying(); playback=null; if(["plan","deck"].includes(flow.screen))lobby.model.draft={flow,deck,plan,legalPlans,onlineContext}; lobby.returnToBoard(); },
   clan: ({ name }) => {
     deck = newDeck(clanNamed(name), engine.cards);
     render();
@@ -138,7 +198,11 @@ const handlers = {
     deck = toggle(deck, Number(id), clanNamed(deck.clan), engine.cards);
     render();
   },
-  deckReady: () => dispatch({ type: "deckReady", clan: deck.clan, deck: [...deck.picks].sort((a, b) => a - b) }),
+  deckReady: () => {
+    if(flow.mode !== "online") return dispatch({ type: "deckReady", clan: deck.clan, deck: [...deck.picks].sort((a, b) => a - b) });
+    const me = flow.acting; flow.clans[me] = deck.clan; flow.decks[me] = [...deck.picks].sort((a,b)=>a-b);
+    flow = {...flow,screen:"plan"}; legalPlans = engine.legalPlans({state:flow.state,side:me,deck:flow.decks[me]}); plan=[]; render();
+  },
   handoffDone: () => dispatch({ type: "handoffDone" }),
   addCard: ({ id }) => {
     const cardId = Number(id);
@@ -172,11 +236,16 @@ const handlers = {
   intel: () => { if (flow.screen === "playback") stopPlaying(); openDialog(byId("battle-info")); },
   roundLog: () => { stopPlaying(); openDialog(byId("round-log")); },
   closeDialog: () => closeBattleDialogs(),
-  seal: () => { closeBattleDialogs(); dispatch({ type: "planSealed", plan }); },
+  seal: () => { closeBattleDialogs(); if(flow.mode === "online") return sendOnlinePlan(); dispatch({ type: "planSealed", plan }); },
   next: () => { stopPlaying(); showStep(playback.shown + 1); },
   play: () => (playback.timer || playback.revealTimer ? stopPlaying() : startPlaying()),
   skip: () => { stopPlaying(); for (const card of app.querySelectorAll(".card-reveal")) card.classList.remove("card-reveal"); showStep(playback.steps.length, false); },
-  playbackDone: () => dispatch({ type: "playbackDone" }),
+  playbackDone: () => {
+    if(flow.mode !== "online") return dispatch({ type: "playbackDone" });
+    stopPlaying(); playback=null;
+    if(onlineContext.review || onlineContext.view.action !== "move") return lobby.returnToBoard();
+    flow={...flow,screen:"plan"}; legalPlans=engine.legalPlans({state:flow.state,side:flow.acting,deck:flow.decks[flow.acting]}); plan=[];render();
+  },
   rematch: () => dispatch({ type: "rematch" }),
   newMatch: () => dispatch({ type: "newMatch" }),
   copyLog: () => copyMatchLog(),
@@ -196,6 +265,13 @@ document.addEventListener("keydown", () => app.querySelectorAll(".hand-entry--re
 app.addEventListener("click", (event) => {
   const target = event.target.closest("[data-action]");
   if (!target || target.disabled) return;
+  if (target.dataset.action.startsWith("online") && target.dataset.action !== "onlineBack") {
+    if(target.tagName === "A") event.preventDefault();
+    if(target.dataset.action === "online") handlers.online();
+    else lobby.action(target.dataset.action.slice(6),target.dataset);
+    return;
+  }
+  if (onlineSending) return;
   if (event.detail > 0) target.blur();
   handlers[target.dataset.action]?.(target.dataset);
 });
@@ -398,6 +474,8 @@ function copyMatchLog() {
 // ---- Rendering
 
 function render() {
+  if(lobby.model.active && !lobby.model.inGame) { if(app.contains(tip))document.body.append(tip);tip.hidden=true;return lobby.render(); }
+  app.classList.remove("lobby");
   const screens = { title, deck: deckScreen, handoff, plan: planScreen, playback: playbackScreen, result: resultScreen };
   if (flow.screen === "playback" && app.dataset.screen === "playback") return;
   const previousScreen = app.dataset.screen;
@@ -406,7 +484,7 @@ function render() {
   handScroll = app.querySelector(".battle-hand")?.scrollLeft ?? 0;
   for (const ghost of flights) ghost.remove(); flights.clear();
   if (app.contains(tip)) document.body.append(tip);
-  app.innerHTML = screens[flow.screen]();
+  app.innerHTML = onlineBar() + screens[flow.screen]();
   app.dataset.screen = flow.screen;
   app.classList.toggle("board--battle", ["plan", "playback"].includes(flow.screen));
   if (flow.screen === "plan") {
@@ -442,9 +520,10 @@ function title() {
         <h1>Small gnomes.<br>Big grudges.</h1>
         <p>Deep beneath the mountain, a quarrel is settled in three rounds. Choose your clan. Plot three beats. Let the sparks fly.</p>
         <div class="button-row">
-          <button class="button" type="button" data-action="start" data-mode="bot">Enter the hall <span aria-hidden="true">→</span></button>
+          <button class="button" type="button" data-action="online">Play online <span aria-hidden="true">→</span></button>
+          <button class="button button--secondary" type="button" data-action="start" data-mode="bot">Practice against bot</button>
           <button class="button button--secondary" type="button" data-action="start" data-mode="hotseat">Two players</button>
-        </div><span class="intro__caption">Versus the bot, or a friend at the same table.</span>
+        </div><span class="intro__caption">Online rivals, a practice bot, or a friend at the same table.</span>
       </div>
       <div class="intro__art"><img src="art/hall-hero-v2.jpg" alt="Gnomes from both clans gather around a card table in the underground hall"><span class="intro__art-label">GNOMEHALL <span>Different clans. Shared grudges.</span></span></div>
     </section>
@@ -458,7 +537,7 @@ function deckScreen() {
   const rare = rareOf(clan, engine.cards);
   const picked = deck.picks.length - 1;
   const legal = engine.legalDeck({ clan: deck.clan, deck: deck.picks });
-  const heading = flow.mode === "bot" ? "Pick your deck" : `Player ${flow.acting + 1} picks a deck`;
+  const heading = ["bot", "online"].includes(flow.mode) ? "Pick your deck" : `Player ${flow.acting + 1} picks a deck`;
   const tabs = engine.clans
     .map((c) => `<button class="button ${c.name === deck.clan ? "" : "button--secondary"}" type="button" data-action="clan" data-name="${c.name}">${c.name}</button>`)
     .join("");
@@ -507,9 +586,9 @@ function beatMarkersHTML() {
 
 function battleDialogsHTML(viewer) {
   const opponent = 1 - viewer;
-  const names = sideNames(flow.clans, flow.mode);
+  const names = battleNames();
   const past = flow.screen === "playback" ? flow.rounds.slice(0, -1) : flow.rounds;
-  const known = knownCards(past, opponent, clanNamed(flow.clans[opponent]).cards, flow.decks[opponent], engine.cards);
+  const known = knownCards(past, opponent, (clanNamed(flow.clans[opponent])?.cards ?? []), flow.decks[opponent], engine.cards);
   const knownHead = known.open
     ? `<h3 class="heading">${possessive(names[opponent])} deck</h3><p class="muted">Decks are open from round 2. Spent cards show the round they were played in; the current plan stays hidden until the reveal.</p>`
     : `<h3 class="heading">${possessive(names[opponent])} clan pool</h3><p class="muted">${deckSize} of these ${known.cards.length} cards are in their deck. The Rare always is. Decks open from round 2; the current plan stays hidden until the reveal.</p>`;
@@ -524,7 +603,7 @@ function battleDialogsHTML(viewer) {
 
 function planScreen() {
   const me = flow.acting, opponent = 1 - me;
-  const names = sideNames(flow.clans, flow.mode);
+  const names = battleNames();
   const used = beatsUsed(plan, engine.cards);
   const sealable = isSealable(plan, legalPlans);
   const handIds = [...basics, ...flow.decks[me].filter(id => !flow.state.gnomes[me].spent.includes(id) && !plan.includes(id))];
@@ -535,7 +614,7 @@ function planScreen() {
       ${cardHTML(c, { action: matchMedia("(hover: none)").matches ? "inspectCard" : "addCard", hand: true, dimmed: !canAdd(plan, id, engine.cards, available()) })}
       <button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Details: ${c.name}">Details</button></div>`;
   }).join("");
-  const backs = [1, 2, 3].map(() => `<div class="card-back card-back--${flow.clans[opponent].toLowerCase()}" aria-hidden="true"><span>${emblem(flow.clans[opponent])}</span></div>`).join("");
+  const backs = [1, 2, 3].map(() => `<div class="card-back card-back--${(flow.clans[opponent] || "shared").toLowerCase()}" aria-hidden="true"><span>${emblem(flow.clans[opponent])}</span></div>`).join("");
   return `${battleHeaderHTML(flow.state.round, "Planning")}
     <section class="duel-table" aria-label="Round ${flow.state.round} battle table">
       <div class="duel-fighters">${gnomeHTML(me, flow.state.gnomes[me], names[me])}${gnomeHTML(opponent, flow.state.gnomes[opponent], names[opponent])}</div>
@@ -547,10 +626,10 @@ function planScreen() {
       </div>
     </section>
     <section class="hand-zone" aria-label="Your hand"><div class="hand-zone__heading">
-      <div class="hand-zone__title"><h2 class="heading">Plot your next move</h2><span class="muted" id="plan-status" role="status">${sealable ? "Your plan is ready. Seal it when you're sure." : "Play cards to fill all three beats."}</span></div>
+      <div class="hand-zone__title"><h2 class="heading">Plot your next move</h2><span class="muted" id="plan-status" role="status">${sealable ? "Your plan is ready. Confirm it when you're sure." : "Play cards to fill all three beats."}</span></div>
       <div class="hand-zone__hint"><span class="label">Your hand <span>${handIds.length} cards</span></span><span class="muted">Lift a card to read · click to play · tap to inspect</span></div>
-      <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable ? "" : "disabled"}>Seal plan</button></div></div>
-      <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount ? "" : "disabled"} aria-label="Open played cards, ${playedCount} cards"><span class="pile-back card-back card-back--${flow.clans[me].toLowerCase()}"><span>${emblem(flow.clans[me])}</span></span><span class="label">Played cards</span><span class="muted">${playedCount} cards · inspect</span></button></div></section>
+      <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}>${flow.mode === "online" ? onlineContext.intent === "challenge" ? "Post challenge" : onlineContext.intent === "accept" ? "Accept challenge" : "Send plan" : "Seal plan"}</button></div></div>
+      <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount ? "" : "disabled"} aria-label="Open played cards, ${playedCount} cards"><span class="pile-back card-back card-back--${(flow.clans[me] || "shared").toLowerCase()}"><span>${emblem(flow.clans[me])}</span></span><span class="label">Played cards</span><span class="muted">${playedCount} cards · inspect</span></button></div></section>
     ${battleDialogsHTML(me)}`;
 }
 
@@ -567,7 +646,7 @@ function slotsHTML() {
 
 function playbackScreen() {
   const round = flow.rounds.at(-1);
-  const names = sideNames(flow.clans, flow.mode);
+  const names = battleNames();
   const me = playback.viewer, opponent = 1 - me;
   const row = side => {
     let beat = 0;
@@ -621,7 +700,7 @@ function patchPlayback() {
   }
   byId("log").innerHTML = logHTML(round, steps, shown, lines);
   const done = shown >= steps.length;
-  const names = sideNames(flow.clans, flow.mode);
+  const names = battleNames();
   const caption = done ? `Round complete. ${names[playback.viewer]}: ${vitals[playback.viewer].hp} HP · ${names[1 - playback.viewer]}: ${vitals[1 - playback.viewer].hp} HP.` : current ? lines.slice(current.from, current.to).join(" · ") : "Both plans revealed. The clash begins.";
   if (byId("battle-event").textContent !== caption) byId("battle-event").textContent = caption;
   byId("next").disabled = done;byId("skip").disabled = done;byId("play").disabled = done;
@@ -647,7 +726,8 @@ function logHTML(round, steps, shown, lines) {
 }
 
 function finishHTML() {
-  const names = sideNames(flow.clans, flow.mode);
+  if(flow.mode === "online") return `<div class="button-row"><button class="button" data-action="playbackDone">${onlineContext.review ? "Back to match" : "Plan your next round"}</button></div>`;
+  const names = battleNames();
   if (flow.result === "ongoing") {
     return `<div class="button-row"><button class="button" type="button" data-action="playbackDone">Round ${flow.state.round}</button></div>`;
   }
@@ -658,7 +738,7 @@ function finishHTML() {
 }
 
 function resultScreen() {
-  const names = sideNames(flow.clans, flow.mode);
+  const names = battleNames();
   const sides = [0, 1]
     .map((side) => {
       const g = flow.state.gnomes[side];
@@ -689,7 +769,7 @@ function resultScreen() {
 
 // gnomeHTML draws a side's portrait, HP bar and status chips from a gnome or vitals object.
 function gnomeHTML(side, vitals, name) {
-  const clan = flow.clans[side];
+  const clan = flow.clans[side] || "Shared";
   return `<div class="fighter fighter--${clan.toLowerCase()}" id="fighter-${side}">
     <div class="fighter__portrait" id="portrait-frame-${side}">${portraitHTML(clan, `class="sprite" id="sprite-${side}"`)}<span class="fighter__crest">${emblem(clan)}</span><div class="combat-floats" id="float-${side}" aria-hidden="true"></div></div>
     <div class="fighter__vitals"><div class="fighter__name"><h2>${name}</h2><span class="label">${clan}</span></div><div class="hp__row"><span class="fighter__health-label">Health</span><span class="number" id="hp-num-${side}">${vitals.hp} / ${flow.hp}</span></div>
@@ -749,4 +829,6 @@ function byId(id) {
   return document.getElementById(id);
 }
 
-render();
+const matchLink = location.hash.match(/^#match=(.+)$/);
+if(matchLink) { flow={...initial,screen:"lobby"}; await lobby.enter(decodeURIComponent(matchLink[1])); }
+else render();
