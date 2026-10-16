@@ -2,7 +2,7 @@
 // casing as well as decoded camelCase values. Times in the arena are Unix seconds.
 export const field = (v, key) => v?.[key] ?? v?.[{id:'ID',hp:'HP'}[key] ?? key[0].toUpperCase() + key.slice(1)];
 export function viewOf(raw, address = '', now = Date.now() / 1000) {
-  const keys = ['id','phase','round','challenger','acceptor','opponent','challengerClan','acceptorClan','clan','toMove','deadline','result','reason','posted','expires','challengerDeck','acceptorDeck','plans','hp','deadlinePassed','ownDeck'];
+  const keys = ['id','phase','round','challenger','acceptor','opponent','challengerClan','acceptorClan','clan','toMove','deadline','result','reason','posted','expires','challengerDeck','acceptorDeck','plans','hp','deadlinePassed','ownDeck','session'];
   const v = Object.fromEntries(keys.map(k => [k, field(raw,k)]));
   v.id = String(v.id ?? '');
   v.players = [v.challenger ?? '',v.acceptor ?? ''];

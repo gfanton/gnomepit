@@ -6,8 +6,9 @@ import { fromBase64, fromHex, toBase64, toHex } from "./encoding.mjs";
 
 // Each side's spend limit for one match, in ugnot, as client/ONLINE.md "Session budgets" works it out.
 export const sessionBudget = { challenger: 641_411, acceptor: 526_484 };
-// Each side's costliest move, in ugnot: a session with less left counts as used up.
-export const sessionReserve = { challenger: 256_099, acceptor: 239_750 };
+// Each side's costliest move, in ugnot: a session with less left counts as used up. opening
+// counts the Challenge and the Accept; later, the moves after them, a Reveal and a Play.
+export const sessionReserve = { opening: { challenger: 256_099, acceptor: 239_750 }, later: { challenger: 52_023, acceptor: 21_146 } };
 export const sessionLifetime = 24 * 60 * 60; // seconds
 // Gas per session message; creating a session uses about 1.4M.
 export const sessionGas = 3_000_000;
@@ -137,6 +138,16 @@ function cardIDsOf(set) {
   return ids;
 }
 
+const hasExpired = (session, now) => session.expiresAt !== 0 && session.expiresAt <= now;
+// A lock under another expiry is an earlier session's, on the same key.
+const lockOf = (session, locks) => locks.find((l) => l.Session === session.address && l.Expires === session.expiresAt);
+
+// lockedMatches lists the ids of the matches master's live sessions, onChain, are locked to:
+// the only matches classifySessions reads.
+export function lockedMatches({ onChain, locks, now }) {
+  return [...new Set(onChain.filter((s) => !hasExpired(s, now)).map((s) => lockOf(s, locks)?.Match).filter((id) => id !== undefined))];
+}
+
 // classifySessions sorts master's sessions, onChain as chain.sessions lists them, for each
 // generation keys maps to its keys, against the realm's Locks. matches maps each locked
 // match's id to {phase, role}, with no entry for a match the realm no longer knows; reserve
@@ -151,14 +162,15 @@ export function classifySessions({ onChain, keys, locks, matches, now, realm, re
       out.free.push({ generation, keys: k });
       continue;
     }
-    const expired = session.expiresAt !== 0 && session.expiresAt <= now;
+    const expired = hasExpired(session, now);
     // The same keys may hold sessions for another arena on this site; those stay.
     if (!expired && !session.allowPaths.includes(`vm/exec:${realm}`)) continue;
-    const lock = locks.find((l) => l.Session === session.address && l.Expires === session.expiresAt);
+    const lock = lockOf(session, locks);
     const match = lock === undefined ? undefined : matches.get(lock.Match);
     const gone = lock !== undefined && (match === undefined || match.phase === "ended");
-    // An unlocked session has no side yet, so it needs only the smaller reserve.
-    const needed = match === undefined ? Math.min(reserve.challenger, reserve.acceptor) : reserve[match.role];
+    // An unlocked session has no side yet and may pay either opening; a locked one pays only
+    // its side's later moves.
+    const needed = match === undefined ? Math.min(reserve.opening.challenger, reserve.opening.acceptor) : reserve.later[match.role];
     const entry = { generation, keys: k, session };
     if (expired || gone || session.spendLimit - session.spendUsed < needed) out.dead.push(entry);
     else if (lock === undefined) out.unlocked.push(entry);

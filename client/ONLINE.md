@@ -160,7 +160,7 @@ Each match gets its own session, and its spend limit is the budget of the player
 | The session lock | 4,800 | 4,800 |
 | Budget | 641,411 ugnot | 526,484 ugnot |
 
-A session with less left than its side's costliest move counts as used up (`sessionReserve`): 256,099 ugnot for the challenger and 239,750 for the acceptor.
+A session with less left than the costliest move it may still pay counts as used up (`sessionReserve`). An unlocked session may still pay an opening: 256,099 ugnot for the challenger and 239,750 for the acceptor. A session locked to a match pays only its side's later moves: 52,023 ugnot for the challenger's costliest Reveal, and 21,146 for the acceptor's costliest Play.
 
 ## Tests
 

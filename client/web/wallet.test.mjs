@@ -6,8 +6,8 @@ import { readFileSync } from "node:fs";
 import { nodeEngine } from "./engine-node.mjs";
 import * as signer from "./signer.mjs";
 import {
-  WalletError, classifySessions, connect, deriveKeys, generations, newSalt, openBox, revokeMessage, rootText, sealBox, sealOf, sessionBudget,
-  sessionMessage, sessionReserve, waitForAdena,
+  WalletError, classifySessions, connect, deriveKeys, generations, lockedMatches, newSalt, openBox, revokeMessage, rootText, sealBox, sealOf,
+  sessionBudget, sessionMessage, sessionReserve, waitForAdena,
 } from "./wallet.mjs";
 
 const engine = await nodeEngine();
@@ -162,7 +162,7 @@ test("a live session locked to a running match is that match's, and a live one l
 
 test("an expired or used-up session is dead, locked or not", () => {
   const running = new Map([["4", { phase: "reveal", role: "challenger" }]]);
-  const usedUp = { spendUsed: sessionBudget.challenger - sessionReserve.acceptor + 1 };
+  const usedUp = { spendUsed: sessionBudget.challenger - sessionReserve.opening.acceptor + 1 };
   const out = classify(
     [sessionAt(0, { expiresAt: now }), sessionAt(1, usedUp), sessionAt(2, { expiresAt: now - 1 })],
     [lockOf(2, "4", now - 1)],
@@ -176,11 +176,27 @@ test("an expired or used-up session is dead, locked or not", () => {
 // A role's moves cost what its own costliest move bounds, so a session locked to a match is
 // judged by its side in that match.
 test("a locked session is used up below the reserve of its side in the match", () => {
-  const left = { spendUsed: sessionBudget.challenger - sessionReserve.acceptor };
+  const left = { spendUsed: sessionBudget.challenger - sessionReserve.later.challenger + 1 };
   const matches = new Map([["4", { phase: "reveal", role: "challenger" }], ["5", { phase: "play", role: "acceptor" }]]);
   const out = classify([sessionAt(0, left), sessionAt(1, left)], [lockOf(0, "4"), lockOf(1, "5")], matches);
   assert.deepEqual(generationsOf(out.dead), [0]);
   assert.deepEqual([...out.byMatch.keys()], ["5"]);
+});
+
+// A locked session never pays an opening again, while an unlocked one may still pay either side's.
+test("a locked session needs only its side's later moves left, an unlocked one an opening", () => {
+  const left = { spendUsed: sessionBudget.challenger - sessionReserve.later.challenger };
+  const out = classify([sessionAt(0, left), sessionAt(1, left)], [lockOf(0, "4")], new Map([["4", { phase: "reveal", role: "challenger" }]]));
+  assert.equal(out.byMatch.get("4").generation, 0);
+  assert.deepEqual(generationsOf(out.dead), [1]);
+});
+
+// Only a live session's lock can make it a match's; the realm keeps a revoked session's lock
+// until that session's expiry.
+test("the matches to read are those the live sessions are locked to", () => {
+  const onChain = [sessionAt(0), sessionAt(1, { expiresAt: now - 1 }), sessionAt(2, { expiresAt: now + 7200 }), sessionAt(3)];
+  const locks = [lockOf(0, "4"), lockOf(1, "5", now - 1), lockOf(2, "6"), lockOf(4, "7"), lockOf(3, "4")];
+  assert.deepEqual(lockedMatches({ onChain, locks, now }), ["4"]);
 });
 
 test("a session locked to an ended match, or to one the realm no longer knows, is dead", () => {

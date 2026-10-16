@@ -238,11 +238,12 @@ const lockType = {
 
 // arenaChain holds master's session accounts in sessions, answers Locks with locks, and
 // answers Match(id) with the recorded answer matches names for id, by file name or as
-// parsed JSON, or fails with "unknown match". A broadcast lands after a short wait and
-// moves the sequence of every session on; reads lists the sequence each sessions() read.
+// parsed JSON, or throws it when it is an error, or fails with "unknown match". A
+// broadcast lands after a short wait and moves the sequence of every session on; reads
+// lists the sequence each sessions() read, and matchReads each id Match read.
 function arenaChain({ sessions = [], locks = [], matches = {} } = {}) {
   const chain = {
-    sessionList: sessions, locks, sequence: 0, broadcasts: 0, reads: [],
+    sessionList: sessions, locks, sequence: 0, broadcasts: 0, reads: [], matchReads: [],
     sessions: async () => {
       chain.reads.push(chain.sequence);
       return chain.sessionList.map((s) => ({ ...s, sequence: chain.sequence }));
@@ -251,8 +252,10 @@ function arenaChain({ sessions = [], locks = [], matches = {} } = {}) {
       if (expr.startsWith(`${realm}.Locks(`)) return lockAnswer(chain.locks);
       if (expr.startsWith(`${realm}.Matches(`)) return load("matches").results;
       const [, id] = /\.Match\("(\d+)"\)$/.exec(expr);
+      chain.matchReads.push(id);
       const answer = matches[id];
       if (answer === undefined) throw new ChainError("failed", "unknown match");
+      if (answer instanceof Error) throw answer;
       return (typeof answer === "string" ? load(answer) : answer).results;
     },
     typeJSON: async (id) => (id === lockTypeID ? lockType : load(`qtype-${id.split(".").pop()}`)),
@@ -340,13 +343,14 @@ test("a challenge seals its deck and plan as their reveal will name them", async
 const test1 = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5";
 const rootSigned = btoa("a root signature");
 const keysOf = (generation) => deriveKeys(rootSigned, generation, signer);
+const day = 24 * 60 * 60;
+// A session lasts a day from now unless fields say otherwise, as one the page creates does.
 const sessionOf = async (generation, fields = {}) => ({
   address: (await keysOf(generation)).sessionAddress,
-  accountNumber: 20 + generation, sequence: 0, expiresAt: now + 3600, spendLimit: sessionBudget.challenger, spendUsed: 0, allowPaths: [`vm/exec:${realm}`],
+  accountNumber: 20 + generation, sequence: 0, expiresAt: now + day, spendLimit: sessionBudget.challenger, spendUsed: 0, allowPaths: [`vm/exec:${realm}`],
   ...fields,
 });
-const lockOn = async (generation, match, expires = now + 3600) => ({ Session: (await keysOf(generation)).sessionAddress, Match: match, Expires: expires });
-const day = 24 * 60 * 60;
+const lockOn = async (generation, match, expires = now + day) => ({ Session: (await keysOf(generation)).sessionAddress, Match: match, Expires: expires });
 const sessionExpired = (err) => err instanceof ArenaError && err.type === "sessionExpired";
 
 // sessionPlayer is test1's arena on chain, with a wallet that signs the root text and
@@ -436,7 +440,7 @@ test("with no generation free, the first one revoked takes the new session", asy
   const short = { spendUsed: sessionBudget.challenger - 300_000 };
   const sessions = await Promise.all([...Array(16).keys()].map((g) => sessionOf(g, g === 5 || g === 9 ? { expiresAt: now - 1 } : short)));
   const chain = arenaChain({ sessions });
-  const { arena, contracts } = sessionPlayer(chain, {
+  const { arena, contracts, signed } = sessionPlayer(chain, {
     created: async () => {
       chain.sessionList = [await sessionOf(5, { accountNumber: 77 })];
       return { status: "success" };
@@ -450,6 +454,67 @@ test("with no generation free, the first one revoked takes the new session", asy
     revokeMessage(test1, k5.sessionPubKey), revokeMessage(test1, k9.sessionPubKey),
     sessionMessage(test1, k5.sessionPubKey, now, realm, sessionBudget.challenger, day),
   ]);
+  // The revoked session's account was 25; the chain gives the new one another.
+  assert.deepEqual([signed.at(-1).sessionAddr, signed.at(-1).accountNumber, signed.at(-1).sequence], [k5.sessionAddress, 77, 0]);
+});
+
+// A read served before the approval's block applies still shows what the chain held before.
+test("a new session the chain does not show yet signs nothing", async () => {
+  const expiredAt5 = await sessionOf(5, { expiresAt: now - 1 });
+  const short = { spendUsed: sessionBudget.challenger - 300_000 };
+  const full = await Promise.all([...Array(16).keys()].map((g) => (g === 5 ? expiredAt5 : sessionOf(g, short))));
+  for (const [name, sessions] of [["none", []], ["the revoked one", full]]) {
+    const chain = arenaChain({ sessions });
+    const { arena, contracts } = sessionPlayer(chain);
+    await arena.connect();
+    await arena.authorize();
+    await assert.rejects(arena.challenge(opening), (err) => err instanceof ArenaError && err.type === "failed" && /not on the chain yet/.test(err.reason), name);
+    assert.equal(contracts.length, 1, name);
+    assert.equal(chain.broadcasts, 0, name);
+  }
+});
+
+test("an opening neither reuses nor revokes a session locked to a running match", async () => {
+  const chain = arenaChain({ sessions: [await sessionOf(0)], locks: [await lockOn(0, "1")], matches: { 1: "match-play" } });
+  const { arena, contracts, signed } = sessionPlayer(chain, {
+    created: async () => {
+      chain.sessionList = [...chain.sessionList, await sessionOf(1)];
+      return { status: "success" };
+    },
+  });
+  await arena.connect();
+  await arena.authorize();
+  await arena.challenge(opening);
+  const k1 = await keysOf(1);
+  assert.deepEqual(contracts.map((c) => c.messages), [[sessionMessage(test1, k1.sessionPubKey, now, realm, sessionBudget.challenger, day)]]);
+  assert.equal(signed.at(-1).sessionAddr, k1.sessionAddress);
+});
+
+test("an opening reads only the matches its live sessions are locked to", async () => {
+  const chain = arenaChain({
+    sessions: [await sessionOf(0, { expiresAt: now - 1 }), await sessionOf(1), await sessionOf(2)],
+    // 0 has expired; 1 was revoked and created again, so its lock is the earlier session's;
+    // 3 was revoked.
+    locks: [await lockOn(0, "5", now - 1), await lockOn(1, "6", now + 3600), await lockOn(2, "1"), await lockOn(3, "7")],
+    matches: { 1: "match-play", 5: "match-play", 6: "match-play", 7: "match-play" },
+  });
+  const { arena, contracts, signed } = sessionPlayer(chain);
+  await arena.connect();
+  await arena.authorize();
+  await arena.challenge(opening);
+  assert.deepEqual(chain.matchReads, ["1"]);
+  assert.equal(contracts.length, 0);
+  assert.equal(signed.at(-1).sessionAddr, (await keysOf(1)).sessionAddress);
+});
+
+test("an opening that cannot read a locked match sends nothing", async () => {
+  const chain = arenaChain({ sessions: [await sessionOf(0)], locks: [await lockOn(0, "1")], matches: { 1: new ChainError("network", "fetch failed") } });
+  const { arena, contracts } = sessionPlayer(chain);
+  await arena.connect();
+  await arena.authorize();
+  await assert.rejects(arena.challenge(opening), (err) => err instanceof ArenaError && err.type === "network");
+  assert.equal(contracts.length, 0);
+  assert.equal(chain.broadcasts, 0);
 });
 
 test("with every generation holding a session it may not revoke, the wallet signs each move", async () => {
@@ -572,6 +637,17 @@ test("renew creates a session for the player's side without sending a move, and 
   await arena.move("1", engine.legalPlans(view.planning)[0]);
   assert.equal(chain.broadcasts, 1);
   assert.deepEqual([signed.at(-1).sessionAddr, signed.at(-1).accountNumber], [k1.sessionAddress, 52]);
+});
+
+test("a move signs with the session locked to its match before an unlocked one", async () => {
+  const box = await sealBox((await keysOf(0)).boxKey, { deck: cardIDs(deckA, engine.cards), deckSalt: newSalt(), plan: cardIDs(picks, engine.cards), planSalt: newSalt() });
+  const chain = arenaChain({ sessions: [await sessionOf(0), await sessionOf(1)], locks: [await lockOn(1, "1")], matches: { 1: revealWith(box) } });
+  const { arena, signed } = sessionPlayer(chain);
+  await arena.connect();
+  await arena.authorize();
+  const view = await arena.match("1");
+  await arena.move("1", engine.legalPlans(view.planning)[0]);
+  assert.equal(signed.at(-1).sessionAddr, (await keysOf(1)).sessionAddress);
 });
 
 test("session moves go out one at a time, each with the sequence the last one left", async () => {
@@ -727,4 +803,22 @@ test("watch reads a match again on a call to it, and not on a call to another ma
   await sleep(10);
   assert.equal(reads, 2);
   stop();
+});
+
+test("watch reports a match whose session expires", async () => {
+  const chain = arenaChain({ sessions: [await sessionOf(0)], locks: [await lockOn(0, "1")], matches: { 1: "match-play" } });
+  const { arena } = sessionPlayer(chain);
+  await arena.connect();
+  await arena.authorize();
+  const seen = [];
+  // reported waits, at most 2 s, until watch has reported count times.
+  const reported = async (count) => {
+    for (const start = Date.now(); seen.length < count && Date.now() - start < 2000; ) await sleep(1);
+  };
+  const stop = arena.watch("1", (view, err) => seen.push(err ?? view.session), { interval: 5 });
+  await reported(1);
+  chain.sessionList = [];
+  await reported(2);
+  stop();
+  assert.deepEqual(seen, ["active", "expired"]);
 });

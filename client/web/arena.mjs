@@ -6,8 +6,8 @@
 import { ChainError, feeFor, payFor } from "./chain.mjs";
 import { decode, structTypes, typeFields } from "./gnovalue.mjs";
 import {
-  WalletError, classifySessions, connect as connectWallet, deriveKeys, generations, newSalt, openBox, revokeMessage, rootSignature, sealBox,
-  sealOf, sessionBudget, sessionGas, sessionLifetime as defaultLifetime, sessionMessage, sessionReserve,
+  WalletError, classifySessions, connect as connectWallet, deriveKeys, generations, lockedMatches, newSalt, openBox, revokeMessage, rootSignature,
+  sealBox, sealOf, sessionBudget, sessionGas, sessionLifetime as defaultLifetime, sessionMessage, sessionReserve,
 } from "./wallet.mjs";
 
 const pageSize = 50; // the realm's maxPage
@@ -252,7 +252,7 @@ export function createArena({
     if (mode() === "contract") return null;
     const found = await ownSessions();
     const matches = new Map();
-    for (const id of new Set(found.locks.map((l) => l.Match))) {
+    for (const id of lockedMatches({ ...found, now: now() })) {
       try {
         const view = await readMatch(id);
         matches.set(id, { phase: view.Phase, role: roleOf(view) });
@@ -265,14 +265,17 @@ export function createArena({
     if (reusable !== undefined) return reusable;
     const target = free[0] ?? dead[0];
     if (target === undefined) return fallBack("Every session this account can hold is used");
+    const start = now();
     const messages = [
       ...dead.map(({ keys }) => revokeMessage(address, keys.sessionPubKey)),
-      sessionMessage(address, target.keys.sessionPubKey, now(), realm, sessionBudget[role], sessionLifetime),
+      sessionMessage(address, target.keys.sessionPubKey, start, realm, sessionBudget[role], sessionLifetime),
     ];
     const gasWanted = sessionGas * messages.length;
     const response = await wallet.DoContract({ messages, memo: "Gnomehall session", gasWanted, gasFee: feeFor(gasWanted, await chain.gasPrice()) });
     if (response?.status !== "success") return fallBack(response?.message || response?.type || "The wallet created no session");
-    const session = (await chain.sessions(address)).find((s) => s.address === target.keys.sessionAddress);
+    // A read served before the approval's block applies may still show the revoked session.
+    const created = (s) => s.address === target.keys.sessionAddress && s.expiresAt === start + sessionLifetime;
+    const session = (await chain.sessions(address)).find(created);
     if (session === undefined) throw new ArenaError("failed", "The new session is not on the chain yet; try again");
     return { ...target, session };
   }
@@ -284,7 +287,7 @@ export function createArena({
     const role = roleOf(view);
     // Only this match is read: sessions locked elsewhere then count as dead, unused here.
     const { byMatch, unlocked } = classify(await ownSessions(), new Map([[id, { phase: view.Phase, role }]]));
-    return byMatch.get(id) ?? unlocked.find(({ session }) => left(session) >= sessionReserve[role]) ?? null;
+    return byMatch.get(id) ?? unlocked.find(({ session }) => left(session) >= sessionReserve.opening[role]) ?? null;
   }
 
   async function signingIn(id, view) {
@@ -536,7 +539,7 @@ export function createArena({
           if (stopped) return;
           try {
             const view = await arena.match(id);
-            const seen = JSON.stringify([view.Phase, view.Round, view.ToMove, view.Plans, view.HP, view.Result, view.DeadlinePassed]);
+            const seen = JSON.stringify([view.Phase, view.Round, view.ToMove, view.Plans, view.HP, view.Result, view.DeadlinePassed, view.session]);
             if (seen !== last && !stopped) {
               last = seen;
               onChange(view);

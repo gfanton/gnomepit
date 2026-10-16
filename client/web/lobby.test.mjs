@@ -65,7 +65,7 @@ test('finishing from the button plays the last clash too', async t => {
   stubPage(t);
   const arena = endingArena({...lastTurn,action:'finish'});
   const {lobby, played} = lobbyOf(arena, 'g1alice');
-  lobby.model.account.state = 'sessionExpired';
+  lobby.model.account.state = 'missing';
   await lobby.enter();
   await lobby.action('Open', {id:'4'});
   assert.equal(arena.finished, undefined);
@@ -123,13 +123,85 @@ test('a challenger whose clash ends the match early sees an ordinary move until 
   stubPage(t);
   const early = {...lastTurn,Round:2,Plans:[ended.Plans[0],['','Pick,Pick,Pick']],HP:ended.HP.slice(0,1),action:'finish'};
   const {lobby, shown} = lobbyOf(endingArena(early), 'g1alice');
-  lobby.model.account.state = 'sessionExpired';
+  lobby.model.account.state = 'missing';
   await lobby.enter();
   await lobby.action('Open', {id:'4'});
   assert.match(shown(), /<h1>Your move<\/h1>/);
   assert.doesNotMatch(shown(), /finish/i);
+  assert.match(shown(), /data-action="onlineAccount"[^>]*>Connect to play</);
   lobby.model.account.state = 'active';
   assert.match(shown(), /data-action="onlineFinish"[^>]*>Watch clash &amp; plan</);
+});
+
+const bobsMove = {ID:'4',Phase:'play',Round:2,Challenger:'g1alice',Acceptor:'g1bob',ToMove:'g1bob',Plans:[ended.Plans[0],['','']],HP:ended.HP.slice(0,1),action:'move'};
+
+// renewingArena is an endingArena whose renew records the match and makes its session active.
+function renewingArena(view) {
+  const arena = endingArena(view);
+  arena.renewed = [];
+  arena.renew = async id => { arena.renewed.push(id); arena.view = {...arena.view,session:'active'}; };
+  return arena;
+}
+
+test('an expired match session offers renewal', async t => {
+  stubPage(t);
+  const arena = renewingArena({...bobsMove,session:'expired'});
+  const {lobby, shown} = lobbyOf(arena, 'g1bob');
+  await lobby.enter();
+  await lobby.action('Open', {id:'4'});
+  assert.match(shown(), /data-action="onlineRenew"[^>]*>Renew session to play</);
+  await lobby.action('Renew');
+  assert.deepEqual(arena.renewed, ['4']);
+  assert.match(shown(), /data-action="onlinePlay"[^>]*>Watch clash &amp; plan</);
+});
+
+// Finishing on an expired session would fail; the player renews first.
+test('a finish whose session has expired waits for renewal', async t => {
+  stubPage(t);
+  const arena = renewingArena({...lastTurn,action:'finish',session:'expired'});
+  const {lobby, shown} = lobbyOf(arena, 'g1alice');
+  await lobby.enter();
+  await lobby.action('Open', {id:'4'});
+  assert.equal(arena.finished, undefined);
+  assert.equal(lobby.model.error, '');
+  assert.match(shown(), /data-action="onlineRenew"[^>]*>Renew session to play</);
+  await lobby.action('Renew');
+  assert.match(shown(), /data-action="onlineFinish"[^>]*>Finish match</);
+});
+
+test('the header says whether this device can play', () => {
+  const {lobby, shown} = lobbyOf(followedArena(), 'g1alice');
+  assert.match(shown(), /<small>Device ready<\/small>/);
+  lobby.model.account.state = 'missing';
+  assert.match(shown(), /<small>Approval needed<\/small>/);
+});
+
+// The realm deletes a withdrawn challenge, so the match it was is gone.
+test('withdrawing returns to the board', async t => {
+  stubPage(t);
+  const arena = endingArena({ID:'4',Phase:'open',Challenger:'g1alice',Clan:'Pickers',Expires:9e9,action:'wait'});
+  arena.match = async () => { if (arena.view === null) throw new Error('unknown match'); return arena.view; };
+  arena.resign = async id => { arena.resigned = id; arena.view = null; };
+  const {lobby} = lobbyOf(arena, 'g1alice');
+  await lobby.enter();
+  await lobby.action('Open', {id:'4'});
+  const reads = arena.reads;
+  await lobby.action('ResignConfirm');
+  assert.equal(arena.resigned, '4');
+  assert.equal(lobby.model.view, null);
+  assert.equal(lobby.model.error, '');
+  assert.equal(arena.reads, reads + 1, 'the board is read again');
+});
+
+test('resigning a running match shows its result', async t => {
+  stubPage(t);
+  const arena = endingArena(bobsMove);
+  arena.resign = async () => { arena.view = {...bobsMove,Phase:'ended',Result:'a',Reason:'resign',action:'done'}; };
+  const {lobby, shown} = lobbyOf(arena, 'g1bob');
+  await lobby.enter();
+  await lobby.action('Open', {id:'4'});
+  await lobby.action('ResignConfirm');
+  assert.match(shown(), /<h1>You lost<\/h1>/);
 });
 
 test("the board hides an ended match's result until its last clash has played", async t => {
@@ -218,13 +290,63 @@ test('after a move is sent, the match it was sent in is watched', async () => {
   assert.equal(arena.watched, '5');
 });
 
-test("the session setup names the session's 10 GNOT spend limit", async t => {
+// dialogLobby is a lobby whose page answers every query with one dialog, which the test
+// reads; the dialog doubles as the opponent field.
+function dialogLobby(t, arena, options = {}) {
   globalThis.document = {activeElement:null};
   t.after(() => { delete globalThis.document; });
-  const dialog = {innerHTML:'',showModal(){},addEventListener(){}};
-  const lobby = createLobby({app:{...app(),querySelector:()=>dialog},arena:followedArena(),onRender(){}});
+  const dialog = {innerHTML:'',value:'',showModal(){},close(){},addEventListener(){}};
+  const lobby = createLobby({app:{...app(),querySelector:()=>dialog},arena,onRender(){},...options});
+  return {lobby, dialog};
+}
+
+const perMatch = 'Each match you post or accept asks your wallet once, for a one-day session that only plays that match.';
+
+test('the setup dialog says each match asks the wallet for its own session', async t => {
+  const {lobby, dialog} = dialogLobby(t, followedArena());
   await lobby.action('Account');
-  assert.match(dialog.innerHTML, /10 GNOT session limit/);
+  assert.match(dialog.innerHTML, /Approve a session for each match/);
+  assert.ok(dialog.innerHTML.includes(perMatch));
+  assert.doesNotMatch(dialog.innerHTML, /seven|10 GNOT/);
+  lobby.model.account = {address:'g1alice',state:'missing'};
+  await lobby.action('Account');
+  assert.match(dialog.innerHTML, /data-action="onlineAuthorize"[^>]*>Sign on this device</);
+});
+
+test("a ready device's account dialog says what each match asks", async t => {
+  const {lobby, dialog} = dialogLobby(t, followedArena());
+  lobby.model.account = {address:'g1alice',state:'active',mode:'session',fallback:null};
+  await lobby.action('Account');
+  assert.ok(dialog.innerHTML.includes(`<p>This device can play online. ${perMatch}</p>`));
+  assert.doesNotMatch(dialog.innerHTML, /onlineAuthorize/);
+});
+
+test('a device whose wallet signs each move can use sessions again', async t => {
+  const arena = followedArena();
+  arena.connect = async () => ({address:'g1alice',state:'active',mode:'contract',fallback:'User rejected'});
+  arena.authorize = async () => { arena.authorized = true; return {address:'g1alice',state:'active',mode:'session',fallback:null}; };
+  const {lobby, dialog} = dialogLobby(t, arena);
+  lobby.model.account = await arena.connect();
+  await lobby.action('Account');
+  assert.match(dialog.innerHTML, /User rejected/);
+  assert.match(dialog.innerHTML, /data-action="onlineAuthorize"[^>]*>Use sessions again</);
+  await lobby.action('Authorize');
+  assert.equal(arena.authorized, true);
+  assert.equal(lobby.model.account.mode, 'session');
+});
+
+test('posting needs no session beforehand', async t => {
+  const composed = [];
+  const arena = followedArena();
+  arena.connect = async () => ({address:'g1alice',state:'active',mode:'session',fallback:null});
+  arena.authorize = async () => { throw new Error('posting asked the wallet for an approval'); };
+  const {lobby, dialog} = dialogLobby(t, arena, {onCompose: context => composed.push(context)});
+  await lobby.action('Authorize');
+  await lobby.action('Post');
+  assert.match(dialog.innerHTML, /Leave a challenge/);
+  await lobby.action('Compose');
+  assert.equal(lobby.model.error, '');
+  assert.deepEqual(composed.map(c => c.intent), ['challenge']);
 });
 
 test('leaving online play stops following the arena', async t => {
