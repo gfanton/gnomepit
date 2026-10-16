@@ -51,9 +51,8 @@ async function run(label, action) {
 
 function showStatus(account) {
   connected = account.address !== undefined;
-  const until = account.expiresAt > 0 ? ` until ${new Date(account.expiresAt * 1000).toLocaleString()}` : "";
   const fallback = account.fallback ? `, fallback: ${account.fallback}` : "";
-  $("status").textContent = `${account.address ?? "no address"}: ${account.state}${until}, mode ${account.mode ?? "?"}${fallback}`;
+  $("status").textContent = `${account.address ?? "no address"}: ${account.state}, mode ${account.mode ?? "?"}${fallback}`;
   return account.state;
 }
 

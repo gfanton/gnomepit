@@ -62,20 +62,21 @@ Without an indexer, or while it does not answer, `subscribe` polls the node inst
 ## The arena API
 
 ```js
-const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origin, storage, notifier, indexer, signEachMove });
+const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origin, storage, notifier, indexer, signEachMove, sessionLifetime });
 ```
 
-`chain` comes from `createChain({ rpc })`, `wallet` is `window.adena` or a `devWallet`, `engine` from `loadEngine`, `signer` is `signer.mjs` (`import * as signer`), `storage` is `localStorage`, `notifier` a gnotif `Gnotif`, and `indexer` comes from `createIndexer({ url })` with the indexer's GraphQL URL, such as `http://127.0.0.1:8546/graphql/query`. Without `indexer`, `subscribe` polls the node. `signEachMove` skips the session.
+`chain` comes from `createChain({ rpc })`, `wallet` is `window.adena` or a `devWallet`, `engine` from `loadEngine`, `signer` is `signer.mjs` (`import * as signer`), `storage` is `localStorage`, `notifier` a gnotif `Gnotif`, and `indexer` comes from `createIndexer({ url })` with the indexer's GraphQL URL, such as `http://127.0.0.1:8546/graphql/query`. Without `indexer`, `subscribe` polls the node. `signEachMove` skips sessions. `sessionLifetime` is how long each new session lasts, in seconds, one day unless given.
 
 | Call | Returns or does |
 |---|---|
-| `connect()` | `{state, address, mode, expiresAt, fallback}`. `state` is `noWallet`, `wrongNetwork`, `missing` (this device has not authorized), `active` or `expired`. `noWallet` and `wrongNetwork` return `{state, reason}` and no address. |
-| `authorize()` | Asks for the root signature once per device, then for a session; returns the new state |
+| `connect()` | `{state, address, mode, fallback}`. `state` is `noWallet`, `wrongNetwork`, `missing` (this device has not authorized) or `active`. `noWallet` and `wrongNetwork` return `{state, reason}` and no address. |
+| `authorize()` | Asks for the root signature once per device and leaves the per-move fallback, so the next challenge or acceptance asks for a session again; returns the new state |
 | `openChallenges(page)` | Open challenges, newest first, 50 a page, each with `action` (`accept`, `wait` for one's own, `done`) |
 | `myMatches(page)` | This player's matches, newest first, each with `action` and `deadline` |
-| `match(id)` | The match view, plus `rounds` (each resolved round replayed: plans, events, state, result), `state`, `pending` (the challenger's next clash, when it is their move), `planning` (`{state, side, deck}` to plan from when the action is `move`) and `action` |
+| `match(id)` | The match view, plus `rounds` (each resolved round replayed: plans, events, state, result), `state`, `pending` (the challenger's next clash, when it is their move), `planning` (`{state, side, deck}` to plan from when the action is `move`), `action`, and `session`: `expired` when the player must call `renew(id)` before acting, `active` otherwise |
 | `challenge({clan, deck, plan, opponent})` | Posts a challenge and returns its id. Deck and plan are card ids. |
 | `accept(id, {clan, deck, plan})` | Accepts a challenge |
+| `renew(id)` | Asks the wallet for a new session for the player's side of match `id`, revoking the dead ones; sends no move |
 | `move(id, plan)` | Sends this player's turn: the challenger's reveal and next seal in one call, or the acceptor's plan |
 | `finish(id)` | Sends the challenger's last reveal, after round 3 or a knockout |
 | `resign(id)`, `claimForfeit(id)` | Resigns or withdraws; claims a passed deadline |
@@ -84,6 +85,8 @@ const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origi
 | `notify()` | Opts the browser in to the arena's Turn and Ended notifications; call it from a click |
 
 `challenge`, `accept` and `move` check the deck and plan with the engine first: a deck or plan it refuses throws `illegalPlan` before anything is sealed or sent. Moves go out one at a time, so two calls in a row never sign with the same sequence.
+
+`challenge` and `accept` sign with an unlocked session that has the side's budget left. Without one, they first ask the wallet, in one approval, to revoke the dead sessions and create one: expired or used-up sessions, and those locked to a match that ended or is gone. Their call locks the session to the match. Every later call in the match signs with that session, or with the one `renew` creates, and throws `sessionExpired` when there is none.
 
 An action is `accept`, `move`, `finish`, `claimForfeit`, `wait` or `done`. A failed call throws an `ArenaError` whose `type` is one of `noWallet`, `wrongNetwork`, `refused`, `unauthorized`, `wrongPhase`, `sealMismatch`, `illegalPlan`, `deadlinePassed`, `sessionExpired`, `insufficientFunds`, `outOfStep`, `network` or `failed`, with a readable `reason`. `outOfStep` means the page's card file differs from the deployed engine.
 
@@ -139,6 +142,25 @@ The second match is between players who already have a record, inside the chunk 
 A finished match between known players keeps 136 bytes locked. Its moves lock 30,400 ugnot, and its reveals give back 16,800 as they drop the deck seal, shrink the box and finally clear the seal and the box.
 
 The one-time costs, the first match minus the second, are 4,190 bytes and a 419,300 ugnot deposit. The challenge carries 2,118 bytes of them: alice's new player record and the arena's first chunk. The acceptance carries 2,075 bytes: bob's new player record.
+
+## Session budgets
+
+Each match gets its own session, and its spend limit is the budget of the player's side (`sessionBudget` in `wallet.mjs`). A session's spending counts every fee and deposit, and refunds never restore it. A side's budget adds up, from the first match under Storage per move, which carries the one-time costs:
+
+- the fee and the deposit of each of the side's moves;
+- its costliest move once more, for one failed attempt;
+- 4,800 ugnot for the realm's 48-byte session lock, which a session's first call adds and the measured moves do not include.
+
+| | Challenger | Acceptor |
+|---|---|---|
+| Opening move | Challenge: 256,099 | Accept: 239,750 |
+| Later moves | Reveals: 52,023 + 36,843 + 35,547 | Plays: 21,038 + 21,146 |
+| The side's moves | 380,512 | 281,934 |
+| The costliest move again | 256,099 | 239,750 |
+| The session lock | 4,800 | 4,800 |
+| Budget | 641,411 ugnot | 526,484 ugnot |
+
+A session with less left than its side's costliest move counts as used up (`sessionReserve`): 256,099 ugnot for the challenger and 239,750 for the acceptor.
 
 ## Tests
 

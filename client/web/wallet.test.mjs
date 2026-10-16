@@ -1,11 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 
 import { nodeEngine } from "./engine-node.mjs";
 import * as signer from "./signer.mjs";
 import {
-  WalletError, connect, deriveKeys, findSession, newSalt, openBox, rootText, sealBox, sealOf, sessionMessage, waitForAdena,
+  WalletError, classifySessions, connect, deriveKeys, generations, newSalt, openBox, revokeMessage, rootText, sealBox, sealOf, sessionBudget,
+  sessionMessage, sessionReserve, waitForAdena,
 } from "./wallet.mjs";
 
 const engine = await nodeEngine();
@@ -111,60 +113,113 @@ test("a new salt is 32 random bytes in hex", () => {
   assert.notEqual(newSalt(), newSalt());
 });
 
-test("a session message lets the session key call the arena for 7 days", async () => {
+test("a session message lets the session key call the arena alone, for its lifetime and spend limit", async () => {
   const keys = await deriveKeys(signature, 0, signer);
-  const { type, value } = sessionMessage("g1master", keys.sessionPubKey, now, realm);
+  const { type, value } = sessionMessage("g1master", keys.sessionPubKey, now, realm, 641_411, 30);
   assert.equal(type, "/auth.m_create_session");
   assert.equal(value.creator, "g1master");
   assert.equal(value.session_key.type_url, "/tm.PubKeySecp256k1");
   const wrapped = Uint8Array.from(atob(value.session_key.value), (c) => c.charCodeAt(0));
   assert.deepEqual([...wrapped.subarray(0, 2)], [0x0a, 33]);
   assert.equal(btoa(String.fromCharCode(...wrapped.subarray(2))), keys.sessionPubKey);
-  assert.equal(value.expires_at, String(now + 604800));
+  assert.equal(value.expires_at, String(now + 30));
   assert.deepEqual(value.allow_paths, [`vm/exec:${realm}`]);
-  assert.equal(value.spend_limit, "10000000ugnot");
+  assert.equal(value.spend_limit, "641411ugnot");
   assert.equal(value.spend_period, "0");
 });
 
-// chainWith answers sessions() with the given session accounts.
-const chainWith = (sessions) => ({ sessions: async () => sessions });
-const sessionAt = async (generation, fields) => ({
-  address: (await deriveKeys(signature, generation, signer)).sessionAddress,
-  accountNumber: 9, sequence: 2, expiresAt: now + 3600, spendLimit: 10_000_000, spendUsed: 0, allowPaths: [`vm/exec:${realm}`], ...fields,
-});
-const keysFor = (generation) => deriveKeys(signature, generation, signer);
-const find = (sessions) => findSession(chainWith(sessions), "g1master", keysFor, now, realm);
-
-test("an unexpired session with funds left is active", async () => {
-  const found = await find([await sessionAt(0, {}), await sessionAt(1, {})]);
-  assert.equal(found.state, "active");
-  assert.equal(found.generation, 0);
-  assert.equal(found.session.sequence, 2);
-  assert.equal((await find([await sessionAt(0, { spendUsed: 8_400_000 })])).state, "active");
+// The golden revoke was built with the chain's own Go types, for the golden session key.
+test("a revoke message names the session key as the chain's own revoke does", async () => {
+  const golden = JSON.parse(readFileSync(new URL("./testdata/golden-tx.json", import.meta.url)));
+  const request = (name) => golden.find((c) => c.name === name).request;
+  const { pubKey } = await signer.keyInfo(request("session-call").privKey);
+  const revoke = request("create-and-revoke").msgs.find((m) => m.type === "/auth.m_revoke_session");
+  assert.deepEqual(revokeMessage(revoke.value.creator, pubKey), revoke);
 });
 
-test("an expired session, or one that cannot pay for a challenge, asks for the next generation", async () => {
-  for (const fields of [{ expiresAt: now - 1 }, { spendUsed: 9_500_000 }]) {
-    const found = await find([await sessionAt(0, fields)]);
-    assert.equal(found.state, "expired");
-    assert.equal(found.generation, 1);
-    assert.equal(found.keys.sessionAddress, (await keysFor(1)).sessionAddress);
-  }
+const keys = new Map();
+for (let generation = 0; generation < generations; generation++) keys.set(generation, await deriveKeys(signature, generation, signer));
+const addressOf = (generation) => keys.get(generation).sessionAddress;
+const sessionAt = (generation, fields = {}) => ({
+  address: addressOf(generation),
+  accountNumber: 9, sequence: 2, expiresAt: now + 3600, spendLimit: sessionBudget.challenger, spendUsed: 0, allowPaths: [`vm/exec:${realm}`], ...fields,
+});
+const lockOf = (generation, match, expires = now + 3600) => ({ Session: addressOf(generation), Match: match, Expires: expires });
+const classify = (onChain, locks = [], matches = new Map()) => classifySessions({ onChain, keys, locks, matches, now, realm, reserve: sessionReserve });
+const generationsOf = (entries) => entries.map((e) => e.generation);
+const allBut = (...taken) => [...keys.keys()].filter((g) => !taken.includes(g));
+
+test("a live session locked to a running match is that match's, and a live one locked to none is unlocked", () => {
+  const out = classify([sessionAt(0), sessionAt(1)], [lockOf(0, "4")], new Map([["4", { phase: "play", role: "acceptor" }]]));
+  assert.deepEqual([...out.byMatch.keys()], ["4"]);
+  assert.equal(out.byMatch.get("4").generation, 0);
+  assert.equal(out.byMatch.get("4").session.address, addressOf(0));
+  assert.equal(out.byMatch.get("4").keys, keys.get(0));
+  assert.deepEqual(generationsOf(out.unlocked), [1]);
+  assert.deepEqual(out.dead, []);
+  assert.deepEqual(generationsOf(out.free), allBut(0, 1));
 });
 
-test("a session for another realm path is no use to this one", async () => {
-  const found = await find([await sessionAt(0, { allowPaths: ["vm/exec:gno.land/r/gfanton/gnomehall/arena_v1"] })]);
-  assert.equal(found.state, "expired");
-  assert.equal(found.generation, 1);
+test("an expired or used-up session is dead, locked or not", () => {
+  const running = new Map([["4", { phase: "reveal", role: "challenger" }]]);
+  const usedUp = { spendUsed: sessionBudget.challenger - sessionReserve.acceptor + 1 };
+  const out = classify(
+    [sessionAt(0, { expiresAt: now }), sessionAt(1, usedUp), sessionAt(2, { expiresAt: now - 1 })],
+    [lockOf(2, "4", now - 1)],
+    running,
+  );
+  assert.deepEqual(generationsOf(out.dead), [0, 1, 2]);
+  assert.equal(out.byMatch.size, 0);
+  assert.deepEqual(out.unlocked, []);
 });
 
-test("no session at all starts at generation 0, whatever other apps' sessions exist", async () => {
-  const foreign = { ...(await sessionAt(0, {})), address: "g1someothersession" };
-  for (const sessions of [[], [foreign]]) {
-    const found = await find(sessions);
-    assert.equal(found.state, "missing");
-    assert.equal(found.generation, 0);
-  }
+// A role's moves cost what its own costliest move bounds, so a session locked to a match is
+// judged by its side in that match.
+test("a locked session is used up below the reserve of its side in the match", () => {
+  const left = { spendUsed: sessionBudget.challenger - sessionReserve.acceptor };
+  const matches = new Map([["4", { phase: "reveal", role: "challenger" }], ["5", { phase: "play", role: "acceptor" }]]);
+  const out = classify([sessionAt(0, left), sessionAt(1, left)], [lockOf(0, "4"), lockOf(1, "5")], matches);
+  assert.deepEqual(generationsOf(out.dead), [0]);
+  assert.deepEqual([...out.byMatch.keys()], ["5"]);
+});
+
+test("a session locked to an ended match, or to one the realm no longer knows, is dead", () => {
+  const out = classify([sessionAt(0), sessionAt(1)], [lockOf(0, "4"), lockOf(1, "9")], new Map([["4", { phase: "ended", role: "challenger" }]]));
+  assert.deepEqual(generationsOf(out.dead), [0, 1]);
+  assert.equal(out.byMatch.size, 0);
+});
+
+test("generations with no session are free, and other apps' sessions are left alone", () => {
+  const foreign = { ...sessionAt(0, { expiresAt: now - 1 }), address: "g1someothersession" };
+  const out = classify([foreign, sessionAt(2)]);
+  assert.deepEqual(generationsOf(out.free), allBut(2));
+  assert.equal(out.free[0].keys, keys.get(0));
+  assert.deepEqual(generationsOf(out.unlocked), [2]);
+  assert.deepEqual(out.dead, []);
+});
+
+// Revoking a key and registering it again gives a session with a new expiry, which the
+// realm treats as unlocked.
+test("a lock under another expiry is an earlier session's, so the session is unlocked", () => {
+  const out = classify([sessionAt(0, { expiresAt: now + 7200 })], [lockOf(0, "4", now + 3600)], new Map([["4", { phase: "play", role: "acceptor" }]]));
+  assert.equal(out.byMatch.size, 0);
+  assert.deepEqual(generationsOf(out.unlocked), [0]);
+});
+
+test("a generation registered again signs with the account number the chain gives it", () => {
+  const out = classify([sessionAt(0, { accountNumber: 31, sequence: 0, expiresAt: now + 7200 })], [lockOf(0, "4", now + 3600)], new Map([["4", { phase: "ended", role: "challenger" }]]));
+  assert.deepEqual(out.dead, []);
+  assert.equal(out.unlocked[0].session.accountNumber, 31);
+  assert.equal(out.unlocked[0].session.sequence, 0);
+});
+
+// The same keys may hold sessions for another arena the site plays on.
+test("a session for another realm path is neither live nor dead until it expires", () => {
+  const elsewhere = { allowPaths: ["vm/exec:gno.land/r/gfanton/gnomehall/arena_v1"] };
+  const out = classify([sessionAt(0, elsewhere), sessionAt(1, { ...elsewhere, expiresAt: now - 1 })]);
+  assert.deepEqual(out.unlocked, []);
+  assert.deepEqual(generationsOf(out.dead), [1]);
+  assert.deepEqual(generationsOf(out.free), allBut(0, 1));
 });
 
 // adena answers like Adena, with the given overrides.

@@ -55,7 +55,6 @@ for (const [name, arena] of [["alice", alice], ["bob", bob]]) {
   log(`${name}: ${before.state} -> ${after.state} (${after.mode})${after.fallback ? `, fallback: ${after.fallback}` : ""}`);
   assert.equal(after.state, "active");
 }
-assert.equal((await alice.connect()).mode, "session");
 
 // The feed's first change, {}, comes once the indexer has taken the subscription.
 const feed = [];
@@ -71,6 +70,8 @@ const sent = [];
 const start = { round: 1, gnomes: [0, 1].map(() => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] })) };
 const id = await alice.challenge({ clan: "Pickers", deck: decks.a, plan: planFor(start, 0, decks.a) });
 sent.push("Challenge");
+// The challenge falls back to the wallet when no session can be had.
+assert.equal((await alice.connect()).mode, "session");
 log(`match ${id} posted`);
 assert.equal((await bob.openChallenges()).find((c) => c.ID === id)?.action, "accept");
 await bob.accept(id, { clan: "Ironhide", deck: decks.b, plan: planFor(start, 1, decks.b) });

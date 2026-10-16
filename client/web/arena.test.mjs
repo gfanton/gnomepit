@@ -11,7 +11,7 @@ import { ChainError } from "./chain.mjs";
 import { devAccounts, devWallet } from "./devwallet.mjs";
 import { nodeEngine } from "./engine-node.mjs";
 import * as signer from "./signer.mjs";
-import { WalletError, deriveKeys, newSalt, openBox, sealBox, sealOf } from "./wallet.mjs";
+import { WalletError, deriveKeys, newSalt, openBox, revokeMessage, sealBox, sealOf, sessionBudget, sessionMessage } from "./wallet.mjs";
 
 const engine = await nodeEngine();
 const alice = "g1alice";
@@ -207,6 +207,73 @@ const walletFor = (address, overrides = {}) => ({
   ...overrides,
 });
 
+// lockAnswer is the realm's Locks answer for locks in vm/qeval_json's form, and lockType
+// the vm/qtype_json answer for SessionLock.
+const lockTypeID = `${realm}.SessionLock`;
+const typedText = (value) => ({ T: { "@type": "/gno.PrimitiveType", value: "16" }, V: { "@type": "/gno.StringValue", value } });
+function typedInt64(n) {
+  const bytes = new Uint8Array(8);
+  new DataView(bytes.buffer).setBigInt64(0, BigInt(n), true);
+  return { T: { "@type": "/gno.PrimitiveType", value: "1024" }, N: btoa(String.fromCharCode(...bytes)) };
+}
+const lockAnswer = (locks) => [{
+  T: { "@type": "/gno.SliceType", Elt: { "@type": "/gno.RefType", ID: lockTypeID }, Vrd: false },
+  V: {
+    "@type": "/gno.SliceValue",
+    Base: {
+      "@type": "/gno.ArrayValue",
+      List: locks.map((l) => ({
+        T: { "@type": "/gno.RefType", ID: lockTypeID },
+        V: { "@type": "/gno.StructValue", Fields: [typedText(l.Session), typedText(l.Match), typedInt64(l.Expires)] },
+      })),
+      Data: null,
+    },
+    Offset: "0", Length: String(locks.length), Maxcap: String(locks.length),
+  },
+}];
+const lockType = {
+  typeid: lockTypeID,
+  type: { "@type": "/gno.DeclaredType", PkgPath: realm, Name: "SessionLock", Base: { "@type": "/gno.StructType", Fields: ["Session", "Match", "Expires"].map((Name) => ({ Name })) } },
+};
+
+// arenaChain holds master's session accounts in sessions, answers Locks with locks, and
+// answers Match(id) with the recorded answer matches names for id, by file name or as
+// parsed JSON, or fails with "unknown match". A broadcast lands after a short wait and
+// moves the sequence of every session on; reads lists the sequence each sessions() read.
+function arenaChain({ sessions = [], locks = [], matches = {} } = {}) {
+  const chain = {
+    sessionList: sessions, locks, sequence: 0, broadcasts: 0, reads: [],
+    sessions: async () => {
+      chain.reads.push(chain.sequence);
+      return chain.sessionList.map((s) => ({ ...s, sequence: chain.sequence }));
+    },
+    evalJSON: async (expr) => {
+      if (expr.startsWith(`${realm}.Locks(`)) return lockAnswer(chain.locks);
+      if (expr.startsWith(`${realm}.Matches(`)) return load("matches").results;
+      const [, id] = /\.Match\("(\d+)"\)$/.exec(expr);
+      const answer = matches[id];
+      if (answer === undefined) throw new ChainError("failed", "unknown match");
+      return (typeof answer === "string" ? load(answer) : answer).results;
+    },
+    typeJSON: async (id) => (id === lockTypeID ? lockType : load(`qtype-${id.split(".").pop()}`)),
+    gasPrice: async () => ({ gas: 1000, amount: 1, denom: "ugnot" }),
+    simulate: async () => 1_000_000,
+    broadcast: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      chain.sequence++;
+      chain.broadcasts++;
+      return { hash: "h", height: 1, gasUsed: 1 };
+    },
+  };
+  return chain;
+}
+
+// revealWith is the recorded match in its reveal phase, holding box as the challenger's.
+function revealWith(box) {
+  const recordedText = readFileSync(new URL("./testdata/qeval/match-reveal.json", import.meta.url), "utf8");
+  return JSON.parse(recordedText.replace('"box1"', JSON.stringify(box)));
+}
+
 test("a challenger on a device that has not authorized sees the match, and a box it cannot open is unauthorized", async () => {
   // In the recorded match, gnodev's test1 account challenged and must reveal.
   const player = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5";
@@ -228,9 +295,7 @@ test("a challenger's opened box gives the pending clash and the deck to plan fro
   const signature = btoa("a root signature");
   const deck = cardIDs(deckA, engine.cards);
   const box = await sealBox((await deriveKeys(signature, 0, signer)).boxKey, { deck, deckSalt: newSalt(), plan: cardIDs(picks, engine.cards), planSalt: newSalt() });
-  const recordedText = readFileSync(new URL("./testdata/qeval/match-reveal.json", import.meta.url), "utf8");
-  const answer = JSON.parse(recordedText.replace('"box1"', JSON.stringify(box)));
-  const chain = { evalJSON: async () => answer.results, typeJSON: async () => load("qtype-MatchView") };
+  const chain = arenaChain({ matches: { 1: revealWith(box) } });
   const storage = memory();
   const arena = createArena({ chain, wallet: walletFor(player), engine, signer, realm, chainId: "dev", origin: "http://x", storage });
   await arena.connect();
@@ -271,97 +336,255 @@ test("a challenge seals its deck and plan as their reveal will name them", async
   assert.equal(planText, "Chalk Dust,Double Tap");
 });
 
-// sessionChain answers sessions() with the session of generation 0 once created, and
-// reports the sequence each send reads; broadcasts land after a short wait.
-async function sessionChain(signature, master) {
-  const { sessionAddress } = await deriveKeys(signature, 0, signer);
-  const chain = {
-    created: false, sequence: 0, reads: [],
-    sessions: async () => {
-      if (!chain.created) return [];
-      chain.reads.push(chain.sequence);
-      return [{ address: sessionAddress, accountNumber: 7, sequence: chain.sequence, expiresAt: 2_000_000_000, spendLimit: 10_000_000, spendUsed: 0, allowPaths: [`vm/exec:${realm}`] }];
+// gnodev's test1 plays both sides of the recorded match, as its challenger first.
+const test1 = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5";
+const rootSigned = btoa("a root signature");
+const keysOf = (generation) => deriveKeys(rootSigned, generation, signer);
+const sessionOf = async (generation, fields = {}) => ({
+  address: (await keysOf(generation)).sessionAddress,
+  accountNumber: 20 + generation, sequence: 0, expiresAt: now + 3600, spendLimit: sessionBudget.challenger, spendUsed: 0, allowPaths: [`vm/exec:${realm}`],
+  ...fields,
+});
+const lockOn = async (generation, match, expires = now + 3600) => ({ Session: (await keysOf(generation)).sessionAddress, Match: match, Expires: expires });
+const day = 24 * 60 * 60;
+const sessionExpired = (err) => err instanceof ArenaError && err.type === "sessionExpired";
+
+// sessionPlayer is test1's arena on chain, with a wallet that signs the root text and
+// answers each DoContract with created(request), and a signer that keeps every request.
+function sessionPlayer(chain, { created = async () => ({ status: "success" }), ...options } = {}) {
+  const contracts = [];
+  const signed = [];
+  const wallet = walletFor(test1, {
+    SignArbitrary: async () => ({ status: "success", data: { signature: { signature: rootSigned } } }),
+    DoContract: async (request) => {
+      contracts.push(request);
+      return created(request);
     },
-    gasPrice: async () => ({ gas: 1000, amount: 1, denom: "ugnot" }),
-    simulate: async () => 1_000_000,
-    broadcast: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 20));
-      chain.sequence++;
-      return { hash: "h", height: 1, gasUsed: 1 };
-    },
-  };
-  return chain;
+  });
+  const recording = { ...signer, signTx: (request) => (signed.push(request), signer.signTx(request)) };
+  const arena = createArena({ chain, wallet, engine, signer: recording, realm, chainId: "dev", origin: "http://x", storage: memory(), now: () => now, ...options });
+  return { arena, contracts, signed };
 }
 
-test("a refused session approval is asked for again on the next authorization", async () => {
-  const signature = btoa("a root signature");
-  const master = devAccounts.alice.address;
-  const chain = await sessionChain(signature, master);
-  let attempts = 0;
-  const wallet = walletFor(master, {
-    SignArbitrary: async () => ({ status: "success", data: { signature: { signature } } }),
-    DoContract: async () => {
-      attempts++;
-      if (attempts === 1) return { status: "failure", type: "TRANSACTION_REJECTED", message: "User rejected" };
-      chain.created = true;
+const opening = { clan: "Pickers", deck: cardIDs(deckA, engine.cards), plan: cardIDs(picks, engine.cards) };
+
+test("a challenge revokes the dead sessions and creates one in one approval, then signs the Challenge with it", async () => {
+  const chain = arenaChain({
+    sessions: [await sessionOf(0, { expiresAt: now - 1 }), await sessionOf(1), await sessionOf(2)],
+    locks: [await lockOn(1, "1"), await lockOn(2, "9")],
+    matches: { 1: "match-ended" },
+  });
+  const { arena, contracts, signed } = sessionPlayer(chain, {
+    created: async () => {
+      chain.sessionList = [await sessionOf(3, { accountNumber: 41 })];
       return { status: "success" };
     },
   });
-  const arena = createArena({ chain, wallet, engine, signer, realm, chainId: "dev", origin: "http://x", storage: memory() });
   await arena.connect();
+  await arena.authorize();
+  assert.equal(contracts.length, 0, "authorizing asks for no session");
 
-  const refused = await arena.authorize();
+  await arena.challenge(opening);
+  const [k0, k1, k2, k3] = await Promise.all([0, 1, 2, 3].map(keysOf));
+  assert.equal(contracts.length, 1);
+  assert.deepEqual(contracts[0].messages, [
+    revokeMessage(test1, k0.sessionPubKey), revokeMessage(test1, k1.sessionPubKey), revokeMessage(test1, k2.sessionPubKey),
+    sessionMessage(test1, k3.sessionPubKey, now, realm, sessionBudget.challenger, day),
+  ]);
+  assert.equal(chain.broadcasts, 1);
+  const call = signed.at(-1);
+  assert.equal(call.msgs[0].value.func, "Challenge");
+  assert.deepEqual([call.privKey, call.sessionAddr, call.accountNumber, call.sequence], [k3.sessionKey, k3.sessionAddress, 41, 0]);
+  assert.equal((await arena.connect()).mode, "session");
+});
+
+// Adena signs session messages with the fee the page gives, or else with 2,000,000,000 gas
+// for 0.1 GNOT, which a chain at 1ugnot per 1000 gas refuses.
+test("the session request names its gas per message and a fee at the chain's gas price", async () => {
+  const chain = arenaChain({ sessions: [await sessionOf(0, { expiresAt: now - 1 })] });
+  chain.gasPrice = async () => ({ gas: 1000, amount: 25, denom: "ugnot" });
+  const { arena, contracts } = sessionPlayer(chain, {
+    created: async () => {
+      chain.sessionList = [await sessionOf(1)];
+      return { status: "success" };
+    },
+  });
+  await arena.connect();
+  await arena.authorize();
+  await arena.challenge(opening);
+  assert.equal(contracts[0].messages.length, 2);
+  assert.equal(contracts[0].gasWanted, 6_000_000);
+  assert.equal(contracts[0].gasFee, 150_000);
+});
+
+test("an unlocked session with the role's budget left signs the opening without asking the wallet", async () => {
+  const chain = arenaChain({ sessions: [await sessionOf(0, { spendUsed: sessionBudget.challenger - sessionBudget.acceptor }), await sessionOf(1)] });
+  const { arena, contracts, signed } = sessionPlayer(chain);
+  await arena.connect();
+  await arena.authorize();
+  await arena.challenge(opening);
+  assert.equal(contracts.length, 0);
+  assert.equal(signed.at(-1).sessionAddr, (await keysOf(1)).sessionAddress);
+
+  await arena.accept("1", { clan: "Ironhide", deck: cardIDs(deckB, engine.cards), plan: cardIDs(braces, engine.cards) });
+  assert.equal(contracts.length, 0);
+  assert.equal(signed.at(-1).sessionAddr, (await keysOf(0)).sessionAddress);
+});
+
+test("with no generation free, the first one revoked takes the new session", async () => {
+  // Every generation holds a session: 5 and 9 expired, the others live but short of a budget.
+  const short = { spendUsed: sessionBudget.challenger - 300_000 };
+  const sessions = await Promise.all([...Array(16).keys()].map((g) => sessionOf(g, g === 5 || g === 9 ? { expiresAt: now - 1 } : short)));
+  const chain = arenaChain({ sessions });
+  const { arena, contracts } = sessionPlayer(chain, {
+    created: async () => {
+      chain.sessionList = [await sessionOf(5, { accountNumber: 77 })];
+      return { status: "success" };
+    },
+  });
+  await arena.connect();
+  await arena.authorize();
+  await arena.challenge(opening);
+  const [k5, k9] = await Promise.all([5, 9].map(keysOf));
+  assert.deepEqual(contracts[0].messages, [
+    revokeMessage(test1, k5.sessionPubKey), revokeMessage(test1, k9.sessionPubKey),
+    sessionMessage(test1, k5.sessionPubKey, now, realm, sessionBudget.challenger, day),
+  ]);
+});
+
+test("with every generation holding a session it may not revoke, the wallet signs each move", async () => {
+  const elsewhere = { allowPaths: ["vm/exec:gno.land/r/gfanton/gnomehall/arena_v1"] };
+  const chain = arenaChain({ sessions: await Promise.all([...Array(16).keys()].map((g) => sessionOf(g, elsewhere))) });
+  const { arena, contracts } = sessionPlayer(chain);
+  await arena.connect();
+  await arena.authorize();
+  await arena.challenge(opening);
+  assert.deepEqual(contracts.map((c) => c.messages.map((m) => m.value.func)), [["Challenge"]]);
+  const account = await arena.connect();
+  assert.equal(account.mode, "contract");
+  assert.equal(account.fallback, "Every session this account can hold is used");
+});
+
+test("a refused session approval has the wallet sign the move, and the next authorization asks again", async () => {
+  const chain = arenaChain();
+  let attempts = 0;
+  const { arena, contracts } = sessionPlayer(chain, {
+    created: async (request) => {
+      if (request.messages[0].type !== "/auth.m_create_session") return { status: "success" };
+      attempts++;
+      if (attempts === 1) return { status: "failure", type: "TRANSACTION_REJECTED", message: "User rejected" };
+      chain.sessionList = [await sessionOf(0)];
+      return { status: "success" };
+    },
+  });
+  await arena.connect();
+  await arena.authorize();
+
+  await arena.challenge(opening);
+  assert.deepEqual(contracts.map((c) => c.messages[0].type), ["/auth.m_create_session", "/vm.m_call"]);
+  const refused = await arena.connect();
   assert.equal(refused.mode, "contract");
   assert.equal(refused.fallback, "User rejected");
 
-  const accepted = await arena.authorize();
+  const again = await arena.authorize();
+  assert.equal(again.mode, "session");
+  assert.equal(again.state, "active");
+  assert.equal(again.fallback, null);
+  await arena.challenge(opening);
   assert.equal(attempts, 2);
-  assert.equal(accepted.mode, "session");
-  assert.equal(accepted.state, "active");
-  assert.equal(accepted.fallback, null);
+  assert.equal(chain.broadcasts, 1);
 });
 
-// Adena signs a session message with the fee the page gives, or else with 2,000,000,000
-// gas for 0.1 GNOT, which a chain at 1ugnot per 1000 gas refuses.
-test("the session request names its gas and a fee at the chain's gas price", async () => {
-  const signature = btoa("a root signature");
-  const master = devAccounts.alice.address;
-  const chain = await sessionChain(signature, master);
-  chain.gasPrice = async () => ({ gas: 1000, amount: 25, denom: "ugnot" });
-  let request;
-  const wallet = walletFor(master, {
-    SignArbitrary: async () => ({ status: "success", data: { signature: { signature } } }),
-    DoContract: async (params) => {
-      request = params;
-      chain.created = true;
+test("an acceptance asks for a session with the acceptor's budget", async () => {
+  const chain = arenaChain();
+  const { arena, contracts } = sessionPlayer(chain, {
+    created: async () => {
+      chain.sessionList = [await sessionOf(0, { spendLimit: sessionBudget.acceptor })];
       return { status: "success" };
     },
   });
-  const arena = createArena({ chain, wallet, engine, signer, realm, chainId: "dev", origin: "http://x", storage: memory() });
   await arena.connect();
+  await arena.authorize();
+  await arena.accept("1", { clan: "Ironhide", deck: cardIDs(deckB, engine.cards), plan: cardIDs(braces, engine.cards) });
+  assert.equal(contracts[0].messages[0].value.spend_limit, `${sessionBudget.acceptor}ugnot`);
+});
 
-  assert.equal((await arena.authorize()).mode, "session");
-  assert.equal(request.gasWanted, 3_000_000);
-  assert.equal(request.gasFee, 75_000);
+test("the arena's session lifetime sets the new session's expiry", async () => {
+  const chain = arenaChain();
+  const { arena, contracts } = sessionPlayer(chain, {
+    sessionLifetime: 30,
+    created: async () => {
+      chain.sessionList = [await sessionOf(0, { expiresAt: now + 30 })];
+      return { status: "success" };
+    },
+  });
+  await arena.connect();
+  await arena.authorize();
+  await arena.challenge(opening);
+  assert.equal(contracts[0].messages[0].value.expires_at, String(now + 30));
+});
+
+// expiredReveal is a chain where test1 must reveal in match 1, whose session has expired.
+async function expiredReveal() {
+  const deck = cardIDs(deckA, engine.cards);
+  const box = await sealBox((await keysOf(0)).boxKey, { deck, deckSalt: newSalt(), plan: cardIDs(picks, engine.cards), planSalt: newSalt() });
+  return arenaChain({ sessions: [await sessionOf(0, { expiresAt: now - 1 })], locks: [await lockOn(0, "1", now - 1)], matches: { 1: revealWith(box) } });
+}
+
+test("a move whose session has expired throws sessionExpired and sends nothing", async () => {
+  const chain = await expiredReveal();
+  const { arena, contracts } = sessionPlayer(chain);
+  await arena.connect();
+  await arena.authorize();
+  const view = await arena.match("1");
+  assert.equal(view.action, "move");
+  assert.equal(view.session, "expired");
+  await assert.rejects(arena.move("1", engine.legalPlans(view.planning)[0]), sessionExpired);
+  await assert.rejects(arena.resign("1"), sessionExpired);
+  assert.equal(chain.broadcasts, 0);
+  assert.equal(contracts.length, 0);
+
+  const { arena: byWallet } = sessionPlayer(chain, { signEachMove: true });
+  await byWallet.connect();
+  await byWallet.authorize();
+  assert.equal((await byWallet.match("1")).session, "active");
+});
+
+test("renew creates a session for the player's side without sending a move, and the next move signs with it", async () => {
+  const chain = await expiredReveal();
+  const { arena, contracts, signed } = sessionPlayer(chain, {
+    created: async () => {
+      chain.sessionList = [await sessionOf(1, { accountNumber: 52 })];
+      return { status: "success" };
+    },
+  });
+  await arena.connect();
+  await arena.authorize();
+  await arena.renew("1");
+  const [k0, k1] = await Promise.all([0, 1].map(keysOf));
+  assert.deepEqual(contracts.map((c) => c.messages), [[
+    revokeMessage(test1, k0.sessionPubKey), sessionMessage(test1, k1.sessionPubKey, now, realm, sessionBudget.challenger, day),
+  ]]);
+  assert.equal(chain.broadcasts, 0);
+
+  const view = await arena.match("1");
+  assert.equal(view.session, "active");
+  await arena.move("1", engine.legalPlans(view.planning)[0]);
+  assert.equal(chain.broadcasts, 1);
+  assert.deepEqual([signed.at(-1).sessionAddr, signed.at(-1).accountNumber], [k1.sessionAddress, 52]);
 });
 
 test("session moves go out one at a time, each with the sequence the last one left", async () => {
-  const signature = btoa("a root signature");
-  const master = devAccounts.alice.address;
-  const chain = await sessionChain(signature, master);
-  chain.created = true;
-  const wallet = walletFor(master, { SignArbitrary: async () => ({ status: "success", data: { signature: { signature } } }) });
-  const signed = [];
-  const recording = { ...signer, signTx: (request) => (signed.push(request.sequence), signer.signTx(request)) };
-  const arena = createArena({ chain, wallet, engine, signer: recording, realm, chainId: "dev", origin: "http://x", storage: memory() });
+  const chain = arenaChain({ sessions: [await sessionOf(0)], locks: [await lockOn(0, "1")], matches: { 1: "match-play" } });
+  const { arena, signed } = sessionPlayer(chain);
   await arena.connect();
   await arena.authorize();
   chain.reads.length = 0;
 
-  await Promise.all([arena.resign("1"), arena.resign("2")]);
+  await Promise.all([arena.resign("1"), arena.resign("1")]);
   assert.deepEqual(chain.reads, [0, 1]);
   // Each move is signed twice, for its simulation and for its fee.
-  assert.deepEqual(signed, [0, 0, 1, 1]);
+  assert.deepEqual(signed.map((r) => r.sequence), [0, 0, 1, 1]);
 });
 
 test("chain and wallet errors become the arena's typed errors", () => {
@@ -377,6 +600,7 @@ test("chain and wallet errors become the arena's typed errors", () => {
   assert.equal(errorFrom(new ChainError("rejected", "session expired: expires_at=1, block_time=2")).type, "sessionExpired");
   assert.equal(errorFrom(new ChainError("rejected", "session spend limit would be exceeded: attempted=1ugnot")).type, "sessionExpired");
   assert.equal(errorFrom(new ChainError("rejected", "unknown session")).type, "sessionExpired");
+  assert.equal(failed("session locked to match 3"), "sessionExpired");
   assert.equal(errorFrom(new ChainError("rejected", "insufficient funds to pay for fees; 0ugnot < 1ugnot")).type, "insufficientFunds");
   assert.equal(errorFrom(new ChainError("network", "fetch failed")).type, "network");
   assert.equal(errorFrom(new WalletError("refused", "User rejected")).type, "refused");

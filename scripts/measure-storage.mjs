@@ -64,12 +64,13 @@ for (const arena of [alice, bob]) {
   assert.equal((await arena.authorize()).state, "active");
 }
 
-// step makes one move and returns its row: the fee is what payFor signs for that gas.
+// step makes one move and returns its row: the fee is what payFor signs for that gas. An
+// opening through a session lands the wallet's session transaction before the move.
 async function step(move, make) {
   const price = await chain.gasPrice();
   const before = landed.length;
   const id = await make();
-  assert.equal(landed.length, before + 1, `${move} sends one transaction`);
+  assert.ok(landed.length > before, `${move} sends a transaction`);
   const { storage, gasUsed, deposit } = landed.at(-1);
   return { id, row: { move, storage, gasUsed, fee: feeFor(Math.ceil(gasUsed * 1.2) + 100_000, price), deposit } };
 }

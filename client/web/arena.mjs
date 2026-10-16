@@ -6,8 +6,8 @@
 import { ChainError, feeFor, payFor } from "./chain.mjs";
 import { decode, structTypes, typeFields } from "./gnovalue.mjs";
 import {
-  WalletError, connect as connectWallet, deriveKeys, findSession, newSalt, openBox, rootSignature, sealBox, sealOf,
-  sessionGas, sessionMessage,
+  WalletError, classifySessions, connect as connectWallet, deriveKeys, generations, newSalt, openBox, revokeMessage, rootSignature, sealBox,
+  sealOf, sessionBudget, sessionGas, sessionLifetime as defaultLifetime, sessionMessage, sessionReserve,
 } from "./wallet.mjs";
 
 const pageSize = 50; // the realm's maxPage
@@ -145,7 +145,7 @@ const realmErrors = [
   [/^seal mismatch/, "sealMismatch"],
   [/^(illegal plan|illegal deck|unknown card|unknown clan)/, "illegalPlan"],
   [/^(deadline passed|challenge expired)/, "deadlinePassed"],
-  [/^(unknown session|session expired|session spend limit|session has no spend limit)/, "sessionExpired"],
+  [/^(unknown session|session expired|session spend limit|session has no spend limit|session locked)/, "sessionExpired"],
   [/^insufficient (funds|fees)/, "insufficientFunds"],
 ];
 
@@ -180,9 +180,11 @@ function resolve(engine, state, decks, [a, b]) {
 // calls (Adena itself, or devWallet); engine is the loaded engine and signer is
 // signer.mjs; storage keeps the root signature and the signing mode per wallet, like
 // localStorage; notifier is a gnotif client. origin names the site in the root
-// signature's text. signEachMove skips the session: the wallet signs every move.
+// signature's text. signEachMove skips sessions: the wallet signs every move.
+// sessionLifetime is how long each new session lasts, in seconds.
 export function createArena({
-  chain, wallet, engine, signer, realm, chainId, origin, storage, notifier, indexer, signEachMove = false, now = () => Math.floor(Date.now() / 1000),
+  chain, wallet, engine, signer, realm, chainId, origin, storage, notifier, indexer, signEachMove = false, sessionLifetime = defaultLifetime,
+  now = () => Math.floor(Date.now() / 1000),
 }) {
   let address = null;
   const fields = new Map();
@@ -218,36 +220,111 @@ export function createArena({
     }
   }
 
-  async function status() {
-    const base = { address, mode: mode(), fallback: stored("fallback") || null };
-    if (stored("root") === null) return { ...base, state: "missing", expiresAt: 0 };
-    if (mode() === "contract") return { ...base, state: "active", expiresAt: 0 };
-    const found = await findSession(chain, address, keysFor, now(), realm);
-    return { ...base, state: found.state, expiresAt: found.expiresAt };
+  const readMatch = (id) => read(`${realm}.Match("${id}")`);
+  const roleOf = (view) => (view.Challenger === address ? "challenger" : view.Acceptor === address ? "acceptor" : undefined);
+  const left = (session) => session.spendLimit - session.spendUsed;
+
+  function status() {
+    return { address, state: stored("root") === null ? "missing" : "active", mode: mode(), fallback: stored("fallback") || null };
   }
 
-  // send makes one arena call: signed by the session key, or by the wallet itself in
-  // the per-move mode. Calls go out one at a time, so each signs with the sequence the
-  // previous one's block left.
+  // fallBack switches to the per-move mode for reason, and returns null: no session.
+  function fallBack(reason) {
+    store("mode", "contract");
+    store("fallback", reason);
+    return null;
+  }
+
+  // ownSessions reads this player's sessions on the chain and their locks in the realm,
+  // with every generation's keys.
+  async function ownSessions() {
+    const keys = new Map();
+    for (let generation = 0; generation < generations; generation++) keys.set(generation, await keysFor(generation));
+    return { onChain: await chain.sessions(address), keys, locks: await read(`${realm}.Locks("${address}")`) };
+  }
+  const classify = (found, matches) => classifySessions({ ...found, matches, now: now(), realm, reserve: sessionReserve });
+
+  // prepareSession returns a live unlocked session with role's budget left, for an opening
+  // or a renewed match's next move, the call that locks it. Lacking one, it asks the
+  // wallet, in one approval, to revoke every dead session and create one. It returns null
+  // in the per-move mode, which it switches to when no session can be had.
+  async function prepareSession(role) {
+    if (mode() === "contract") return null;
+    const found = await ownSessions();
+    const matches = new Map();
+    for (const id of new Set(found.locks.map((l) => l.Match))) {
+      try {
+        const view = await readMatch(id);
+        matches.set(id, { phase: view.Phase, role: roleOf(view) });
+      } catch (err) {
+        if (err.reason !== "unknown match") throw err;
+      }
+    }
+    const { unlocked, dead, free } = classify(found, matches);
+    const reusable = unlocked.find(({ session }) => left(session) >= sessionBudget[role]);
+    if (reusable !== undefined) return reusable;
+    const target = free[0] ?? dead[0];
+    if (target === undefined) return fallBack("Every session this account can hold is used");
+    const messages = [
+      ...dead.map(({ keys }) => revokeMessage(address, keys.sessionPubKey)),
+      sessionMessage(address, target.keys.sessionPubKey, now(), realm, sessionBudget[role], sessionLifetime),
+    ];
+    const gasWanted = sessionGas * messages.length;
+    const response = await wallet.DoContract({ messages, memo: "Gnomehall session", gasWanted, gasFee: feeFor(gasWanted, await chain.gasPrice()) });
+    if (response?.status !== "success") return fallBack(response?.message || response?.type || "The wallet created no session");
+    const session = (await chain.sessions(address)).find((s) => s.address === target.keys.sessionAddress);
+    if (session === undefined) throw new ArenaError("failed", "The new session is not on the chain yet; try again");
+    return { ...target, session };
+  }
+
+  // sessionIn returns the session that signs this player's next call in match id, which
+  // view shows: the live session locked to it, else a live unlocked one, such as a renewal
+  // leaves, which that call locks. It returns null when there is none.
+  async function sessionIn(id, view) {
+    const role = roleOf(view);
+    // Only this match is read: sessions locked elsewhere then count as dead, unused here.
+    const { byMatch, unlocked } = classify(await ownSessions(), new Map([[id, { phase: view.Phase, role }]]));
+    return byMatch.get(id) ?? unlocked.find(({ session }) => left(session) >= sessionReserve[role]) ?? null;
+  }
+
+  async function signingIn(id, view) {
+    const found = await sessionIn(id, view);
+    if (found === null) throw new ArenaError("sessionExpired", `The session for match ${id} has expired or run out; renew it`);
+    return found;
+  }
+
+  // sessionState is "expired" when this player must renew before acting in match id, and
+  // "active" otherwise, always in the per-move mode.
+  async function sessionState(id, view) {
+    if (mode() === "contract" || stored("root") === null || roleOf(view) === undefined || view.Phase === "ended") return "active";
+    return (await sessionIn(id, view)) === null ? "expired" : "active";
+  }
+
+  // serial runs task once every task before it has settled. Calls go out one at a time,
+  // so each signs with the sequence the previous one's block left, and no call takes the
+  // session prepared for another.
   let queue = Promise.resolve();
-  function send(func, args) {
-    const sent = queue.then(() => sendNow(func, args));
-    queue = sent.catch(() => {});
-    return sent;
+  function serial(task) {
+    const done = queue.then(task);
+    queue = done.catch(() => {});
+    return done;
   }
 
-  async function sendNow(func, args) {
+  // send makes one arena call, signed by the session signing resolves to, or by the
+  // wallet itself when it resolves to null or in the per-move mode.
+  const send = (func, args, signing) => serial(() => sendNow(func, args, signing));
+
+  async function sendNow(func, args, signing) {
     requireAddress();
     const msg = { type: "/vm.m_call", value: { caller: address, send: "", max_deposit: "", pkg_path: realm, func, args } };
     try {
-      if (mode() === "contract") {
+      const signedBy = mode() === "contract" ? null : await signing();
+      if (signedBy === null) {
         const response = await wallet.DoContract({ messages: [msg], memo: "" });
         if (response?.status !== "success") throw walletFailure(response);
         return;
       }
-      const found = await findSession(chain, address, keysFor, now(), realm);
-      if (found.state !== "active") throw new ArenaError("sessionExpired", "The session has expired or run out; authorize again");
-      const { keys, session } = found;
+      const { keys, session } = signedBy;
       const request = {
         chainId, accountNumber: session.accountNumber, sequence: session.sequence,
         privKey: keys.sessionKey, sessionAddr: keys.sessionAddress, memo: "", msgs: [msg],
@@ -263,9 +340,8 @@ export function createArena({
   }
 
   const arena = {
-    // connect returns the account's state: {state, address, mode, expiresAt, fallback},
-    // state being noWallet, wrongNetwork, missing (this device is not authorized),
-    // active, or expired.
+    // connect returns the account's state: {state, address, mode, fallback}, state being
+    // noWallet, wrongNetwork, missing (this device is not authorized) or active.
     async connect() {
       try {
         ({ address } = await connectWallet(wallet, chainId));
@@ -275,44 +351,36 @@ export function createArena({
         }
         throw errorFrom(err);
       }
-      try {
-        return await status();
-      } catch (err) {
-        throw errorFrom(err);
-      }
+      return status();
     },
 
-    // authorize gets the root signature, once per device, and creates a session. Where
-    // the wallet creates none, the wallet signs each move until an authorization does;
-    // the state's fallback holds the wallet's reason meanwhile.
+    // authorize gets the root signature, once per device, and leaves the per-move mode,
+    // so the next challenge or acceptance asks the wallet for a session again. When the
+    // wallet creates none, it signs each move, and the state's fallback holds its reason.
     async authorize() {
       requireAddress();
       try {
         if (stored("root") === null) store("root", await rootSignature(wallet, address, origin));
-        if (signEachMove) return await status();
-        const found = await findSession(chain, address, keysFor, now(), realm);
-        if (found.state !== "active" && found.generation === null) {
-          store("mode", "contract");
-          store("fallback", "Every session this account can hold is used");
-          return await status();
-        }
-        if (found.state !== "active") {
-          const price = await chain.gasPrice();
-          const response = await wallet.DoContract({
-            messages: [sessionMessage(address, found.keys.sessionPubKey, now(), realm)],
-            memo: "Gnomehall session",
-            gasWanted: sessionGas,
-            gasFee: feeFor(sessionGas, price),
-          });
-          if (response?.status !== "success") {
-            store("mode", "contract");
-            store("fallback", response?.message || response?.type || "The wallet created no session");
-            return await status();
-          }
-        }
+      } catch (err) {
+        throw errorFrom(err);
+      }
+      if (!signEachMove) {
         store("mode", "session");
         store("fallback", "");
-        return await status();
+      }
+      return status();
+    },
+
+    // renew asks the wallet for a session for this player's side of match id, revoking
+    // the dead ones, unless a live unlocked one has the budget. It sends no move: the next
+    // one locks the session to the match.
+    async renew(id) {
+      checkID(id);
+      requireAddress();
+      const role = roleOf(await readMatch(id));
+      if (role === undefined) throw new ArenaError("wrongPhase", `You do not play in match ${id}`);
+      try {
+        await serial(() => prepareSession(role));
       } catch (err) {
         throw errorFrom(err);
       }
@@ -330,12 +398,13 @@ export function createArena({
     },
 
     // match returns the view of match id with its replayed rounds, the engine state they
-    // lead to, the challenger's pending clash when it is their move, the action, and,
-    // when the action is move, what the plan is made from (planFrom).
+    // lead to, the challenger's pending clash when it is their move, the action, when the
+    // action is move what the plan is made from (planFrom), and session, "expired" when
+    // this player must renew before acting.
     async match(id) {
       checkID(id);
       try {
-        const view = await read(`${realm}.Match("${id}")`);
+        const view = await readMatch(id);
         const { rounds, state } = replay(view, engine);
         let pending;
         let opened;
@@ -345,14 +414,16 @@ export function createArena({
         }
         const action = actionFor(view, address, now(), pending);
         const planning = action === "move" ? planFrom(view, state, pending, challengerDeck(view, opened, engine.cards), engine.cards) : undefined;
-        return { ...view, rounds, state, pending, planning, action, deadline: view.Deadline };
+        const session = await sessionState(id, view);
+        return { ...view, rounds, state, pending, planning, action, session, deadline: view.Deadline };
       } catch (err) {
         throw errorFrom(err);
       }
     },
 
     // challenge posts a challenge with card ids for the deck and round-1 plan, open to
-    // anyone or reserved for opponent's address, and returns the new match's id.
+    // anyone or reserved for opponent's address, and returns the new match's id. Like
+    // accept, it signs with a session prepareSession gives, which the call locks.
     async challenge({ clan, deck, plan, opponent = "" }) {
       requireAddress();
       checkOpening(engine, clan, deck, plan, 0);
@@ -360,7 +431,7 @@ export function createArena({
       const sealed = { deck: [...deck].sort((a, b) => a - b), deckSalt: newSalt(), plan, planSalt: newSalt() };
       const deckSeal = await sealOf(sealed.deckSalt, cardNames(sealed.deck, engine.cards));
       const planSeal = await sealOf(sealed.planSalt, cardNames(plan, engine.cards));
-      await send("Challenge", [clan, deckSeal, planSeal, await sealBox(key, sealed), opponent]);
+      await send("Challenge", [clan, deckSeal, planSeal, await sealBox(key, sealed), opponent], () => prepareSession("challenger"));
       const [latest] = await read(`${realm}.Matches("${address}", 0, 1)`);
       return latest.ID;
     },
@@ -368,7 +439,7 @@ export function createArena({
     async accept(id, { clan, deck, plan }) {
       checkID(id);
       checkOpening(engine, clan, deck, plan, 1);
-      await send("Accept", [id, clan, cardNames(deck, engine.cards), cardNames(plan, engine.cards)]);
+      await send("Accept", [id, clan, cardNames(deck, engine.cards), cardNames(plan, engine.cards)], () => prepareSession("acceptor"));
     },
 
     // move sends this player's plan, as card ids, for the round being played.
@@ -381,13 +452,13 @@ export function createArena({
       try {
         if (view.Phase === "play") {
           const { func, args } = moveCall(view, null, { plan: planText }, engine.cards);
-          return await send(func, args);
+          return await send(func, args, () => signingIn(id, view));
         }
         const key = await boxKey();
         const planSalt = newSalt();
         const next = { plan: planText, seal: await sealOf(planSalt, planText), box: await sealBox(key, { plan, planSalt }) };
         const { func, args } = moveCall(view, await openBox(key, view.Box), next, engine.cards);
-        return await send(func, args);
+        return await send(func, args, () => signingIn(id, view));
       } catch (err) {
         throw errorFrom(err);
       }
@@ -399,7 +470,7 @@ export function createArena({
       if (view.action !== "finish") throw new ArenaError("wrongPhase", `Match ${id} has no reveal to finish`);
       try {
         const { func, args } = moveCall(view, await openBox(await boxKey(), view.Box), null, engine.cards);
-        return await send(func, args);
+        return await send(func, args, () => signingIn(id, view));
       } catch (err) {
         throw errorFrom(err);
       }
@@ -407,12 +478,12 @@ export function createArena({
 
     async resign(id) {
       checkID(id);
-      await send("Resign", [id]);
+      await send("Resign", [id], async () => signingIn(id, await readMatch(id)));
     },
 
     async claimForfeit(id) {
       checkID(id);
-      await send("ClaimForfeit", [id]);
+      await send("ClaimForfeit", [id], async () => signingIn(id, await readMatch(id)));
     },
 
     // subscribe calls onChange(change) when the arena may have changed, and returns a

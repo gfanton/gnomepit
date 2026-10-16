@@ -72,15 +72,15 @@ check("check-signature", "signature", async () => {
   return [first === second, first === second ? `both signatures are ${first}` : `first ${first}\nsecond ${second}`];
 });
 
+// Posting asks Adena for the match's session; the mode stays "session" only if the
+// Challenge was signed with it.
 check("check-session", "session", async () => {
   const { address } = await bySession.connect();
-  const account = await bySession.authorize();
-  if (account.mode !== "session" || account.state !== "active") {
-    return [false, `no session: state ${account.state}, mode ${account.mode}, reason: ${account.fallback ?? "none"}`];
-  }
+  await bySession.authorize();
   const posted = await post(bySession);
-  const until = new Date(account.expiresAt * 1000).toLocaleString();
-  return [posted?.Challenger === address, `session active until ${until}; match ${posted?.ID} posted by ${posted?.Challenger}`];
+  const account = await bySession.connect();
+  if (account.mode !== "session") return [false, `no session: mode ${account.mode}, reason: ${account.fallback ?? "none"}`];
+  return [posted?.Challenger === address, `match ${posted?.ID} posted by ${posted?.Challenger} through its session`];
 });
 
 check("check-contract", "contract", async () => {

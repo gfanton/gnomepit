@@ -18,8 +18,9 @@ export const devAccounts = {
   },
 };
 
-// Adena signs a session message without simulating it, with the fee the page names or,
-// without one, these.
+// Adena signs a transaction of session messages alone without simulating it, with the
+// fee the page names or, without one, these.
+const sessionAdmin = new Set(["/auth.m_create_session", "/auth.m_revoke_session", "/auth.m_revoke_all_sessions"]);
 const adenaGasWanted = 2_000_000_000;
 const adenaGasFee = 100_000; // ugnot
 
@@ -33,7 +34,7 @@ export function devWallet({ name, signer, chain, chainId }) {
   async function sign({ messages: msgs, memo = "", gasWanted, gasFee }) {
     const account = await chain.account(address);
     const base = { chainId, accountNumber: account.accountNumber, sequence: account.sequence, privKey: key, memo, msgs };
-    if (msgs.every((msg) => msg.type === "/auth.m_create_session")) {
+    if (msgs.every((msg) => sessionAdmin.has(msg.type))) {
       return signer.signTx({ ...base, fee: { gasWanted: gasWanted || adenaGasWanted, gasFee: `${gasFee || adenaGasFee}ugnot` } });
     }
     return payFor(chain, (fee) => signer.signTx({ ...base, fee }));

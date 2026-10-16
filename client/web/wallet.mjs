@@ -1,20 +1,18 @@
 // The player's wallet as the arena uses it: connecting Adena, or the dev wallet that
-// answers the same calls; the one signature every key derives from; the session that
-// lets the page sign moves; and the boxes that keep a challenger's sealed plans.
+// answers the same calls; the one signature every key derives from; the sessions that
+// let the page sign a match's moves; and the boxes that keep a challenger's sealed plans.
 
 import { fromBase64, fromHex, toBase64, toHex } from "./encoding.mjs";
 
-// The session's spend limit counts gas fees and storage deposits; a challenge alone
-// locks about 0.9 GNOT of deposit.
-export const sessionSpendLimit = 10_000_000; // ugnot
-export const sessionLifetime = 7 * 24 * 60 * 60; // seconds
-// Creating a session uses about 1.4M gas.
+// Each side's spend limit for one match, in ugnot, as client/ONLINE.md "Session budgets" works it out.
+export const sessionBudget = { challenger: 641_411, acceptor: 526_484 };
+// Each side's costliest move, in ugnot: a session with less left counts as used up.
+export const sessionReserve = { challenger: 256_099, acceptor: 239_750 };
+export const sessionLifetime = 24 * 60 * 60; // seconds
+// Gas per session message; creating a session uses about 1.4M.
 export const sessionGas = 3_000_000;
-// Below this much ugnot left, a session cannot pay for a challenge, the costliest call,
-// so it counts as spent.
-const sessionReserve = 1_500_000;
 // The chain keeps at most 16 sessions per account, so generations run 0 to 15.
-const generations = 16;
+export const generations = 16;
 
 // WalletError's type is "noWallet", "wrongNetwork", "refused" (the player or the wallet
 // declined) or "box" (a box that these keys did not seal).
@@ -139,48 +137,58 @@ function cardIDsOf(set) {
   return ids;
 }
 
-// findSession looks for master's active session on realm among the generations keysFor
-// derives. state is "active", "expired" when every session of these keys is expired,
-// spent or for another realm, or "missing" when there is none. generation and keys are
-// the active session's, or the first generation the chain holds no session for, which
-// a new session takes.
-export async function findSession(chain, master, keysFor, now, realm) {
-  const onChain = new Map((await chain.sessions(master)).map((s) => [s.address, s]));
-  let free = null;
-  let ours = false;
-  for (let generation = 0; generation < generations; generation++) {
-    const keys = await keysFor(generation);
-    const session = onChain.get(keys.sessionAddress);
+// classifySessions sorts master's sessions, onChain as chain.sessions lists them, for each
+// generation keys maps to its keys, against the realm's Locks. matches maps each locked
+// match's id to {phase, role}, with no entry for a match the realm no longer knows; reserve
+// is sessionReserve. Entries are {generation, keys, session}, free ones without a session;
+// byMatch holds the live session of each match not ended, by match id.
+export function classifySessions({ onChain, keys, locks, matches, now, realm, reserve }) {
+  const byAddress = new Map(onChain.map((s) => [s.address, s]));
+  const out = { byMatch: new Map(), unlocked: [], dead: [], free: [] };
+  for (const [generation, k] of keys) {
+    const session = byAddress.get(k.sessionAddress);
     if (session === undefined) {
-      free ??= { generation, keys };
+      out.free.push({ generation, keys: k });
       continue;
     }
-    ours = true;
-    const live = session.expiresAt === 0 || session.expiresAt > now;
-    const funded = session.spendLimit - session.spendUsed >= sessionReserve;
-    if (live && funded && session.allowPaths.includes(`vm/exec:${realm}`)) {
-      return { state: "active", generation, keys, session, expiresAt: session.expiresAt };
-    }
+    const expired = session.expiresAt !== 0 && session.expiresAt <= now;
+    // The same keys may hold sessions for another arena on this site; those stay.
+    if (!expired && !session.allowPaths.includes(`vm/exec:${realm}`)) continue;
+    const lock = locks.find((l) => l.Session === session.address && l.Expires === session.expiresAt);
+    const match = lock === undefined ? undefined : matches.get(lock.Match);
+    const gone = lock !== undefined && (match === undefined || match.phase === "ended");
+    // An unlocked session has no side yet, so it needs only the smaller reserve.
+    const needed = match === undefined ? Math.min(reserve.challenger, reserve.acceptor) : reserve[match.role];
+    const entry = { generation, keys: k, session };
+    if (expired || gone || session.spendLimit - session.spendUsed < needed) out.dead.push(entry);
+    else if (lock === undefined) out.unlocked.push(entry);
+    else out.byMatch.set(lock.Match, entry);
   }
-  const state = ours ? "expired" : "missing";
-  if (free === null) return { state, generation: null, keys: null, session: null, expiresAt: 0 };
-  return { state, ...free, session: null, expiresAt: 0 };
+  return out;
 }
 
 // sessionMessage creates a session for the session key, in the form Adena takes: it may
-// call realm alone, spend sessionSpendLimit, and lasts sessionLifetime from now.
-export function sessionMessage(master, sessionPubKey, now, realm) {
-  // PubKeySecp256k1 in protobuf: field 1, 33 bytes.
-  const wrapped = new Uint8Array([0x0a, 33, ...fromBase64(sessionPubKey)]);
+// call realm alone, spend spendLimit ugnot, and lasts lifetime seconds from now.
+export function sessionMessage(master, sessionPubKey, now, realm, spendLimit, lifetime) {
   return {
     type: "/auth.m_create_session",
     value: {
       creator: master,
-      session_key: { type_url: "/tm.PubKeySecp256k1", value: toBase64(wrapped) },
-      expires_at: String(now + sessionLifetime),
+      session_key: sessionKeyOf(sessionPubKey),
+      expires_at: String(now + lifetime),
       allow_paths: [`vm/exec:${realm}`],
-      spend_limit: `${sessionSpendLimit}ugnot`,
+      spend_limit: `${spendLimit}ugnot`,
       spend_period: "0",
     },
   };
+}
+
+// revokeMessage revokes master's session for the session key, in the form Adena takes.
+export function revokeMessage(master, sessionPubKey) {
+  return { type: "/auth.m_revoke_session", value: { creator: master, session_key: sessionKeyOf(sessionPubKey) } };
+}
+
+// sessionKeyOf wraps a base64 public key as PubKeySecp256k1 in protobuf: field 1, 33 bytes.
+function sessionKeyOf(sessionPubKey) {
+  return { type_url: "/tm.PubKeySecp256k1", value: toBase64(new Uint8Array([0x0a, 33, ...fromBase64(sessionPubKey)])) };
 }
