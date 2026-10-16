@@ -536,14 +536,40 @@ test("with every generation holding a session it may not revoke, the wallet sign
   assert.equal(account.fallback, "Every session this account can hold is used");
 });
 
-test("a refused session approval has the wallet sign each move until sessions resume", async () => {
+// Adena answers TRANSACTION_REJECTED when the player rejects a transaction or closes its window.
+const rejected = { status: "failure", type: "TRANSACTION_REJECTED", message: "The transaction has been rejected by the user." };
+// Adena answers UNSUPPORTED_TYPE for a message it cannot sign, such as a session it does not know.
+const unsupported = { status: "failure", type: "UNSUPPORTED_TYPE", message: "Adena does not support the requested transaction type." };
+const refusedCall = (err) => err instanceof ArenaError && err.type === "refused" && err.reason === rejected.message;
+
+test("a rejected session approval cancels its call, keeps the session mode and opens no second prompt", async () => {
+  const chain = await expiredReveal();
+  const { arena, contracts } = sessionPlayer(chain, { created: async () => rejected });
+  await arena.connect();
+  await arena.authorize();
+  const calls = [
+    ["challenge", () => arena.challenge(opening)],
+    ["acceptance", () => arena.accept("1", { clan: "Ironhide", deck: cardIDs(deckB, engine.cards), plan: cardIDs(braces, engine.cards) })],
+    ["renewal", () => arena.renew("1")],
+  ];
+  for (const [name, call] of calls) {
+    const prompts = contracts.length;
+    await assert.rejects(call(), refusedCall, name);
+    assert.deepEqual(contracts.slice(prompts).map((c) => c.messages.at(-1).type), ["/auth.m_create_session"], name);
+    assert.equal(chain.broadcasts, 0, name);
+    assert.equal(arena.account().mode, "session", name);
+    assert.equal(arena.account().fallback, null, name);
+  }
+});
+
+test("a wallet that cannot create sessions signs each move until sessions resume", async () => {
   const chain = arenaChain();
   let attempts = 0;
   const { arena, contracts } = sessionPlayer(chain, {
     created: async (request) => {
       if (request.messages[0].type !== "/auth.m_create_session") return { status: "success" };
       attempts++;
-      if (attempts === 1) return { status: "failure", type: "TRANSACTION_REJECTED", message: "User rejected" };
+      if (attempts === 1) return unsupported;
       chain.sessionList = [await sessionOf(0)];
       return { status: "success" };
     },
@@ -555,7 +581,7 @@ test("a refused session approval has the wallet sign each move until sessions re
   assert.deepEqual(contracts.map((c) => c.messages[0].type), ["/auth.m_create_session", "/vm.m_call"]);
   const refused = await arena.connect();
   assert.equal(refused.mode, "contract");
-  assert.equal(refused.fallback, "User rejected");
+  assert.equal(refused.fallback, unsupported.message);
   assert.deepEqual(arena.account(), refused);
   assert.deepEqual(await arena.authorize(), refused, "authorizing again keeps the per-move mode");
 
@@ -696,9 +722,9 @@ test("a claim, a withdrawal or a resignation with no live session has the wallet
   }
 });
 
-// The lobby's account state comes from the arena, so the per-move mode a refused session
-// leaves shows on the page that met it, and on the next one.
-test("the lobby shows the per-move mode a refused session leaves, until sessions resume", async (t) => {
+// The lobby's account state comes from the arena, so the per-move mode a wallet without
+// sessions leaves shows on the page that met it, and on the next one.
+test("the lobby shows the per-move mode a wallet without sessions leaves, until sessions resume", async (t) => {
   globalThis.document = { activeElement: null };
   globalThis.history = { replaceState() {} };
   globalThis.location = { pathname: "/", search: "", origin: "http://x" };
@@ -712,14 +738,13 @@ test("the lobby shows the per-move mode a refused session leaves, until sessions
   });
   const chain = arenaChain({ matches: { 1: "match-open" } });
   const storage = memory();
-  const refused = { status: "failure", type: "TRANSACTION_REJECTED", message: "User rejected" };
-  // page loads the lobby with an arena on this device's storage, whose wallet refuses sessions.
+  // page loads the lobby with an arena on this device's storage, whose wallet creates no session.
   const page = () => {
     const dialog = { innerHTML: "", showModal() {}, close() {}, addEventListener() {} };
     const app = { classList: { add() {}, remove() {} }, dataset: {}, innerHTML: "", querySelector: () => dialog };
     const { arena } = sessionPlayer(chain, {
       storage,
-      created: async (request) => (request.messages[0].type === "/auth.m_create_session" ? refused : { status: "success" }),
+      created: async (request) => (request.messages[0].type === "/auth.m_create_session" ? unsupported : { status: "success" }),
     });
     pages.push({ lobby: createLobby({ app, arena, onRender() {}, onExit() {} }), dialog });
     return pages.at(-1);
@@ -731,7 +756,7 @@ test("the lobby shows the per-move mode a refused session leaves, until sessions
   await first.lobby.sendDraft({ intent: "challenge", opponent: "" }, opening.clan, opening.deck, opening.plan);
   assert.equal(first.lobby.model.account.mode, "contract");
   await first.lobby.action("Account");
-  assert.match(first.dialog.innerHTML, /User rejected/);
+  assert.match(first.dialog.innerHTML, /Adena does not support the requested transaction type/);
   assert.match(first.dialog.innerHTML, /data-action="onlineResumeSessions"[^>]*>Use sessions again</);
 
   const reloaded = page();
@@ -740,6 +765,29 @@ test("the lobby shows the per-move mode a refused session leaves, until sessions
   await reloaded.lobby.action("ResumeSessions");
   assert.equal(reloaded.lobby.model.account.mode, "session");
   assert.equal(reloaded.lobby.model.account.fallback, null);
+});
+
+// The per-move mode stops new sessions, not the ones the device already holds.
+test("in the per-move mode, a move signs with the live session locked to its match, and the wallet signs without one", async () => {
+  const box = await sealBox((await keysOf(0)).boxKey, { deck: cardIDs(deckA, engine.cards), deckSalt: newSalt(), plan: cardIDs(picks, engine.cards), planSalt: newSalt() });
+  const chain = arenaChain({ sessions: [await sessionOf(0), await sessionOf(1)], locks: [await lockOn(0, "1")], matches: { 1: revealWith(box), 2: "match-play" } });
+  const storage = memory();
+  storage.setItem(`gnomehall:dev:${test1}:mode`, "contract");
+  const { arena, contracts, signed } = sessionPlayer(chain, { storage });
+  await arena.connect();
+  await arena.authorize();
+  assert.equal(arena.account().mode, "contract");
+
+  const locked = await arena.match("1");
+  await arena.move("1", engine.legalPlans(locked.planning)[0]);
+  assert.equal(contracts.length, 0);
+  assert.equal(chain.broadcasts, 1);
+  assert.equal(signed.at(-1).sessionAddr, (await keysOf(0)).sessionAddress);
+
+  const unlocked = await arena.match("2");
+  await arena.move("2", engine.legalPlans(unlocked.planning)[0]);
+  assert.deepEqual(contracts.map((c) => c.messages.map((m) => m.value.func)), [["Play"]]);
+  assert.equal(chain.broadcasts, 1);
 });
 
 test("a move signs with the session locked to its match before an unlocked one", async () => {

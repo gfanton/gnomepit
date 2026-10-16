@@ -241,7 +241,8 @@ export function createArena({
   const classify = ({ price, ...found }, matches) => classifySessions({ ...found, matches, now: now(), realm, reserve: sessionReserve(price) });
 
   // prepareSession returns a live unlocked session with role's budget, else has the wallet
-  // revoke the dead ones and create one. It returns null in the per-move mode, its fallback.
+  // revoke the dead ones and create one, and throws refused when the player rejects that.
+  // It returns null in the per-move mode, its fallback.
   async function prepareSession(role) {
     if (mode() === "contract") return null;
     const found = await ownSessions();
@@ -267,6 +268,8 @@ export function createArena({
     ];
     const gasWanted = sessionGas * messages.length;
     const response = await wallet.DoContract({ messages, memo: "Gnomehall session", gasWanted, gasFee: feeFor(gasWanted, found.price) });
+    // Adena's answer when the player rejects the approval or closes its window.
+    if (response?.type === "TRANSACTION_REJECTED") throw new ArenaError("refused", response.message || "The session was not approved");
     if (response?.status !== "success") return fallBack(response?.message || response?.type || "The wallet created no session");
     // A read served before the approval's block applies may still show the revoked session.
     const created = (s) => s.address === target.keys.sessionAddress && s.expiresAt === start + sessionLifetime;
@@ -276,19 +279,23 @@ export function createArena({
   }
 
   // sessionIn returns the session that signs this player's next call in match id, which
-  // view shows: the live session locked to it, else a live unlocked one, such as a renewal
-  // leaves, which that call locks. It returns null when there is none.
+  // view shows: the live session locked to it, else, outside the per-move mode, a live
+  // unlocked one, such as a renewal leaves, which that call locks. It returns null when
+  // there is none.
   async function sessionIn(id, view) {
     const role = roleOf(view);
     const found = await ownSessions();
     // Only this match is read: sessions locked elsewhere then count as dead, unused here.
     const { byMatch, unlocked } = classify(found, new Map([[id, { phase: view.Phase, role }]]));
-    return byMatch.get(id) ?? unlocked.find(({ session }) => left(session) >= sessionReserve(found.price).opening[role]) ?? null;
+    if (byMatch.has(id) || mode() === "contract") return byMatch.get(id) ?? null;
+    return unlocked.find(({ session }) => left(session) >= sessionReserve(found.price).opening[role]) ?? null;
   }
 
+  // signingIn is sessionIn for a move, which without a session needs a renewal, or the
+  // wallet in the per-move mode.
   async function signingIn(id, view) {
     const found = await sessionIn(id, view);
-    if (found === null) throw new ArenaError("sessionExpired", `The session for match ${id} has expired or run out; renew it`);
+    if (found === null && mode() !== "contract") throw new ArenaError("sessionExpired", `The session for match ${id} has expired or run out; renew it`);
     return found;
   }
 
@@ -310,14 +317,14 @@ export function createArena({
   }
 
   // send makes one arena call, signed by the session signing resolves to, or by the
-  // wallet itself when it resolves to null or in the per-move mode.
+  // wallet itself when it resolves to null or the arena signs each move.
   const send = (func, args, signing) => serial(() => sendNow(func, args, signing));
 
   async function sendNow(func, args, signing) {
     requireAddress();
     const msg = { type: "/vm.m_call", value: { caller: address, send: "", max_deposit: "", pkg_path: realm, func, args } };
     try {
-      const signedBy = mode() === "contract" ? null : await signing();
+      const signedBy = signEachMove ? null : await signing();
       if (signedBy === null) {
         const response = await wallet.DoContract({ messages: [msg], memo: "" });
         if (response?.status !== "success") throw walletFailure(response);
@@ -365,7 +372,8 @@ export function createArena({
     },
 
     // account returns the account's state as connect gives it, without asking the wallet;
-    // mode contract means the wallet signs each move, for the reason fallback holds.
+    // mode contract means the wallet signs each call that no live session locked to its
+    // match can sign, for the reason fallback holds.
     account: status,
 
     // resumeSessions leaves the per-move mode, so the next challenge, acceptance or renewal
