@@ -37,6 +37,7 @@ func Accept(cur realm, id, clan, deck, plan string) {
 	}
 
 	m.acceptor = caller
+	guard(cur.Previous().IsUser(), caller, m, n, true)
 	m.clans[1] = c
 	m.decks[1] = bits
 	m.plans[1] = withPlan(m.plans[1], 1, b)
@@ -58,6 +59,7 @@ func Reveal(cur realm, id, deck, deckSalt, plan, planSalt, nextSeal, nextBox str
 	n, m := find(rules, id)
 	now := time.Now().Unix()
 	caller := cur.Previous().Address()
+	guard(cur.Previous().IsUser(), caller, m, n, false)
 	m.checkMove(caller, phaseReveal, m.challenger, now)
 
 	s := stateOf(rules, m)
@@ -121,6 +123,7 @@ func Play(cur realm, id, plan string) {
 	n, m := find(rules, id)
 	now := time.Now().Unix()
 	caller := cur.Previous().Address()
+	guard(cur.Previous().IsUser(), caller, m, n, false)
 	m.checkMove(caller, phasePlay, m.acceptor, now)
 	s := stateOf(rules, m)
 	b := planOf(rules, plan)
@@ -140,6 +143,7 @@ func Resign(cur realm, id string) {
 	rules := engine.ProofOfConcept()
 	n, m := find(rules, id)
 	caller := cur.Previous().Address()
+	guard(cur.Previous().IsUser(), caller, m, n, false)
 	switch m.phase {
 	case phaseOpen:
 		if caller != m.challenger {
@@ -164,10 +168,12 @@ func Resign(cur realm, id string) {
 }
 
 // ClaimForfeit ends a running match whose deadline has passed: the player who had to
-// move loses. Anyone may claim it.
+// move loses. Any wallet may claim it; a session may claim only a match its wallet plays.
 func ClaimForfeit(cur realm, id string) {
 	rules := engine.ProofOfConcept()
 	n, m := find(rules, id)
+	caller := cur.Previous().Address()
+	guard(cur.Previous().IsUser(), caller, m, n, false)
 	var result string
 	switch m.phase {
 	case phaseReveal:
@@ -182,7 +188,7 @@ func ClaimForfeit(cur realm, id string) {
 	}
 	m.end(result, "forfeit")
 	saveMatch(rules, n, m)
-	tellEnded(m, n, cur.Previous().Address())
+	tellEnded(m, n, caller)
 }
 
 func find(rules *engine.Ruleset, id string) (int, record) {

@@ -1,6 +1,8 @@
 // Package arena holds Gnomehall's online matches. A challenger posts a sealed deck and
 // round-1 plan; an acceptor answers face up; the challenger reveals each round with the
-// seal of the next, and the shared duel engine checks and resolves every move.
+// seal of the next, and the shared duel engine checks and resolves every move. A session
+// key is bound to the match of the first call it signs: it then acts in no other match and
+// posts or accepts nothing more. Calls the wallet signs are never bound.
 package arena
 
 import (
@@ -72,6 +74,7 @@ func Challenge(cur realm, clan, deckSeal, planSeal, box string, opponent address
 		box:        raw,
 	}
 	m.clans[0] = c
+	guard(cur.Previous().IsUser(), m.challenger, m, lastID, true)
 	saveMatch(rules, lastID, m)
 	openAdd(lastID, m.deadline)
 	p := loadPlayer(m.challenger)

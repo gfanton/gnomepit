@@ -37,6 +37,22 @@ type MatchView struct {
 	DeadlinePassed               bool
 }
 
+// SessionLock binds the session key at address Session to the match whose id is Match.
+// Expires is the session's expiry in Unix seconds, 0 for none.
+type SessionLock struct {
+	Session, Match string
+	Expires        int64
+}
+
+// Locks lists player's session locks. It can include locks whose session has expired.
+func Locks(player address) []SessionLock {
+	list := []SessionLock{}
+	for _, l := range loadPlayer(player).locks {
+		list = append(list, SessionLock{Session: l.session.String(), Match: strconv.Itoa(l.id), Expires: l.expires})
+	}
+	return list
+}
+
 // Matches lists player's matches, newest first: limit of them after skipping offset.
 func Matches(player address, offset, limit int) []MatchSummary {
 	checkPage(offset, limit)
