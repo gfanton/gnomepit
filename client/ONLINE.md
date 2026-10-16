@@ -6,7 +6,7 @@ Online matches run through the arena realm, `r/arena`, on a gno chain. The page 
 
 1. `make dev` starts gnodev with the engine, the arena and the gnotif registry, on the chain `gnomehall-dev`. The RPC listens on `127.0.0.1:36657` and gnoweb on `127.0.0.1:8890`. It copies the registry from a gnotif checkout, `~/code/gfanton/gnotif` unless `GNOTIF_DIR` names another. It funds two dev accounts, alice and bob, with 10,000 GNOT each.
 2. `make indexer` runs tx-indexer v1.3.0 on that chain, answering on `127.0.0.1:8546`. The page learns of the other player's moves from it.
-3. `make wasm` builds `engine.wasm`, then `make serve` serves the page on `http://127.0.0.1:8080/`.
+3. `make wasm` builds `engine.wasm` with TinyGo 0.42 or later, which must be on `PATH` (`nix shell nixpkgs#tinygo`), then `make serve` serves the page on `http://127.0.0.1:8080/`. `make e2e` and `make test` build it too.
 4. Open `http://127.0.0.1:8080/?dev=alice` in one browser and `?dev=bob` in another, then **Play online**: the lobby, with a dev wallet in place of Adena. Without `dev`, the lobby uses Adena.
 5. `online-dev.html?dev=alice` and `?dev=bob` open a bare console instead, which picks decks and plans at random. Add `&contract=1` to have the wallet sign every move instead of a session, and `&indexer=` with no value to poll the node instead of the indexer.
 6. `make e2e` plays a whole match from node: alice through a session, bob through his wallet on each move. It also checks that the indexer reports every call of the match.
@@ -49,20 +49,23 @@ Without an indexer, or while it does not answer, `subscribe` polls the node inst
 | `gnovalue.mjs` | Decoding `vm/qeval_json` answers into plain objects |
 | `devwallet.mjs` | A wallet with Adena's calls and public dev keys, for local chains only |
 | `encoding.mjs` | Hex and base64 |
-| `engine.mjs` | The engine's rules and, from `client/signer` in the same WebAssembly, `keyInfo`, `signTx` and `signBytes` |
+| `engine.mjs` | The engine's rules, from `engine.wasm` |
+| `signer.mjs` | `keyInfo`, `signTx` and `signBytes`: keys, transactions and signed documents |
 | `gnotif.js`, `sw.js` | gnotif's browser client and service worker |
 
 ## Signer
 
-`signer.mjs` gives `keyInfo`, `signTx` and `signBytes` on the official gno JS clients, `@gnolang/tm2-js-client` 3.3.0 and `@gnolang/gno-js-client` 3.1.0. `make vendor` bundles them from `client/js` into `vendor/gno.mjs`, with the Node `Buffer` and `crypto` they call: 353,382 bytes, 110,412 gzipped. `make golden` signs four requests with the chain's own Go types into `testdata/golden-tx.json`, and the tests check that `signer.mjs` gives the same bytes. The page signs through `engine.mjs`; only the tests call `signer.mjs`.
+`signer.mjs` gives `keyInfo`, `signTx` and `signBytes` on the official gno JS clients, `@gnolang/tm2-js-client` 3.3.0 and `@gnolang/gno-js-client` 3.1.0. `make vendor` bundles them from `client/js` into `vendor/gno.mjs`, with the Node `Buffer` and `crypto` they call: 353,382 bytes, 110,412 gzipped. `make golden` signs five requests with the chain's own Go types into `testdata/golden-tx.json`, and the tests check that `signer.mjs` gives the same bytes. `signTx` refuses a request the chain would refuse: no chain id, no message, an account number or sequence that is not a non-negative integer, a `sessionAddr` other than the signing key's own address, or a session with no spend limit.
+
+`engine.wasm` holds the engine alone, built with TinyGo and loaded with TinyGo's own `wasm_exec.js`: 960,874 bytes, 356,853 gzipped.
 
 ## The arena API
 
 ```js
-const arena = createArena({ chain, wallet, engine, realm, chainId, origin, storage, notifier, indexer, signEachMove });
+const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origin, storage, notifier, indexer, signEachMove });
 ```
 
-`chain` comes from `createChain({ rpc })`, `wallet` is `window.adena` or a `devWallet`, `engine` from `loadEngine`, `storage` is `localStorage`, `notifier` a gnotif `Gnotif`, and `indexer` comes from `createIndexer({ url })` with the indexer's GraphQL URL, such as `http://127.0.0.1:8546/graphql/query`. Without `indexer`, `subscribe` polls the node. `signEachMove` skips the session.
+`chain` comes from `createChain({ rpc })`, `wallet` is `window.adena` or a `devWallet`, `engine` from `loadEngine`, `signer` is `signer.mjs` (`import * as signer`), `storage` is `localStorage`, `notifier` a gnotif `Gnotif`, and `indexer` comes from `createIndexer({ url })` with the indexer's GraphQL URL, such as `http://127.0.0.1:8546/graphql/query`. Without `indexer`, `subscribe` polls the node. `signEachMove` skips the session.
 
 | Call | Returns or does |
 |---|---|

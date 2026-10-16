@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 
 import { nodeEngine } from "./engine-node.mjs";
+import * as signer from "./signer.mjs";
 import {
   WalletError, connect, deriveKeys, findSession, newSalt, openBox, rootText, sealBox, sealOf, sessionMessage, waitForAdena,
 } from "./wallet.mjs";
@@ -32,23 +33,23 @@ test("the root text names Gnomehall and the site", () => {
 });
 
 test("keys derive the same from the same signature, per generation", async () => {
-  const a = await deriveKeys(signature, 0, engine);
-  const b = await deriveKeys(signature, 0, engine);
-  const next = await deriveKeys(signature, 1, engine);
+  const a = await deriveKeys(signature, 0, signer);
+  const b = await deriveKeys(signature, 0, signer);
+  const next = await deriveKeys(signature, 1, signer);
   assert.equal(a.sessionKey, b.sessionKey);
   assert.match(a.sessionKey, /^[0-9a-f]{64}$/);
-  assert.equal(a.sessionAddress, engine.keyInfo(a.sessionKey).address);
+  assert.equal(a.sessionAddress, (await signer.keyInfo(a.sessionKey)).address);
   assert.notEqual(next.sessionAddress, a.sessionAddress);
 });
 
 test("a box opens with the keys that sealed it, and only with them", async () => {
-  const { boxKey } = await deriveKeys(signature, 0, engine);
+  const { boxKey } = await deriveKeys(signature, 0, signer);
   const contents = { plan: [0, 0, 0], planSalt: newSalt() };
   const box = await sealBox(boxKey, contents);
   assert.deepEqual(await openBox(boxKey, box), contents);
-  assert.deepEqual(await openBox((await deriveKeys(signature, 3, engine)).boxKey, box), contents);
+  assert.deepEqual(await openBox((await deriveKeys(signature, 3, signer)).boxKey, box), contents);
 
-  const other = await deriveKeys(otherSignature, 0, engine);
+  const other = await deriveKeys(otherSignature, 0, signer);
   await assert.rejects(openBox(other.boxKey, box), failure("box"));
   await assert.rejects(openBox(boxKey, "not a box"), failure("box"));
 });
@@ -59,7 +60,7 @@ const boxSize = (box) => atob(box).length;
 // The realm takes boxes of at most 104 bytes. The deck travels as a card set, so it comes
 // back in card id order, which is the order its seal must name it in.
 test("every legal round-1 plan of each clan fits a box, round 1 in 104 bytes and later rounds in 64", async () => {
-  const { boxKey } = await deriveKeys(signature, 0, engine);
+  const { boxKey } = await deriveKeys(signature, 0, signer);
   for (const { name, cards: pool } of engine.clans) {
     const plans = engine.legalPlans({ state: start, side: 0, deck: pool });
     assert.ok(plans.length > 0, name);
@@ -86,7 +87,7 @@ async function sealContents(boxKey, contents) {
 }
 
 test("a box whose contents are not a plan, or a deck and a plan, is refused", async () => {
-  const { boxKey } = await deriveKeys(signature, 0, engine);
+  const { boxKey } = await deriveKeys(signature, 0, signer);
   const salt = Array(32).fill(7);
   const deck = Array(8).fill(0);
   const refused = [
@@ -111,7 +112,7 @@ test("a new salt is 32 random bytes in hex", () => {
 });
 
 test("a session message lets the session key call the arena for 7 days", async () => {
-  const keys = await deriveKeys(signature, 0, engine);
+  const keys = await deriveKeys(signature, 0, signer);
   const { type, value } = sessionMessage("g1master", keys.sessionPubKey, now, realm);
   assert.equal(type, "/auth.m_create_session");
   assert.equal(value.creator, "g1master");
@@ -128,10 +129,10 @@ test("a session message lets the session key call the arena for 7 days", async (
 // chainWith answers sessions() with the given session accounts.
 const chainWith = (sessions) => ({ sessions: async () => sessions });
 const sessionAt = async (generation, fields) => ({
-  address: (await deriveKeys(signature, generation, engine)).sessionAddress,
+  address: (await deriveKeys(signature, generation, signer)).sessionAddress,
   accountNumber: 9, sequence: 2, expiresAt: now + 3600, spendLimit: 10_000_000, spendUsed: 0, allowPaths: [`vm/exec:${realm}`], ...fields,
 });
-const keysFor = (generation) => deriveKeys(signature, generation, engine);
+const keysFor = (generation) => deriveKeys(signature, generation, signer);
 const find = (sessions) => findSession(chainWith(sessions), "g1master", keysFor, now, realm);
 
 test("an unexpired session with funds left is active", async () => {

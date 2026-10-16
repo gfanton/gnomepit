@@ -39,6 +39,64 @@ test("a private key that is not 32 bytes of hex is refused", async () => {
 });
 
 test("a message signer.mjs does not know is refused", async () => {
-  const request = { ...goldenRequest("wallet-call"), msgs: [{ type: "/bank.MsgSend", value: {} }] };
-  await assert.rejects(signTx(request), /unsupported message \/bank\.MsgSend/);
+  // Names every object inherits must not pass for a message codec.
+  for (const type of ["/bank.MsgSend", "constructor", "__proto__", "toString"]) {
+    const request = { ...goldenRequest("wallet-call"), msgs: [{ type, value: {} }] };
+    await assert.rejects(signTx(request), (err) => err.message === `unsupported message ${type}`, type);
+  }
+});
+
+const goldenTx = (name) => golden.find((c) => c.name === name).tx;
+
+test("a request without sessionAddr signs as the account itself", async () => {
+  const { sessionAddr, ...request } = goldenRequest("wallet-call");
+  assert.equal(sessionAddr, "");
+  assert.equal(await signTx(request), goldenTx("wallet-call"));
+});
+
+test("a call without the fields Adena leaves out signs as one with them empty", async () => {
+  const request = goldenRequest("session-call");
+  const { send, max_deposit: maxDeposit, ...value } = request.msgs[0].value;
+  assert.deepEqual([send, maxDeposit], ["", ""]);
+  assert.equal(await signTx({ ...request, msgs: [{ ...request.msgs[0], value }] }), goldenTx("session-call"));
+});
+
+test("a request without a chain id is refused", async () => {
+  for (const chainId of ["", undefined]) {
+    await assert.rejects(signTx({ ...goldenRequest("wallet-call"), chainId }), /missing chain id/, String(chainId));
+  }
+});
+
+test("a request with no message is refused", async () => {
+  for (const msgs of [[], undefined]) {
+    await assert.rejects(signTx({ ...goldenRequest("wallet-call"), msgs }), /no message to sign/, String(msgs));
+  }
+});
+
+test("an account number or sequence that is not a non-negative integer is refused", async () => {
+  for (const [field, name] of [["accountNumber", "account number"], ["sequence", "sequence"]]) {
+    for (const value of [-1, 1.5, "3", undefined, Number.NaN, 2 ** 53]) {
+      const request = { ...goldenRequest("wallet-call"), [field]: value };
+      await assert.rejects(signTx(request), (err) => err.message === `${name} must be a non-negative integer`, `${field} ${value}`);
+    }
+  }
+});
+
+test("a session address that is not the signing key's own is refused", async () => {
+  const wallet = goldenRequest("wallet-call");
+  const session = goldenRequest("session-call");
+  // The master key signing as its session, the session key naming its master, and text that is no address.
+  for (const request of [{ ...wallet, sessionAddr: session.sessionAddr }, { ...session, sessionAddr: wallet.msgs[0].value.caller }, { ...session, sessionAddr: "g1nope" }]) {
+    await assert.rejects(signTx(request), /session address is not the signing key's address/, request.sessionAddr);
+  }
+});
+
+// The chain's amino JSON leaves an empty spend_limit out of the sign bytes and the JS
+// client writes it, so the chain would refuse the signature.
+test("a session with no spend limit is refused", async () => {
+  const request = goldenRequest("create-and-revoke");
+  for (const spendLimit of ["", undefined]) {
+    const msgs = request.msgs.map((m) => (m.type === "/auth.m_create_session" ? { ...m, value: { ...m.value, spend_limit: spendLimit } } : m));
+    await assert.rejects(signTx({ ...request, msgs }), /session needs a spend limit/, String(spendLimit));
+  }
 });

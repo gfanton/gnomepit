@@ -143,6 +143,14 @@ func run() error {
 				}},
 			},
 		}},
+		{"create-with-period", txRequest{
+			ChainID: chainID, AccountNumber: 7, Sequence: 5, PrivKey: masterKey,
+			Fee: fee{GasWanted: 3_000_000, GasFee: "3000ugnot"},
+			Msgs: []adenaMsg{{"/auth.m_create_session", createValue{
+				Creator: masterAddr, SessionKey: wrapped, ExpiresAt: "1760086400",
+				AllowPaths: []string{"vm/exec:" + arena}, SpendLimit: "10000000ugnot", SpendPeriod: "3600",
+			}}},
+		}},
 	}
 
 	out := make([]golden, 0, len(requests)+1)

@@ -1,6 +1,7 @@
 SHELL := /bin/sh
-GOROOT := $(shell go env GOROOT)
 WEB := client/web
+JS := client/js
+GOLDEN := $(WEB)/testdata/golden-tx.json
 # The gnotif checkout whose registry the arena imports, at its development path.
 GNOTIF_DIR ?= $(HOME)/code/gfanton/gnotif
 REGISTRY := deps/gnotif/v0
@@ -19,17 +20,18 @@ INDEXER_DB := .indexer
 
 all: wasm ## Build the page's engine (default)
 
-wasm: ## Compile the engine to WebAssembly and copy the Go runtime glue next to the page
-	GOOS=js GOARCH=wasm go build -o $(WEB)/engine.wasm ./client/wasm
-	cp -f "$(GOROOT)/lib/wasm/wasm_exec.js" $(WEB)/
+wasm: ## Compile the engine to WebAssembly with TinyGo and copy TinyGo's runtime glue next to the page
+	tinygo build -target wasm -opt=z -no-debug -o $(WEB)/engine.wasm ./client/wasm
+	cp -f "$$(tinygo env TINYGOROOT)/targets/wasm_exec.js" $(WEB)/
 
 golden: ## Sign the signer tests' golden transactions with the chain's own Go types
-	go -C client/golden run . > $(WEB)/testdata/golden-tx.json
+	go -C client/golden run . > $(GOLDEN).tmp
+	mv -f $(GOLDEN).tmp $(GOLDEN)
 
 # The gno clients call Node's Buffer and crypto, which the page has no copy of.
 vendor: ## Bundle what signer.mjs takes from the gno JS clients into client/web/vendor/gno.mjs
-	npm ci --prefix client/js && npx --prefix client/js esbuild client/js/entry.mjs --bundle --format=esm --minify \
-		--inject:client/js/buffer.mjs --alias:crypto=./client/js/crypto.mjs --outfile=$(WEB)/vendor/gno.mjs
+	npm ci --prefix $(JS) && npx --prefix $(JS) esbuild $(JS)/entry.mjs --bundle --format=esm --minify \
+		--inject:$(JS)/buffer.mjs --alias:crypto=./$(JS)/crypto.mjs --outfile=$(WEB)/vendor/gno.mjs
 
 serve: ## Serve the page on 127.0.0.1:8080
 	go run ./client/serve -dir $(WEB)
@@ -50,7 +52,7 @@ capture: ## Record the arena's query answers from a running make dev
 fund: ## Send 1,000 GNOT on a running make dev to ADDRESS, such as an Adena account
 	RPC=$(DEV_RPC) CHAIN=$(DEV_CHAIN) scripts/fund.sh $(ADDRESS)
 
-record: wasm ## Record the RPC answers the script tests replay, from a running make dev
+record: ## Record the RPC answers the script tests replay, from a running make dev
 	CHAIN=$(DEV_CHAIN) node scripts/record-rpc.mjs http://$(DEV_RPC)
 
 e2e: wasm ## Play a whole arena match on a running make dev and make indexer, with both signing paths

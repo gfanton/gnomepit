@@ -7,6 +7,7 @@ import { randomDeck, randomPlan } from "./bot.mjs";
 import { createChain } from "./chain.mjs";
 import { devWallet } from "./devwallet.mjs";
 import { loadEngine } from "./engine.mjs";
+import * as signer from "./signer.mjs";
 import { answer, rootText, waitForAdena } from "./wallet.mjs";
 
 const params = new URLSearchParams(location.search);
@@ -18,8 +19,8 @@ const devName = params.get("dev");
 const $ = (id) => document.getElementById(id);
 const engine = await loadEngine("engine.wasm", "cards.json");
 const chain = createChain({ rpc });
-const wallet = devName === null ? await waitForAdena() : devWallet({ name: devName, signer: engine, chain, chainId });
-const options = { chain, wallet, engine, realm, chainId, origin: location.origin, storage: localStorage };
+const wallet = devName === null ? await waitForAdena() : devWallet({ name: devName, signer, chain, chainId });
+const options = { chain, wallet, engine, signer, realm, chainId, origin: location.origin, storage: localStorage };
 const bySession = createArena(options);
 const byWallet = createArena({ ...options, signEachMove: true });
 

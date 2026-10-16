@@ -3,11 +3,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { createChain } from "./chain.mjs";
-import { devAccounts, devWallet, toSignerMsg } from "./devwallet.mjs";
-import { nodeEngine } from "./engine-node.mjs";
+import { devAccounts, devWallet } from "./devwallet.mjs";
+import * as signer from "./signer.mjs";
 import { deriveKeys, sessionMessage } from "./wallet.mjs";
 
-const engine = await nodeEngine();
 const alice = devAccounts.alice.address;
 
 // replayChain answers each RPC request with the next recording.
@@ -19,12 +18,12 @@ function replayChain(...names) {
   return createChain({ rpc: "http://node", fetch });
 }
 
-test("each dev account's key gives its listed address", () => {
-  for (const { key, address } of Object.values(devAccounts)) assert.equal(engine.keyInfo(key).address, address);
+test("each dev account's key gives its listed address", async () => {
+  for (const { key, address } of Object.values(devAccounts)) assert.equal((await signer.keyInfo(key)).address, address);
 });
 
 test("the dev wallet answers connection calls like Adena", async () => {
-  const wallet = devWallet({ name: "alice", signer: engine, chain: null, chainId: "dev" });
+  const wallet = devWallet({ name: "alice", signer, chain: null, chainId: "dev" });
   assert.equal((await wallet.AddEstablish("Gnomehall")).status, "success");
   assert.equal((await wallet.GetNetwork()).data.chainId, "dev");
   assert.equal((await wallet.GetAccount()).data.address, alice);
@@ -32,12 +31,12 @@ test("the dev wallet answers connection calls like Adena", async () => {
 });
 
 test("SignArbitrary signs Adena's document the same way every time", async () => {
-  const wallet = devWallet({ name: "alice", signer: engine, chain: null, chainId: "dev" });
+  const wallet = devWallet({ name: "alice", signer, chain: null, chainId: "dev" });
   const first = await wallet.SignArbitrary({ signer: alice, data: "Gnomehall at http://x" });
   const again = await wallet.SignArbitrary({ signer: alice, data: "Gnomehall at http://x" });
   assert.equal(first.status, "success");
   assert.equal(first.data.signature.signature, again.data.signature.signature);
-  assert.equal(first.data.signature.pubKey.value, engine.keyInfo(devAccounts.alice.key).pubKey);
+  assert.equal(first.data.signature.pubKey.value, (await signer.keyInfo(devAccounts.alice.key)).pubKey);
   const [msg] = first.data.signed.msgs;
   assert.equal(msg.type, "sign/MsgSignData");
   assert.equal(atob(msg.value.data), "Gnomehall at http://x");
@@ -48,55 +47,52 @@ test("SignArbitrary signs Adena's document the same way every time", async () =>
   assert.equal((await wallet.SignArbitrary({ signer: devAccounts.bob.address, data: "x" })).status, "failure");
 });
 
-test("a session creation in Adena's form becomes the signer's amino JSON", async () => {
-  const keys = await deriveKeys(btoa("root signature"), 0, engine);
-  const msg = toSignerMsg(sessionMessage(alice, keys.sessionPubKey, 1_800_000_000, "gno.land/r/x"));
-  assert.equal(msg.type, "/auth.m_create_session");
-  assert.deepEqual(msg.value.session_key, { "@type": "/tm.PubKeySecp256k1", value: keys.sessionPubKey });
-  assert.equal(msg.value.expires_at, "1800604800");
-  assert.equal(msg.value.spend_limit, "10000000ugnot");
-});
-
-test("a call in Adena's form gets the fields Adena leaves out", () => {
-  const msg = toSignerMsg({ type: "/vm.m_call", value: { caller: alice, pkg_path: "gno.land/r/x", func: "F", args: ["1"] } });
-  assert.deepEqual(msg, {
-    type: "/vm.m_call",
-    value: { caller: alice, send: "", max_deposit: "", pkg_path: "gno.land/r/x", func: "F", args: ["1"] },
-  });
-  assert.throws(() => toSignerMsg({ type: "/bank.MsgSend", value: {} }), /unsupported message/);
-});
-
 const call = { type: "/vm.m_call", value: { caller: alice, send: "", pkg_path: "gno.land/r/x", func: "F", args: [] } };
+
+// recording passes every request on to signer.mjs and keeps it.
+function recording() {
+  const requests = [];
+  return { requests, spy: { ...signer, signTx: (request) => (requests.push(request), signer.signTx(request)) } };
+}
+
+test("the signer gets the page's messages in Adena's form, as Adena would", async () => {
+  const keys = await deriveKeys(btoa("root signature"), 0, signer);
+  const session = sessionMessage(alice, keys.sessionPubKey, 1_800_000_000, "gno.land/r/x");
+  const { requests, spy } = recording();
+  const wallet = devWallet({ name: "alice", signer: spy, chain: replayChain("account", "account", "gasprice", "simulate"), chainId: "dev" });
+  assert.equal((await wallet.SignTx({ messages: [session] })).status, "success");
+  assert.equal((await wallet.SignTx({ messages: [call] })).status, "success");
+  assert.deepEqual(requests.map((r) => r.msgs), [[session], [call], [call]]);
+});
 
 // A page that names too low a session fee, or none, then fails here as it fails in Adena.
 test("a session creation is signed with the fee it names, as Adena signs it", async () => {
-  const fees = [];
-  const signer = { signTx: (tx) => (fees.push(tx.fee), engine.signTx(tx)) };
-  const keys = await deriveKeys(btoa("root signature"), 0, engine);
+  const { requests, spy } = recording();
+  const keys = await deriveKeys(btoa("root signature"), 0, signer);
   const session = sessionMessage(alice, keys.sessionPubKey, 1_800_000_000, "gno.land/r/x");
-  const wallet = devWallet({ name: "alice", signer, chain: replayChain("account", "account"), chainId: "dev" });
+  const wallet = devWallet({ name: "alice", signer: spy, chain: replayChain("account", "account"), chainId: "dev" });
   assert.equal((await wallet.SignTx({ messages: [session], gasWanted: 3_000_000, gasFee: 3_000 })).status, "success");
   assert.equal((await wallet.SignTx({ messages: [session] })).status, "success");
-  assert.deepEqual(fees, [
+  assert.deepEqual(requests.map((r) => r.fee), [
     { gasWanted: 3_000_000, gasFee: "3000ugnot" },
     { gasWanted: 2_000_000_000, gasFee: "100000ugnot" },
   ]);
 });
 
 test("SignTx signs for the account's sequence and the simulated gas", async () => {
-  const wallet = devWallet({ name: "alice", signer: engine, chain: replayChain("account", "gasprice", "simulate"), chainId: "dev" });
+  const wallet = devWallet({ name: "alice", signer, chain: replayChain("account", "gasprice", "simulate"), chainId: "dev" });
   const signed = await wallet.SignTx({ messages: [call] });
   assert.equal(signed.status, "success");
   assert.match(signed.data.encodedTransaction, /^[A-Za-z0-9+/]+=*$/);
 });
 
 test("DoContract broadcasts and answers like Adena, or fails with the chain's reason", async () => {
-  const ok = devWallet({ name: "alice", signer: engine, chain: replayChain("account", "gasprice", "simulate", "broadcast-ok"), chainId: "dev" });
+  const ok = devWallet({ name: "alice", signer, chain: replayChain("account", "gasprice", "simulate", "broadcast-ok"), chainId: "dev" });
   const landed = await ok.DoContract({ messages: [call] });
   assert.equal(landed.status, "success");
   assert.equal(typeof landed.data.hash, "string");
 
-  const refused = devWallet({ name: "alice", signer: engine, chain: replayChain("account", "gasprice", "simulate-error"), chainId: "dev" });
+  const refused = devWallet({ name: "alice", signer, chain: replayChain("account", "gasprice", "simulate-error"), chainId: "dev" });
   const failed = await refused.DoContract({ messages: [call] });
   assert.equal(failed.status, "failure");
   assert.equal(failed.message, "unknown match");

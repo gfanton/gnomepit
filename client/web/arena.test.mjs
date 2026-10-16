@@ -10,6 +10,7 @@ import {
 import { ChainError } from "./chain.mjs";
 import { devAccounts, devWallet } from "./devwallet.mjs";
 import { nodeEngine } from "./engine-node.mjs";
+import * as signer from "./signer.mjs";
 import { WalletError, deriveKeys, newSalt, openBox, sealBox, sealOf } from "./wallet.mjs";
 
 const engine = await nodeEngine();
@@ -173,8 +174,8 @@ test("notify opts the wallet's address in to the arena's two triggers", async ()
     },
     setOptins: async (optins) => sent.push(optins),
   };
-  const wallet = devWallet({ name: "alice", signer: engine, chain: null, chainId: "dev" });
-  const arena = createArena({ chain: null, wallet, engine, realm: "gno.land/r/gfanton/gnomehall/arena", chainId: "dev", origin: "http://x", storage: memory(), notifier });
+  const wallet = devWallet({ name: "alice", signer, chain: null, chainId: "dev" });
+  const arena = createArena({ chain: null, wallet, engine, signer, realm: "gno.land/r/gfanton/gnomehall/arena", chainId: "dev", origin: "http://x", storage: memory(), notifier });
   await arena.connect();
   assert.equal(await arena.notify(), 2);
   assert.deepEqual(sent, [[{ trigger: "0000001", value: devAccounts.alice.address }, { trigger: "0000002", value: devAccounts.alice.address }]]);
@@ -184,7 +185,7 @@ test("watch reports a match when it changes, and stops", async () => {
   const load = (name) => JSON.parse(readFileSync(new URL(`./testdata/qeval/${name}.json`, import.meta.url)));
   const answers = ["match-play", "match-play", "match-ended"];
   const chain = { evalJSON: async () => load(answers.shift() ?? "match-ended").results, typeJSON: async () => load("qtype-MatchView") };
-  const arena = createArena({ chain, wallet: null, engine, realm: "gno.land/r/gfanton/gnomehall/arena", chainId: "dev", origin: "http://x", storage: memory() });
+  const arena = createArena({ chain, wallet: null, engine, signer, realm: "gno.land/r/gfanton/gnomehall/arena", chainId: "dev", origin: "http://x", storage: memory() });
   const seen = [];
   const stop = arena.watch("1", (view, err) => seen.push(err ?? view.Phase), { interval: 5 });
   await new Promise((resolve) => setTimeout(resolve, 80));
@@ -211,7 +212,7 @@ test("a challenger on a device that has not authorized sees the match, and a box
   const player = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5";
   const chain = { evalJSON: async () => load("match-reveal").results, typeJSON: async () => load("qtype-MatchView") };
   const storage = memory();
-  const arena = createArena({ chain, wallet: walletFor(player), engine, realm, chainId: "dev", origin: "http://x", storage });
+  const arena = createArena({ chain, wallet: walletFor(player), engine, signer, realm, chainId: "dev", origin: "http://x", storage });
   assert.equal((await arena.connect()).state, "missing");
 
   const unopened = await arena.match("1");
@@ -226,12 +227,12 @@ test("a challenger's opened box gives the pending clash and the deck to plan fro
   const player = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5";
   const signature = btoa("a root signature");
   const deck = cardIDs(deckA, engine.cards);
-  const box = await sealBox((await deriveKeys(signature, 0, engine)).boxKey, { deck, deckSalt: newSalt(), plan: cardIDs(picks, engine.cards), planSalt: newSalt() });
+  const box = await sealBox((await deriveKeys(signature, 0, signer)).boxKey, { deck, deckSalt: newSalt(), plan: cardIDs(picks, engine.cards), planSalt: newSalt() });
   const recordedText = readFileSync(new URL("./testdata/qeval/match-reveal.json", import.meta.url), "utf8");
   const answer = JSON.parse(recordedText.replace('"box1"', JSON.stringify(box)));
   const chain = { evalJSON: async () => answer.results, typeJSON: async () => load("qtype-MatchView") };
   const storage = memory();
-  const arena = createArena({ chain, wallet: walletFor(player), engine, realm, chainId: "dev", origin: "http://x", storage });
+  const arena = createArena({ chain, wallet: walletFor(player), engine, signer, realm, chainId: "dev", origin: "http://x", storage });
   await arena.connect();
   storage.setItem(`gnomehall:dev:${player}:root`, signature);
 
@@ -254,7 +255,7 @@ test("a challenge seals its deck and plan as their reveal will name them", async
     },
   });
   const chain = { evalJSON: async () => load("matches").results, typeJSON: async () => load("qtype-MatchSummary") };
-  const arena = createArena({ chain, wallet, engine, realm, chainId: "dev", origin: "http://x", storage: memory(), signEachMove: true });
+  const arena = createArena({ chain, wallet, engine, signer, realm, chainId: "dev", origin: "http://x", storage: memory(), signEachMove: true });
   await arena.connect();
   await arena.authorize();
 
@@ -262,7 +263,7 @@ test("a challenge seals its deck and plan as their reveal will name them", async
   await arena.challenge({ clan: "Pickers", deck, plan: cardIDs("Chalk Dust,Double Tap", engine.cards) });
   const [clan, deckSeal, planSeal, box] = args;
   assert.equal(clan, "Pickers");
-  const opened = await openBox((await deriveKeys(signature, 0, engine)).boxKey, box);
+  const opened = await openBox((await deriveKeys(signature, 0, signer)).boxKey, box);
   const round1 = view({ ...accepted, Phase: "reveal", ToMove: alice, Plans: [["", "Hammer Blow,Spiked Shield"]] });
   const [, deckText, deckSalt, planText, planSalt] = moveCall(round1, opened, null, engine.cards).args;
   assert.equal(await sealOf(deckSalt, deckText), deckSeal);
@@ -273,7 +274,7 @@ test("a challenge seals its deck and plan as their reveal will name them", async
 // sessionChain answers sessions() with the session of generation 0 once created, and
 // reports the sequence each send reads; broadcasts land after a short wait.
 async function sessionChain(signature, master) {
-  const { sessionAddress } = await deriveKeys(signature, 0, engine);
+  const { sessionAddress } = await deriveKeys(signature, 0, signer);
   const chain = {
     created: false, sequence: 0, reads: [],
     sessions: async () => {
@@ -306,7 +307,7 @@ test("a refused session approval is asked for again on the next authorization", 
       return { status: "success" };
     },
   });
-  const arena = createArena({ chain, wallet, engine, realm, chainId: "dev", origin: "http://x", storage: memory() });
+  const arena = createArena({ chain, wallet, engine, signer, realm, chainId: "dev", origin: "http://x", storage: memory() });
   await arena.connect();
 
   const refused = await arena.authorize();
@@ -336,7 +337,7 @@ test("the session request names its gas and a fee at the chain's gas price", asy
       return { status: "success" };
     },
   });
-  const arena = createArena({ chain, wallet, engine, realm, chainId: "dev", origin: "http://x", storage: memory() });
+  const arena = createArena({ chain, wallet, engine, signer, realm, chainId: "dev", origin: "http://x", storage: memory() });
   await arena.connect();
 
   assert.equal((await arena.authorize()).mode, "session");
@@ -350,13 +351,17 @@ test("session moves go out one at a time, each with the sequence the last one le
   const chain = await sessionChain(signature, master);
   chain.created = true;
   const wallet = walletFor(master, { SignArbitrary: async () => ({ status: "success", data: { signature: { signature } } }) });
-  const arena = createArena({ chain, wallet, engine, realm, chainId: "dev", origin: "http://x", storage: memory() });
+  const signed = [];
+  const recording = { ...signer, signTx: (request) => (signed.push(request.sequence), signer.signTx(request)) };
+  const arena = createArena({ chain, wallet, engine, signer: recording, realm, chainId: "dev", origin: "http://x", storage: memory() });
   await arena.connect();
   await arena.authorize();
   chain.reads.length = 0;
 
   await Promise.all([arena.resign("1"), arena.resign("2")]);
   assert.deepEqual(chain.reads, [0, 1]);
+  // Each move is signed twice, for its simulation and for its fee.
+  assert.deepEqual(signed, [0, 0, 1, 1]);
 });
 
 test("chain and wallet errors become the arena's typed errors", () => {
@@ -382,7 +387,7 @@ test("chain and wallet errors become the arena's typed errors", () => {
 });
 
 test("notifications without a gnotif client fail with a readable reason", async () => {
-  const arena = createArena({ chain: null, wallet: walletFor(alice), engine, realm, chainId: "dev", origin: "http://x", storage: memory() });
+  const arena = createArena({ chain: null, wallet: walletFor(alice), engine, signer, realm, chainId: "dev", origin: "http://x", storage: memory() });
   await arena.connect();
   await assert.rejects(arena.notify(), (err) => err instanceof ArenaError && err.type === "failed" && err.reason === "Notifications are not set up for this network");
 });
@@ -397,7 +402,7 @@ test("the board and a player's matches come 50 a page, the most the realm return
     },
     typeJSON: async (id) => load(id.endsWith("OpenChallenge") ? "qtype-OpenChallenge" : "qtype-MatchSummary"),
   };
-  const arena = createArena({ chain, wallet: walletFor(alice), engine, realm, chainId: "dev", origin: "http://x", storage: memory() });
+  const arena = createArena({ chain, wallet: walletFor(alice), engine, signer, realm, chainId: "dev", origin: "http://x", storage: memory() });
   await arena.connect();
   await arena.openChallenges(1);
   await arena.myMatches(1);
@@ -420,7 +425,7 @@ function fakeIndexer() {
 
 test("subscribe reports each arena call with the match it touches; a new challenge touches none", () => {
   const indexer = fakeIndexer();
-  const arena = createArena({ chain: null, wallet: null, engine, realm, chainId: "dev", origin: "http://x", storage: memory(), indexer });
+  const arena = createArena({ chain: null, wallet: null, engine, signer, realm, chainId: "dev", origin: "http://x", storage: memory(), indexer });
   const changes = [];
   const stop = arena.subscribe((c) => changes.push(c));
   assert.equal(indexer.watched, realm);
@@ -440,7 +445,7 @@ test("subscribe reports each arena call with the match it touches; a new challen
 // while it does not answer.
 test("each time the indexer starts answering a change is reported, and polling runs only while it does not", async () => {
   const indexer = fakeIndexer();
-  const arena = createArena({ chain: null, wallet: null, engine, realm, chainId: "dev", origin: "http://x", storage: memory(), indexer });
+  const arena = createArena({ chain: null, wallet: null, engine, signer, realm, chainId: "dev", origin: "http://x", storage: memory(), indexer });
   const changes = [];
   const stop = arena.subscribe((c) => changes.push(c), { interval: 5 });
   await sleep(30);
@@ -464,7 +469,7 @@ test("each time the indexer starts answering a change is reported, and polling r
 });
 
 test("without an indexer, subscribe polls every interval until stopped", async () => {
-  const arena = createArena({ chain: null, wallet: null, engine, realm, chainId: "dev", origin: "http://x", storage: memory() });
+  const arena = createArena({ chain: null, wallet: null, engine, signer, realm, chainId: "dev", origin: "http://x", storage: memory() });
   const changes = [];
   const stop = arena.subscribe((c) => changes.push(c), { interval: 5 });
   await sleep(40);
@@ -486,7 +491,7 @@ test("watch reads a match again on a call to it, and not on a call to another ma
     typeJSON: async () => load("qtype-MatchView"),
   };
   const indexer = fakeIndexer();
-  const arena = createArena({ chain, wallet: null, engine, realm, chainId: "dev", origin: "http://x", storage: memory(), indexer });
+  const arena = createArena({ chain, wallet: null, engine, signer, realm, chainId: "dev", origin: "http://x", storage: memory(), indexer });
   const stop = arena.watch("1", () => {});
   await sleep(10);
   assert.equal(reads, 1);

@@ -8,7 +8,7 @@ export async function loadEngine(wasmUrl, cardsUrl) {
 }
 
 // startEngine runs an instantiated engine module with the card file's text and returns
-// the rules and the signer.
+// the rules.
 export async function startEngine(go, instance, cardsText) {
   void go.run(instance);
   await untilDefined(() => globalThis.gnomehall);
@@ -28,12 +28,6 @@ export async function startEngine(go, instance, cardsText) {
     legalDeck: (request) => call("legalDeck")(request).legal,
     legalPlans: (request) => call("legalPlans")(request).plans,
     resolve: call("resolve"),
-    // keyInfo returns {address, pubKey} of a hex private key.
-    keyInfo: (privKey) => call("keyInfo")({ privKey }),
-    // signTx signs the client/signer TxRequest and returns the base64 transaction.
-    signTx: (request) => call("signTx")(request).tx,
-    // signBytes signs base64 bytes and returns the base64 signature.
-    signBytes: (privKey, bytes) => call("signBytes")({ privKey, bytes }).signature,
   };
 }
 

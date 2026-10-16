@@ -12,6 +12,7 @@ import { createChain } from "../web/chain.mjs";
 import { devWallet } from "../web/devwallet.mjs";
 import { nodeEngine } from "../web/engine-node.mjs";
 import { createIndexer } from "../web/indexer.mjs";
+import * as signer from "../web/signer.mjs";
 
 const rpc = process.argv[2] ?? "http://127.0.0.1:36657";
 const indexerURL = process.argv[3];
@@ -27,8 +28,8 @@ function memory() {
 }
 
 function player(name, signEachMove) {
-  const wallet = devWallet({ name, signer: engine, chain, chainId });
-  return createArena({ chain, wallet, engine, realm, chainId, origin: "http://e2e.local", storage: memory(), signEachMove });
+  const wallet = devWallet({ name, signer, chain, chainId });
+  return createArena({ chain, wallet, engine, signer, realm, chainId, origin: "http://e2e.local", storage: memory(), signEachMove });
 }
 
 const deckOf = (clan) => {

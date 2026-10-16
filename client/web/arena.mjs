@@ -177,12 +177,12 @@ function resolve(engine, state, decks, [a, b]) {
 // ---- The arena client
 
 // createArena reads and plays the arena at realm on chainId. wallet answers Adena's
-// calls (Adena itself, or devWallet); engine is the loaded engine and signer; storage
-// keeps the root signature and the signing mode per wallet, like localStorage; notifier
-// is a gnotif client. origin names the site in the root signature's text. signEachMove
-// skips the session: the wallet signs every move.
+// calls (Adena itself, or devWallet); engine is the loaded engine and signer is
+// signer.mjs; storage keeps the root signature and the signing mode per wallet, like
+// localStorage; notifier is a gnotif client. origin names the site in the root
+// signature's text. signEachMove skips the session: the wallet signs every move.
 export function createArena({
-  chain, wallet, engine, realm, chainId, origin, storage, notifier, indexer, signEachMove = false, now = () => Math.floor(Date.now() / 1000),
+  chain, wallet, engine, signer, realm, chainId, origin, storage, notifier, indexer, signEachMove = false, now = () => Math.floor(Date.now() / 1000),
 }) {
   let address = null;
   const fields = new Map();
@@ -201,7 +201,7 @@ export function createArena({
     const root = stored("root");
     if (root === null) throw new ArenaError("unauthorized", "Authorize this device first");
     const cacheKey = `${root}/${generation}`;
-    if (!keyCache.has(cacheKey)) keyCache.set(cacheKey, deriveKeys(root, generation, engine));
+    if (!keyCache.has(cacheKey)) keyCache.set(cacheKey, deriveKeys(root, generation, signer));
     return keyCache.get(cacheKey);
   }
   const boxKey = async () => (await keysFor(0)).boxKey;
@@ -252,7 +252,7 @@ export function createArena({
         chainId, accountNumber: session.accountNumber, sequence: session.sequence,
         privKey: keys.sessionKey, sessionAddr: keys.sessionAddress, memo: "", msgs: [msg],
       };
-      await chain.broadcast(await payFor(chain, (fee) => engine.signTx({ ...request, fee })));
+      await chain.broadcast(await payFor(chain, (fee) => signer.signTx({ ...request, fee })));
     } catch (err) {
       throw errorFrom(err);
     }

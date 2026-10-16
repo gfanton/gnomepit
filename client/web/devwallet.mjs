@@ -4,7 +4,7 @@
 // only.
 
 import { payFor } from "./chain.mjs";
-import { fromBase64, toBase64 } from "./encoding.mjs";
+import { toBase64 } from "./encoding.mjs";
 
 // Each key is the sha256 of "gnomehall dev <name>".
 export const devAccounts = {
@@ -23,16 +23,15 @@ export const devAccounts = {
 const adenaGasWanted = 2_000_000_000;
 const adenaGasFee = 100_000; // ugnot
 
-// devWallet is the dev account name's wallet; signer is the engine, chain a chain.mjs
+// devWallet is the dev account name's wallet; signer is signer.mjs, chain a chain.mjs
 // client of the chain chainId names.
 export function devWallet({ name, signer, chain, chainId }) {
   const { key, address } = devAccounts[name];
   const success = (data, type = "SUCCESS") => ({ status: "success", type, message: "", data });
   const failure = (type, message) => ({ status: "failure", type, message, data: null });
 
-  async function sign({ messages, memo = "", gasWanted, gasFee }) {
+  async function sign({ messages: msgs, memo = "", gasWanted, gasFee }) {
     const account = await chain.account(address);
-    const msgs = messages.map(toSignerMsg);
     const base = { chainId, accountNumber: account.accountNumber, sequence: account.sequence, privKey: key, memo, msgs };
     if (msgs.every((msg) => msg.type === "/auth.m_create_session")) {
       return signer.signTx({ ...base, fee: { gasWanted: gasWanted || adenaGasWanted, gasFee: `${gasFee || adenaGasFee}ugnot` } });
@@ -59,8 +58,8 @@ export function devWallet({ name, signer, chain, chainId }) {
         memo: "",
       };
       const bytes = new TextEncoder().encode(sortedJSON(signed));
-      const pubKey = signer.keyInfo(key).pubKey;
-      return success({ signed, signature: { pubKey: { typeUrl: "/tm.PubKeySecp256k1", value: pubKey }, signature: signer.signBytes(key, toBase64(bytes)) } });
+      const { pubKey } = await signer.keyInfo(key);
+      return success({ signed, signature: { pubKey: { typeUrl: "/tm.PubKeySecp256k1", value: pubKey }, signature: await signer.signBytes(key, toBase64(bytes)) } });
     },
 
     async SignTx(params) {
@@ -79,22 +78,6 @@ export function devWallet({ name, signer, chain, chainId }) {
       }
     },
   };
-}
-
-// toSignerMsg turns a message in the form Adena takes into the amino JSON the signer
-// reads. Adena wraps a session key as a protobuf Any; amino JSON carries the key's 33
-// bytes under "@type".
-export function toSignerMsg({ type, value }) {
-  switch (type) {
-    case "/vm.m_call":
-      return { type, value: { caller: value.caller, send: value.send ?? "", max_deposit: value.max_deposit ?? "", pkg_path: value.pkg_path, func: value.func, args: value.args } };
-    case "/auth.m_create_session": {
-      const wrapped = fromBase64(value.session_key.value);
-      if (wrapped[0] !== 0x0a || wrapped[1] !== 33) throw new Error("session key is not a wrapped secp256k1 key");
-      return { type, value: { ...value, session_key: { "@type": value.session_key.type_url, value: toBase64(wrapped.subarray(2)) } } };
-    }
-  }
-  throw new Error(`unsupported message ${type}`);
 }
 
 // sortedJSON is JSON with every object's keys in order, as Adena signs documents.

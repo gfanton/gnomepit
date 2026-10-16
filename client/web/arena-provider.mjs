@@ -7,6 +7,7 @@ import { createArena } from "./arena.mjs";
 import { createChain } from "./chain.mjs";
 import { devWallet } from "./devwallet.mjs";
 import { createIndexer } from "./indexer.mjs";
+import * as signer from "./signer.mjs";
 import { waitForAdena } from "./wallet.mjs";
 
 // lobbyAccount is the arena's account state in the lobby's terms: the session's end as
@@ -23,8 +24,9 @@ export async function loadArena(engine) {
   const chain = createChain({ rpc: params.get("rpc") ?? "http://127.0.0.1:36657" });
   const arena = createArena({
     chain,
-    wallet: devName === null ? await waitForAdena() : devWallet({ name: devName, signer: engine, chain, chainId }),
+    wallet: devName === null ? await waitForAdena() : devWallet({ name: devName, signer, chain, chainId }),
     engine,
+    signer,
     realm: params.get("realm") ?? "gno.land/r/gfanton/gnomehall/arena",
     chainId,
     origin: location.origin,

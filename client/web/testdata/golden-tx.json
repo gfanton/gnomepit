@@ -111,6 +111,40 @@
     "tx": "CoABChYvYXV0aC5tX3Jldm9rZV9zZXNzaW9uEmYKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiECTUts0TYQMsqb0q652QCqTUXZ6tgKyUIzdMRRpyVNB2YKwgEKFi9hdXRoLm1fY3JlYXRlX3Nlc3Npb24SpwEKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiECTUts0TYQMsqb0q652QCqTUXZ6tgKyUIzdMRRpyVNB2YYgKbGjg0iKnZtL2V4ZWM6Z25vLmxhbmQvci9nZmFudG9uL2dub21laGFsbC9hcmVuYSoNMTAwMDAwMDB1Z25vdBIQCIC23AUSCTYwMDB1Z25vdBqoAQo6ChMvdG0uUHViS2V5U2VjcDI1NmsxEiMKIQMbhMVWexJkQJldPtWqugVl1x4YNGBIGf+cF/Xp1d0HjxJA3HDCbLLKhK+zL8g53aS7cGrm+rjClajr4fgY1UqhExh6wUY+517sH4QwfVQoqq05cXbqF4oBH3YpZkmuUJ86sBooZzFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFsdXV4ZQ=="
   },
   {
+    "name": "create-with-period",
+    "request": {
+      "chainId": "dev",
+      "accountNumber": 7,
+      "sequence": 5,
+      "privKey": "0101010101010101010101010101010101010101010101010101010101010101",
+      "sessionAddr": "",
+      "fee": {
+        "gasWanted": 3000000,
+        "gasFee": "3000ugnot"
+      },
+      "memo": "",
+      "msgs": [
+        {
+          "type": "/auth.m_create_session",
+          "value": {
+            "creator": "g10xcqpzrky6eff2g52qdye53xkk9jxkvrjuxlp8",
+            "session_key": {
+              "type_url": "/tm.PubKeySecp256k1",
+              "value": "CiECTUts0TYQMsqb0q652QCqTUXZ6tgKyUIzdMRRpyVNB2Y="
+            },
+            "expires_at": "1760086400",
+            "allow_paths": [
+              "vm/exec:gno.land/r/gfanton/gnomehall/arena"
+            ],
+            "spend_limit": "10000000ugnot",
+            "spend_period": "3600"
+          }
+        }
+      ]
+    },
+    "tx": "CsUBChYvYXV0aC5tX2NyZWF0ZV9zZXNzaW9uEqoBCihnMTB4Y3FwenJreTZlZmYyZzUycWR5ZTUzeGtrOWp4a3ZyanV4bHA4EjoKEy90bS5QdWJLZXlTZWNwMjU2azESIwohAk1LbNE2EDLKm9KuudkAqk1F2erYCslCM3TEUaclTQdmGICmxo4NIip2bS9leGVjOmduby5sYW5kL3IvZ2ZhbnRvbi9nbm9tZWhhbGwvYXJlbmEqDTEwMDAwMDAwdWdub3QwoDgSEAiAm+4CEgkzMDAwdWdub3QaqAEKOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiEDG4TFVnsSZECZXT7VqroFZdceGDRgSBn/nBf16dXdB48SQFcXpyHIcLSiqcaxDt4AshlvtQgo3xCd+yl3KqkYmVwKMVpAUzD5s1FPyHeMf8Z8TYoWcRrS2DCEntdj8xK53NgaKGcxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxbHV1eGU="
+  },
+  {
     "name": "sign-bytes",
     "request": {
       "privKey": "0101010101010101010101010101010101010101010101010101010101010101",

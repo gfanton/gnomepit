@@ -110,13 +110,14 @@ export function createChain({ rpc, fetch = globalThis.fetch.bind(globalThis) }) 
 // provisionalGas bounds the simulation itself.
 const provisionalGas = 100_000_000;
 
-// payFor signs a transaction for what it costs. sign(fee) returns the transaction signed
-// with fee {gasWanted, gasFee}. payFor simulates it under a fee of one unit, which a
-// simulation never checks against the gas price but a session's allowance must cover,
-// then signs it again for the gas used plus a fifth and 100,000, at the chain's price.
+// payFor signs a transaction for what it costs. sign(fee) resolves to the transaction
+// signed with fee {gasWanted, gasFee}. payFor simulates it under a fee of one unit,
+// which a simulation never checks against the gas price but a session's allowance must
+// cover, then signs it again for the gas used plus a fifth and 100,000, at the chain's
+// price.
 export async function payFor(chain, sign) {
   const price = await chain.gasPrice();
-  const used = await chain.simulate(sign({ gasWanted: provisionalGas, gasFee: `1${price.denom}` }));
+  const used = await chain.simulate(await sign({ gasWanted: provisionalGas, gasFee: `1${price.denom}` }));
   const gasWanted = Math.ceil(used * 1.2) + 100_000;
   return sign({ gasWanted, gasFee: `${feeFor(gasWanted, price)}${price.denom}` });
 }

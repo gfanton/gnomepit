@@ -12,6 +12,7 @@ import { cardIDs, createArena } from "../client/web/arena.mjs";
 import { createChain, feeFor } from "../client/web/chain.mjs";
 import { devWallet } from "../client/web/devwallet.mjs";
 import { nodeEngine } from "../client/web/engine-node.mjs";
+import * as signer from "../client/web/signer.mjs";
 
 const rpc = process.argv[2] ?? "http://127.0.0.1:36657";
 const realm = "gno.land/r/gfanton/gnomehall/arena";
@@ -52,8 +53,8 @@ function memory() {
 }
 
 function player(name, signEachMove) {
-  const wallet = devWallet({ name, signer: engine, chain, chainId });
-  return createArena({ chain, wallet, engine, realm, chainId, origin: "http://measure.local", storage: memory(), signEachMove });
+  const wallet = devWallet({ name, signer, chain, chainId });
+  return createArena({ chain, wallet, engine, signer, realm, chainId, origin: "http://measure.local", storage: memory(), signEachMove });
 }
 
 const alice = player("alice", false);

@@ -69,13 +69,13 @@ export async function rootSignature(wallet, address, origin) {
 }
 
 // deriveKeys derives, from the root signature, the session key of a generation and the
-// box key, with HKDF-SHA256. signer is the engine, which turns a private key into its
+// box key, with HKDF-SHA256. signer is signer.mjs, which turns a private key into its
 // address and public key.
 export async function deriveKeys(signature, generation, signer) {
   const material = await crypto.subtle.importKey("raw", fromBase64(signature), "HKDF", false, ["deriveBits", "deriveKey"]);
   const hkdf = (info) => ({ name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: new TextEncoder().encode(info) });
   const sessionKey = toHex(new Uint8Array(await crypto.subtle.deriveBits(hkdf(`gnomehall session ${generation}`), material, 256)));
-  const { address, pubKey } = signer.keyInfo(sessionKey);
+  const { address, pubKey } = await signer.keyInfo(sessionKey);
   const boxKey = await crypto.subtle.deriveKey(hkdf("gnomehall box"), material, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
   return { sessionKey, sessionAddress: address, sessionPubKey: pubKey, boxKey };
 }

@@ -24,9 +24,15 @@ export async function keyInfo(privKeyHex) {
 
 // signTx signs msgs, in Adena's form, under the account number and sequence the chain
 // holds for the signing account, and returns the base64 transaction. A non-empty
-// sessionAddr signs as that session of the messages' signer.
+// sessionAddr, privKey's own address, signs as that session of the messages' signer.
 export async function signTx({ chainId, accountNumber, sequence, privKey, sessionAddr = "", fee, memo = "", msgs }) {
+  if (typeof chainId !== "string" || chainId === "") throw new Error("missing chain id");
+  if (!Array.isArray(msgs) || msgs.length === 0) throw new Error("no message to sign");
+  for (const [name, value] of [["account number", accountNumber], ["sequence", sequence]]) {
+    if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${name} must be a non-negative integer`);
+  }
   const wallet = await walletOf(privKey);
+  if (sessionAddr !== "" && sessionAddr !== (await wallet.getAddress())) throw new Error("session address is not the signing key's address");
   wallet.connect({ getStatus: async () => ({ node_info: { network: chainId } }) });
   const tx = {
     messages: msgs.map(toAny),
@@ -55,8 +61,11 @@ function aminoMessages(messages) {
 }
 
 function toAny({ type, value }) {
+  if (!Object.hasOwn(codecs, type)) throw new Error(`unsupported message ${type}`);
+  // Like a zero spend_period, an empty spend_limit is left out of the chain's amino JSON
+  // but not decodeTxMessages', so the chain would refuse the signature.
+  if (type === "/auth.m_create_session" && (value.spend_limit ?? "") === "") throw new Error("a session needs a spend limit");
   const codec = codecs[type];
-  if (codec === undefined) throw new Error(`unsupported message ${type}`);
   return { type_url: type, value: codec.encode(codec.fromJSON(value)).finish() };
 }
 

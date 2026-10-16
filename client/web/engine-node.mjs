@@ -1,5 +1,5 @@
 // Test support: runs engine.wasm in node, as the page runs it, so tests use the real
-// rules and signer. `make wasm` builds engine.wasm and copies wasm_exec.js.
+// rules. `make wasm` builds engine.wasm and copies wasm_exec.js.
 
 import { readFile } from "node:fs/promises";
 

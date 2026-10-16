@@ -9,6 +9,7 @@ import { createChain } from "./chain.mjs";
 import { devWallet } from "./devwallet.mjs";
 import { loadEngine } from "./engine.mjs";
 import { createIndexer } from "./indexer.mjs";
+import * as signer from "./signer.mjs";
 import { waitForAdena } from "./wallet.mjs";
 
 const params = new URLSearchParams(location.search);
@@ -21,10 +22,10 @@ const devName = params.get("dev");
 const $ = (id) => document.getElementById(id);
 const engine = await loadEngine("engine.wasm", "cards.json");
 const chain = createChain({ rpc });
-const wallet = devName === null ? await waitForAdena() : devWallet({ name: devName, signer: engine, chain, chainId });
+const wallet = devName === null ? await waitForAdena() : devWallet({ name: devName, signer, chain, chainId });
 const indexer = indexerURL === "" ? undefined : createIndexer({ url: indexerURL });
 const arena = createArena({
-  chain, wallet, engine, realm, chainId, origin: location.origin, storage: localStorage, indexer, signEachMove: params.get("contract") === "1",
+  chain, wallet, engine, signer, realm, chainId, origin: location.origin, storage: localStorage, indexer, signEachMove: params.get("contract") === "1",
 });
 let connected = false;
 

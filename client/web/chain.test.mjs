@@ -145,13 +145,14 @@ test("one session's account, or null when the chain has none", async () => {
 });
 
 test("a transaction pays for the gas its simulation used, with a margin", async () => {
-  const { chain } = replay("gasprice", "simulate");
+  const { chain, sent } = replay("gasprice", "simulate");
   const fees = [];
-  const tx = await payFor(chain, (fee) => {
+  const tx = await payFor(chain, async (fee) => {
     fees.push(fee);
     return `tx-${fees.length}`;
   });
   assert.equal(tx, "tx-2");
+  assert.equal(sent[1].params.data, "tx-1", "the simulation runs the first signed transaction");
   // A simulation checks no fee against the gas price, but a session's allowance must
   // cover it, so it pays the least it can.
   assert.deepEqual(fees[0], { gasWanted: 100_000_000, gasFee: "1ugnot" });
