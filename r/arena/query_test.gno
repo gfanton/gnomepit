@@ -19,25 +19,41 @@ func summaryIDs(list []MatchSummary) string {
 func TestWithdraw(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
-	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), "box1", "")
+	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
 	testing.SetRealm(testing.NewUserRealm(bob))
 	uassert.AbortsWithMessage(t, cur, "not your challenge", func() { Resign(cross(cur), id) })
 
 	testing.SetRealm(testing.NewUserRealm(alice))
 	Resign(cross(cur), id)
-	uassert.Equal(t, phaseWithdrawn, Match(id).Phase)
+	uassert.PanicsWithMessage(t, nil, "unknown match", func() { Match(id) })
+	uassert.Equal(t, 0, len(Matches(alice, 0, 50)))
 	uassert.Equal(t, 0, len(Open(0, 50)))
-	uassert.AbortsWithMessage(t, cur, "wrong phase", func() { Resign(cross(cur), id) })
+	uassert.AbortsWithMessage(t, cur, "unknown match", func() { Resign(cross(cur), id) })
+}
+
+func TestWithdrawExpired(cur realm, t *testing.T) {
+	reset()
+	testing.SetRealm(testing.NewUserRealm(alice))
+	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
+	testing.SkipHeights(7*day + 1)
+	testing.SetRealm(testing.NewUserRealm(bob))
+	uassert.AbortsWithMessage(t, cur, "not your challenge", func() { Resign(cross(cur), id) })
+
+	testing.SetRealm(testing.NewUserRealm(alice))
+	Resign(cross(cur), id)
+	uassert.PanicsWithMessage(t, nil, "unknown match", func() { Match(id) })
+	uassert.Equal(t, 0, len(Matches(alice, 0, 50)))
+	uassert.Equal(t, "", openList)
 }
 
 func TestResign(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
-	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), "box1", "")
+	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
 	testing.SetRealm(testing.NewUserRealm(bob))
 	Accept(cross(cur), id, "Ironhide", deckB, braces)
 	testing.SetRealm(testing.NewUserRealm(alice))
-	Reveal(cross(cur), id, deckA, saltA, picks, salt1, sealOf(salt2, picks), "box2")
+	Reveal(cross(cur), id, deckA, saltA, picks, salt1, sealOf(salt2, picks), boxOf("box2"))
 
 	testing.SetRealm(testing.NewUserRealm(carol))
 	uassert.AbortsWithMessage(t, cur, "not a player", func() { Resign(cross(cur), id) })
@@ -55,7 +71,7 @@ func TestResign(cur realm, t *testing.T) {
 func TestClaimForfeitInReveal(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
-	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), "box1", "")
+	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
 	testing.SetRealm(testing.NewUserRealm(carol))
 	uassert.AbortsWithMessage(t, cur, "wrong phase", func() { ClaimForfeit(cross(cur), id) })
 	testing.SetRealm(testing.NewUserRealm(bob))
@@ -75,11 +91,11 @@ func TestClaimForfeitInReveal(cur realm, t *testing.T) {
 func TestClaimForfeitInPlay(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
-	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), "box1", "")
+	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
 	testing.SetRealm(testing.NewUserRealm(bob))
 	Accept(cross(cur), id, "Ironhide", deckB, braces)
 	testing.SetRealm(testing.NewUserRealm(alice))
-	Reveal(cross(cur), id, deckA, saltA, picks, salt1, sealOf(salt2, picks), "box2")
+	Reveal(cross(cur), id, deckA, saltA, picks, salt1, sealOf(salt2, picks), boxOf("box2"))
 	testing.SkipHeights(day + 1)
 	ClaimForfeit(cross(cur), id)
 
@@ -92,9 +108,9 @@ func TestMatchesNewestFirst(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
 	seal := sealOf(saltA, deckA)
-	Challenge(cross(cur), "Pickers", seal, sealOf(salt1, picks), "box1", "")
-	id := Challenge(cross(cur), "Pickers", seal, sealOf(salt1, picks), "box1", "")
-	Challenge(cross(cur), "Pickers", seal, sealOf(salt1, picks), "box1", "")
+	Challenge(cross(cur), "Pickers", seal, sealOf(salt1, picks), boxOf("box1"), "")
+	id := Challenge(cross(cur), "Pickers", seal, sealOf(salt1, picks), boxOf("box1"), "")
+	Challenge(cross(cur), "Pickers", seal, sealOf(salt1, picks), boxOf("box1"), "")
 	testing.SetRealm(testing.NewUserRealm(bob))
 	Accept(cross(cur), id, "Ironhide", deckB, braces)
 
@@ -121,7 +137,7 @@ func TestMatchesNewestFirst(cur realm, t *testing.T) {
 func TestMatchViewKeepsTheSealHidden(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
-	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), "box1", bob)
+	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), bob)
 	testing.SetRealm(testing.NewUserRealm(bob))
 	Accept(cross(cur), id, "Ironhide", deckB, braces)
 
@@ -132,11 +148,11 @@ func TestMatchViewKeepsTheSealHidden(cur realm, t *testing.T) {
 	urequire.Equal(t, 1, len(v.Plans))
 	uassert.Equal(t, "", v.Plans[0][0])
 	uassert.Equal(t, braces, v.Plans[0][1])
-	uassert.Equal(t, "box1", v.Box)
+	uassert.Equal(t, boxOf("box1"), v.Box)
 	uassert.Equal(t, 0, len(v.HP))
 
 	testing.SetRealm(testing.NewUserRealm(alice))
-	Reveal(cross(cur), id, deckA, saltA, picks, salt1, sealOf(salt2, picks), "box2")
+	Reveal(cross(cur), id, deckA, saltA, picks, salt1, sealOf(salt2, picks), boxOf("box2"))
 	v = Match(id)
 	want := resolveAll([2]string{picks, braces})
 	uassert.Equal(t, phasePlay, v.Phase)
@@ -147,7 +163,7 @@ func TestMatchViewKeepsTheSealHidden(cur realm, t *testing.T) {
 	uassert.Equal(t, picks, v.Plans[0][0])
 	uassert.Equal(t, "", v.Plans[1][0])
 	uassert.Equal(t, "", v.Plans[1][1])
-	uassert.Equal(t, "box2", v.Box)
+	uassert.Equal(t, boxOf("box2"), v.Box)
 	urequire.Equal(t, 1, len(v.HP))
 	uassert.Equal(t, want.State.Gnomes[0].HP, v.HP[0][0])
 	uassert.Equal(t, want.State.Gnomes[1].HP, v.HP[0][1])
@@ -163,7 +179,7 @@ func TestMatchViewKeepsTheSealHidden(cur realm, t *testing.T) {
 func TestMatchViewDeadlinePassed(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
-	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), "box1", "")
+	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
 	testing.SetRealm(testing.NewUserRealm(bob))
 	Accept(cross(cur), id, "Ironhide", deckB, braces)
 	uassert.False(t, Match(id).DeadlinePassed)
@@ -174,10 +190,9 @@ func TestMatchViewDeadlinePassed(cur realm, t *testing.T) {
 func TestMatchViewExpired(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
-	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), "box1", "")
+	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
 	testing.SkipHeights(7*day + 1)
 	uassert.Equal(t, phaseExpired, Match(id).Phase)
-	uassert.AbortsWithMessage(t, cur, "challenge expired", func() { Resign(cross(cur), id) })
 }
 
 func TestUnknownMatch(t *testing.T) {
@@ -185,4 +200,17 @@ func TestUnknownMatch(t *testing.T) {
 	uassert.PanicsWithMessage(t, nil, "unknown match", func() { Match("99") })
 	uassert.PanicsWithMessage(t, nil, "unknown match", func() { Match("12345678901") })
 	uassert.PanicsWithMessage(t, nil, "unknown match", func() { Match("") })
+}
+
+// Only an id's own decimal text names its match.
+func TestMatchIDsAreExact(cur realm, t *testing.T) {
+	reset()
+	testing.SetRealm(testing.NewUserRealm(alice))
+	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
+	uassert.Equal(t, "1", Match(id).ID)
+	for _, other := range []string{"01", "+1", "-1", " 1", "1 ", "0", "1.0", "0x1", "0000000001"} {
+		uassert.PanicsWithMessage(t, nil, "unknown match", func() { Match(other) }, other)
+		uassert.AbortsWithMessage(t, cur, "unknown match", func() { Resign(cross(cur), other) }, other)
+		uassert.True(t, strings.Contains(Render("match/"+other), "Not found"), other)
+	}
 }

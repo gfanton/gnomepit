@@ -2,7 +2,9 @@ package arena
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -25,8 +27,6 @@ const (
 
 // reset empties the realm's state between tests; t.Run shares package globals.
 func reset() {
-	matches = avl.Tree{}
-	byPlayer = avl.Tree{}
 	lastID = 0
 	chunks = avl.Tree{}
 	players = avl.Tree{}
@@ -42,10 +42,15 @@ func sealOf(salt, text string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// boxOf is s as a box argument, which the page sends in base64.
+func boxOf(s string) string {
+	return base64.StdEncoding.EncodeToString([]byte(s))
+}
+
 func TestChallengeOpensAMatch(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
-	id := Challenge(cross(cur), "Pickers", sealOf(saltA, "deck"), sealOf(saltB, "plan"), "box", "")
+	id := Challenge(cross(cur), "Pickers", sealOf(saltA, "deck"), sealOf(saltB, "plan"), boxOf("box"), "")
 	uassert.Equal(t, "1", id)
 
 	list := Open(0, 50)
@@ -61,7 +66,7 @@ func TestChallengeOpensAMatch(cur realm, t *testing.T) {
 func TestChallengeNamesAnOpponent(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
-	Challenge(cross(cur), "Ironhide", sealOf(saltA, "deck"), sealOf(saltB, "plan"), "box", bob)
+	Challenge(cross(cur), "Ironhide", sealOf(saltA, "deck"), sealOf(saltB, "plan"), boxOf("box"), bob)
 	uassert.Equal(t, bob.String(), Open(0, 50)[0].Opponent)
 }
 
@@ -74,14 +79,14 @@ func TestChallengeRejects(cur realm, t *testing.T) {
 		opponent                            address
 		want                                string
 	}{
-		{"unknown clan", "Elves", seal, seal, "box", "", "unknown clan"},
-		{"short seal", "Pickers", seal[1:], seal, "box", "", "invalid seal"},
-		{"uppercase seal", "Pickers", strings.ToUpper(seal), seal, "box", "", "invalid seal"},
-		{"non-hex seal", "Pickers", seal, "z" + seal[1:], "box", "", "invalid seal"},
+		{"unknown clan", "Elves", seal, seal, boxOf("box"), "", "unknown clan"},
+		{"short seal", "Pickers", seal[1:], seal, boxOf("box"), "", "invalid seal"},
+		{"uppercase seal", "Pickers", strings.ToUpper(seal), seal, boxOf("box"), "", "invalid seal"},
+		{"non-hex seal", "Pickers", seal, "z" + seal[1:], boxOf("box"), "", "invalid seal"},
 		{"empty box", "Pickers", seal, seal, "", "", "invalid box"},
-		{"long box", "Pickers", seal, seal, strings.Repeat("x", 1025), "", "invalid box"},
-		{"bad opponent", "Pickers", seal, seal, "box", address("g1nope"), "invalid opponent"},
-		{"uppercase opponent", "Pickers", seal, seal, "box", address(strings.ToUpper(bob.String())), "invalid opponent"},
+		{"long box", "Pickers", seal, seal, boxOf(strings.Repeat("x", 1025)), "", "invalid box"},
+		{"bad opponent", "Pickers", seal, seal, boxOf("box"), address("g1nope"), "invalid opponent"},
+		{"uppercase opponent", "Pickers", seal, seal, boxOf("box"), address(strings.ToUpper(bob.String())), "invalid opponent"},
 	}
 	for _, c := range cases {
 		uassert.AbortsWithMessage(t, cur, c.want, func() {
@@ -95,10 +100,10 @@ func TestOpenNewestFirstAndUnexpired(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
 	seal := sealOf(saltA, "deck")
-	Challenge(cross(cur), "Pickers", seal, seal, "box", "")
-	Challenge(cross(cur), "Pickers", seal, seal, "box", "")
+	Challenge(cross(cur), "Pickers", seal, seal, boxOf("box"), "")
+	Challenge(cross(cur), "Pickers", seal, seal, boxOf("box"), "")
 	testing.SkipHeights(120000) // 600,000 s
-	Challenge(cross(cur), "Ironhide", seal, seal, "box", "")
+	Challenge(cross(cur), "Ironhide", seal, seal, boxOf("box"), "")
 
 	ids := func(list []OpenChallenge) string {
 		var out []string
@@ -118,4 +123,73 @@ func TestOpenLimit(t *testing.T) {
 	uassert.PanicsWithMessage(t, nil, "limit must be 1 to 50", func() { Open(0, 0) })
 	uassert.PanicsWithMessage(t, nil, "limit must be 1 to 50", func() { Open(0, 51) })
 	uassert.PanicsWithMessage(t, nil, "offset must not be negative", func() { Open(-1, 10) })
+}
+
+func TestExpiredChallengeLeavesTheBoardBeforeClearing(cur realm, t *testing.T) {
+	reset()
+	testing.SetRealm(testing.NewUserRealm(alice))
+	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
+	testing.SkipHeights(7 * day)
+	uassert.Equal(t, 1, len(Open(0, 50)), "a challenge is open until the end of its expiry second")
+
+	testing.SkipHeights(1)
+	uassert.Equal(t, 0, len(Open(0, 50)))
+	uassert.Equal(t, phaseExpired, Match(id).Phase)
+	list := Matches(alice, 0, 50)
+	urequire.Equal(t, 1, len(list))
+	uassert.Equal(t, phaseExpired, list[0].Phase)
+}
+
+func TestClearingAtMostEight(cur realm, t *testing.T) {
+	reset()
+	testing.SetRealm(testing.NewUserRealm(alice))
+	for i := 0; i < 10; i++ {
+		Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
+	}
+	testing.SkipHeights(7*day + 1)
+
+	Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
+	uassert.Equal(t, "11,10,9", summaryIDs(Matches(alice, 0, 50)))
+	uassert.PanicsWithMessage(t, nil, "unknown match", func() { Match("8") })
+	uassert.Equal(t, phaseExpired, Match("9").Phase)
+
+	Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
+	uassert.Equal(t, "12,11", summaryIDs(Matches(alice, 0, 50)))
+	uassert.Equal(t, 2, len(Open(0, 50)))
+}
+
+// A challenge whose match is gone must not block the clearing, or every later Challenge.
+func TestClearingSkipsMissingMatch(cur realm, t *testing.T) {
+	reset()
+	testing.SetRealm(testing.NewUserRealm(alice))
+	Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
+	dropMatch(1)
+	testing.SkipHeights(7*day + 1)
+
+	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
+	entries := openEntries(openList)
+	urequire.Equal(t, 1, len(entries))
+	uassert.Equal(t, id, strconv.Itoa(entries[0].id))
+}
+
+func TestBoxText(cur realm, t *testing.T) {
+	reset()
+	testing.SetRealm(testing.NewUserRealm(alice))
+	seal := sealOf(saltA, deckA)
+	cases := []struct{ name, box string }{
+		{"over 1368 characters", strings.Repeat("A", 1372)},
+		{"1368 characters of 1026 bytes", strings.Repeat("A", 1368)},
+		{"unpadded", "box"},
+		{"outside the alphabet", "b*x1"},
+	}
+	for _, c := range cases {
+		uassert.AbortsWithMessage(t, cur, "invalid box", func() {
+			Challenge(cross(cur), "Pickers", seal, seal, c.box, "")
+		}, c.name)
+	}
+
+	full := boxOf(strings.Repeat("\x00\xff\x07\x80", 256))
+	urequire.Equal(t, 1368, len(full))
+	id := Challenge(cross(cur), "Pickers", seal, seal, full, "")
+	uassert.Equal(t, full, Match(id).Box)
 }

@@ -18,30 +18,30 @@ func init(cur realm) {
 	gnotif.Declare(cross(cur), self, "Ended", "", "to", "Match over", "{text}", "/?match={match}")
 }
 
-// tell emits kind to player about m. It emits nothing when player made the call, so an
-// event never names its caller.
-func tell(kind string, player, caller address, m *match, text string) {
+// tell emits kind to player about match id. It emits nothing when player made the call,
+// so an event never names its caller.
+func tell(kind string, player, caller address, id int, text string) {
 	if player == caller {
 		return
 	}
-	chain.Emit(kind, "to", player.String(), "match", m.id, "text", text)
+	chain.Emit(kind, "to", player.String(), "match", strconv.Itoa(id), "text", text)
 }
 
-// tellEnded sends Ended to each player of the finished match m but caller, one event
-// each, since gnotif reads only the first value of a repeated attribute.
-func tellEnded(m *match, caller address) {
-	tell("Ended", m.challenger, caller, m, endText(m, 0))
+// tellEnded sends Ended to each player of the finished match m, numbered id, but caller,
+// one event each, since gnotif reads only the first value of a repeated attribute.
+func tellEnded(m record, id int, caller address) {
+	tell("Ended", m.challenger, caller, id, endText(m, 0))
 	if m.acceptor != m.challenger {
-		tell("Ended", m.acceptor, caller, m, endText(m, 1))
+		tell("Ended", m.acceptor, caller, id, endText(m, 1))
 	}
 }
 
 // endText says how m ended to the player on side.
-func endText(m *match, side int) string {
+func endText(m record, side int) string {
 	won := m.result == "a" && side == 0 || m.result == "b" && side == 1
 	switch m.reason {
 	case "hp":
-		last := m.hp[len(m.hp)-1]
+		last := m.hp[plansMade(m.plans[0])-1]
 		score := strconv.Itoa(last[side]) + " to " + strconv.Itoa(last[1-side]) + "."
 		switch {
 		case m.result == "draw":

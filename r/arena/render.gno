@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"gno.land/p/gfanton/gnomehall/engine"
 )
 
 const notFound = "# Not found\n\nThe arena has no page at this path.\n"
@@ -21,11 +23,12 @@ func Render(path string) string {
 		}
 		return renderPlayer(player)
 	case strings.HasPrefix(path, "match/"):
-		m, ok := lookup(strings.TrimPrefix(path, "match/"))
+		rules := engine.ProofOfConcept()
+		n, m, ok := lookup(rules, strings.TrimPrefix(path, "match/"))
 		if !ok {
 			return notFound
 		}
-		return renderMatch(Match(m.id))
+		return renderMatch(m.view(rules, n, time.Now().Unix()))
 	}
 	return notFound
 }

@@ -4,12 +4,12 @@
 package arena
 
 import (
+	"encoding/base64"
 	"strconv"
 	"strings"
 	"time"
 
 	"gno.land/p/gfanton/gnomehall/engine"
-	"gno.land/p/nt/avl/v0"
 )
 
 const (
@@ -17,47 +17,19 @@ const (
 	openWindow = 7 * 24 * 60 * 60 // seconds an open challenge stays on the board
 	maxBox     = 1024             // bytes
 	maxPage    = 50
-	keyDigits  = 10
+	maxCleared = 8 // expired challenges one Challenge deletes at most
+	idDigits   = 10
 )
 
 const (
-	phaseOpen      = "open"
-	phaseReveal    = "reveal"
-	phasePlay      = "play"
-	phaseEnded     = "ended"
-	phaseWithdrawn = "withdrawn"
-	phaseExpired   = "expired" // reported for an open match past its expiry, never stored
+	phaseOpen    = "open"
+	phaseReveal  = "reveal"
+	phasePlay    = "play"
+	phaseEnded   = "ended"
+	phaseExpired = "expired" // reported for an open match past its expiry, never stored
 )
 
-var (
-	rules    = engine.ProofOfConcept()
-	matches  avl.Tree // key → *match
-	byPlayer avl.Tree // address + "/" + key → *match, one entry per player of a match
-	lastID   int
-)
-
-// match is one challenge and, once accepted, the duel it became. Side 0 is the
-// challenger, side 1 the acceptor.
-type match struct {
-	id         string
-	challenger address
-	acceptor   address
-	opponent   address // the only address that may accept; empty for anyone
-	clans      [2]string
-	deckSeal   string
-	decks      [2]string // card names, once public
-	deckBits   [2]uint64
-	plans      [][2]string // per round started; "" while sealed or not made
-	seal       string      // the challenger's sealed plan for the round being played
-	box        string      // the encrypted plan behind seal
-	state      engine.State
-	hp         [][2]int // after each resolved round
-	phase      string
-	posted     int64
-	deadline   int64
-	result     string
-	reason     string
-}
+var lastID int
 
 // OpenChallenge is an open challenge as the board lists it.
 type OpenChallenge struct {
@@ -67,74 +39,81 @@ type OpenChallenge struct {
 
 // Challenge posts a challenge for clan with the seals of the challenger's deck and
 // round-1 plan, the box holding both, and an opponent who alone may accept, or none.
-// It returns the new match's id.
+// It returns the new match's id. It first deletes up to 8 expired challenges, whoever
+// posted them.
 func Challenge(cur realm, clan, deckSeal, planSeal, box string, opponent address) string {
-	if _, ok := rules.ClanByName(clan); !ok {
+	rules := engine.ProofOfConcept()
+	c := clanNumber(rules, clan)
+	if c == 0 {
 		panic("unknown clan")
 	}
 	if !validSeal(deckSeal) || !validSeal(planSeal) {
 		panic("invalid seal")
 	}
-	if len(box) == 0 || len(box) > maxBox {
-		panic("invalid box")
-	}
+	raw := boxBytes(box)
 	if opponent != "" && !canonical(opponent) {
 		panic("invalid opponent")
 	}
+	now := time.Now().Unix()
+	for _, id := range openClear(now, maxCleared) {
+		if m, ok := loadMatch(rules, id); ok {
+			forget(id, m.challenger)
+		}
+	}
+
 	lastID++
-	m := &match{
-		id:         strconv.Itoa(lastID),
+	m := record{
+		phase:      phaseOpen,
+		deadline:   now + openWindow,
 		challenger: cur.Previous().Address(),
 		opponent:   opponent,
 		deckSeal:   deckSeal,
 		seal:       planSeal,
-		box:        box,
-		state:      rules.Start(),
-		phase:      phaseOpen,
-		posted:     time.Now().Unix(),
+		box:        raw,
 	}
-	m.clans[0] = clan
-	k := key(m.id)
-	matches.Set(k, m)
-	index(m.challenger, k, m)
-	return m.id
+	m.clans[0] = c
+	saveMatch(rules, lastID, m)
+	openAdd(lastID, m.deadline)
+	p := loadPlayer(m.challenger)
+	p.add(lastID)
+	savePlayer(m.challenger, p)
+	return strconv.Itoa(lastID)
 }
 
 // Open lists open, unexpired challenges, newest first: limit of them after skipping
 // offset. limit is 1 to 50.
 func Open(offset, limit int) []OpenChallenge {
 	checkPage(offset, limit)
-	now := time.Now().Unix()
-	// ceiling: the walk visits every match posted in the last 7 days; keep an index of open
-	// challenges, at about 1.2 KB of storage each, if that grows past a few hundred
+	rules := engine.ProofOfConcept()
 	list := []OpenChallenge{}
-	matches.ReverseIterate("", "", func(_ string, v any) bool {
-		m := v.(*match)
-		if now > m.posted+openWindow {
-			return true // ids rise with time, so every older match is past it too
-		}
-		if m.phase != phaseOpen {
-			return false
-		}
-		if offset > 0 {
-			offset--
-			return false
+	for _, id := range openNewest(time.Now().Unix(), offset, limit) {
+		m, ok := loadMatch(rules, id)
+		if !ok {
+			continue
 		}
 		list = append(list, OpenChallenge{
-			ID:         m.id,
+			ID:         strconv.Itoa(id),
 			Challenger: m.challenger.String(),
-			Clan:       m.clans[0],
+			Clan:       clanName(rules, m.clans[0]),
 			Opponent:   m.opponent.String(),
-			Posted:     m.posted,
-			Expires:    m.posted + openWindow,
+			Posted:     m.deadline - openWindow,
+			Expires:    m.deadline,
 		})
-		return len(list) == limit
-	})
+	}
 	return list
 }
 
-func (m *match) expired(now int64) bool {
-	return m.phase == phaseOpen && now > m.posted+openWindow
+// forget deletes open challenge id and its place among its challenger's matches. Its
+// entry on the open list is the caller's to remove.
+func forget(id int, challenger address) {
+	dropMatch(id)
+	p := loadPlayer(challenger)
+	p.remove(id)
+	savePlayer(challenger, p)
+}
+
+func (m record) expired(now int64) bool {
+	return m.phase == phaseOpen && now > m.deadline
 }
 
 func checkPage(offset, limit int) {
@@ -146,15 +125,16 @@ func checkPage(offset, limit int) {
 	}
 }
 
-// key pads a match id with zeros so that tree order is id order.
-func key(id string) string {
-	return strings.Repeat("0", keyDigits-len(id)) + id
-}
-
-// index lists the match under player's matches. One tree for every player stores
-// less than a tree per player, which costs about 3 KB to create.
-func index(player address, k string, m *match) {
-	byPlayer.Set(player.String()+"/"+k, m)
+// boxBytes decodes a box argument: base64 of 1 to maxBox bytes.
+func boxBytes(text string) string {
+	if len(text) == 0 || len(text) > base64.StdEncoding.EncodedLen(maxBox) {
+		panic("invalid box")
+	}
+	raw, err := base64.StdEncoding.DecodeString(text)
+	if err != nil || len(raw) == 0 || len(raw) > maxBox {
+		panic("invalid box")
+	}
+	return string(raw)
 }
 
 // canonical accepts a valid address in the lowercase form callers carry. bech32 also

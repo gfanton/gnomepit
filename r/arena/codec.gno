@@ -245,9 +245,9 @@ const (
 
 // The value of each name is its index; 0 of result and reason is none.
 var (
-	phaseNames  = []string{phaseOpen, phaseReveal, phasePlay, phaseEnded, phaseWithdrawn}
+	phaseNames  = []string{phaseOpen, phaseReveal, phasePlay, phaseEnded}
 	resultNames = []string{"", "a", "b", "draw"}
-	reasonNames = []string{"", "hp", "knockout", "forfeit"}
+	reasonNames = []string{"", "hp", "knockout", "forfeit", "resign"}
 )
 
 func nameIndex(names []string, s, what string) uint64 {

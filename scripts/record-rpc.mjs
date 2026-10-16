@@ -15,6 +15,7 @@ const out = new URL("../client/web/testdata/rpc/", import.meta.url);
 const arena = "gno.land/r/gfanton/gnomehall/arena";
 const devKey = (name) => createHash("sha256").update(`gnomehall dev ${name}`).digest("hex");
 const seal = "0101010101010101010101010101010101010101010101010101010101010101";
+const box = btoa("box");
 
 const engine = await nodeEngine();
 const alice = { key: devKey("alice"), ...engine.keyInfo(devKey("alice")) };
@@ -48,7 +49,7 @@ await record("qeval-error", await query("vm/qeval_json", `${arena}.Match("99")`)
 await record("qtype", await query("vm/qtype_json", `${arena}.OpenChallenge`));
 
 const { account_number: accountNumber, sequence } = JSON.parse(atob(account.result.response.ResponseBase.Data)).BaseAccount;
-const challenge = call("Challenge", ["Pickers", seal, seal, "box", ""], Number(sequence), Number(accountNumber));
+const challenge = call("Challenge", ["Pickers", seal, seal, box, ""], Number(sequence), Number(accountNumber));
 await record("simulate", await rpcCall("abci_query", { path: ".app/simulate", data: challenge }));
 await record("simulate-error", await rpcCall("abci_query", {
   path: ".app/simulate",
@@ -57,7 +58,7 @@ await record("simulate-error", await rpcCall("abci_query", {
 await record("broadcast-ok", await rpcCall("broadcast_tx_commit", { tx: challenge }));
 await record("broadcast-duplicate", await rpcCall("broadcast_tx_commit", { tx: challenge }));
 await record("broadcast-checktx", await rpcCall("broadcast_tx_commit", {
-  tx: call("Challenge", ["Pickers", seal, seal, "box", ""], Number(sequence) + 5, Number(accountNumber)),
+  tx: call("Challenge", ["Pickers", seal, seal, box, ""], Number(sequence) + 5, Number(accountNumber)),
 }));
 await record("broadcast-delivertx", await rpcCall("broadcast_tx_commit", {
   tx: call("Accept", ["99", "Ironhide", "x", "y"], Number(sequence) + 1, Number(accountNumber)),
@@ -100,7 +101,7 @@ await record("broadcast-session-call", await rpcCall("broadcast_tx_commit", {
     privKey: sessionKey,
     sessionAddr: session.address,
     fee: { gasWanted: 30_000_000, gasFee: "30000ugnot" },
-    msgs: [{ type: "/vm.m_call", value: { caller: alice.address, send: "", max_deposit: "", pkg_path: arena, func: "Challenge", args: ["Ironhide", seal, seal, "session", ""] } }],
+    msgs: [{ type: "/vm.m_call", value: { caller: alice.address, send: "", max_deposit: "", pkg_path: arena, func: "Challenge", args: ["Ironhide", seal, seal, btoa("session"), ""] } }],
   }),
 }));
 process.exit(0);

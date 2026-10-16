@@ -102,12 +102,12 @@ func TestDeckOnPool(cur realm, t *testing.T) {
 
 	for i, deck := range []string{deckA, deckB} {
 		pool := rules.Clans[i].Pool
-		bits := deckBits(rules.Clans[i], deck)
+		bits := deckBits(rules, rules.Clans[i], deck)
 		uassert.Equal(t, bits, deckFromPool(pool, deckOnPool(pool, bits)))
 	}
 
 	panicsWith(t, "deck outside the pool", func() {
-		deckOnPool(rules.Clans[1].Pool, deckBits(rules.Clans[0], deckA))
+		deckOnPool(rules.Clans[1].Pool, deckBits(rules, rules.Clans[0], deckA))
 	})
 	panicsWith(t, "pool holds more than 16 cards", func() {
 		deckOnPool(^uint64(0), 1)
@@ -116,8 +116,8 @@ func TestDeckOnPool(cur realm, t *testing.T) {
 
 func TestMatchRecordRoundTrip(cur realm, t *testing.T) {
 	rules := engine.ProofOfConcept()
-	deckBitsA := deckBits(rules.Clans[0], deckA)
-	deckBitsB := deckBits(rules.Clans[1], deckB)
+	deckBitsA := deckBits(rules, rules.Clans[0], deckA)
+	deckBitsB := deckBits(rules, rules.Clans[1], deckB)
 
 	box := make([]byte, 104)
 	for i := range box {

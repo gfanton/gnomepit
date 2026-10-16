@@ -1,6 +1,13 @@
 package arena
 
-import "time"
+import (
+	"encoding/base64"
+	"strconv"
+	"strings"
+	"time"
+
+	"gno.land/p/gfanton/gnomehall/engine"
+)
 
 // MatchSummary is one match as a player's list shows it. Round is the round being
 // played, or the last one resolved once the match is over. ToMove is the address that
@@ -17,8 +24,9 @@ type MatchSummary struct {
 }
 
 // MatchView is everything one match screen needs. Plans holds [challenger, acceptor]
-// per round started, "" while a plan is sealed or not yet made; HP holds both sides'
-// HP after each resolved round; Box is the challenger's encrypted pending plan.
+// for each resolved round, and for the round being played while the match runs, ""
+// while a plan is sealed or not yet made; HP holds both sides' HP after each resolved
+// round; Box is the challenger's encrypted pending plan, in base64.
 type MatchView struct {
 	MatchSummary
 	Opponent                     string
@@ -32,60 +40,67 @@ type MatchView struct {
 // Matches lists player's matches, newest first: limit of them after skipping offset.
 func Matches(player address, offset, limit int) []MatchSummary {
 	checkPage(offset, limit)
-	list := []MatchSummary{}
+	rules := engine.ProofOfConcept()
 	now := time.Now().Unix()
-	prefix := player.String() + "/"
-	// "0" follows "/", so the range holds exactly this player's keys.
-	byPlayer.ReverseIterate(prefix, player.String()+"0", func(_ string, v any) bool {
-		if offset > 0 {
-			offset--
-			return false
+	list := []MatchSummary{}
+	for _, id := range loadPlayer(player).newest(offset, limit) {
+		m, ok := loadMatch(rules, id)
+		if !ok {
+			continue
 		}
-		list = append(list, v.(*match).summary(now))
-		return len(list) == limit
-	})
+		list = append(list, m.summary(rules, id, now))
+	}
 	return list
 }
 
 // Match returns the view of match id.
 func Match(id string) MatchView {
-	m := find(id)
-	now := time.Now().Unix()
+	rules := engine.ProofOfConcept()
+	n, m := find(rules, id)
+	return m.view(rules, n, time.Now().Unix())
+}
+
+func (m record) view(rules *engine.Ruleset, id int, now int64) MatchView {
 	v := MatchView{
-		MatchSummary:   m.summary(now),
+		MatchSummary:   m.summary(rules, id, now),
 		Opponent:       m.opponent.String(),
-		ChallengerDeck: m.decks[0],
-		AcceptorDeck:   m.decks[1],
+		ChallengerDeck: deckText(rules, m.decks[0]),
+		AcceptorDeck:   deckText(rules, m.decks[1]),
 		Plans:          [][]string{},
-		Box:            m.box,
+		Box:            base64.StdEncoding.EncodeToString([]byte(m.box)),
 		HP:             [][]int{},
 		DeadlinePassed: m.running() && now > m.deadline,
 	}
-	for _, p := range m.plans {
-		v.Plans = append(v.Plans, []string{p[0], p[1]})
+	resolved := plansMade(m.plans[0])
+	rounds := resolved
+	if m.running() {
+		rounds++
 	}
-	for _, hp := range m.hp {
-		v.HP = append(v.HP, []int{hp[0], hp[1]})
+	for r := 1; r <= rounds; r++ {
+		v.Plans = append(v.Plans, []string{planText(rules, planAt(m.plans[0], r)), planText(rules, planAt(m.plans[1], r))})
+	}
+	for r := 0; r < resolved; r++ {
+		v.HP = append(v.HP, []int{m.hp[r][0], m.hp[r][1]})
 	}
 	return v
 }
 
-// summary copies the match out of storage, so a query returns no stored object.
-func (m *match) summary(now int64) MatchSummary {
+func (m record) summary(rules *engine.Ruleset, id int, now int64) MatchSummary {
+	resolved := plansMade(m.plans[0])
 	s := MatchSummary{
-		ID:             m.id,
+		ID:             strconv.Itoa(id),
 		Phase:          m.phase,
-		Round:          m.state.Round,
+		Round:          resolved + 1,
 		Challenger:     m.challenger.String(),
 		Acceptor:       m.acceptor.String(),
-		ChallengerClan: m.clans[0],
-		AcceptorClan:   m.clans[1],
+		ChallengerClan: clanName(rules, m.clans[0]),
+		AcceptorClan:   clanName(rules, m.clans[1]),
 		Result:         m.result,
 		Reason:         m.reason,
 	}
 	switch m.phase {
 	case phaseOpen:
-		s.Deadline = m.posted + openWindow
+		s.Deadline = m.deadline
 		if m.expired(now) {
 			s.Phase = phaseExpired
 		}
@@ -96,13 +111,33 @@ func (m *match) summary(now int64) MatchSummary {
 		s.ToMove = s.Acceptor
 		s.Deadline = m.deadline
 	case phaseEnded:
-		if len(m.hp) > 0 {
-			s.Round = len(m.hp)
+		if resolved > 0 {
+			s.Round = resolved
 		}
 	}
 	return s
 }
 
-func (m *match) running() bool {
+func (m record) running() bool {
 	return m.phase == phaseReveal || m.phase == phasePlay
+}
+
+// deckText names the cards of deck in card id order.
+func deckText(rules *engine.Ruleset, deck uint64) string {
+	var names []string
+	for i := range rules.Cards {
+		if deck&(uint64(1)<<uint(i)) != 0 {
+			names = append(names, rules.Cards[i].Name)
+		}
+	}
+	return strings.Join(names, ",")
+}
+
+// planText names the cards of p in play order.
+func planText(rules *engine.Ruleset, p engine.Plan) string {
+	names := make([]string, len(p))
+	for i, id := range p {
+		names[i] = rules.Cards[id].Name
+	}
+	return strings.Join(names, ",")
 }

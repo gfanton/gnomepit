@@ -11,7 +11,7 @@ import (
 func TestRenderBoard(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
-	Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), "box1", bob)
+	Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), bob)
 
 	out := Render("")
 	uassert.True(t, strings.Contains(out, "[Match 1](/r/gfanton/gnomehall/arena:match/1)"), out)
@@ -22,11 +22,11 @@ func TestRenderBoard(cur realm, t *testing.T) {
 func TestRenderMatch(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
-	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), "box1", "")
+	id := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
 	testing.SetRealm(testing.NewUserRealm(bob))
 	Accept(cross(cur), id, "Ironhide", deckB, braces)
 	testing.SetRealm(testing.NewUserRealm(alice))
-	Reveal(cross(cur), id, deckA, saltA, picks, salt1, sealOf(salt2, picks), "box2")
+	Reveal(cross(cur), id, deckA, saltA, picks, salt1, sealOf(salt2, picks), boxOf("box2"))
 
 	v := Match(id)
 	out := Render("match/" + id)
@@ -38,7 +38,7 @@ func TestRenderMatch(cur realm, t *testing.T) {
 func TestRenderPlayer(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
-	Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), "box1", "")
+	Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
 	out := Render("player/" + alice.String())
 	uassert.True(t, strings.Contains(out, "[Match 1](/r/gfanton/gnomehall/arena:match/1)"), out)
 }
