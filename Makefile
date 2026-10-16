@@ -55,7 +55,7 @@ fund: ## Send 1,000 GNOT on a running make dev to ADDRESS, such as an Adena acco
 record: ## Record the RPC answers the script tests replay, from a running make dev
 	CHAIN=$(DEV_CHAIN) node scripts/record-rpc.mjs http://$(DEV_RPC)
 
-e2e: wasm ## Play a whole arena match on a running make dev and make indexer, with both signing paths
+e2e: wasm ## Play two arena matches on a running make dev and make indexer, one through per-match sessions and one the wallet signs
 	CHAIN=$(DEV_CHAIN) node client/e2e/match.mjs http://$(DEV_RPC) http://$(DEV_INDEXER)/graphql/query
 
 test: realm-test wasm ## Run the Gno, Go and script tests; script tests run engine.wasm

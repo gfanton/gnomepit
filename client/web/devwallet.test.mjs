@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { createChain } from "./chain.mjs";
 import { devAccounts, devWallet } from "./devwallet.mjs";
 import * as signer from "./signer.mjs";
-import { deriveKeys, revokeMessage, sessionMessage } from "./wallet.mjs";
+import { deriveKeys, revokeMessage, sessionBudget, sessionMessage } from "./wallet.mjs";
 
 const alice = devAccounts.alice.address;
 
@@ -57,7 +57,7 @@ function recording() {
 
 test("the signer gets the page's messages in Adena's form, as Adena would", async () => {
   const keys = await deriveKeys(btoa("root signature"), 0, signer);
-  const session = sessionMessage(alice, keys.sessionPubKey, 1_800_000_000, "gno.land/r/x", 641_411, 86_400);
+  const session = sessionMessage(alice, keys.sessionPubKey, 1_800_000_000, "gno.land/r/x", sessionBudget.challenger, 86_400);
   const { requests, spy } = recording();
   const wallet = devWallet({ name: "alice", signer: spy, chain: replayChain("account", "account", "gasprice", "simulate"), chainId: "dev" });
   assert.equal((await wallet.SignTx({ messages: [session] })).status, "success");
@@ -69,7 +69,7 @@ test("the signer gets the page's messages in Adena's form, as Adena would", asyn
 test("a session creation is signed with the fee it names, as Adena signs it", async () => {
   const { requests, spy } = recording();
   const keys = await deriveKeys(btoa("root signature"), 0, signer);
-  const session = sessionMessage(alice, keys.sessionPubKey, 1_800_000_000, "gno.land/r/x", 641_411, 86_400);
+  const session = sessionMessage(alice, keys.sessionPubKey, 1_800_000_000, "gno.land/r/x", sessionBudget.challenger, 86_400);
   const wallet = devWallet({ name: "alice", signer: spy, chain: replayChain("account", "account"), chainId: "dev" });
   assert.equal((await wallet.SignTx({ messages: [session], gasWanted: 3_000_000, gasFee: 3_000 })).status, "success");
   assert.equal((await wallet.SignTx({ messages: [session] })).status, "success");
@@ -84,7 +84,7 @@ test("revokes signed with a creation, or alone, take the fee they name, as Adena
   const { requests, spy } = recording();
   const [dead, next] = await Promise.all([0, 1].map((g) => deriveKeys(btoa("root signature"), g, signer)));
   const revoke = revokeMessage(alice, dead.sessionPubKey);
-  const create = sessionMessage(alice, next.sessionPubKey, 1_800_000_000, "gno.land/r/x", 641_411, 86_400);
+  const create = sessionMessage(alice, next.sessionPubKey, 1_800_000_000, "gno.land/r/x", sessionBudget.challenger, 86_400);
   const wallet = devWallet({ name: "alice", signer: spy, chain: replayChain("account", "account"), chainId: "dev" });
   assert.equal((await wallet.SignTx({ messages: [revoke, create], gasWanted: 6_000_000, gasFee: 6_000 })).status, "success");
   assert.equal((await wallet.SignTx({ messages: [revoke], gasWanted: 3_000_000, gasFee: 3_000 })).status, "success");

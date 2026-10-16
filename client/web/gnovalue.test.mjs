@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { decode, structTypes, typeFields } from "./gnovalue.mjs";
+import { createReader, decode, structTypes, typeFields } from "./gnovalue.mjs";
 
 const load = (name) => JSON.parse(readFileSync(new URL(`./testdata/qeval/${name}.json`, import.meta.url)));
 const result = (name) => load(name).results[0];
@@ -25,6 +25,18 @@ test("a type answer names the fields of every struct type it holds", () => {
 test("a result lists the struct types its decoding needs", () => {
   assert.deepEqual([...structTypes(result("match-play"))].sort(), [`${arena}.MatchSummary`, `${arena}.MatchView`]);
   assert.deepEqual([...structTypes(result("open"))], [`${arena}.OpenChallenge`]);
+});
+
+test("a reader decodes a query's answer and asks for each struct type's fields once", async () => {
+  const asked = { exprs: [], types: [] };
+  const chain = {
+    evalJSON: async (expr) => (asked.exprs.push(expr), load("open").results),
+    typeJSON: async (id) => (asked.types.push(id), load(`qtype-${id.split(".").at(-1)}`)),
+  };
+  const read = createReader(chain);
+  for (let i = 0; i < 2; i++) assert.equal((await read(`${arena}.Open(0, 50)`))[0].Clan, "Pickers");
+  assert.deepEqual(asked.exprs, [`${arena}.Open(0, 50)`, `${arena}.Open(0, 50)`]);
+  assert.deepEqual(asked.types, [`${arena}.OpenChallenge`]);
 });
 
 test("open challenges decode to plain objects", () => {

@@ -4,7 +4,7 @@
 // sealed plan, reveals it and seals the next one in one call.
 
 import { ChainError, feeFor, payFor } from "./chain.mjs";
-import { decode, structTypes, typeFields } from "./gnovalue.mjs";
+import { createReader } from "./gnovalue.mjs";
 import {
   WalletError, classifySessions, connect as connectWallet, deriveKeys, generations, lockedMatches, newSalt, openBox, revokeMessage, rootSignature,
   sealBox, sealOf, sessionBudget, sessionGas, sessionLifetime as defaultLifetime, sessionMessage, sessionReserve,
@@ -187,7 +187,7 @@ export function createArena({
   now = () => Math.floor(Date.now() / 1000),
 }) {
   let address = null;
-  const fields = new Map();
+  const readValue = createReader(chain);
   const keyCache = new Map();
 
   const storageKey = (name) => `gnomehall:${chainId}:${address}:${name}`;
@@ -210,11 +210,7 @@ export function createArena({
 
   async function read(expr) {
     try {
-      const [result] = await chain.evalJSON(expr);
-      for (const id of structTypes(result)) {
-        if (!fields.has(id)) for (const [type, names] of typeFields(await chain.typeJSON(id))) fields.set(type, names);
-      }
-      return decode(result, fields);
+      return await readValue(expr);
     } catch (err) {
       throw errorFrom(err);
     }

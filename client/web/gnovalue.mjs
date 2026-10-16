@@ -9,6 +9,19 @@ const boolKind = "4";
 // low bytes, so they throw rather than decode wrong.
 const intKinds = new Set(["32", "1024"]);
 
+// createReader returns read(expr), which runs expr on chain, a chain.mjs client, and
+// decodes its first result, asking for each struct type's field names only once.
+export function createReader(chain) {
+  const fields = new Map();
+  return async (expr) => {
+    const [result] = await chain.evalJSON(expr);
+    for (const id of structTypes(result)) {
+      if (!fields.has(id)) for (const [type, names] of typeFields(await chain.typeJSON(id))) fields.set(type, names);
+    }
+    return decode(result, fields);
+  };
+}
+
 // typeFields maps every struct type a vm/qtype_json answer declares, at any depth, to its
 // field names in order.
 export function typeFields(answer) {

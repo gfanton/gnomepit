@@ -5,10 +5,10 @@
 import { fromBase64, fromHex, toBase64, toHex } from "./encoding.mjs";
 
 // Each side's spend limit for one match, in ugnot, as client/ONLINE.md "Session budgets" works it out.
-export const sessionBudget = { challenger: 658_778, acceptor: 527_297 };
-// Each side's costliest move, in ugnot: a session with less left counts as used up. opening
-// counts the Challenge and the Accept; later, the moves after them, a Reveal and a Play.
-export const sessionReserve = { opening: { challenger: 262_602, acceptor: 239_661 }, later: { challenger: 53_446, acceptor: 21_644 } };
+export const sessionBudget = { challenger: 653_890, acceptor: 535_848 };
+// Each side's costliest opening (Challenge, Accept) and later move (Reveal, Play), in ugnot, the
+// later plus a tenth for a growing chunk: a session with less left counts as used up.
+export const sessionReserve = { opening: { challenger: 262_570, acceptor: 245_002 }, later: { challenger: 59_097, acceptor: 25_560 } };
 export const sessionLifetime = 24 * 60 * 60; // seconds
 // Gas per session message; creating a session uses about 1.4M.
 export const sessionGas = 3_000_000;
@@ -148,8 +148,8 @@ export function lockedMatches({ onChain, locks, now }) {
   return [...new Set(onChain.filter((s) => !hasExpired(s, now)).map((s) => lockOf(s, locks)?.Match).filter((id) => id !== undefined))];
 }
 
-// classifySessions sorts each generation's keys into byMatch, by the match id its live
-// session is locked to, unlocked, dead or free; matches lacks ids the realm no longer knows.
+// classifySessions sorts entries {generation, keys, session} into byMatch, by the match id the
+// live session is locked to, unlocked, dead or free (no session); matches omits ids the realm forgot.
 export function classifySessions({ onChain, keys, locks, matches, now, realm, reserve }) {
   const byAddress = new Map(onChain.map((s) => [s.address, s]));
   const out = { byMatch: new Map(), unlocked: [], dead: [], free: [] };

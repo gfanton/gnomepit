@@ -92,9 +92,9 @@ func TestReusedKeyStartsUnlocked(t *testing.T) {
 	uassert.Equal(t, "two:4:2000 one:5:2500", showLocks(got))
 }
 
-// guard saves the player record only when lock reports a change, so a move in the
-// session's own match writes nothing.
-func TestLockInOwnMatchLeavesRecord(t *testing.T) {
+// This pins the flag guard saves the player record on: a move in the session's own match
+// changes nothing, so it writes nothing.
+func TestLockReportsNoChangeInOwnMatch(t *testing.T) {
 	p := playerRecord{ids: []int{3, 4}, locks: []sessionLock{{keyOne, 3, 2000}, {keyTwo, 4, 2000}}}
 	uassert.False(t, p.lock(keyOne, 2000, 3, false, 1000))
 	uassert.Equal(t, "one:3:2000 two:4:2000", showLocks(p.locks))

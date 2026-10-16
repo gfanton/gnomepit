@@ -35,7 +35,7 @@ A failed check 2 prints Adena's reason. The arena then falls back to check 3's p
 - **A session per match.** Adena approves one session for each post or accept, and one for each renewal. That transaction revokes the player's dead sessions and creates a session for a free generation, or for a revoked one when none is free. The session may call the arena alone, spend its side's budget, and lasts one day; its spending counts gas fees and storage deposits. The realm locks it to the match of its first call, after which it acts in no other match and posts or accepts nothing more. A session is dead once it has expired, has less left than the costliest move it may still pay, or is locked to a match that ended or that the realm no longer knows.
 - **Renewal.** When the player has no live session locked to a match, nor an unlocked one to lock, the next move there needs a renewal: `renew(id)` asks Adena for a session the same way, and the move locks it to the match. Resigning and claiming a forfeit need none: with no live session, the wallet signs that one call, in one approval.
 - **Boxes.** A challenger's sealed deck and plans travel to the chain encrypted with the box key, beside their seals. Any browser with the same wallet opens them, so a challenger can continue from another device.
-- **The fallback.** When Adena creates no session, or every generation already has one, Adena signs and sends each move through `DoContract`. The account state's `fallback` holds the reason, and after `resumeSessions()` the next challenge, acceptance or renewal asks for a session again.
+- **The fallback.** When Adena creates no session, or every generation holds a live session, Adena signs and sends each move through `DoContract`. The account state's `fallback` holds the reason, and after `resumeSessions()` the next challenge, acceptance or renewal asks for a session again.
 
 ## Live updates
 
@@ -61,7 +61,7 @@ Without an indexer, or while it does not answer, `subscribe` polls the node inst
 
 ## Signer
 
-`signer.mjs` gives `keyInfo`, `signTx` and `signBytes` on the official gno JS clients, `@gnolang/tm2-js-client` 3.3.0 and `@gnolang/gno-js-client` 3.1.0. `make vendor` bundles them from `client/js` into `vendor/gno.mjs`, with the Node `Buffer` and `crypto` they call: 353,382 bytes, 110,412 gzipped. `make golden` signs five requests with the chain's own Go types into `testdata/golden-tx.json`, and the tests check that `signer.mjs` gives the same bytes. Run `make vendor` after changing a pin in `client/js/package.json`, and commit the bundle: the page loads no code from a CDN. Run `make golden` after changing a request in `client/golden` or its gno version, pinned at `c97fd36` in `client/golden/go.mod`. `signTx` refuses a request the chain would refuse: no chain id, no message, an account number or sequence that is not a non-negative integer, a `sessionAddr` other than the signing key's own address, or a session with no spend limit.
+`signer.mjs` gives `keyInfo`, `signTx` and `signBytes` on the official gno JS clients, `@gnolang/tm2-js-client` 3.3.0 and `@gnolang/gno-js-client` 3.1.0. `make vendor` bundles them from `client/js` into `vendor/gno.mjs`, with the Node `Buffer` and `crypto` they call: 353,382 bytes, 110,412 gzipped. `make golden` signs five requests with the chain's own Go types into `testdata/golden-tx.json`, and the tests check that `signer.mjs` gives the same bytes. After changing a pin in `client/js/package.json`, update the lockfile with `npm install --prefix client/js`, then run `make vendor`, which installs from the lockfile with `npm ci`, and commit the bundle: the page loads no code from a CDN. Run `make golden` after changing a request in `client/golden` or its gno version, pinned at `c97fd36` in `client/golden/go.mod`. `signTx` refuses a request the chain would refuse: no chain id, no message, an account number or sequence that is not a non-negative integer, a `sessionAddr` other than the signing key's own address, or a session with no spend limit.
 
 `engine.wasm` holds the engine alone, built with TinyGo and loaded with TinyGo's own `wasm_exec.js`: 960,874 bytes, 356,853 gzipped.
 
@@ -100,7 +100,7 @@ An action is `accept`, `move`, `finish`, `claimForfeit`, `wait` or `done`. A fai
 
 ## Storage per move
 
-`scripts/measure-storage.mjs` has alice and bob play the realm test's worked match twice on a fresh `make dev`, built from gno `c97fd36`, with gas at 1 ugnot per 1,000 and storage at 100 ugnot per byte. Alice signs through a session and bob through his wallet.
+`scripts/measure-storage.mjs` has alice and bob play the realm test's worked match twice on a fresh `make dev`, built from gno `c97fd36`, with gas at 1 ugnot per 1,000 and storage at 100 ugnot per byte. Each player signs through a session for the match, as the page does.
 
 - **Storage** is the bytes the move adds to the arena's storage, negative when it frees more than it adds.
 - **Gas used** is the gas the transaction used.
@@ -111,50 +111,52 @@ The first match is the chain's first, so it carries the one-time costs:
 
 | Move | Storage | Gas used | Fee | Deposit |
 |---|---|---|---|---|
-| Challenge | 2,444 B | 15,084,615 | 18,202 ugnot | 244,400 ugnot |
-| Accept | 2,105 B | 24,217,356 | 29,161 ugnot | 210,500 ugnot |
-| Reveal, round 1 | -71 B | 44,454,282 | 53,446 ugnot | 0 ugnot |
-| Play, round 2 | 0 B | 17,858,842 | 21,531 ugnot | 0 ugnot |
-| Reveal, round 2 | 0 B | 31,842,747 | 38,312 ugnot | 0 ugnot |
-| Play, round 3 | 0 B | 17,953,019 | 21,644 ugnot | 0 ugnot |
-| Reveal, round 3 | -100 B | 30,762,544 | 37,016 ugnot | 0 ugnot |
-| Total | 4,378 B | 182,173,405 | 219,312 ugnot | 454,900 ugnot |
+| Challenge | 2,444 B | 15,057,665 | 18,170 ugnot | 244,400 ugnot |
+| Accept | 2,153 B | 24,668,296 | 29,702 ugnot | 215,300 ugnot |
+| Reveal, round 1 | -71 B | 44,469,682 | 53,464 ugnot | 0 ugnot |
+| Play, round 2 | 0 B | 18,981,383 | 22,878 ugnot | 0 ugnot |
+| Reveal, round 2 | 0 B | 31,823,497 | 38,289 ugnot | 0 ugnot |
+| Play, round 3 | 0 B | 19,054,520 | 22,966 ugnot | 0 ugnot |
+| Reveal, round 3 | -100 B | 30,747,144 | 36,997 ugnot | 0 ugnot |
+| Total | 4,426 B | 184,802,187 | 222,466 ugnot | 459,700 ugnot |
 
 The second match is between players who already have a record, inside the chunk the first match opened:
 
 | Move | Storage | Gas used | Fee | Deposit |
 |---|---|---|---|---|
-| Challenge | 317 B | 16,164,371 | 19,498 ugnot | 31,700 ugnot |
-| Accept | 36 B | 24,778,010 | 29,834 ugnot | 3,600 ugnot |
-| Reveal, round 1 | -71 B | 44,690,275 | 53,729 ugnot | 0 ugnot |
-| Play, round 2 | 0 B | 17,968,166 | 21,662 ugnot | 0 ugnot |
-| Reveal, round 2 | 0 B | 32,036,404 | 38,544 ugnot | 0 ugnot |
-| Play, round 3 | 0 B | 18,030,783 | 21,737 ugnot | 0 ugnot |
-| Reveal, round 3 | -98 B | 30,960,091 | 37,253 ugnot | 0 ugnot |
-| Total | 184 B | 184,628,100 | 222,257 ugnot | 35,300 ugnot |
+| Challenge | 317 B | 16,173,031 | 19,508 ugnot | 31,700 ugnot |
+| Accept | 86 B | 25,368,331 | 30,542 ugnot | 8,600 ugnot |
+| Reveal, round 1 | -71 B | 44,686,425 | 53,724 ugnot | 0 ugnot |
+| Play, round 2 | 0 B | 19,168,319 | 23,102 ugnot | 0 ugnot |
+| Reveal, round 2 | 0 B | 32,094,154 | 38,613 ugnot | 0 ugnot |
+| Play, round 3 | 0 B | 19,279,328 | 23,236 ugnot | 0 ugnot |
+| Reveal, round 3 | -98 B | 30,948,541 | 37,239 ugnot | 0 ugnot |
+| Total | 234 B | 187,718,129 | 225,964 ugnot | 40,300 ugnot |
 
-A finished match between known players keeps 184 bytes locked, 48 of them for alice's session lock. Her record keeps the lock until that session expires, and her next session-signed call then drops it. The match's moves lock 35,300 ugnot, and its reveals give back 16,900 as they drop the deck seal, shrink the box and finally clear the seal and the box.
+A finished match between known players keeps 234 bytes locked, the players' two 48-byte session locks included. Each record keeps its lock until that session expires, and the player's next session-signed call then drops it. The match's moves lock 40,300 ugnot, and its reveals give back 16,900 as they drop the deck seal, shrink the box and finally clear the seal and the box.
 
-The one-time costs, the first match minus the second, are 4,194 bytes and a 419,600 ugnot deposit. The challenge carries 2,127 bytes of them: alice's new player record and the arena's first chunk. The acceptance carries 2,069 bytes: bob's new player record.
+The one-time costs, the first match minus the second, are 4,192 bytes and a 419,400 ugnot deposit. The challenge carries 2,127 bytes of them: alice's new player record and the arena's first chunk. The acceptance carries 2,067 bytes: bob's new player record. The first match's last reveal frees 2 bytes more than the second's, 100 against 98, which brings the sum to 4,192.
 
 ## Session budgets
 
 Each match gets its own session, and its spend limit is the budget of the player's side (`sessionBudget` in `wallet.mjs`). A session's spending counts every fee and deposit, and refunds never restore it. A side's budget adds up, from the first match under Storage per move, which carries the one-time costs:
 
 - the fee and the deposit of each of the side's moves;
-- its costliest move once more, for one failed attempt;
-- 4,800 ugnot for the realm's 48-byte session lock, which a session's first call adds. Bob's measured Accept holds none, since his wallet signs it, while alice's Challenge already holds hers.
+- its costliest move once more, for one failed attempt.
+
+The opening's deposit holds the 48-byte session lock its call adds.
 
 | | Challenger | Acceptor |
 |---|---|---|
-| Opening move | Challenge: 18,202 + 244,400 = 262,602 | Accept: 29,161 + 210,500 = 239,661 |
-| Later moves | Reveals: 53,446 + 38,312 + 37,016 | Plays: 21,531 + 21,644 |
-| The side's moves | 391,376 | 282,836 |
-| The costliest move again | 262,602 | 239,661 |
-| The session lock | 4,800 | 4,800 |
-| Budget | 658,778 ugnot | 527,297 ugnot |
+| Opening move | Challenge: 18,170 + 244,400 = 262,570 | Accept: 29,702 + 215,300 = 245,002 |
+| Later moves | Reveals: 53,464 + 38,289 + 36,997 | Plays: 22,878 + 22,966 |
+| The side's moves | 391,320 | 290,846 |
+| The costliest move again | 262,570 | 245,002 |
+| Budget | 653,890 ugnot | 535,848 ugnot |
 
-A session with less left than the costliest move it may still pay counts as used up (`sessionReserve`). An unlocked session may still pay an opening: 262,602 ugnot for the challenger and 239,661 for the acceptor. A session locked to a match pays only its side's later moves: 53,446 ugnot for the challenger's costliest Reveal, and 21,644 for the acceptor's costliest Play.
+A session with less left than the costliest move it may still pay counts as used up (`sessionReserve`):
+- **An unlocked session** may still pay an opening: 262,570 ugnot for the challenger and 245,002 for the acceptor.
+- **A session locked to a match** pays only its side's later moves. Their reserve is the costliest such move in either measured match plus a tenth, rounded up to the ugnot, since moves cost more as a chunk fills: 59,097 ugnot for the challenger, from a 53,724 Reveal, and 25,560 for the acceptor, from a 23,236 Play.
 
 ## Before onyx
 

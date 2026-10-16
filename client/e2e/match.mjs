@@ -10,16 +10,18 @@ import { createArena } from "../web/arena.mjs";
 import { createChain, payFor } from "../web/chain.mjs";
 import { devWallet } from "../web/devwallet.mjs";
 import { nodeEngine } from "../web/engine-node.mjs";
-import { decode, structTypes, typeFields } from "../web/gnovalue.mjs";
+import { createReader } from "../web/gnovalue.mjs";
 import { createIndexer } from "../web/indexer.mjs";
 import * as signer from "../web/signer.mjs";
-import { deriveKeys, generations } from "../web/wallet.mjs";
+import { deriveKeys, generations, rootSignature } from "../web/wallet.mjs";
 
 const rpc = process.argv[2] ?? "http://127.0.0.1:36657";
 const indexerURL = process.argv[3];
 const realm = "gno.land/r/gfanton/gnomehall/arena";
 const chainId = process.env.CHAIN ?? "gnomehall-dev";
-// Alice's sessions last this many seconds, so one expires mid-match.
+const origin = "http://e2e.local";
+// Alice's sessions last this many seconds, so one expires mid-match. Each, the renewed one
+// included, must outlast the moves that follow it.
 const shortLifetime = 30;
 
 const engine = await nodeEngine();
@@ -32,17 +34,10 @@ function memory() {
 
 function player(name, options = {}) {
   const wallet = devWallet({ name, signer, chain, chainId });
-  return createArena({ chain, wallet, engine, signer, realm, chainId, origin: "http://e2e.local", storage: memory(), ...options });
+  return createArena({ chain, wallet, engine, signer, realm, chainId, origin, storage: memory(), ...options });
 }
 
-const fields = new Map();
-async function read(expr) {
-  const [result] = await chain.evalJSON(expr);
-  for (const id of structTypes(result)) {
-    if (!fields.has(id)) for (const [type, names] of typeFields(await chain.typeJSON(id))) fields.set(type, names);
-  }
-  return decode(result, fields);
-}
+const read = createReader(chain);
 const locksOn = async (address, id) => (await read(`${realm}.Locks("${address}")`)).filter((l) => l.Match === id);
 
 const deckOf = (clan) => {
@@ -79,7 +74,7 @@ async function ready(name, arena) {
 const feed = [];
 let stopFeed = () => {};
 if (indexerURL !== undefined) {
-  const watcher = createArena({ chain, wallet: null, engine, realm, chainId, origin: "http://e2e.local", storage: memory(), indexer: createIndexer({ url: indexerURL }) });
+  const watcher = createArena({ chain, wallet: null, engine, realm, chainId, origin, storage: memory(), indexer: createIndexer({ url: indexerURL }) });
   await new Promise((resolve) => {
     stopFeed = watcher.subscribe((change) => (change.func === undefined ? resolve() : feed.push(change)));
   });
@@ -155,8 +150,7 @@ async function forceChallenge(master, root, session) {
 
 // ---- Sessions
 
-const aliceStorage = memory();
-const alice = player("alice", { storage: aliceStorage, sessionLifetime: shortLifetime });
+const alice = player("alice", { sessionLifetime: shortLifetime });
 const bob = player("bob");
 const aliceAddress = await ready("alice", alice);
 const bobAddress = await ready("bob", bob);
@@ -168,7 +162,10 @@ assert.ok(first !== undefined, `Locks lists alice's lock on match ${id}`);
 log(`alice's session ${first.Session} is locked to match ${id}`);
 
 const firstSession = (await chain.sessions(aliceAddress)).find((s) => s.address === first.Session && s.expiresAt === first.Expires);
-const refusal = await forceChallenge(aliceAddress, aliceStorage.getItem(`gnomehall:${chainId}:${aliceAddress}:root`), firstSession);
+assert.ok(firstSession !== undefined, `the chain lists the session locked to match ${id}`);
+// The dev wallet signs the root text the same way every time, so this is the arena's root.
+const root = await rootSignature(devWallet({ name: "alice", signer, chain, chainId }), aliceAddress, origin);
+const refusal = await forceChallenge(aliceAddress, root, firstSession);
 assert.match(refusal, new RegExp(`session locked to match ${id}$`));
 log(`a second challenge with that session: ${refusal}`);
 
@@ -177,6 +174,7 @@ assert.equal((await bob.account()).mode, "session", "bob's acceptance got a sess
 assert.equal((await locksOn(bobAddress, id)).length, 1, `Locks lists bob's lock on match ${id}`);
 log(`bob's session is locked to match ${id}`);
 
+let renewedAfterRound1 = false;
 await play(id, alice, bob, async () => {
   const wait = (first.Expires + 1) * 1000 - Date.now();
   log(`waiting ${Math.ceil(wait / 1000)} s for alice's session to expire`);
@@ -189,13 +187,15 @@ await play(id, alice, bob, async () => {
   const sessions = await chain.sessions(aliceAddress);
   assert.ok(!sessions.some((s) => s.address === first.Session && s.expiresAt === first.Expires), "renewing revoked the expired session");
   log(`alice renewed her session for match ${id}, revoking the expired one`);
+  renewedAfterRound1 = true;
 });
+assert.ok(renewedAfterRound1, `match ${id} went past round 1, so alice's session expired and was renewed`);
 
 // The renewed session's first move locked it and dropped the expired session's lock.
 const renewedLocks = await locksOn(aliceAddress, id);
-assert.equal(renewedLocks.length, 1);
+assert.equal(renewedLocks.length, 1, `Locks lists one lock of alice's on match ${id}`);
 const [renewed] = renewedLocks;
-assert.notDeepEqual([renewed.Session, renewed.Expires], [first.Session, first.Expires]);
+assert.notDeepEqual([renewed.Session, renewed.Expires], [first.Session, first.Expires], `the renewed session holds the lock on match ${id}`);
 assert.ok(renewed.Expires > unixNow(), "the renewed session is live, so only its ended match can make it dead");
 
 const second = await post(alice);

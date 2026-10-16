@@ -115,7 +115,7 @@ test("a new salt is 32 random bytes in hex", () => {
 
 test("a session message lets the session key call the arena alone, for its lifetime and spend limit", async () => {
   const keys = await deriveKeys(signature, 0, signer);
-  const { type, value } = sessionMessage("g1master", keys.sessionPubKey, now, realm, 641_411, 30);
+  const { type, value } = sessionMessage("g1master", keys.sessionPubKey, now, realm, sessionBudget.challenger, 30);
   assert.equal(type, "/auth.m_create_session");
   assert.equal(value.creator, "g1master");
   assert.equal(value.session_key.type_url, "/tm.PubKeySecp256k1");
@@ -124,7 +124,7 @@ test("a session message lets the session key call the arena alone, for its lifet
   assert.equal(btoa(String.fromCharCode(...wrapped.subarray(2))), keys.sessionPubKey);
   assert.equal(value.expires_at, String(now + 30));
   assert.deepEqual(value.allow_paths, [`vm/exec:${realm}`]);
-  assert.equal(value.spend_limit, "641411ugnot");
+  assert.equal(value.spend_limit, `${sessionBudget.challenger}ugnot`);
   assert.equal(value.spend_period, "0");
 });
 

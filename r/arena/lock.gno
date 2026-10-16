@@ -55,7 +55,7 @@ func (p *playerRecord) lock(session address, expires int64, id int, opening bool
 }
 
 // lockSession binds session to match id, refused when bound to another, or any when opening.
-// It drops expired locks (Unix seconds, 0 for never) and an earlier session's with the key.
+// It drops expired locks and any lock its key holds under another expiry (Unix seconds, 0 never).
 func lockSession(locks []sessionLock, session address, expires int64, id int, opening bool, now int64) (kept []sessionLock, changed bool, refusal string) {
 	for _, l := range locks {
 		expired := l.expires != 0 && l.expires <= now

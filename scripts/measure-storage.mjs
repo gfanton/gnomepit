@@ -1,8 +1,8 @@
 // Measures what each arena move locks in storage on a running `make dev`: alice and bob
-// play the realm test's worked match twice, alice through a session and bob through his
-// wallet, and a table per match gives each move's storage, gas, fee and deposit. On a
-// fresh gnodev the first match carries the one-time costs, two new players and a new
-// chunk, and the second gives what a match between known players locks.
+// play the realm test's worked match twice, each through a session for the match, and a
+// table per match gives each move's storage, gas, fee and deposit. On a fresh gnodev the
+// first match carries the one-time costs, two new players and a new chunk, and the second
+// gives what a match between known players locks.
 //
 //   [CHAIN=<chain id>] node scripts/measure-storage.mjs [rpc url]
 
@@ -52,13 +52,13 @@ function memory() {
   return { getItem: (k) => items.get(k) ?? null, setItem: (k, v) => items.set(k, String(v)) };
 }
 
-function player(name, signEachMove) {
+function player(name) {
   const wallet = devWallet({ name, signer, chain, chainId });
-  return createArena({ chain, wallet, engine, signer, realm, chainId, origin: "http://measure.local", storage: memory(), signEachMove });
+  return createArena({ chain, wallet, engine, signer, realm, chainId, origin: "http://measure.local", storage: memory() });
 }
 
-const alice = player("alice", false);
-const bob = player("bob", true);
+const alice = player("alice");
+const bob = player("bob");
 for (const arena of [alice, bob]) {
   await arena.connect();
   assert.equal((await arena.authorize()).state, "active");
@@ -101,6 +101,7 @@ const line = ({ move, storage, gasUsed, fee, deposit }) => `| ${move} | ${n(stor
 const matches = [await playMatch()];
 assert.equal(matches[0].id, "1", "the first match must be the chain's first; restart gnodev");
 matches.push(await playMatch());
+for (const arena of [alice, bob]) assert.equal(arena.account().mode, "session", "every move went through a session");
 
 for (const { id, rows } of matches) {
   console.log(`\nMatch ${id}\n\n| Move | Storage | Gas used | Fee | Deposit |\n|---|---|---|---|---|`);
