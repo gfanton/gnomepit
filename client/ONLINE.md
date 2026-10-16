@@ -94,6 +94,45 @@ On gnodev, built from gno `c97fd36`, with gas at 1 ugnot per 1,000 and storage a
 
 The fee is the gas the move uses, plus a fifth and 100,000, at the chain's price; the deposit stays locked while the arena keeps the match.
 
+## Storage per move
+
+`scripts/measure-storage.mjs` has alice and bob play the realm test's worked match twice on a fresh `make dev`, built from gno `c97fd36`, with gas at 1 ugnot per 1,000 and storage at 100 ugnot per byte. Alice signs through a session and bob through his wallet.
+
+- **Storage** is the bytes the move adds to the arena's storage, negative when it frees more than it adds.
+- **Gas used** is the gas the transaction used.
+- **Fee** is what the page pays for it: the gas used, plus a fifth and 100,000, at the chain's price.
+- **Deposit** is the ugnot the move locks for the storage it adds. A move that frees storage locks nothing and gets 100 ugnot back per byte.
+
+The first match is the chain's first, so it carries the one-time costs:
+
+| Move | Storage | Gas used | Fee | Deposit |
+|---|---|---|---|---|
+| Challenge | 2,386 B | 14,498,711 | 17,499 ugnot | 238,600 ugnot |
+| Accept | 2,111 B | 23,790,899 | 28,650 ugnot | 211,100 ugnot |
+| Reveal, round 1 | -71 B | 43,268,883 | 52,023 ugnot | 0 ugnot |
+| Play, round 2 | 0 B | 17,447,653 | 21,038 ugnot | 0 ugnot |
+| Reveal, round 2 | 0 B | 30,618,848 | 36,843 ugnot | 0 ugnot |
+| Play, round 3 | 0 B | 17,537,622 | 21,146 ugnot | 0 ugnot |
+| Reveal, round 3 | -100 B | 29,538,645 | 35,547 ugnot | 0 ugnot |
+| Total | 4,326 B | 176,701,261 | 212,746 ugnot | 449,700 ugnot |
+
+The second match is between players who already have a record, inside the chunk the first match opened:
+
+| Move | Storage | Gas used | Fee | Deposit |
+|---|---|---|---|---|
+| Challenge | 268 B | 15,510,896 | 18,714 ugnot | 26,800 ugnot |
+| Accept | 36 B | 24,380,129 | 29,357 ugnot | 3,600 ugnot |
+| Reveal, round 1 | -70 B | 43,398,470 | 52,179 ugnot | 0 ugnot |
+| Play, round 2 | 0 B | 17,559,081 | 21,171 ugnot | 0 ugnot |
+| Reveal, round 2 | 0 B | 30,725,352 | 36,971 ugnot | 0 ugnot |
+| Play, round 3 | 0 B | 17,634,322 | 21,262 ugnot | 0 ugnot |
+| Reveal, round 3 | -98 B | 29,610,539 | 35,633 ugnot | 0 ugnot |
+| Total | 136 B | 178,818,789 | 215,287 ugnot | 30,400 ugnot |
+
+A finished match between known players keeps 136 bytes locked. Its moves lock 30,400 ugnot, and its reveals give back 16,800 as they drop the deck seal, shrink the box and finally clear the seal and the box.
+
+The one-time costs, the first match minus the second, are 4,190 bytes and a 419,300 ugnot deposit. The challenge carries 2,118 bytes of them: alice's new player record and the arena's first chunk. The acceptance carries 2,075 bytes: bob's new player record.
+
 ## Tests
 
 - `make test` runs the realm's tests, the Go tests and the script tests; the script tests run `engine.wasm`.

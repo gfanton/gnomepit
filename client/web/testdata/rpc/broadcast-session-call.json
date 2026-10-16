@@ -11,17 +11,17 @@
         "Info": ""
       },
       "GasWanted": "30000000",
-      "GasUsed": "939849"
+      "GasUsed": "939868"
     },
     "deliver_tx": {
       "ResponseBase": {
         "Error": null,
-        "Data": "KCI3IiBzdHJpbmcpCgo=",
+        "Data": "KCIyIiBzdHJpbmcpCgo=",
         "Events": [
           {
             "@type": "/tm.StorageDepositEvent",
-            "bytes_delta": "9095",
-            "fee_delta": "909500ugnot",
+            "bytes_delta": "172",
+            "fee_delta": "17200ugnot",
             "pkg_path": "gno.land/r/gfanton/gnomehall/arena"
           }
         ],
@@ -29,9 +29,9 @@
         "Info": ""
       },
       "GasWanted": "30000000",
-      "GasUsed": "12764003"
+      "GasUsed": "13950609"
     },
-    "hash": "k9rJXd1u4fL4R7eYaDk0iE+jw7wSJJ0Zun2peRV4xn4=",
-    "height": "33"
+    "hash": "lY9HiycsOyeFQIyRidBlbZC7344FFgG8jqpmv7Q9rgo=",
+    "height": "6"
   }
 }

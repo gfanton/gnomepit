@@ -15,7 +15,7 @@ import (
 const (
 	moveWindow = 24 * 60 * 60     // seconds a player has for each move
 	openWindow = 7 * 24 * 60 * 60 // seconds an open challenge stays on the board
-	maxBox     = 1024             // bytes
+	maxBox     = 104              // bytes
 	maxPage    = 50
 	maxCleared = 8 // expired challenges one Challenge deletes at most
 	idDigits   = 10

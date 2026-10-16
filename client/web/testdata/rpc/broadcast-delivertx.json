@@ -11,7 +11,7 @@
         "Info": ""
       },
       "GasWanted": "100000000",
-      "GasUsed": "624088"
+      "GasUsed": "624057"
     },
     "deliver_tx": {
       "ResponseBase": {
@@ -21,13 +21,13 @@
         },
         "Data": "",
         "Events": null,
-        "Log": "msg:0,success:false,log:--= Error =--\nData: errors.FmtError{format:\"unknown match\", args:[]interface {}(nil)}\nMsg Traces:\n    0  gno/tm2/pkg/errors/errors.go:103 - VM panic: unknown match\nStacktrace:\npanic: unknown match\nfind at gno.land/r/gfanton/gnomehall/arena/play.gno:176\nAccept at gno.land/r/gfanton/gnomehall/arena/play.gno:16\n\n\nStack Trace:\n    0  gno/tm2/pkg/errors/errors.go:88\n    1  gno/tm2/pkg/errors/errors.go:103\n    2  gno/gno.land/pkg/sdk/vm/keeper.go:1453\n    3  gno/gno.land/pkg/sdk/vm/keeper.go:1426\n    4  /nix/store/9w6fm5c9v3lx0vxd4pqy7i8qmdfsmq7g-go-1.27.1/share/go/src/runtime/panic.go:859\n... 27 more lines elided,events:[]",
+        "Log": "msg:0,success:false,log:--= Error =--\nData: errors.FmtError{format:\"unknown match\", args:[]interface {}(nil)}\nMsg Traces:\n    0  gno/tm2/pkg/errors/errors.go:103 - VM panic: unknown match\nStacktrace:\npanic: unknown match\nfind at gno.land/r/gfanton/gnomehall/arena/play.gno:191\nAccept at gno.land/r/gfanton/gnomehall/arena/play.gno:17\n\n\nStack Trace:\n    0  gno/tm2/pkg/errors/errors.go:88\n    1  gno/tm2/pkg/errors/errors.go:103\n    2  gno/gno.land/pkg/sdk/vm/keeper.go:1453\n    3  gno/gno.land/pkg/sdk/vm/keeper.go:1426\n    4  /nix/store/9w6fm5c9v3lx0vxd4pqy7i8qmdfsmq7g-go-1.27.1/share/go/src/runtime/panic.go:859\n... 27 more lines elided,events:[]",
         "Info": "vm.version=develop"
       },
       "GasWanted": "100000000",
-      "GasUsed": "4395977"
+      "GasUsed": "5952454"
     },
-    "hash": "a4piitmY10UIq3JnI35yLLu4MgbmV7dRoe50UcP1phk=",
-    "height": "31"
+    "hash": "Ow6RtG5pFQ2irusAfq4dureO3Xt6Ho12Ny0tc8hMF4I=",
+    "height": "4"
   }
 }

@@ -73,14 +73,37 @@ test("a simulation the realm refuses fails with the realm's reason", async () =>
   await rejects(chain.simulate("dHg="), "failed", "unknown match");
 });
 
-test("a broadcast that lands gives its hash and height", async () => {
+// storageOf lists the bytes_delta of a recorded transaction's storage events: positive
+// for a deposit, negative for an unlock.
+function storageOf(name) {
+  const events = recorded(name).result.deliver_tx.ResponseBase.Events;
+  const deltas = (type) => events.filter((e) => e["@type"] === type).map((e) => Number(e.bytes_delta));
+  return { deposits: deltas("/tm.StorageDepositEvent"), unlocks: deltas("/tm.StorageUnlockEvent") };
+}
+const sum = (numbers) => numbers.reduce((a, b) => a + b, 0);
+
+test("a broadcast that lands gives its hash, height, gas and the storage it locked", async () => {
   const { chain, sent } = replay("broadcast-ok");
   const landed = await chain.broadcast("dHg=");
   assert.equal(typeof landed.hash, "string");
   assert.equal(landed.height > 0, true);
   assert.equal(landed.gasUsed > 0, true);
+  const { deposits, unlocks } = storageOf("broadcast-ok");
+  assert.equal(deposits.length > 0, true);
+  assert.equal(landed.storage, sum(deposits) + sum(unlocks));
+  assert.equal(landed.storage > 0, true);
   assert.equal(sent[0].method, "broadcast_tx_commit");
   assert.deepEqual(sent[0].params, { tx: "dHg=" });
+});
+
+// The recording withdraws an open challenge, which frees its storage.
+test("a broadcast that frees storage reports it as negative", async () => {
+  const { chain } = replay("broadcast-unlock");
+  const landed = await chain.broadcast("dHg=");
+  const { deposits, unlocks } = storageOf("broadcast-unlock");
+  assert.equal(unlocks.length > 0 && unlocks.every((bytes) => bytes < 0), true);
+  assert.equal(landed.storage, sum(deposits) + sum(unlocks));
+  assert.equal(landed.storage < 0, true);
 });
 
 test("a transaction CheckTx refuses is rejected with its reason", async () => {

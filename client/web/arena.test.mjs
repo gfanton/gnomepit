@@ -10,7 +10,7 @@ import {
 import { ChainError } from "./chain.mjs";
 import { devAccounts, devWallet } from "./devwallet.mjs";
 import { nodeEngine } from "./engine-node.mjs";
-import { WalletError, deriveKeys } from "./wallet.mjs";
+import { WalletError, deriveKeys, newSalt, openBox, sealBox, sealOf } from "./wallet.mjs";
 
 const engine = await nodeEngine();
 const alice = "g1alice";
@@ -93,7 +93,7 @@ test("replay plays every resolved round with the page's engine", () => {
 
 test("the pending clash resolves the challenger's sealed plan against the acceptor's", () => {
   const reveal = view({ ...accepted, Phase: "reveal", ToMove: alice, Plans: [["", braces]] });
-  const opened = { deck: deckA, deckSalt: "d", plan: picks, planSalt: "p" };
+  const opened = { deck: cardIDs(deckA, engine.cards), deckSalt: "d", plan: cardIDs(picks, engine.cards), planSalt: "p" };
   const pending = pendingClash(reveal, opened, replay(reveal, engine).state, engine);
   assert.equal(pending.round, 1);
   assert.deepEqual(pending.plans, [cardIDs(picks, engine.cards), cardIDs(braces, engine.cards)]);
@@ -141,20 +141,21 @@ test("a move the wallet sent but the chain refused keeps the chain's reason", ()
   assert.equal(walletFailure(undefined).type, "refused");
 });
 
-test("the challenger's move reveals, with the deck on round 1 only, and seals the next plan", () => {
-  const opened = { deck: deckA, deckSalt: "ds", plan: picks, planSalt: "ps" };
+test("the challenger's move reveals, naming the box's cards, with the deck on round 1 only, and seals the next plan", () => {
+  const opened = { deck: cardIDs(deckA, engine.cards), deckSalt: "ds", plan: cardIDs(picks, engine.cards), planSalt: "ps" };
   const next = { plan: braces, seal: "nextseal", box: "nextbox" };
   const round1 = view({ ...accepted, Phase: "reveal", ToMove: alice, Plans: [["", braces]] });
-  assert.deepEqual(moveCall(round1, opened, next), { func: "Reveal", args: ["1", deckA, "ds", picks, "ps", "nextseal", "nextbox"] });
+  assert.deepEqual(moveCall(round1, opened, next, engine.cards), { func: "Reveal", args: ["1", deckA, "ds", picks, "ps", "nextseal", "nextbox"] });
 
   const round2 = view({ ...accepted, Phase: "reveal", Round: 2, ToMove: alice, ChallengerDeck: deckA });
-  assert.deepEqual(moveCall(round2, { plan: picks, planSalt: "ps" }, next), { func: "Reveal", args: ["1", "", "", picks, "ps", "nextseal", "nextbox"] });
-  assert.deepEqual(moveCall(round2, { plan: picks, planSalt: "ps" }, null), { func: "Reveal", args: ["1", "", "", picks, "ps", "", ""] });
+  const later = { plan: cardIDs(picks, engine.cards), planSalt: "ps" };
+  assert.deepEqual(moveCall(round2, later, next, engine.cards), { func: "Reveal", args: ["1", "", "", picks, "ps", "nextseal", "nextbox"] });
+  assert.deepEqual(moveCall(round2, later, null, engine.cards), { func: "Reveal", args: ["1", "", "", picks, "ps", "", ""] });
 });
 
 test("the acceptor's move plays face up", () => {
   const play = view({ ...accepted, Phase: "play", Round: 2, ToMove: bob });
-  assert.deepEqual(moveCall(play, null, { plan: picks }), { func: "Play", args: ["1", picks] });
+  assert.deepEqual(moveCall(play, null, { plan: picks }, engine.cards), { func: "Play", args: ["1", picks] });
 });
 
 function memory() {
@@ -219,6 +220,54 @@ test("a challenger on a device that has not authorized sees the match, and a box
 
   storage.setItem(`gnomehall:dev:${player}:root`, btoa("a signature from another site"));
   await assert.rejects(arena.match("1"), (err) => err instanceof ArenaError && err.type === "unauthorized");
+});
+
+test("a challenger's opened box gives the pending clash and the deck to plan from, as card ids", async () => {
+  const player = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5";
+  const signature = btoa("a root signature");
+  const deck = cardIDs(deckA, engine.cards);
+  const box = await sealBox((await deriveKeys(signature, 0, engine)).boxKey, { deck, deckSalt: newSalt(), plan: cardIDs(picks, engine.cards), planSalt: newSalt() });
+  const recordedText = readFileSync(new URL("./testdata/qeval/match-reveal.json", import.meta.url), "utf8");
+  const answer = JSON.parse(recordedText.replace('"box1"', JSON.stringify(box)));
+  const chain = { evalJSON: async () => answer.results, typeJSON: async () => load("qtype-MatchView") };
+  const storage = memory();
+  const arena = createArena({ chain, wallet: walletFor(player), engine, realm, chainId: "dev", origin: "http://x", storage });
+  await arena.connect();
+  storage.setItem(`gnomehall:dev:${player}:root`, signature);
+
+  const opened = await arena.match("1");
+  assert.equal(opened.action, "move");
+  assert.deepEqual(opened.pending.plans, [cardIDs(picks, engine.cards), cardIDs(braces, engine.cards)]);
+  assert.deepEqual(opened.planning.deck, [...deck].sort((a, b) => a - b));
+});
+
+// The box keeps the deck as a card set, so a deck sealed in the player's order could never
+// be revealed: the reveal names the box's deck in card id order.
+test("a challenge seals its deck and plan as their reveal will name them", async () => {
+  const signature = btoa("a root signature");
+  let args;
+  const wallet = walletFor(alice, {
+    SignArbitrary: async () => ({ status: "success", data: { signature: { signature } } }),
+    DoContract: async ({ messages: [msg] }) => {
+      args = msg.value.args;
+      return { status: "success" };
+    },
+  });
+  const chain = { evalJSON: async () => load("matches").results, typeJSON: async () => load("qtype-MatchSummary") };
+  const arena = createArena({ chain, wallet, engine, realm, chainId: "dev", origin: "http://x", storage: memory(), signEachMove: true });
+  await arena.connect();
+  await arena.authorize();
+
+  const deck = cardIDs(deckA, engine.cards).reverse();
+  await arena.challenge({ clan: "Pickers", deck, plan: cardIDs("Chalk Dust,Double Tap", engine.cards) });
+  const [clan, deckSeal, planSeal, box] = args;
+  assert.equal(clan, "Pickers");
+  const opened = await openBox((await deriveKeys(signature, 0, engine)).boxKey, box);
+  const round1 = view({ ...accepted, Phase: "reveal", ToMove: alice, Plans: [["", "Hammer Blow,Spiked Shield"]] });
+  const [, deckText, deckSalt, planText, planSalt] = moveCall(round1, opened, null, engine.cards).args;
+  assert.equal(await sealOf(deckSalt, deckText), deckSeal);
+  assert.equal(await sealOf(planSalt, planText), planSeal);
+  assert.equal(planText, "Chalk Dust,Double Tap");
 });
 
 // sessionChain answers sessions() with the session of generation 0 once created, and

@@ -81,9 +81,14 @@ export function replay(view, engine) {
 // pendingClash resolves the round being played from the challenger's opened box and the
 // acceptor's public plan, so the challenger watches it before planning the next round.
 export function pendingClash(view, opened, state, engine) {
-  const plans = [cardIDs(opened.plan, engine.cards), cardIDs(view.Plans[view.Round - 1][1], engine.cards)];
-  const outcome = resolve(engine, state, [opened.deck ?? view.ChallengerDeck, view.AcceptorDeck], plans);
+  const plans = [opened.plan, cardIDs(view.Plans[view.Round - 1][1], engine.cards)];
+  const outcome = resolve(engine, state, [challengerDeck(view, opened, engine.cards), view.AcceptorDeck], plans);
   return { round: view.Round, plans, events: outcome.events, state: outcome.state, result: outcome.result };
+}
+
+// challengerDeck names the challenger's deck: from their round-1 box until its reveal.
+function challengerDeck(view, opened, cards) {
+  return opened?.deck === undefined ? view.ChallengerDeck : cardNames(opened.deck, cards);
 }
 
 // planFrom says what the player who moves next plans from: the engine state their round
@@ -121,14 +126,17 @@ export function walletFailure(response) {
 }
 
 // moveCall is the realm call for the move in view: Play for the acceptor; Reveal for the
-// challenger, with the opened box, the deck on the first reveal only, and the next plan's
-// seal and box, or none when the match ends.
-export function moveCall(view, opened, next) {
+// challenger, naming the opened box's cards, with the deck on the first reveal only, and
+// the next plan's seal and box, or none when the match ends.
+export function moveCall(view, opened, next, cards) {
   if (view.Phase === "play") return { func: "Play", args: [view.ID, next.plan] };
   const first = view.ChallengerDeck === "";
   return {
     func: "Reveal",
-    args: [view.ID, first ? opened.deck : "", first ? opened.deckSalt : "", opened.plan, opened.planSalt, next?.seal ?? "", next?.box ?? ""],
+    args: [
+      view.ID, first ? cardNames(opened.deck, cards) : "", first ? opened.deckSalt : "", cardNames(opened.plan, cards), opened.planSalt,
+      next?.seal ?? "", next?.box ?? "",
+    ],
   };
 }
 
@@ -336,7 +344,7 @@ export function createArena({
           pending = pendingClash(view, opened, state, engine);
         }
         const action = actionFor(view, address, now(), pending);
-        const planning = action === "move" ? planFrom(view, state, pending, opened?.deck ?? view.ChallengerDeck, engine.cards) : undefined;
+        const planning = action === "move" ? planFrom(view, state, pending, challengerDeck(view, opened, engine.cards), engine.cards) : undefined;
         return { ...view, rounds, state, pending, planning, action, deadline: view.Deadline };
       } catch (err) {
         throw errorFrom(err);
@@ -349,10 +357,10 @@ export function createArena({
       requireAddress();
       checkOpening(engine, clan, deck, plan, 0);
       const key = await boxKey();
-      const opened = { deck: cardNames(deck, engine.cards), deckSalt: newSalt(), plan: cardNames(plan, engine.cards), planSalt: newSalt() };
-      await send("Challenge", [
-        clan, await sealOf(opened.deckSalt, opened.deck), await sealOf(opened.planSalt, opened.plan), await sealBox(key, opened), opponent,
-      ]);
+      const sealed = { deck: [...deck].sort((a, b) => a - b), deckSalt: newSalt(), plan, planSalt: newSalt() };
+      const deckSeal = await sealOf(sealed.deckSalt, cardNames(sealed.deck, engine.cards));
+      const planSeal = await sealOf(sealed.planSalt, cardNames(plan, engine.cards));
+      await send("Challenge", [clan, deckSeal, planSeal, await sealBox(key, sealed), opponent]);
       const [latest] = await read(`${realm}.Matches("${address}", 0, 1)`);
       return latest.ID;
     },
@@ -372,13 +380,13 @@ export function createArena({
       const planText = cardNames(plan, engine.cards);
       try {
         if (view.Phase === "play") {
-          const { func, args } = moveCall(view, null, { plan: planText });
+          const { func, args } = moveCall(view, null, { plan: planText }, engine.cards);
           return await send(func, args);
         }
         const key = await boxKey();
         const planSalt = newSalt();
-        const next = { plan: planText, seal: await sealOf(planSalt, planText), box: await sealBox(key, { plan: planText, planSalt }) };
-        const { func, args } = moveCall(view, await openBox(key, view.Box), next);
+        const next = { plan: planText, seal: await sealOf(planSalt, planText), box: await sealBox(key, { plan, planSalt }) };
+        const { func, args } = moveCall(view, await openBox(key, view.Box), next, engine.cards);
         return await send(func, args);
       } catch (err) {
         throw errorFrom(err);
@@ -390,7 +398,7 @@ export function createArena({
       const view = await arena.match(id);
       if (view.action !== "finish") throw new ArenaError("wrongPhase", `Match ${id} has no reveal to finish`);
       try {
-        const { func, args } = moveCall(view, await openBox(await boxKey(), view.Box), null);
+        const { func, args } = moveCall(view, await openBox(await boxKey(), view.Box), null, engine.cards);
         return await send(func, args);
       } catch (err) {
         throw errorFrom(err);

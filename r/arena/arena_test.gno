@@ -178,12 +178,12 @@ func TestBoxText(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
 	seal := sealOf(saltA, deckA)
-	full := boxOf(strings.Repeat("\x00\xff\x07\x80", 256))
-	urequire.Equal(t, 1368, len(full))
+	full := boxOf(strings.Repeat("\x00\xff\x07\x80", 26))
+	urequire.Equal(t, 140, len(full))
 	cases := []struct{ name, box string }{
-		{"over 1368 characters", strings.Repeat("A", 1372)},
-		{"1369 characters of 1024 bytes", full + "\n"},
-		{"1368 characters of 1026 bytes", strings.Repeat("A", 1368)},
+		{"over 140 characters", strings.Repeat("A", 144)},
+		{"141 characters of 104 bytes", full + "\n"},
+		{"140 characters of 105 bytes", strings.Repeat("A", 140)},
 		{"unpadded", "box"},
 		{"outside the alphabet", "b*x1"},
 		{"with a newline", "Ym94\n"},

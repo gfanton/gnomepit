@@ -193,7 +193,7 @@ func TestMatchRecordBox(cur realm, t *testing.T) {
 		seal: sealOf(salt2, picks),
 	}
 
-	for _, n := range []int{104, 312, maxBox} {
+	for _, n := range []int{1, 64, maxBox} {
 		m := base
 		m.box = strings.Repeat("\x00\xff\x07", n)[:n]
 		b := encodeMatch(rules, m)

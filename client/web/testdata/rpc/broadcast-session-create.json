@@ -11,7 +11,7 @@
         "Info": ""
       },
       "GasWanted": "10000000",
-      "GasUsed": "624818"
+      "GasUsed": "624787"
     },
     "deliver_tx": {
       "ResponseBase": {
@@ -22,9 +22,9 @@
         "Info": ""
       },
       "GasWanted": "10000000",
-      "GasUsed": "1364675"
+      "GasUsed": "1359479"
     },
-    "hash": "mIDEv70Dpf9q7g5l7kJ48zTyO2G6VC24fQOCA09g7y0=",
-    "height": "32"
+    "hash": "IawbAjJBePDhtV/Kitfiuamzh1P9/QhBiPmI8gN1Cmw=",
+    "height": "5"
   }
 }

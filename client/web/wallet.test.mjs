@@ -43,7 +43,7 @@ test("keys derive the same from the same signature, per generation", async () =>
 
 test("a box opens with the keys that sealed it, and only with them", async () => {
   const { boxKey } = await deriveKeys(signature, 0, engine);
-  const contents = { plan: "Pick,Pick,Pick", planSalt: newSalt() };
+  const contents = { plan: [0, 0, 0], planSalt: newSalt() };
   const box = await sealBox(boxKey, contents);
   assert.deepEqual(await openBox(boxKey, box), contents);
   assert.deepEqual(await openBox((await deriveKeys(signature, 3, engine)).boxKey, box), contents);
@@ -51,6 +51,52 @@ test("a box opens with the keys that sealed it, and only with them", async () =>
   const other = await deriveKeys(otherSignature, 0, engine);
   await assert.rejects(openBox(other.boxKey, box), failure("box"));
   await assert.rejects(openBox(boxKey, "not a box"), failure("box"));
+});
+
+const start = { round: 1, gnomes: [0, 1].map(() => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] })) };
+const boxSize = (box) => atob(box).length;
+
+// The realm takes boxes of at most 104 bytes. The deck travels as a card set, so it comes
+// back in card id order, which is the order its seal must name it in.
+test("every legal round-1 plan of each clan fits a box, round 1 in 104 bytes and later rounds in 64", async () => {
+  const { boxKey } = await deriveKeys(signature, 0, engine);
+  for (const { name, cards: pool } of engine.clans) {
+    const plans = engine.legalPlans({ state: start, side: 0, deck: pool });
+    assert.ok(plans.length > 0, name);
+    const deck = [...pool].reverse();
+    for (const plan of plans) {
+      const round1 = { deck, deckSalt: newSalt(), plan, planSalt: newSalt() };
+      const box = await sealBox(boxKey, round1);
+      assert.ok(boxSize(box) <= 104, `${name} ${plan}: ${boxSize(box)} bytes`);
+      assert.deepEqual(await openBox(boxKey, box), { ...round1, deck: [...pool].sort((a, b) => a - b) });
+
+      const later = { plan, planSalt: newSalt() };
+      const laterBox = await sealBox(boxKey, later);
+      assert.ok(boxSize(laterBox) <= 64, `${name} ${plan}: ${boxSize(laterBox)} bytes`);
+      assert.deepEqual(await openBox(boxKey, laterBox), later);
+    }
+  }
+});
+
+// sealContents seals raw contents with the box key, the way sealBox wraps its own.
+async function sealContents(boxKey, contents) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const sealed = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, boxKey, contents));
+  return btoa(String.fromCharCode(...iv, ...sealed));
+}
+
+test("a box whose contents are not a plan, or a deck and a plan, is refused", async () => {
+  const { boxKey } = await deriveKeys(signature, 0, engine);
+  const salt = Array(32).fill(7);
+  const deck = Array(8).fill(0);
+  const refused = [
+    [], salt, [...salt, 0], [...salt, 2, 0], [...salt, 4, 0, 0, 0, 0], Array(50).fill(1),
+    [...salt, ...salt, ...deck], [...salt, ...salt, ...deck, 0], [...salt, ...salt, ...deck, 1], [...salt, ...salt, ...deck, 4, 0, 0, 0, 0],
+    [...new TextEncoder().encode(JSON.stringify({ plan: "Pick,Pick,Pick", planSalt: "00".repeat(32) }))],
+  ];
+  for (const contents of refused) {
+    await assert.rejects(openBox(boxKey, await sealContents(boxKey, new Uint8Array(contents))), failure("box"), `${contents.length} bytes`);
+  }
 });
 
 test("a seal is the sha256 of the salt's bytes and the text", async () => {

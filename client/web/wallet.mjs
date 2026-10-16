@@ -90,23 +90,53 @@ export async function sealOf(salt, text) {
   return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", data)));
 }
 
-// sealBox encrypts object with the box key: base64 of a 12-byte IV and the AES-GCM
-// ciphertext of its JSON.
-export async function sealBox(boxKey, object) {
+const saltSize = 32;
+const cardSetSize = 8;
+const maxPlan = 3; // cards
+
+// sealBox encrypts a challenger's sealed plan with the box key and returns base64 of a
+// 12-byte IV and the AES-GCM ciphertext. plan and deck are card ids and the salts hex;
+// only the round-1 box holds deck and deckSalt.
+export async function sealBox(boxKey, { plan, planSalt, deck, deckSalt }) {
+  const salts = deck === undefined ? fromHex(planSalt) : [...fromHex(deckSalt), ...fromHex(planSalt), ...cardSet(deck)];
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const data = new TextEncoder().encode(JSON.stringify(object));
+  const data = new Uint8Array([...salts, plan.length, ...plan]);
   const sealed = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, boxKey, data));
   return toBase64(new Uint8Array([...iv, ...sealed]));
 }
 
+// openBox returns what sealBox sealed, the deck's ids in id order. It throws WalletError
+// "box" for a box these keys did not seal or that holds no plan.
 export async function openBox(boxKey, box) {
+  let data;
   try {
     const bytes = fromBase64(box);
-    const data = await crypto.subtle.decrypt({ name: "AES-GCM", iv: bytes.subarray(0, 12) }, boxKey, bytes.subarray(12));
-    return JSON.parse(new TextDecoder().decode(data));
+    data = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: bytes.subarray(0, 12) }, boxKey, bytes.subarray(12)));
   } catch {
     throw new WalletError("box", "This wallet's keys did not seal this plan");
   }
+  const round1 = data.length >= 2 * saltSize + cardSetSize + 2;
+  const salts = round1 ? 2 * saltSize : saltSize;
+  const plan = data.subarray(round1 ? salts + cardSetSize : salts);
+  const count = plan[0];
+  if (!(count >= 1 && count <= maxPlan && plan.length === 1 + count)) throw new WalletError("box", "This box holds no plan this page can read");
+  const sealed = { plan: [...plan.subarray(1)], planSalt: toHex(data.subarray(salts - saltSize, salts)) };
+  if (!round1) return sealed;
+  return { ...sealed, deck: cardIDsOf(data.subarray(salts, salts + cardSetSize)), deckSalt: toHex(data.subarray(0, saltSize)) };
+}
+
+// cardSet packs card ids as the engine's card set: a big-endian 64-bit word, bit i set for
+// card id i.
+function cardSet(ids) {
+  const set = new Uint8Array(cardSetSize);
+  for (const id of ids) set[cardSetSize - 1 - (id >> 3)] |= 1 << (id & 7);
+  return set;
+}
+
+function cardIDsOf(set) {
+  const ids = [];
+  for (let id = 0; id < 8 * cardSetSize; id++) if (set[cardSetSize - 1 - (id >> 3)] & (1 << (id & 7))) ids.push(id);
+  return ids;
 }
 
 // findSession looks for master's active session on realm among the generations keysFor

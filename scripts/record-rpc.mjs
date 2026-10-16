@@ -55,7 +55,8 @@ await record("simulate-error", await rpcCall("abci_query", {
   path: ".app/simulate",
   data: call("Accept", ["99", "Ironhide", "x", "y"], Number(sequence), Number(accountNumber)),
 }));
-await record("broadcast-ok", await rpcCall("broadcast_tx_commit", { tx: challenge }));
+const posted = await rpcCall("broadcast_tx_commit", { tx: challenge });
+await record("broadcast-ok", posted);
 await record("broadcast-duplicate", await rpcCall("broadcast_tx_commit", { tx: challenge }));
 await record("broadcast-checktx", await rpcCall("broadcast_tx_commit", {
   tx: call("Challenge", ["Pickers", seal, seal, box, ""], Number(sequence) + 5, Number(accountNumber)),
@@ -103,5 +104,12 @@ await record("broadcast-session-call", await rpcCall("broadcast_tx_commit", {
     fee: { gasWanted: 30_000_000, gasFee: "30000ugnot" },
     msgs: [{ type: "/vm.m_call", value: { caller: alice.address, send: "", max_deposit: "", pkg_path: arena, func: "Challenge", args: ["Ironhide", seal, seal, btoa("session"), ""] } }],
   }),
+}));
+
+// Withdrawing the challenge broadcast-ok posted frees its storage. deliver_tx's data holds
+// Challenge's result, the new id, as `("<id>" string)`.
+const [, id] = /"(\d+)"/.exec(atob(posted.result.deliver_tx.ResponseBase.Data));
+await record("broadcast-unlock", await rpcCall("broadcast_tx_commit", {
+  tx: call("Resign", [id], Number(sequence) + 3, Number(accountNumber)),
 }));
 process.exit(0);

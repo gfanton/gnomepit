@@ -85,7 +85,8 @@ export function createChain({ rpc, fetch = globalThis.fetch.bind(globalThis) }) 
     },
 
     // broadcast sends a signed transaction and waits for its block. A wait that times
-    // out is a network error: the transaction passed CheckTx and may still land.
+    // out is a network error: the transaction passed CheckTx and may still land. storage
+    // is the bytes the transaction locked in realm storage, negative when it freed more.
     async broadcast(tx) {
       let result;
       try {
@@ -98,7 +99,10 @@ export function createChain({ rpc, fetch = globalThis.fetch.bind(globalThis) }) 
         const base = phase.ResponseBase;
         if (base.Error !== null) throw new ChainError(type, reasonOf(base.Error, base.Log));
       }
-      return { hash: result.hash, height: Number(result.height), gasUsed: Number(result.deliver_tx.GasUsed) };
+      const storage = (result.deliver_tx.ResponseBase.Events ?? [])
+        .filter((e) => e["@type"] === "/tm.StorageDepositEvent" || e["@type"] === "/tm.StorageUnlockEvent")
+        .reduce((bytes, e) => bytes + Number(e.bytes_delta), 0);
+      return { hash: result.hash, height: Number(result.height), gasUsed: Number(result.deliver_tx.GasUsed), storage };
     },
   };
 }
