@@ -15,12 +15,11 @@ func withCards(cards ...Card) *Ruleset {
 }
 
 var effectCards = []Card{
-	{Name: "Overdig", Cost: 1, Tier: Normal, Special: true, Damage: []Effect{{Hit, 3}, {GainVulnerable, 1}}},
+	{Name: "Crack Jab", Cost: 1, Tier: Normal, Special: true, Damage: []Effect{{Hit, 3}, {GainVulnerable, 1}}},
 	{Name: "Open Up", Cost: 1, Tier: Normal, Special: true, Damage: []Effect{{GainVulnerable, 1}}},
 	{Name: "Deep Swing", Cost: 2, Tier: Slow, Special: true, Damage: []Effect{{HitPerVulnerable, 3}}},
 	{Name: "Brace Up", Cost: 1, Tier: Normal, Special: true, Block: []Effect{{BlockPerVulnerable, 2}}},
 	{Name: "Sap", Cost: 2, Tier: Normal, Special: true, Damage: []Effect{{StripBlock, 0}, {Hit, 2}}},
-	{Name: "Kickback", Cost: 1, Tier: Slow, Special: true, Damage: []Effect{{HitHardest, 5}}},
 	{Name: "Sneak", Cost: 1, Tier: Normal, Special: true, Damage: []Effect{{GainVulnerable, 1}, {HitIfNotAttacked, 5}}},
 }
 
@@ -31,7 +30,7 @@ func TestSelfRiskEffects(t *testing.T) {
 		start, end [2][3]int
 	}{
 		"a token gained after the hit doubles the next one": {
-			[]string{"Overdig", "Brace", "Brace"}, []string{"Pick", "Pick", "Pick"},
+			[]string{"Crack Jab", "Brace", "Brace"}, []string{"Pick", "Pick", "Pick"},
 			fresh, [2][3]int{{13, 0, 0}, {12, 0, 0}}},
 		"a token gained in a step does not double that step's hit": {
 			[]string{"Open Up", "Brace", "Brace"}, []string{"Pick", "Brace", "Brace"},

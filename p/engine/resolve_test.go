@@ -277,24 +277,39 @@ func TestDelversLines(t *testing.T) {
 		"a token applied in the Damage phase stays": {
 			[]string{"Blowback", "Brace"}, []string{"Brace", "Chalk Dust", "Brace"}, 1,
 			[2][3]int{{15, 1, 0}, {15, 0, 0}}, [2][3]int{{15, 1, 0}, {15, 1, 0}}, Ongoing},
-		"Earth Ear cancels Hammer Blow's wind-up": {
-			[]string{"Earth Ear", "Rockfall"}, []string{"Hammer Blow", "Cobble Throw"}, 1,
-			fresh, [2][3]int{{14, 0, 0}, {10, 0, 0}}, Ongoing},
 		"Deadfall catches Double Tap on its last beat": {
 			[]string{"Chisel Jab", "Deadfall"}, []string{"Momentum", "Double Tap"}, 1,
 			fresh, [2][3]int{{15, 0, 0}, {13, 1, 0}}, Ongoing},
-		"Fool's Gold baits Shield Catch": {
-			[]string{"Cribbing", "Fool's Gold", "Chisel Jab"}, []string{"Cobble Throw", "Shield Catch"}, 1,
-			fresh, [2][3]int{{15, 0, 0}, {11, 0, 0}}, Ongoing},
-		"Snare returns every Pickers hit": {
-			[]string{"Snare", "Rockfall"}, []string{"Kneecap", "Pickaxe Flurry", "Sling Stone"}, 1,
-			fresh, [2][3]int{{10, 0, 0}, {6, 0, 0}}, Ongoing},
-		"Cave Echo's token doubles Rockfall": {
-			[]string{"Cave Echo", "Rockfall"}, []string{"Bulwark", "Avalanche"}, 1,
-			fresh, [2][3]int{{15, 0, 0}, {5, 0, 0}}, Ongoing},
-		"Timber Set cancels twice and holds the lead": {
-			[]string{"Timber Set"}, []string{"Pick", "Hammer Blow"}, 3,
-			[2][3]int{{9, 0, 0}, {8, 0, 0}}, [2][3]int{{9, 0, 0}, {8, 1, 0}}, AWins},
+		"Open Guard soaks the Pickers' chip and feeds Cribbing": {
+			[]string{"Open Guard", "Cribbing", "Chisel Jab"}, []string{"Pick", "Pickaxe Flurry", "Sling Stone"}, 1,
+			fresh, [2][3]int{{15, 0, 0}, {13, 0, 0}}, Ongoing},
+		"Hammer Blow lands doubled through Open Guard": {
+			[]string{"Open Guard", "Pick", "Chisel Jab"}, []string{"Hammer Blow", "Cobble Throw"}, 1,
+			fresh, [2][3]int{{7, 0, 0}, {12, 0, 0}}, Ongoing},
+		"Cribbing grows from Ambush's token": {
+			[]string{"Ambush", "Cribbing", "Pick"}, []string{"Momentum", "Kneecap", "Pickaxe Flurry"}, 1,
+			fresh, [2][3]int{{9, 0, 0}, {8, 0, 0}}, Ongoing},
+		"Ambush hits while Bulwark winds up": {
+			[]string{"Ambush", "Chisel Jab", "Pick"}, []string{"Bulwark", "Avalanche"}, 1,
+			fresh, [2][3]int{{11, 0, 0}, {9, 0, 0}}, Ongoing},
+		"Shield Catch cancels Ambush": {
+			[]string{"Ambush", "Chisel Jab", "Pick"}, []string{"Shield Catch", "Cobble Throw"}, 1,
+			fresh, [2][3]int{{13, 0, 0}, {12, 0, 0}}, Ongoing},
+		"Overdig lands under Loose Timbers": {
+			[]string{"Overdig", "Chisel Jab"}, []string{"Loose Timbers", "Avalanche"}, 1,
+			fresh, [2][3]int{{15, 0, 0}, {10, 0, 0}}, Ongoing},
+		"Hammer Blow lands doubled after Overdig": {
+			[]string{"Overdig", "Cribbing"}, []string{"Cobble Throw", "Hammer Blow"}, 1,
+			fresh, [2][3]int{{5, 0, 0}, {9, 0, 0}}, Ongoing},
+		"Kickback returns Hammer Blow": {
+			[]string{"Cribbing", "Chisel Jab", "Kickback"}, []string{"Hammer Blow", "Pick"}, 1,
+			fresh, [2][3]int{{10, 0, 0}, {9, 0, 0}}, Ongoing},
+		"Cave-In strips Bulwark's Block": {
+			[]string{"Cave-In"}, []string{"Spiked Shield", "Bulwark"}, 1,
+			fresh, [2][3]int{{14, 0, 0}, {10, 0, 0}}, Ongoing},
+		"Undermine cancels Cave-In's wind-up": {
+			[]string{"Cave-In"}, []string{"Undermine", "Pickaxe Flurry", "Sling Stone"}, 1,
+			fresh, [2][3]int{{9, 0, 0}, {15, 0, 0}}, Ongoing},
 	}
 	rs := ProofOfConcept()
 	for name, tc := range cases {

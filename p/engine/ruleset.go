@@ -112,16 +112,16 @@ func ProofOfConcept() *Ruleset {
 		{Name: "Shield Catch", Cost: 2, Tier: Normal, Special: true, Parry: 1},
 		{Name: "Loose Timbers", Cost: 2, Tier: Normal, Special: true, Block: []Effect{{GainBlock, 3}}, CancelDamage: hits(1, 4)},
 
-		{Name: "Blowback", Cost: 2, Tier: Normal, Special: true, Rare: true, Block: []Effect{{MoveVulnerable, 0}}},
-		{Name: "Earth Ear", Cost: 1, Tier: Normal, Special: true, Interrupt: true, Block: []Effect{{GainBlock, 1}}},
-		{Name: "Deadfall", Cost: 2, Tier: Normal, Special: true, Parry: 1, Damage: []Effect{{VulnerableIfCancelled, 1}}},
-		{Name: "Fool's Gold", Cost: 1, Tier: Normal, Special: true, Damage: hits(1, 1), CancelDamage: []Effect{{ApplyVulnerable, 1}}},
+		{Name: "Kickback", Cost: 1, Tier: Slow, Special: true, Rare: true, Damage: []Effect{{HitHardest, 5}}},
+		{Name: "Overdig", Cost: 2, Tier: Normal, Special: true, Damage: []Effect{{Hit, 6}, {GainVulnerable, 1}}},
+		{Name: "Ambush", Cost: 1, Tier: Normal, Special: true, Damage: []Effect{{GainVulnerable, 1}, {HitIfNotAttacked, 6}}},
+		{Name: "Open Guard", Cost: 1, Tier: Normal, Special: true, Block: []Effect{{GainBlock, 4}}, Damage: []Effect{{GainVulnerable, 1}}},
 		{Name: "Chisel Jab", Cost: 1, Tier: Normal, Special: true, Damage: hits(1, 2)},
 		{Name: "Rockfall", Cost: 2, Tier: Slow, Special: true, Damage: hits(1, 5)},
-		{Name: "Cribbing", Cost: 1, Tier: Normal, Special: true, Block: []Effect{{GainBlock, 2}}},
-		{Name: "Snare", Cost: 1, Tier: Normal, Special: true, Block: []Effect{{GainCounter, 1}}},
-		{Name: "Timber Set", Cost: 3, Tier: Normal, Special: true, Parry: 2, Damage: []Effect{{VulnerableIfCancelled, 1}}},
-		{Name: "Cave Echo", Cost: 1, Tier: Normal, Special: true, Interrupt: true, Damage: []Effect{{VulnerableIfCancelled, 1}}},
+		{Name: "Cribbing", Cost: 1, Tier: Normal, Special: true, Block: []Effect{{BlockPerVulnerable, 1}}},
+		{Name: "Deadfall", Cost: 2, Tier: Normal, Special: true, Parry: 1, Damage: []Effect{{VulnerableIfCancelled, 1}}},
+		{Name: "Blowback", Cost: 2, Tier: Normal, Special: true, Block: []Effect{{MoveVulnerable, 0}}},
+		{Name: "Cave-In", Cost: 3, Tier: Slow, Special: true, Damage: []Effect{{StripBlock, 0}, {Hit, 5}}},
 	}
 	const firstPickers, firstIronhide, firstDelvers, end = 2, 12, 22, 32
 	return &Ruleset{

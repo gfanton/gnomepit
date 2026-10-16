@@ -22,7 +22,7 @@ func TestRares(t *testing.T) {
 			rares = append(rares, c.Name)
 		}
 	}
-	assert.ElementsMatch(t, []string{"Undermine", "Avalanche", "Blowback"}, rares)
+	assert.ElementsMatch(t, []string{"Undermine", "Avalanche", "Kickback"}, rares)
 }
 
 func TestLegalDeck(t *testing.T) {

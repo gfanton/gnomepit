@@ -34,10 +34,10 @@ func TestLegalPlanCounts(t *testing.T) {
 	}{
 		"Pickers pool":          {pickers, 429},
 		"Ironhide pool":         {ironhide, 147},
-		"Delvers pool":          {delvers, 429},
+		"Delvers pool":          {delvers, 305},
 		"Pickers starter deck":  {pickers &^ cardBits(t, rs, "Hunker Down", "Boot and Heel"), 412},
 		"Ironhide starter deck": {ironhide &^ cardBits(t, rs, "Shield Catch", "Loose Timbers"), 127},
-		"Delvers starter deck":  {delvers &^ cardBits(t, rs, "Timber Set", "Cave Echo"), 290},
+		"Delvers starter deck":  {delvers &^ cardBits(t, rs, "Blowback", "Cave-In"), 290},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
