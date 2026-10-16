@@ -28,6 +28,9 @@ func reset() {
 	matches = avl.Tree{}
 	byPlayer = avl.Tree{}
 	lastID = 0
+	chunks = avl.Tree{}
+	players = avl.Tree{}
+	openList = ""
 }
 
 func sealOf(salt, text string) string {
