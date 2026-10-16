@@ -12,7 +12,7 @@ export function viewOf(raw, address = '', now = Date.now() / 1000) {
   const offered = field(raw,'action') ?? field(raw,'canDo');
   v.action = ['accept','move','finish','claimForfeit','wait','done'].includes(offered) ? offered
     : v.phase === 'open' && v.side !== 0 && (!v.opponent || v.opponent === address) && (!v.expires || now < v.expires) ? 'accept'
-    : ['ended','withdrawn','expired'].includes(v.phase) ? 'done'
+    : ['ended','expired'].includes(v.phase) ? 'done'
     : v.deadlinePassed && v.side >= 0 && v.toMove !== address ? 'claimForfeit'
     : 'wait'; // Only the arena can say a turn needs move vs automatic finish.
   if (['play','reveal'].includes(v.phase) && v.deadlinePassed) v.action = v.side >= 0 && v.toMove !== address ? 'claimForfeit' : 'wait';

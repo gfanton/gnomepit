@@ -144,7 +144,7 @@ func TestMatchViewKeepsTheSealHidden(cur realm, t *testing.T) {
 	Accept(cross(cur), id, "Ironhide", deckB, braces)
 
 	v := Match(id)
-	uassert.Equal(t, bob.String(), v.Opponent)
+	uassert.Equal(t, "", v.Opponent)
 	uassert.Equal(t, "", v.ChallengerDeck)
 	uassert.Equal(t, deckB, v.AcceptorDeck)
 	urequire.Equal(t, 1, len(v.Plans))

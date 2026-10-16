@@ -1,12 +1,14 @@
 // The spec's Adena checks, one button each, against a local gnodev: the root signature
-// is stable, Adena creates a session the page then signs with, and Adena signs a move
-// itself. ?dev=alice runs the page with the dev wallet instead, to test the page.
+// is stable, Adena creates a session the page then signs with, Adena revokes a dead
+// session, and Adena signs a move itself. ?dev=alice runs the page with the dev wallet
+// instead, to test the page.
 
 import { createArena } from "./arena.mjs";
 import { randomDeck, randomPlan } from "./bot.mjs";
 import { createChain } from "./chain.mjs";
 import { devWallet } from "./devwallet.mjs";
 import { loadEngine } from "./engine.mjs";
+import { createReader } from "./gnovalue.mjs";
 import * as signer from "./signer.mjs";
 import { answer, rootText, waitForAdena } from "./wallet.mjs";
 
@@ -19,6 +21,7 @@ const devName = params.get("dev");
 const $ = (id) => document.getElementById(id);
 const engine = await loadEngine("engine.wasm", "cards.json");
 const chain = createChain({ rpc });
+const read = createReader(chain);
 const wallet = devName === null ? await waitForAdena() : devWallet({ name: devName, signer, chain, chainId });
 const options = { chain, wallet, engine, signer, realm, chainId, origin: location.origin, storage: localStorage };
 const bySession = createArena(options);
@@ -82,6 +85,23 @@ check("check-session", "session", async () => {
   const account = await bySession.connect();
   if (account.mode !== "session") return [false, `no session: mode ${account.mode}, reason: ${account.fallback ?? "none"}`];
   return [posted?.Challenger === address, `match ${posted?.ID} posted by ${posted?.Challenger} through its session`];
+});
+
+// A withdrawn challenge leaves its session dead, so the next post's one approval revokes it
+// beside the session it creates.
+check("check-revoke", "revoke", async () => {
+  const { address } = await bySession.connect();
+  await bySession.authorize();
+  bySession.resumeSessions();
+  const withdrawn = await post(bySession);
+  const [lock] = (await read(`${realm}.Locks("${address}")`)).filter((l) => l.Match === withdrawn?.ID);
+  if (lock === undefined) return [false, `no session locked to match ${withdrawn?.ID}: mode ${bySession.account().mode}`];
+  await bySession.resign(withdrawn.ID);
+  const posted = await post(bySession);
+  const account = bySession.account();
+  if (account.mode !== "session") return [false, `no session: mode ${account.mode}, reason: ${account.fallback ?? "none"}`];
+  const kept = (await chain.sessions(address)).some((s) => s.address === lock.Session && s.expiresAt === lock.Expires);
+  return [!kept && posted?.Challenger === address, `match ${withdrawn.ID} withdrawn, its session ${lock.Session} ${kept ? "still on the chain" : "revoked"}; match ${posted?.ID} posted through a new session`];
 });
 
 check("check-contract", "contract", async () => {

@@ -183,6 +183,30 @@ func TestAcceptRejects(cur realm, t *testing.T) {
 	})
 }
 
+// The named opponent is the only one who can accept, and the acceptor then names them, so a
+// copy would keep 40 bytes for good.
+func TestAcceptForgetsTheNamedOpponent(cur realm, t *testing.T) {
+	reset()
+	testing.SetRealm(testing.NewUserRealm(alice))
+	named := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), bob)
+	open := Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
+	uassert.Equal(t, bob.String(), Match(named).Opponent)
+
+	testing.SetRealm(testing.NewUserRealm(bob))
+	Accept(cross(cur), named, "Ironhide", deckB, braces)
+	Accept(cross(cur), open, "Ironhide", deckB, braces)
+
+	uassert.Equal(t, "", recordOf(t, named).opponent.String())
+	stored := func(id string) string {
+		n, _ := strconv.Atoi(id)
+		return chunkRecord(stringAt(&chunks, chunkKey(n)), (n-1)%chunkSize)
+	}
+	uassert.Equal(t, len(stored(open)), len(stored(named)), "an accepted reserved match stores what an accepted open one does")
+	v := Match(named)
+	uassert.Equal(t, "", v.Opponent)
+	uassert.Equal(t, bob.String(), v.Acceptor)
+}
+
 func TestRevealRejects(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))

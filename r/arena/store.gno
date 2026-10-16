@@ -94,6 +94,8 @@ func (p playerRecord) newest(offset, limit int) []int {
 	return out
 }
 
+// ceiling: each change rewrites the whole open list, 8 bytes per open challenge, so its gas
+// grows with the board; an avl index keyed by expiry and id if the board holds thousands.
 func openAdd(id int, expires int64) {
 	openList += encodeOpen([]openEntry{{id: id, expires: expires}})
 }

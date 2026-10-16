@@ -128,24 +128,23 @@ async function play(id, a, b, afterRound1 = async () => {}) {
   log(`match ${id} ended: ${seenByA.Result} by ${seenByA.Reason}, HP ${JSON.stringify(seenByA.HP)}`);
 }
 
-// forceChallenge sends a Challenge signed with session, a session of master's that the
-// arena itself would not pick, and returns the chain's refusal.
-async function forceChallenge(master, root, session) {
+// forceCall sends the arena call func(args) signed with session, a session of master's that
+// the arena itself would not pick, and returns the chain's refusal.
+async function forceCall(master, root, session, func, args) {
   let keys;
   for (let g = 0; g < generations && keys === undefined; g++) {
     const k = await deriveKeys(root, g, signer);
     if (k.sessionAddress === session.address) keys = k;
   }
   assert.ok(keys !== undefined, "the session's key is one of the root signature's generations");
-  const seal = "ab".repeat(32);
-  const msg = { type: "/vm.m_call", value: { caller: master, send: "", max_deposit: "", pkg_path: realm, func: "Challenge", args: ["Pickers", seal, seal, "AAAA", ""] } };
+  const msg = { type: "/vm.m_call", value: { caller: master, send: "", max_deposit: "", pkg_path: realm, func, args } };
   const request = { chainId, accountNumber: session.accountNumber, sequence: session.sequence, privKey: keys.sessionKey, sessionAddr: keys.sessionAddress, memo: "", msgs: [msg] };
   try {
     await chain.broadcast(await payFor(chain, (fee) => signer.signTx({ ...request, fee })));
   } catch (err) {
     return err.reason;
   }
-  assert.fail("the chain took a second challenge from a locked session");
+  assert.fail(`the chain took ${func} from a locked session`);
 }
 
 // ---- Sessions
@@ -165,9 +164,17 @@ const firstSession = (await chain.sessions(aliceAddress)).find((s) => s.address 
 assert.ok(firstSession !== undefined, `the chain lists the session locked to match ${id}`);
 // The dev wallet signs the root text the same way every time, so this is the arena's root.
 const root = await rootSignature(devWallet({ name: "alice", signer, chain, chainId }), aliceAddress, origin);
-const refusal = await forceChallenge(aliceAddress, root, firstSession);
+const seal = "ab".repeat(32);
+const refusal = await forceCall(aliceAddress, root, firstSession, "Challenge", ["Pickers", seal, seal, "AAAA", ""]);
 assert.match(refusal, new RegExp(`session locked to match ${id}$`));
 log(`a second challenge with that session: ${refusal}`);
+// Alice's wallet posts a match of her own, where that session may not act either.
+const aliceByWallet = player("alice", { signEachMove: true });
+await ready("alice", aliceByWallet);
+const elsewhere = await post(aliceByWallet);
+const resignation = await forceCall(aliceAddress, root, firstSession, "Resign", [elsewhere]);
+assert.match(resignation, new RegExp(`session locked to match ${id}$`));
+log(`a resignation in match ${elsewhere} with that session: ${resignation}`);
 
 await accept(bob, id);
 assert.equal((await bob.account()).mode, "session", "bob's acceptance got a session");
@@ -208,9 +215,7 @@ log(`match ${second} got session ${next.Session}, revoking ${renewed.Session} of
 
 // ---- The wallet signs each move
 
-const aliceByWallet = player("alice", { signEachMove: true });
 const bobByWallet = player("bob", { signEachMove: true });
-await ready("alice", aliceByWallet);
 await ready("bob", bobByWallet);
 const third = await post(aliceByWallet);
 await accept(bobByWallet, third);

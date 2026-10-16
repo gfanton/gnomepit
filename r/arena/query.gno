@@ -23,7 +23,8 @@ type MatchSummary struct {
 	Result, Reason               string
 }
 
-// MatchView is everything one match screen needs. Plans holds [challenger, acceptor]
+// MatchView is everything one match screen needs. Opponent is the address an open
+// challenge is reserved for, "" once accepted. Plans holds [challenger, acceptor]
 // for each resolved round, and for the round being played while the match runs, ""
 // while a plan is sealed or not yet made; HP holds both sides' HP after each resolved
 // round; Box is the challenger's encrypted pending plan, in base64.

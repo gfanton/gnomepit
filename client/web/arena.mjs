@@ -11,6 +11,8 @@ import {
 } from "./wallet.mjs";
 
 const pageSize = 50; // the realm's maxPage
+// ms; setTimeout runs a longer delay at once.
+const longestTimer = 2 ** 31 - 1;
 
 // ArenaError's type is one of: noWallet, wrongNetwork, refused, unauthorized, wrongPhase,
 // sealMismatch, illegalPlan, deadlinePassed, sessionExpired, insufficientFunds,
@@ -299,11 +301,15 @@ export function createArena({
     return found;
   }
 
-  // sessionState is "expired" when this player must renew before acting in match id, and
-  // "active" otherwise, always in the per-move mode.
+  const endingSession = async (id) => (stored("root") === null ? null : sessionIn(id, await readMatch(id)));
+
+  // sessionState gives session, "expired" when this player must renew before acting in match
+  // id and "active" otherwise, always in the per-move mode, and sessionExpires, the expiry of
+  // the session that signs their next call there, when there is one.
   async function sessionState(id, view) {
-    if (mode() === "contract" || stored("root") === null || roleOf(view) === undefined || view.Phase === "ended") return "active";
-    return (await sessionIn(id, view)) === null ? "expired" : "active";
+    if (mode() === "contract" || stored("root") === null || roleOf(view) === undefined || view.Phase === "ended") return { session: "active" };
+    const found = await sessionIn(id, view);
+    return found === null ? { session: "expired" } : { session: "active", sessionExpires: found.session.expiresAt };
   }
 
   // serial runs task once every task before it has settled. Calls go out one at a time,
@@ -413,8 +419,9 @@ export function createArena({
 
     // match returns the view of match id with its replayed rounds, the engine state they
     // lead to, the challenger's pending clash when it is their move, the action, when the
-    // action is move what the plan is made from (planFrom), and session, "expired" when
-    // this player must renew before acting.
+    // action is move what the plan is made from (planFrom), session, "expired" when this
+    // player must renew before acting, and sessionExpires, in Unix seconds, when a session
+    // of theirs signs their next call.
     async match(id) {
       checkID(id);
       try {
@@ -428,8 +435,7 @@ export function createArena({
         }
         const action = actionFor(view, address, now(), pending);
         const planning = action === "move" ? planFrom(view, state, pending, challengerDeck(view, opened, engine.cards), engine.cards) : undefined;
-        const session = await sessionState(id, view);
-        return { ...view, rounds, state, pending, planning, action, session, deadline: view.Deadline };
+        return { ...view, rounds, state, pending, planning, action, ...(await sessionState(id, view)), deadline: view.Deadline };
       } catch (err) {
         throw errorFrom(err);
       }
@@ -490,16 +496,16 @@ export function createArena({
       }
     },
 
-    // These end the match, so with no live session for it the wallet signs them. A claimer's
-    // session always ends before the deadline it claims.
+    // These end the match, so with no live session for it, or no root signature to derive
+    // one, the wallet signs them. A claimer's session always ends before the deadline it claims.
     async resign(id) {
       checkID(id);
-      await send("Resign", [id], async () => sessionIn(id, await readMatch(id)));
+      await send("Resign", [id], () => endingSession(id));
     },
 
     async claimForfeit(id) {
       checkID(id);
-      await send("ClaimForfeit", [id], async () => sessionIn(id, await readMatch(id)));
+      await send("ClaimForfeit", [id], () => endingSession(id));
     },
 
     // subscribe calls onChange(change) when the arena may have changed, and returns a
@@ -541,17 +547,20 @@ export function createArena({
     },
 
     // watch calls onChange(view) whenever match id changes, or onChange(null, error) when
-    // a read fails; subscribe says when to read it again. It returns a function that
-    // stops it.
+    // a read fails; subscribe says when to read it again, and so does the expiry of the
+    // session that signs this player's next call there. It returns a function that stops it.
     watch(id, onChange, { interval = 4000 } = {}) {
       let last = "";
       let stopped = false;
+      let expiry = null;
       let reading = Promise.resolve();
       const read = () => {
         reading = reading.then(async () => {
           if (stopped) return;
           try {
             const view = await arena.match(id);
+            clearTimeout(expiry);
+            if (view.sessionExpires > 0) expiry = setTimeout(read, Math.min((view.sessionExpires - now()) * 1000, longestTimer));
             const seen = JSON.stringify([view.Phase, view.Round, view.ToMove, view.Plans, view.HP, view.Result, view.DeadlinePassed, view.session]);
             if (seen !== last && !stopped) {
               last = seen;
@@ -568,6 +577,7 @@ export function createArena({
       read();
       return () => {
         stopped = true;
+        clearTimeout(expiry);
         unsubscribe();
       };
     },

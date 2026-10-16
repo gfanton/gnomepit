@@ -37,6 +37,7 @@ func Accept(cur realm, id, clan, deck, plan string) {
 	}
 
 	m.acceptor = caller
+	m.opponent = ""
 	join(cur.Previous().IsUser(), caller, n)
 	m.clans[1] = c
 	m.decks[1] = bits

@@ -722,6 +722,22 @@ test("a claim, a withdrawal or a resignation with no live session has the wallet
   }
 });
 
+// Without the root signature the device derives no session key, so it holds no session.
+test("a claim or a resignation on a device without the root signature has the wallet sign it", async () => {
+  const cases = [
+    ["claim", (arena) => arena.claimForfeit("1"), "ClaimForfeit"],
+    ["resignation", (arena) => arena.resign("1"), "Resign"],
+  ];
+  for (const [name, call, func] of cases) {
+    const chain = arenaChain({ sessions: [await sessionOf(0)], locks: [await lockOn(0, "1")], matches: { 1: "match-play" } });
+    const { arena, contracts } = sessionPlayer(chain);
+    assert.equal((await arena.connect()).state, "missing", name);
+    await call(arena);
+    assert.deepEqual(contracts.map((c) => c.messages.map((m) => m.value.func)), [[func]], name);
+    assert.equal(chain.broadcasts, 0, name);
+  }
+});
+
 // The lobby's account state comes from the arena, so the per-move mode a wallet without
 // sessions leaves shows on the page that met it, and on the next one.
 test("the lobby shows the per-move mode a wallet without sessions leaves, until sessions resume", async (t) => {
@@ -954,6 +970,22 @@ test("watch reads a match again on a call to it, and not on a call to another ma
   await sleep(10);
   assert.equal(reads, 2);
   stop();
+});
+
+// While the indexer answers, nothing but a call to the match makes watch read it again, and
+// a session expires without one.
+test("watch reads a match again when the session for it expires", async () => {
+  const unixNow = () => Math.floor(Date.now() / 1000);
+  const expires = unixNow() + 1;
+  const chain = arenaChain({ sessions: [await sessionOf(0, { expiresAt: expires })], locks: [await lockOn(0, "1", expires)], matches: { 1: "match-play" } });
+  const { arena } = sessionPlayer(chain, { indexer: fakeIndexer(), now: unixNow });
+  await arena.connect();
+  await arena.authorize();
+  const seen = [];
+  const stop = arena.watch("1", (view, err) => seen.push(err ?? view.session));
+  for (const start = Date.now(); seen.length < 2 && Date.now() - start < 3000; ) await sleep(10);
+  stop();
+  assert.deepEqual(seen, ["active", "expired"]);
 });
 
 test("watch reports a match whose session expires", async () => {

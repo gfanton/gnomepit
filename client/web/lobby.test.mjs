@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {ArenaError} from './arena.mjs';
 import {createLobby} from './lobby.mjs';
 
 const app = () => ({classList:{add(){},remove(){},toggle(){}},dataset:{},innerHTML:'',querySelector:()=>null});
@@ -204,6 +205,23 @@ test('withdrawing returns to the board', async t => {
   assert.equal(lobby.model.view, null);
   assert.equal(lobby.model.error, '');
   assert.equal(arena.reads, reads + 1, 'the board is read again');
+});
+
+// The realm deletes a withdrawn challenge, and a later challenge clears an expired one.
+test('a link to a removed challenge says so and stays on the board', async t => {
+  stubPage(t);
+  const arena = followedArena();
+  arena.match = async () => { throw new ArenaError('wrongPhase', 'unknown match'); };
+  arena.watch = () => { arena.watched = true; return () => {}; };
+  const {lobby, shown} = lobbyOf(arena, 'g1bob');
+  await lobby.enter('4');
+  assert.equal(lobby.model.view, null);
+  assert.equal(lobby.model.error, '');
+  assert.equal(arena.watched, undefined);
+  const page = shown();
+  assert.match(page, /This challenge was withdrawn or has expired\./);
+  assert.match(page, /Open challenges/);
+  assert.doesNotMatch(page, /didn’t go through/);
 });
 
 test('resigning a running match shows its result', async t => {
