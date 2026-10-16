@@ -9,7 +9,7 @@
 import assert from "node:assert/strict";
 
 import { cardIDs, createArena } from "../client/web/arena.mjs";
-import { createChain, feeFor } from "../client/web/chain.mjs";
+import { createChain, feeFor, gasWantedFor } from "../client/web/chain.mjs";
 import { devWallet } from "../client/web/devwallet.mjs";
 import { nodeEngine } from "../client/web/engine-node.mjs";
 import * as signer from "../client/web/signer.mjs";
@@ -72,7 +72,7 @@ async function step(move, make) {
   const id = await make();
   assert.ok(landed.length > before, `${move} sends a transaction`);
   const { storage, gasUsed, deposit } = landed.at(-1);
-  return { id, row: { move, storage, gasUsed, fee: feeFor(Math.ceil(gasUsed * 1.2) + 100_000, price), deposit } };
+  return { id, row: { move, storage, gasUsed, fee: feeFor(gasWantedFor(gasUsed), price), deposit } };
 }
 
 async function playMatch() {

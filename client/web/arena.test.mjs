@@ -12,7 +12,7 @@ import { devAccounts, devWallet } from "./devwallet.mjs";
 import { nodeEngine } from "./engine-node.mjs";
 import { createLobby } from "./lobby.mjs";
 import * as signer from "./signer.mjs";
-import { WalletError, deriveKeys, newSalt, openBox, revokeMessage, sealBox, sealOf, sessionBudget, sessionMessage } from "./wallet.mjs";
+import { WalletError, deriveKeys, newSalt, openBox, revokeMessage, sealBox, sealOf, sessionBudget, sessionMessage, sessionReserve } from "./wallet.mjs";
 
 const engine = await nodeEngine();
 const alice = "g1alice";
@@ -237,6 +237,10 @@ const lockType = {
   type: { "@type": "/gno.DeclaredType", PkgPath: realm, Name: "SessionLock", Base: { "@type": "/gno.StructType", Fields: ["Session", "Match", "Expires"].map((Name) => ({ Name })) } },
 };
 
+// gnodev's gas price, at which the chain below charges unless a test sets another.
+const floor = { gas: 1000, amount: 1, denom: "ugnot" };
+const budget = { challenger: sessionBudget("challenger", floor), acceptor: sessionBudget("acceptor", floor) };
+
 // arenaChain holds master's session accounts in sessions, answers Locks with locks, and
 // answers Match(id) with the recorded answer matches names for id, by file name or as
 // parsed JSON, or throws it when it is an error, or fails with "unknown match". A
@@ -261,7 +265,7 @@ function arenaChain({ sessions = [], locks = [], matches = {} } = {}) {
       return (typeof answer === "string" ? load(answer) : answer).results;
     },
     typeJSON: async (id) => (id === lockTypeID ? lockType : load(`qtype-${id.split(".").pop()}`)),
-    gasPrice: async () => ({ gas: 1000, amount: 1, denom: "ugnot" }),
+    gasPrice: async () => floor,
     simulate: async () => 1_000_000,
     broadcast: async () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
@@ -349,7 +353,7 @@ const day = 24 * 60 * 60;
 // A session lasts a day from now unless fields say otherwise, as one the page creates does.
 const sessionOf = async (generation, fields = {}) => ({
   address: (await keysOf(generation)).sessionAddress,
-  accountNumber: 20 + generation, sequence: 0, expiresAt: now + day, spendLimit: sessionBudget.challenger, spendUsed: 0, allowPaths: [`vm/exec:${realm}`],
+  accountNumber: 20 + generation, sequence: 0, expiresAt: now + day, spendLimit: budget.challenger, spendUsed: 0, allowPaths: [`vm/exec:${realm}`],
   ...fields,
 });
 const lockOn = async (generation, match, expires = now + day) => ({ Session: (await keysOf(generation)).sessionAddress, Match: match, Expires: expires });
@@ -395,7 +399,7 @@ test("a challenge revokes the dead sessions and creates one in one approval, the
   assert.equal(contracts.length, 1);
   assert.deepEqual(contracts[0].messages, [
     revokeMessage(test1, k0.sessionPubKey), revokeMessage(test1, k1.sessionPubKey), revokeMessage(test1, k2.sessionPubKey),
-    sessionMessage(test1, k3.sessionPubKey, now, realm, sessionBudget.challenger, day),
+    sessionMessage(test1, k3.sessionPubKey, now, realm, budget.challenger, day),
   ]);
   assert.equal(chain.broadcasts, 1);
   const call = signed.at(-1);
@@ -424,7 +428,7 @@ test("the session request names its gas per message and a fee at the chain's gas
 });
 
 test("an unlocked session with the role's budget left signs the opening without asking the wallet", async () => {
-  const chain = arenaChain({ sessions: [await sessionOf(0, { spendUsed: sessionBudget.challenger - sessionBudget.acceptor }), await sessionOf(1)] });
+  const chain = arenaChain({ sessions: [await sessionOf(0, { spendUsed: budget.challenger - budget.acceptor }), await sessionOf(1)] });
   const { arena, contracts, signed } = sessionPlayer(chain);
   await arena.connect();
   await arena.authorize();
@@ -439,7 +443,7 @@ test("an unlocked session with the role's budget left signs the opening without 
 
 test("with no generation free, the first one revoked takes the new session", async () => {
   // Every generation holds a session: 5 and 9 expired, the others live but short of a budget.
-  const short = { spendUsed: sessionBudget.challenger - 300_000 };
+  const short = { spendUsed: budget.challenger - 300_000 };
   const sessions = await Promise.all([...Array(16).keys()].map((g) => sessionOf(g, g === 5 || g === 9 ? { expiresAt: now - 1 } : short)));
   const chain = arenaChain({ sessions });
   const { arena, contracts, signed } = sessionPlayer(chain, {
@@ -454,7 +458,7 @@ test("with no generation free, the first one revoked takes the new session", asy
   const [k5, k9] = await Promise.all([5, 9].map(keysOf));
   assert.deepEqual(contracts[0].messages, [
     revokeMessage(test1, k5.sessionPubKey), revokeMessage(test1, k9.sessionPubKey),
-    sessionMessage(test1, k5.sessionPubKey, now, realm, sessionBudget.challenger, day),
+    sessionMessage(test1, k5.sessionPubKey, now, realm, budget.challenger, day),
   ]);
   // The revoked session's account was 25; the chain gives the new one another.
   assert.deepEqual([signed.at(-1).sessionAddr, signed.at(-1).accountNumber, signed.at(-1).sequence], [k5.sessionAddress, 77, 0]);
@@ -463,7 +467,7 @@ test("with no generation free, the first one revoked takes the new session", asy
 // A read served before the approval's block applies still shows what the chain held before.
 test("a new session the chain does not show yet signs nothing", async () => {
   const expiredAt5 = await sessionOf(5, { expiresAt: now - 1 });
-  const short = { spendUsed: sessionBudget.challenger - 300_000 };
+  const short = { spendUsed: budget.challenger - 300_000 };
   const full = await Promise.all([...Array(16).keys()].map((g) => (g === 5 ? expiredAt5 : sessionOf(g, short))));
   for (const [name, sessions] of [["none", []], ["the revoked one", full]]) {
     const chain = arenaChain({ sessions });
@@ -488,7 +492,7 @@ test("an opening neither reuses nor revokes a session locked to a running match"
   await arena.authorize();
   await arena.challenge(opening);
   const k1 = await keysOf(1);
-  assert.deepEqual(contracts.map((c) => c.messages), [[sessionMessage(test1, k1.sessionPubKey, now, realm, sessionBudget.challenger, day)]]);
+  assert.deepEqual(contracts.map((c) => c.messages), [[sessionMessage(test1, k1.sessionPubKey, now, realm, budget.challenger, day)]]);
   assert.equal(signed.at(-1).sessionAddr, k1.sessionAddress);
 });
 
@@ -568,14 +572,14 @@ test("an acceptance asks for a session with the acceptor's budget", async () => 
   const chain = arenaChain();
   const { arena, contracts } = sessionPlayer(chain, {
     created: async () => {
-      chain.sessionList = [await sessionOf(0, { spendLimit: sessionBudget.acceptor })];
+      chain.sessionList = [await sessionOf(0, { spendLimit: budget.acceptor })];
       return { status: "success" };
     },
   });
   await arena.connect();
   await arena.authorize();
   await arena.accept("1", { clan: "Ironhide", deck: cardIDs(deckB, engine.cards), plan: cardIDs(braces, engine.cards) });
-  assert.equal(contracts[0].messages[0].value.spend_limit, `${sessionBudget.acceptor}ugnot`);
+  assert.equal(contracts[0].messages[0].value.spend_limit, `${budget.acceptor}ugnot`);
 });
 
 test("the arena's session lifetime sets the new session's expiry", async () => {
@@ -631,7 +635,7 @@ test("renew creates a session for the player's side without sending a move, and 
   await arena.renew("1");
   const [k0, k1] = await Promise.all([0, 1].map(keysOf));
   assert.deepEqual(contracts.map((c) => c.messages), [[
-    revokeMessage(test1, k0.sessionPubKey), sessionMessage(test1, k1.sessionPubKey, now, realm, sessionBudget.challenger, day),
+    revokeMessage(test1, k0.sessionPubKey), sessionMessage(test1, k1.sessionPubKey, now, realm, budget.challenger, day),
   ]]);
   assert.equal(chain.broadcasts, 0);
 
@@ -640,6 +644,37 @@ test("renew creates a session for the player's side without sending a move, and 
   await arena.move("1", engine.legalPlans(view.planning)[0]);
   assert.equal(chain.broadcasts, 1);
   assert.deepEqual([signed.at(-1).sessionAddr, signed.at(-1).accountNumber], [k1.sessionAddress, 52]);
+});
+
+// The chain refuses a move its session cannot pay at the block's gas price and charges
+// nothing, so the session's spending never shows it.
+test("a match whose session cannot pay the next move at the chain's gas price is expired, and renewing prices the budget", async () => {
+  const box = await sealBox((await keysOf(0)).boxKey, { deck: cardIDs(deckA, engine.cards), deckSalt: newSalt(), plan: cardIDs(picks, engine.cards), planSalt: newSalt() });
+  const left = sessionReserve(floor).later.challenger;
+  const chain = arenaChain({ sessions: [await sessionOf(0, { spendUsed: budget.challenger - left })], locks: [await lockOn(0, "1")], matches: { 1: revealWith(box) } });
+  const busy = { ...floor, amount: 5 };
+  const { arena, contracts } = sessionPlayer(chain, {
+    created: async () => {
+      chain.sessionList = [await sessionOf(1, { spendLimit: sessionBudget("challenger", busy) })];
+      return { status: "success" };
+    },
+  });
+  await arena.connect();
+  await arena.authorize();
+  assert.equal((await arena.match("1")).session, "active");
+
+  chain.gasPrice = async () => busy;
+  const view = await arena.match("1");
+  assert.equal(view.session, "expired");
+  await assert.rejects(arena.move("1", engine.legalPlans(view.planning)[0]), sessionExpired);
+  assert.equal(chain.broadcasts, 0);
+
+  await arena.renew("1");
+  const [k0, k1] = await Promise.all([0, 1].map(keysOf));
+  assert.deepEqual(contracts.map((c) => c.messages), [[
+    revokeMessage(test1, k0.sessionPubKey), sessionMessage(test1, k1.sessionPubKey, now, realm, sessionBudget("challenger", busy), day),
+  ]]);
+  assert.equal((await arena.match("1")).session, "active");
 });
 
 // A session lasts a day from before the claimer's last move, so it has always expired by the

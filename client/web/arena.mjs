@@ -232,13 +232,13 @@ export function createArena({
   }
 
   // ownSessions reads this player's sessions on the chain and their locks in the realm,
-  // with every generation's keys.
+  // with every generation's keys and the chain's gas price, which sets what a move costs.
   async function ownSessions() {
     const keys = new Map();
     for (let generation = 0; generation < generations; generation++) keys.set(generation, await keysFor(generation));
-    return { onChain: await chain.sessions(address), keys, locks: await read(`${realm}.Locks("${address}")`) };
+    return { onChain: await chain.sessions(address), keys, locks: await read(`${realm}.Locks("${address}")`), price: await chain.gasPrice() };
   }
-  const classify = (found, matches) => classifySessions({ ...found, matches, now: now(), realm, reserve: sessionReserve });
+  const classify = ({ price, ...found }, matches) => classifySessions({ ...found, matches, now: now(), realm, reserve: sessionReserve(price) });
 
   // prepareSession returns a live unlocked session with role's budget, else has the wallet
   // revoke the dead ones and create one. It returns null in the per-move mode, its fallback.
@@ -255,17 +255,18 @@ export function createArena({
       }
     }
     const { unlocked, dead, free } = classify(found, matches);
-    const reusable = unlocked.find(({ session }) => left(session) >= sessionBudget[role]);
+    const budget = sessionBudget(role, found.price);
+    const reusable = unlocked.find(({ session }) => left(session) >= budget);
     if (reusable !== undefined) return reusable;
     const target = free[0] ?? dead[0];
     if (target === undefined) return fallBack("Every session this account can hold is used");
     const start = now();
     const messages = [
       ...dead.map(({ keys }) => revokeMessage(address, keys.sessionPubKey)),
-      sessionMessage(address, target.keys.sessionPubKey, start, realm, sessionBudget[role], sessionLifetime),
+      sessionMessage(address, target.keys.sessionPubKey, start, realm, budget, sessionLifetime),
     ];
     const gasWanted = sessionGas * messages.length;
-    const response = await wallet.DoContract({ messages, memo: "Gnomehall session", gasWanted, gasFee: feeFor(gasWanted, await chain.gasPrice()) });
+    const response = await wallet.DoContract({ messages, memo: "Gnomehall session", gasWanted, gasFee: feeFor(gasWanted, found.price) });
     if (response?.status !== "success") return fallBack(response?.message || response?.type || "The wallet created no session");
     // A read served before the approval's block applies may still show the revoked session.
     const created = (s) => s.address === target.keys.sessionAddress && s.expiresAt === start + sessionLifetime;
@@ -279,9 +280,10 @@ export function createArena({
   // leaves, which that call locks. It returns null when there is none.
   async function sessionIn(id, view) {
     const role = roleOf(view);
+    const found = await ownSessions();
     // Only this match is read: sessions locked elsewhere then count as dead, unused here.
-    const { byMatch, unlocked } = classify(await ownSessions(), new Map([[id, { phase: view.Phase, role }]]));
-    return byMatch.get(id) ?? unlocked.find(({ session }) => left(session) >= sessionReserve.opening[role]) ?? null;
+    const { byMatch, unlocked } = classify(found, new Map([[id, { phase: view.Phase, role }]]));
+    return byMatch.get(id) ?? unlocked.find(({ session }) => left(session) >= sessionReserve(found.price).opening[role]) ?? null;
   }
 
   async function signingIn(id, view) {

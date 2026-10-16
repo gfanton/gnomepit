@@ -11,6 +11,9 @@ import {
 } from "./wallet.mjs";
 
 const engine = await nodeEngine();
+// gnodev's gas price, 1 ugnot per 1,000 gas, at which client/ONLINE.md works the budgets out.
+const floor = { gas: 1000, amount: 1, denom: "ugnot" };
+const busy = { ...floor, amount: 5 };
 const signature = btoa("a root signature of 64 bytes, as a wallet would return one....");
 const otherSignature = btoa("another root signature, from another wallet or another site....");
 const realm = "gno.land/r/gfanton/gnomehall/arena";
@@ -115,7 +118,7 @@ test("a new salt is 32 random bytes in hex", () => {
 
 test("a session message lets the session key call the arena alone, for its lifetime and spend limit", async () => {
   const keys = await deriveKeys(signature, 0, signer);
-  const { type, value } = sessionMessage("g1master", keys.sessionPubKey, now, realm, sessionBudget.challenger, 30);
+  const { type, value } = sessionMessage("g1master", keys.sessionPubKey, now, realm, sessionBudget("challenger", floor), 30);
   assert.equal(type, "/auth.m_create_session");
   assert.equal(value.creator, "g1master");
   assert.equal(value.session_key.type_url, "/tm.PubKeySecp256k1");
@@ -124,7 +127,7 @@ test("a session message lets the session key call the arena alone, for its lifet
   assert.equal(btoa(String.fromCharCode(...wrapped.subarray(2))), keys.sessionPubKey);
   assert.equal(value.expires_at, String(now + 30));
   assert.deepEqual(value.allow_paths, [`vm/exec:${realm}`]);
-  assert.equal(value.spend_limit, `${sessionBudget.challenger}ugnot`);
+  assert.equal(value.spend_limit, `${sessionBudget("challenger", floor)}ugnot`);
   assert.equal(value.spend_period, "0");
 });
 
@@ -142,10 +145,41 @@ for (let generation = 0; generation < generations; generation++) keys.set(genera
 const addressOf = (generation) => keys.get(generation).sessionAddress;
 const sessionAt = (generation, fields = {}) => ({
   address: addressOf(generation),
-  accountNumber: 9, sequence: 2, expiresAt: now + 3600, spendLimit: sessionBudget.challenger, spendUsed: 0, allowPaths: [`vm/exec:${realm}`], ...fields,
+  accountNumber: 9, sequence: 2, expiresAt: now + 3600, spendLimit: sessionBudget("challenger", floor), spendUsed: 0, allowPaths: [`vm/exec:${realm}`], ...fields,
 });
 const lockOf = (generation, match, expires = now + 3600) => ({ Session: addressOf(generation), Match: match, Expires: expires });
-const classify = (onChain, locks = [], matches = new Map()) => classifySessions({ onChain, keys, locks, matches, now, realm, reserve: sessionReserve });
+const classify = (onChain, locks = [], matches = new Map(), price = floor) =>
+  classifySessions({ onChain, keys, locks, matches, now, realm, reserve: sessionReserve(price) });
+const reserve = sessionReserve(floor);
+const budget = sessionBudget("challenger", floor);
+
+test("at the floor price, the budgets and reserves are client/ONLINE.md's", () => {
+  assert.equal(sessionBudget("challenger", floor), 654_056);
+  assert.equal(sessionBudget("acceptor", floor), 535_923);
+  assert.deepEqual(reserve, { opening: { challenger: 262_607, acceptor: 245_023 }, later: { challenger: 59_036, acceptor: 25_555 } });
+});
+
+// Deposits are priced per byte and stay; only the fees follow the gas price.
+test("at five times the floor price, budgets and reserves pay five times the fees and the same deposits", () => {
+  assert.equal(sessionBudget("challenger", busy), 1_315_067);
+  assert.equal(sessionBudget("acceptor", busy), 957_202);
+  assert.deepEqual(sessionReserve(busy), { opening: { challenger: 335_431, acceptor: 363_911 }, later: { challenger: 295_177, acceptor: 127_767 } });
+});
+
+// The chain refuses a move the session can no longer pay at the price of its block, and
+// charges nothing, so only the price tells the page the session is used up.
+test("a session live at the floor price is dead at five times that price", () => {
+  const sessions = [sessionAt(0, { spendUsed: budget - reserve.later.challenger }), sessionAt(1, { spendUsed: budget - reserve.opening.challenger })];
+  const locks = [lockOf(0, "4")];
+  const running = new Map([["4", { phase: "reveal", role: "challenger" }]]);
+  const atFloor = classify(sessions, locks, running);
+  assert.equal(atFloor.byMatch.get("4").generation, 0);
+  assert.deepEqual(generationsOf(atFloor.unlocked), [1]);
+  const atFive = classify(sessions, locks, running, busy);
+  assert.equal(atFive.byMatch.size, 0);
+  assert.deepEqual(atFive.unlocked, []);
+  assert.deepEqual(generationsOf(atFive.dead), [0, 1]);
+});
 const generationsOf = (entries) => entries.map((e) => e.generation);
 const allBut = (...taken) => [...keys.keys()].filter((g) => !taken.includes(g));
 
@@ -162,7 +196,7 @@ test("a live session locked to a running match is that match's, and a live one l
 
 test("an expired or used-up session is dead, locked or not", () => {
   const running = new Map([["4", { phase: "reveal", role: "challenger" }]]);
-  const usedUp = { spendUsed: sessionBudget.challenger - sessionReserve.opening.acceptor + 1 };
+  const usedUp = { spendUsed: budget - reserve.opening.acceptor + 1 };
   const out = classify(
     [sessionAt(0, { expiresAt: now }), sessionAt(1, usedUp), sessionAt(2, { expiresAt: now - 1 })],
     [lockOf(2, "4", now - 1)],
@@ -176,7 +210,7 @@ test("an expired or used-up session is dead, locked or not", () => {
 // A role's moves cost what its own costliest move bounds, so a session locked to a match is
 // judged by its side in that match.
 test("a locked session is used up below the reserve of its side in the match", () => {
-  const left = { spendUsed: sessionBudget.challenger - sessionReserve.later.challenger + 1 };
+  const left = { spendUsed: budget - reserve.later.challenger + 1 };
   const matches = new Map([["4", { phase: "reveal", role: "challenger" }], ["5", { phase: "play", role: "acceptor" }]]);
   const out = classify([sessionAt(0, left), sessionAt(1, left)], [lockOf(0, "4"), lockOf(1, "5")], matches);
   assert.deepEqual(generationsOf(out.dead), [0]);
@@ -185,7 +219,7 @@ test("a locked session is used up below the reserve of its side in the match", (
 
 // A locked session never pays an opening again, while an unlocked one may still pay either side's.
 test("a locked session needs only its side's later moves left, an unlocked one an opening", () => {
-  const left = { spendUsed: sessionBudget.challenger - sessionReserve.later.challenger };
+  const left = { spendUsed: budget - reserve.later.challenger };
   const out = classify([sessionAt(0, left), sessionAt(1, left)], [lockOf(0, "4")], new Map([["4", { phase: "reveal", role: "challenger" }]]));
   assert.equal(out.byMatch.get("4").generation, 0);
   assert.deepEqual(generationsOf(out.dead), [1]);

@@ -2,13 +2,49 @@
 // answers the same calls; the one signature every key derives from; the sessions that
 // let the page sign a match's moves; and the boxes that keep a challenger's sealed plans.
 
+import { feeFor, gasWantedFor } from "./chain.mjs";
 import { fromBase64, fromHex, toBase64, toHex } from "./encoding.mjs";
 
-// Each side's spend limit for one match, in ugnot, as client/ONLINE.md "Session budgets" works it out.
-export const sessionBudget = { challenger: 653_890, acceptor: 535_848 };
-// Each side's costliest opening (Challenge, Accept) and later move (Reveal, Play), in ugnot, the
-// later plus a tenth for a growing chunk: a session with less left counts as used up.
-export const sessionReserve = { opening: { challenger: 262_570, acceptor: 245_002 }, later: { challenger: 59_097, acceptor: 25_560 } };
+// Each side's moves in the first match of client/ONLINE.md "Storage per move", which carries
+// the one-time costs, opening first: the gas each used and the ugnot it deposited.
+const measuredMoves = {
+  challenger: [
+    { gasUsed: 15_088_465, deposit: 244_400 }, // Challenge
+    { gasUsed: 44_508_182, deposit: 0 }, // Reveal, round 1
+    { gasUsed: 31_861_997, deposit: 0 }, // Reveal, round 2
+    { gasUsed: 30_747_144, deposit: 0 }, // Reveal, round 3
+  ],
+  acceptor: [
+    { gasUsed: 24_685_128, deposit: 215_300 }, // Accept
+    { gasUsed: 18_985_591, deposit: 0 }, // Play, round 2
+    { gasUsed: 19_077_664, deposit: 0 }, // Play, round 3
+  ],
+};
+// The gas used by each side's costliest later move, Reveal or Play, in either measured match.
+const costliestLaterGas = { challenger: 44_640_225, acceptor: 19_275_120 };
+// A later move's reserve keeps a tenth more, since moves cost more as their chunk fills.
+const laterMargin = 1.1;
+
+// costAt is a move's cost in ugnot at price, as chain.gasPrice gives it: its deposit and its fee.
+const costAt = ({ gasUsed, deposit }, price) => deposit + feeFor(gasWantedFor(gasUsed), price);
+
+// sessionBudget is role's spend limit for one match at price: the cost of each of the side's
+// moves, and of its costliest once more, for one failed attempt.
+export function sessionBudget(role, price) {
+  const costs = measuredMoves[role].map((move) => costAt(move, price));
+  return costs.reduce((sum, cost) => sum + cost, 0) + Math.max(...costs);
+}
+
+// sessionReserve is, at price, each side's costliest opening (Challenge, Accept) and later move
+// (Reveal, Play), in ugnot: a session with less left counts as used up.
+export function sessionReserve(price) {
+  const later = (role) => Math.ceil(costAt({ gasUsed: costliestLaterGas[role], deposit: 0 }, price) * laterMargin);
+  return {
+    opening: { challenger: costAt(measuredMoves.challenger[0], price), acceptor: costAt(measuredMoves.acceptor[0], price) },
+    later: { challenger: later("challenger"), acceptor: later("acceptor") },
+  };
+}
+
 export const sessionLifetime = 24 * 60 * 60; // seconds
 // Gas per session message; creating a session uses about 1.4M.
 export const sessionGas = 3_000_000;

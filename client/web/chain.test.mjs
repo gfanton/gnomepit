@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { ChainError, createChain, payFor } from "./chain.mjs";
+import { ChainError, createChain, gasWantedFor, payFor } from "./chain.mjs";
 
 const recorded = (name) => JSON.parse(readFileSync(new URL(`./testdata/rpc/${name}.json`, import.meta.url)));
 
@@ -157,8 +157,13 @@ test("a transaction pays for the gas its simulation used, with a margin", async 
   // cover it, so it pays the least it can.
   assert.deepEqual(fees[0], { gasWanted: 100_000_000, gasFee: "1ugnot" });
   const used = await createChain({ rpc: "", fetch: async () => ({ ok: true, json: async () => recorded("simulate") }) }).simulate("x");
-  const gasWanted = Math.ceil(used * 1.2) + 100_000;
+  const gasWanted = gasWantedFor(used);
   assert.deepEqual(fees[1], { gasWanted, gasFee: `${Math.ceil(gasWanted / 1000)}ugnot` });
+});
+
+test("a transaction wants the gas its simulation used, plus a fifth and 100,000", () => {
+  assert.equal(gasWantedFor(1_000_000), 1_300_000);
+  assert.equal(gasWantedFor(15_057_665), 18_169_198);
 });
 
 test("a broadcast that times out may still land, so it is a network error", async () => {

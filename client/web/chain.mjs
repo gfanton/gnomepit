@@ -113,13 +113,18 @@ const provisionalGas = 100_000_000;
 // payFor signs a transaction for what it costs. sign(fee) resolves to the transaction
 // signed with fee {gasWanted, gasFee}. payFor simulates it under a fee of one unit,
 // which a simulation never checks against the gas price but a session's allowance must
-// cover, then signs it again for the gas used plus a fifth and 100,000, at the chain's
-// price.
+// cover, then signs it again for gasWantedFor the gas used, at the chain's price.
 export async function payFor(chain, sign) {
   const price = await chain.gasPrice();
   const used = await chain.simulate(await sign({ gasWanted: provisionalGas, gasFee: `1${price.denom}` }));
-  const gasWanted = Math.ceil(used * 1.2) + 100_000;
+  const gasWanted = gasWantedFor(used);
   return sign({ gasWanted, gasFee: `${feeFor(gasWanted, price)}${price.denom}` });
+}
+
+// gasWantedFor is the gas a transaction asks for: the gas its simulation used, plus a fifth
+// and 100,000.
+export function gasWantedFor(used) {
+  return Math.ceil(used * 1.2) + 100_000;
 }
 
 // feeFor is the fee, in price's denomination, for gasWanted gas at price.
