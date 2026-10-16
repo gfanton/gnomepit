@@ -77,7 +77,9 @@ func (m record) view(rules *engine.Ruleset, id int, now int64) MatchView {
 		rounds++
 	}
 	for r := 1; r <= rounds; r++ {
-		v.Plans = append(v.Plans, []string{planText(rules, planAt(m.plans[0], r)), planText(rules, planAt(m.plans[1], r))})
+		a := planText(rules, planAt(m.plans[0], r))
+		b := planText(rules, planAt(m.plans[1], r))
+		v.Plans = append(v.Plans, []string{a, b})
 	}
 	for r := 0; r < resolved; r++ {
 		v.HP = append(v.HP, []int{m.hp[r][0], m.hp[r][1]})

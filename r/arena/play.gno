@@ -223,7 +223,7 @@ func (m *record) end(result, reason string) {
 	m.phase = phaseEnded
 	m.result = result
 	m.reason = reason
-	m.seal, m.box = "", ""
+	m.deckSeal, m.seal, m.box = "", "", ""
 }
 
 // stateOf rebuilds the engine state the next round of m starts from. A round is resolved

@@ -272,6 +272,7 @@ func TestEndClearsSealAndBox(cur realm, t *testing.T) {
 	for _, id := range []string{resigned, forfeited} {
 		uassert.Equal(t, "", Match(id).Box, id)
 		m := recordOf(t, id)
+		uassert.Equal(t, "", m.deckSeal, id+": a deck seal resigned before its reveal is never checked")
 		uassert.Equal(t, "", m.seal, id)
 		uassert.Equal(t, "", m.box, id)
 	}

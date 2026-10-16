@@ -27,6 +27,7 @@ func TestWithdraw(cur realm, t *testing.T) {
 	Resign(cross(cur), id)
 	uassert.PanicsWithMessage(t, nil, "unknown match", func() { Match(id) })
 	uassert.Equal(t, 0, len(Matches(alice, 0, 50)))
+	uassert.Equal(t, "[]", showIDs(loadPlayer(alice).ids))
 	uassert.Equal(t, 0, len(Open(0, 50)))
 	uassert.AbortsWithMessage(t, cur, "unknown match", func() { Resign(cross(cur), id) })
 }
@@ -43,6 +44,7 @@ func TestWithdrawExpired(cur realm, t *testing.T) {
 	Resign(cross(cur), id)
 	uassert.PanicsWithMessage(t, nil, "unknown match", func() { Match(id) })
 	uassert.Equal(t, 0, len(Matches(alice, 0, 50)))
+	uassert.Equal(t, "[]", showIDs(loadPlayer(alice).ids))
 	uassert.Equal(t, "", openList)
 }
 

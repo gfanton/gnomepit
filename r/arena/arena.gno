@@ -125,13 +125,14 @@ func checkPage(offset, limit int) {
 	}
 }
 
-// boxBytes decodes a box argument: base64 of 1 to maxBox bytes.
+// boxBytes decodes a box argument: the standard base64 of 1 to maxBox bytes, in the one
+// form that encodes them, so Match returns every box exactly as it was sent.
 func boxBytes(text string) string {
 	if len(text) == 0 || len(text) > base64.StdEncoding.EncodedLen(maxBox) {
 		panic("invalid box")
 	}
 	raw, err := base64.StdEncoding.DecodeString(text)
-	if err != nil || len(raw) == 0 || len(raw) > maxBox {
+	if err != nil || len(raw) > maxBox || base64.StdEncoding.EncodeToString(raw) != text {
 		panic("invalid box")
 	}
 	return string(raw)

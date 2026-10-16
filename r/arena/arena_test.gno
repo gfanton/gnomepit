@@ -150,11 +150,13 @@ func TestClearingAtMostEight(cur realm, t *testing.T) {
 
 	Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
 	uassert.Equal(t, "11,10,9", summaryIDs(Matches(alice, 0, 50)))
+	uassert.Equal(t, "[9 10 11]", showIDs(loadPlayer(alice).ids))
 	uassert.PanicsWithMessage(t, nil, "unknown match", func() { Match("8") })
 	uassert.Equal(t, phaseExpired, Match("9").Phase)
 
 	Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
 	uassert.Equal(t, "12,11", summaryIDs(Matches(alice, 0, 50)))
+	uassert.Equal(t, "[11 12]", showIDs(loadPlayer(alice).ids))
 	uassert.Equal(t, 2, len(Open(0, 50)))
 }
 
@@ -176,11 +178,16 @@ func TestBoxText(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewUserRealm(alice))
 	seal := sealOf(saltA, deckA)
+	full := boxOf(strings.Repeat("\x00\xff\x07\x80", 256))
+	urequire.Equal(t, 1368, len(full))
 	cases := []struct{ name, box string }{
 		{"over 1368 characters", strings.Repeat("A", 1372)},
+		{"1369 characters of 1024 bytes", full + "\n"},
 		{"1368 characters of 1026 bytes", strings.Repeat("A", 1368)},
 		{"unpadded", "box"},
 		{"outside the alphabet", "b*x1"},
+		{"with a newline", "Ym94\n"},
+		{"stray low bits", "YR=="},
 	}
 	for _, c := range cases {
 		uassert.AbortsWithMessage(t, cur, "invalid box", func() {
@@ -188,8 +195,8 @@ func TestBoxText(cur realm, t *testing.T) {
 		}, c.name)
 	}
 
-	full := boxOf(strings.Repeat("\x00\xff\x07\x80", 256))
-	urequire.Equal(t, 1368, len(full))
-	id := Challenge(cross(cur), "Pickers", seal, seal, full, "")
-	uassert.Equal(t, full, Match(id).Box)
+	for _, box := range []string{boxOf("box"), full} {
+		id := Challenge(cross(cur), "Pickers", seal, seal, box, "")
+		uassert.Equal(t, box, Match(id).Box)
+	}
 }
