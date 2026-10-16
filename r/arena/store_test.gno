@@ -113,3 +113,27 @@ func TestOpenClearStopsAtMax(cur realm, t *testing.T) {
 	uassert.Equal(t, "[1]", showIDs(openClear(100, 1)))
 	uassert.Equal(t, 2, len(openEntries(openList)))
 }
+
+func TestDropAbsentMatchLeavesChunk(cur realm, t *testing.T) {
+	reset()
+	rules := engine.ProofOfConcept()
+	lastID = 66
+	saveMatch(rules, 65, openRecord(alice, 65))
+	before := stringAt(&chunks, chunkKey(65))
+
+	dropMatch(66)
+	uassert.Equal(t, before, stringAt(&chunks, chunkKey(65)))
+
+	dropMatch(65)
+	dropped := stringAt(&chunks, chunkKey(65))
+	dropMatch(65)
+	uassert.Equal(t, dropped, stringAt(&chunks, chunkKey(65)))
+}
+
+func TestOpenExpiryBoundary(cur realm, t *testing.T) {
+	reset()
+	openAdd(1, 50)
+	uassert.Equal(t, "[1]", showIDs(openNewest(50, 0, 50)))
+	uassert.Equal(t, "[]", showIDs(openClear(50, 8)))
+	uassert.Equal(t, "[1]", showIDs(openClear(51, 8)))
+}

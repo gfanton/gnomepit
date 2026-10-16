@@ -13,8 +13,6 @@ var (
 	openList string
 )
 
-// ---- Matches
-
 func chunkKey(id int) string {
 	var k [4]byte
 	binary.BigEndian.PutUint32(k[:], uint32((id-1)/chunkSize))
@@ -42,7 +40,7 @@ func dropMatch(id int) {
 	if id < 1 {
 		return
 	}
-	if chunks.Has(chunkKey(id)) {
+	if chunkRecord(stringAt(&chunks, chunkKey(id)), (id-1)%chunkSize) != "" {
 		putRecord(id, "")
 	}
 }
@@ -59,8 +57,6 @@ func stringAt(t *avl.Tree, key string) string {
 	}
 	return v.(string)
 }
-
-// ---- Players
 
 func loadPlayer(a address) playerRecord {
 	return decodePlayer(stringAt(&players, string(a)))
@@ -97,8 +93,6 @@ func (p playerRecord) newest(offset, limit int) []int {
 	}
 	return out
 }
-
-// ---- Open challenges
 
 func openAdd(id int, expires int64) {
 	openList += encodeOpen([]openEntry{{id: id, expires: expires}})
