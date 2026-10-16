@@ -1,6 +1,8 @@
 package arena
 
 import (
+	"strconv"
+	"strings"
 	"testing"
 
 	"gno.land/p/gfanton/gnomehall/engine"
@@ -182,6 +184,26 @@ func TestMatchRecordLimits(cur realm, t *testing.T) {
 	phase := base
 	phase.phase = "lost"
 	panicsWith(t, "unknown phase", func() { encodeMatch(rules, phase) })
+}
+
+func TestMatchRecordBox(cur realm, t *testing.T) {
+	rules := engine.ProofOfConcept()
+	base := record{
+		phase: phasePlay, clans: [2]int{1, 2}, challenger: alice, acceptor: bob,
+		seal: sealOf(salt2, picks),
+	}
+
+	for _, n := range []int{104, 312, maxBox} {
+		m := base
+		m.box = strings.Repeat("\x00\xff\x07", n)[:n]
+		b := encodeMatch(rules, m)
+		uassert.Equal(t, 115+32+2+n, len(b))
+		uassert.True(t, decodeMatch(rules, b) == m, "box of "+strconv.Itoa(n)+" bytes changed")
+	}
+
+	over := base
+	over.box = strings.Repeat("x", maxBox+1)
+	panicsWith(t, "box too long", func() { encodeMatch(rules, over) })
 }
 
 func TestChunkSlots(cur realm, t *testing.T) {

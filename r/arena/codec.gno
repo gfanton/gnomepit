@@ -223,7 +223,7 @@ func (r *reader) seal() string { return hex.EncodeToString([]byte(r.text(sealSiz
 // each side's index in the ruleset plus one, 0 for none; decks and plans are the engine's
 // card sets and the packed plans of withPlan; hp is the HP after each round, per side;
 // carried holds only the Vulnerable and Strength left after the last resolved round.
-// deckSeal and seal are 64 hex characters, box the box's raw bytes.
+// deckSeal and seal are 64 hex characters; box is the raw bytes, up to maxBox, stored with a 2-byte length.
 type record struct {
 	phase, result, reason string
 	clans                 [2]int
@@ -315,11 +315,11 @@ func encodeMatch(rules *engine.Ruleset, m record) string {
 		w.seal(m.deckSeal)
 	}
 	if flags&flagSealBox != 0 {
-		if len(m.box) > 255 {
+		if len(m.box) > maxBox {
 			panic("box too long")
 		}
 		w.seal(m.seal)
-		w.u8(uint64(len(m.box)))
+		w.u16(uint64(len(m.box)))
 		w.text(m.box)
 	}
 	return w.String()
@@ -362,7 +362,7 @@ func decodeMatch(rules *engine.Ruleset, b string) record {
 	}
 	if flags&flagSealBox != 0 {
 		m.seal = r.seal()
-		m.box = r.text(int(r.u8()))
+		m.box = r.text(int(r.u16()))
 	}
 	if r.left() != 0 {
 		panic("trailing bytes in record")
