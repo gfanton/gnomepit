@@ -29,7 +29,7 @@ A failed check 2 prints Adena's reason. The arena then falls back to check 3's p
 - **The root signature.** On each device the player signs one fixed text naming the site with `SignArbitrary`. The same wallet gives the same signature everywhere. HKDF-SHA256 derives two keys from it: a session key per generation (`gnomehall session <n>`) and a box key (`gnomehall box`). The page keeps the signature in local storage.
 - **The session.** One Adena approval creates a session for the session key. It may call the arena alone, spend 10 GNOT, and lasts 7 days. The spend counts gas fees and storage deposits; a challenge alone locks about 0.9 GNOT of deposit. A session with less than 1.5 GNOT left, or one past its expiry, counts as expired; the next authorization creates a session for the first generation the chain holds no session for.
 - **Boxes.** A challenger's sealed deck and plans travel to the chain encrypted with the box key, beside their seals. Any browser with the same wallet opens them, so a challenger can continue from another device.
-- **The fallback.** When Adena creates no session, or every generation already has one, Adena signs and sends each move through `DoContract`. The account state's `fallback` holds the reason, and the next `authorize()` asks for a session again.
+- **The fallback.** When Adena creates no session, or every generation already has one, Adena signs and sends each move through `DoContract`. The account state's `fallback` holds the reason, and after `resumeSessions()` the next challenge, acceptance or renewal asks for a session again.
 
 ## Live updates
 
@@ -70,7 +70,9 @@ const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origi
 | Call | Returns or does |
 |---|---|
 | `connect()` | `{state, address, mode, fallback}`. `state` is `noWallet`, `wrongNetwork`, `missing` (this device has not authorized) or `active`. `noWallet` and `wrongNetwork` return `{state, reason}` and no address. |
-| `authorize()` | Asks for the root signature once per device and leaves the per-move fallback, so the next challenge or acceptance asks for a session again; returns the new state |
+| `authorize()` | Asks for the root signature once per device; returns the new state |
+| `account()` | The account state `connect()` gives, without asking the wallet. `mode` is `contract` once a challenge, acceptance or renewal got no session. |
+| `resumeSessions()` | Leaves the per-move fallback, so the next challenge, acceptance or renewal asks for a session again; returns the new state |
 | `openChallenges(page)` | Open challenges, newest first, 50 a page, each with `action` (`accept`, `wait` for one's own, `done`) |
 | `myMatches(page)` | This player's matches, newest first, each with `action` and `deadline` |
 | `match(id)` | The match view, plus `rounds` (each resolved round replayed: plans, events, state, result), `state`, `pending` (the challenger's next clash, when it is their move), `planning` (`{state, side, deck}` to plan from when the action is `move`), `action`, and `session`: `expired` when the player must call `renew(id)` before acting, `active` otherwise |
@@ -79,14 +81,14 @@ const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origi
 | `renew(id)` | Asks the wallet for a new session for the player's side of match `id`, revoking the dead ones; sends no move |
 | `move(id, plan)` | Sends this player's turn: the challenger's reveal and next seal in one call, or the acceptor's plan |
 | `finish(id)` | Sends the challenger's last reveal, after round 3 or a knockout |
-| `resign(id)`, `claimForfeit(id)` | Resigns or withdraws; claims a passed deadline |
+| `resign(id)`, `claimForfeit(id)` | Resigns or withdraws; claims a passed deadline. With no live session for the match, the wallet signs the call. |
 | `subscribe(onChange)` | Calls `onChange({match, func, caller, height})` for each arena call, `match` being `null` for a new challenge, and `onChange({})` when anything may have changed: each time the indexer starts answering, and on every poll of the node. Returns a stop function. |
 | `watch(id, onChange)` | Calls `onChange(view)` whenever match `id` changes, reading it again on each change `subscribe` reports for it; returns a stop function |
 | `notify()` | Opts the browser in to the arena's Turn and Ended notifications; call it from a click |
 
 `challenge`, `accept` and `move` check the deck and plan with the engine first: a deck or plan it refuses throws `illegalPlan` before anything is sealed or sent. Moves go out one at a time, so two calls in a row never sign with the same sequence.
 
-`challenge` and `accept` sign with an unlocked session that has the side's budget left. Without one, they first ask the wallet, in one approval, to revoke the dead sessions and create one: expired or used-up sessions, and those locked to a match that ended or is gone. Their call locks the session to the match. Every later call in the match signs with that session, or with the one `renew` creates, and throws `sessionExpired` when there is none.
+`challenge` and `accept` sign with an unlocked session that has the side's budget left. Without one, they first ask the wallet, in one approval, to revoke the dead sessions and create one: expired or used-up sessions, and those locked to a match that ended or is gone. Their call locks the session to the match. Every later call in the match signs with that session, or with the one `renew` creates. Without one, `move` and `finish` throw `sessionExpired`, while `resign` and `claimForfeit` have the wallet sign: a claimer's session always ends before the deadline it claims.
 
 An action is `accept`, `move`, `finish`, `claimForfeit`, `wait` or `done`. A failed call throws an `ArenaError` whose `type` is one of `noWallet`, `wrongNetwork`, `refused`, `unauthorized`, `wrongPhase`, `sealMismatch`, `illegalPlan`, `deadlinePassed`, `sessionExpired`, `insufficientFunds`, `outOfStep`, `network` or `failed`, with a readable `reason`. `outOfStep` means the page's card file differs from the deployed engine.
 

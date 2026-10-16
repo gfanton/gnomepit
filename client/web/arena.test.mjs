@@ -10,6 +10,7 @@ import {
 import { ChainError } from "./chain.mjs";
 import { devAccounts, devWallet } from "./devwallet.mjs";
 import { nodeEngine } from "./engine-node.mjs";
+import { createLobby } from "./lobby.mjs";
 import * as signer from "./signer.mjs";
 import { WalletError, deriveKeys, newSalt, openBox, revokeMessage, sealBox, sealOf, sessionBudget, sessionMessage } from "./wallet.mjs";
 
@@ -251,6 +252,7 @@ function arenaChain({ sessions = [], locks = [], matches = {} } = {}) {
     evalJSON: async (expr) => {
       if (expr.startsWith(`${realm}.Locks(`)) return lockAnswer(chain.locks);
       if (expr.startsWith(`${realm}.Matches(`)) return load("matches").results;
+      if (expr.startsWith(`${realm}.Open(`)) return load("open").results;
       const [, id] = /\.Match\("(\d+)"\)$/.exec(expr);
       chain.matchReads.push(id);
       const answer = matches[id];
@@ -530,7 +532,7 @@ test("with every generation holding a session it may not revoke, the wallet sign
   assert.equal(account.fallback, "Every session this account can hold is used");
 });
 
-test("a refused session approval has the wallet sign the move, and the next authorization asks again", async () => {
+test("a refused session approval has the wallet sign each move until sessions resume", async () => {
   const chain = arenaChain();
   let attempts = 0;
   const { arena, contracts } = sessionPlayer(chain, {
@@ -550,8 +552,10 @@ test("a refused session approval has the wallet sign the move, and the next auth
   const refused = await arena.connect();
   assert.equal(refused.mode, "contract");
   assert.equal(refused.fallback, "User rejected");
+  assert.deepEqual(arena.account(), refused);
+  assert.deepEqual(await arena.authorize(), refused, "authorizing again keeps the per-move mode");
 
-  const again = await arena.authorize();
+  const again = arena.resumeSessions();
   assert.equal(again.mode, "session");
   assert.equal(again.state, "active");
   assert.equal(again.fallback, null);
@@ -605,7 +609,6 @@ test("a move whose session has expired throws sessionExpired and sends nothing",
   assert.equal(view.action, "move");
   assert.equal(view.session, "expired");
   await assert.rejects(arena.move("1", engine.legalPlans(view.planning)[0]), sessionExpired);
-  await assert.rejects(arena.resign("1"), sessionExpired);
   assert.equal(chain.broadcasts, 0);
   assert.equal(contracts.length, 0);
 
@@ -637,6 +640,71 @@ test("renew creates a session for the player's side without sending a move, and 
   await arena.move("1", engine.legalPlans(view.planning)[0]);
   assert.equal(chain.broadcasts, 1);
   assert.deepEqual([signed.at(-1).sessionAddr, signed.at(-1).accountNumber], [k1.sessionAddress, 52]);
+});
+
+// A session lasts a day from before the claimer's last move, so it has always expired by the
+// time the opponent's deadline passes.
+test("a claim, a withdrawal or a resignation with no live session has the wallet sign it", async () => {
+  const cases = [
+    ["claim", "match-play", (arena) => arena.claimForfeit("1"), "ClaimForfeit"],
+    ["withdrawal", "match-open", (arena) => arena.resign("1"), "Resign"],
+    ["resignation", "match-play", (arena) => arena.resign("1"), "Resign"],
+  ];
+  for (const [name, answer, call, func] of cases) {
+    const chain = arenaChain({ sessions: [await sessionOf(0, { expiresAt: now - 1 })], locks: [await lockOn(0, "1", now - 1)], matches: { 1: answer } });
+    const { arena, contracts } = sessionPlayer(chain);
+    await arena.connect();
+    await arena.authorize();
+    await call(arena);
+    assert.deepEqual(contracts.map((c) => c.messages.map((m) => m.value.func)), [[func]], name);
+    assert.equal(chain.broadcasts, 0, name);
+  }
+});
+
+// The lobby's account state comes from the arena, so the per-move mode a refused session
+// leaves shows on the page that met it, and on the next one.
+test("the lobby shows the per-move mode a refused session leaves, until sessions resume", async (t) => {
+  globalThis.document = { activeElement: null };
+  globalThis.history = { replaceState() {} };
+  globalThis.location = { pathname: "/", search: "", origin: "http://x" };
+  const pages = [];
+  // Leaving each lobby stops the watch on the posted match, whose polling would outlive the test.
+  t.after(() => {
+    for (const { lobby } of pages) lobby.action("Exit");
+    delete globalThis.document;
+    delete globalThis.history;
+    delete globalThis.location;
+  });
+  const chain = arenaChain({ matches: { 1: "match-open" } });
+  const storage = memory();
+  const refused = { status: "failure", type: "TRANSACTION_REJECTED", message: "User rejected" };
+  // page loads the lobby with an arena on this device's storage, whose wallet refuses sessions.
+  const page = () => {
+    const dialog = { innerHTML: "", showModal() {}, close() {}, addEventListener() {} };
+    const app = { classList: { add() {}, remove() {} }, dataset: {}, innerHTML: "", querySelector: () => dialog };
+    const { arena } = sessionPlayer(chain, {
+      storage,
+      created: async (request) => (request.messages[0].type === "/auth.m_create_session" ? refused : { status: "success" }),
+    });
+    pages.push({ lobby: createLobby({ app, arena, onRender() {}, onExit() {} }), dialog });
+    return pages.at(-1);
+  };
+
+  const first = page();
+  await first.lobby.action("Authorize");
+  assert.equal(first.lobby.model.account.mode, "session");
+  await first.lobby.sendDraft({ intent: "challenge", opponent: "" }, opening.clan, opening.deck, opening.plan);
+  assert.equal(first.lobby.model.account.mode, "contract");
+  await first.lobby.action("Account");
+  assert.match(first.dialog.innerHTML, /User rejected/);
+  assert.match(first.dialog.innerHTML, /data-action="onlineResumeSessions"[^>]*>Use sessions again</);
+
+  const reloaded = page();
+  await reloaded.lobby.action("Authorize");
+  assert.equal(reloaded.lobby.model.account.mode, "contract", "connecting keeps the per-move mode");
+  await reloaded.lobby.action("ResumeSessions");
+  assert.equal(reloaded.lobby.model.account.mode, "session");
+  assert.equal(reloaded.lobby.model.account.fallback, null);
 });
 
 test("a move signs with the session locked to its match before an unlocked one", async () => {

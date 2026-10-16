@@ -73,10 +73,11 @@ check("check-signature", "signature", async () => {
 });
 
 // Posting asks Adena for the match's session; the mode stays "session" only if the
-// Challenge was signed with it.
+// Challenge was signed with it. An earlier run's fallback would skip the request.
 check("check-session", "session", async () => {
   const { address } = await bySession.connect();
   await bySession.authorize();
+  bySession.resumeSessions();
   const posted = await post(bySession);
   const account = await bySession.connect();
   if (account.mode !== "session") return [false, `no session: mode ${account.mode}, reason: ${account.fallback ?? "none"}`];

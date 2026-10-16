@@ -135,17 +135,19 @@ test('a challenger whose clash ends the match early sees an ordinary move until 
 
 const bobsMove = {ID:'4',Phase:'play',Round:2,Challenger:'g1alice',Acceptor:'g1bob',ToMove:'g1bob',Plans:[ended.Plans[0],['','']],HP:ended.HP.slice(0,1),action:'move'};
 
-// renewingArena is an endingArena whose renew records the match and makes its session active.
-function renewingArena(view) {
+// renewingArena is an endingArena for address whose renew records the match and makes its
+// session active, or, with mode contract, leaves the wallet to sign each move.
+function renewingArena(view, address, mode = 'session') {
   const arena = endingArena(view);
   arena.renewed = [];
   arena.renew = async id => { arena.renewed.push(id); arena.view = {...arena.view,session:'active'}; };
+  arena.account = () => ({address,state:'active',mode,fallback:mode==='contract'?'User rejected':null});
   return arena;
 }
 
 test('an expired match session offers renewal', async t => {
   stubPage(t);
-  const arena = renewingArena({...bobsMove,session:'expired'});
+  const arena = renewingArena({...bobsMove,session:'expired'}, 'g1bob');
   const {lobby, shown} = lobbyOf(arena, 'g1bob');
   await lobby.enter();
   await lobby.action('Open', {id:'4'});
@@ -155,10 +157,20 @@ test('an expired match session offers renewal', async t => {
   assert.match(shown(), /data-action="onlinePlay"[^>]*>Watch clash &amp; plan</);
 });
 
+test('a renewal the wallet refused shows the per-move mode', async t => {
+  stubPage(t);
+  const arena = renewingArena({...bobsMove,session:'expired'}, 'g1bob', 'contract');
+  const {lobby} = lobbyOf(arena, 'g1bob');
+  await lobby.enter();
+  await lobby.action('Open', {id:'4'});
+  await lobby.action('Renew');
+  assert.equal(lobby.model.account.mode, 'contract');
+});
+
 // Finishing on an expired session would fail; the player renews first.
 test('a finish whose session has expired waits for renewal', async t => {
   stubPage(t);
-  const arena = renewingArena({...lastTurn,action:'finish',session:'expired'});
+  const arena = renewingArena({...lastTurn,action:'finish',session:'expired'}, 'g1alice');
   const {lobby, shown} = lobbyOf(arena, 'g1alice');
   await lobby.enter();
   await lobby.action('Open', {id:'4'});
@@ -181,13 +193,14 @@ test('withdrawing returns to the board', async t => {
   stubPage(t);
   const arena = endingArena({ID:'4',Phase:'open',Challenger:'g1alice',Clan:'Pickers',Expires:9e9,action:'wait'});
   arena.match = async () => { if (arena.view === null) throw new Error('unknown match'); return arena.view; };
-  arena.resign = async id => { arena.resigned = id; arena.view = null; };
+  arena.resign = async id => { arena.resigned = id; arena.watchedThrough = arena.onView !== null; arena.view = null; };
   const {lobby} = lobbyOf(arena, 'g1alice');
   await lobby.enter();
   await lobby.action('Open', {id:'4'});
   const reads = arena.reads;
   await lobby.action('ResignConfirm');
   assert.equal(arena.resigned, '4');
+  assert.equal(arena.watchedThrough, false, 'a watch read after the withdrawal would find no match');
   assert.equal(lobby.model.view, null);
   assert.equal(lobby.model.error, '');
   assert.equal(arena.reads, reads + 1, 'the board is read again');
@@ -324,14 +337,16 @@ test("a ready device's account dialog says what each match asks", async t => {
 test('a device whose wallet signs each move can use sessions again', async t => {
   const arena = followedArena();
   arena.connect = async () => ({address:'g1alice',state:'active',mode:'contract',fallback:'User rejected'});
-  arena.authorize = async () => { arena.authorized = true; return {address:'g1alice',state:'active',mode:'session',fallback:null}; };
+  arena.authorize = async () => { throw new Error('connecting asked for the root signature again'); };
+  arena.resumeSessions = () => ({address:'g1alice',state:'active',mode:'session',fallback:null});
   const {lobby, dialog} = dialogLobby(t, arena);
-  lobby.model.account = await arena.connect();
+  await lobby.action('Authorize');
+  assert.equal(lobby.model.error, '');
+  assert.equal(lobby.model.account.mode, 'contract');
   await lobby.action('Account');
   assert.match(dialog.innerHTML, /User rejected/);
-  assert.match(dialog.innerHTML, /data-action="onlineAuthorize"[^>]*>Use sessions again</);
-  await lobby.action('Authorize');
-  assert.equal(arena.authorized, true);
+  assert.match(dialog.innerHTML, /data-action="onlineResumeSessions"[^>]*>Use sessions again</);
+  await lobby.action('ResumeSessions');
   assert.equal(lobby.model.account.mode, 'session');
 });
 

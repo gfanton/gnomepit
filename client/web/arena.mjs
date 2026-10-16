@@ -357,9 +357,7 @@ export function createArena({
       return status();
     },
 
-    // authorize gets the root signature, once per device, and leaves the per-move mode,
-    // so the next challenge or acceptance asks the wallet for a session again. When the
-    // wallet creates none, it signs each move, and the state's fallback holds its reason.
+    // authorize gets the root signature, once per device, and returns the account's state.
     async authorize() {
       requireAddress();
       try {
@@ -367,10 +365,19 @@ export function createArena({
       } catch (err) {
         throw errorFrom(err);
       }
-      if (!signEachMove) {
-        store("mode", "session");
-        store("fallback", "");
-      }
+      return status();
+    },
+
+    // account returns the account's state as connect gives it, without asking the wallet;
+    // mode contract means the wallet signs each move, for the reason fallback holds.
+    account: status,
+
+    // resumeSessions leaves the per-move mode, so the next challenge, acceptance or renewal
+    // asks the wallet for a session again, and returns the account's state.
+    resumeSessions() {
+      requireAddress();
+      store("mode", "session");
+      store("fallback", "");
       return status();
     },
 
@@ -479,14 +486,16 @@ export function createArena({
       }
     },
 
+    // These end the match, so with no live session for it the wallet signs them. A claimer's
+    // session always ends before the deadline it claims.
     async resign(id) {
       checkID(id);
-      await send("Resign", [id], async () => signingIn(id, await readMatch(id)));
+      await send("Resign", [id], async () => sessionIn(id, await readMatch(id)));
     },
 
     async claimForfeit(id) {
       checkID(id);
-      await send("ClaimForfeit", [id], async () => signingIn(id, await readMatch(id)));
+      await send("ClaimForfeit", [id], async () => sessionIn(id, await readMatch(id)));
     },
 
     // subscribe calls onChange(change) when the arena may have changed, and returns a

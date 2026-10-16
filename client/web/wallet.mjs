@@ -143,7 +143,7 @@ const hasExpired = (session, now) => session.expiresAt !== 0 && session.expiresA
 const lockOf = (session, locks) => locks.find((l) => l.Session === session.address && l.Expires === session.expiresAt);
 
 // lockedMatches lists the ids of the matches master's live sessions, onChain, are locked to:
-// the only matches classifySessions reads.
+// the matches whose phase classifySessions needs.
 export function lockedMatches({ onChain, locks, now }) {
   return [...new Set(onChain.filter((s) => !hasExpired(s, now)).map((s) => lockOf(s, locks)?.Match).filter((id) => id !== undefined))];
 }
