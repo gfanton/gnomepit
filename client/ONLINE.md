@@ -52,6 +52,10 @@ Without an indexer, or while it does not answer, `subscribe` polls the node inst
 | `engine.mjs` | The engine's rules and, from `client/signer` in the same WebAssembly, `keyInfo`, `signTx` and `signBytes` |
 | `gnotif.js`, `sw.js` | gnotif's browser client and service worker |
 
+## Signer
+
+`signer.mjs` gives `keyInfo`, `signTx` and `signBytes` on the official gno JS clients, `@gnolang/tm2-js-client` 3.3.0 and `@gnolang/gno-js-client` 3.1.0. `make vendor` bundles them from `client/js` into `vendor/gno.mjs`, with the Node `Buffer` and `crypto` they call: 353,382 bytes, 110,412 gzipped. `make golden` signs four requests with the chain's own Go types into `testdata/golden-tx.json`, and the tests check that `signer.mjs` gives the same bytes. The page signs through `engine.mjs`; only the tests call `signer.mjs`.
+
 ## The arena API
 
 ```js

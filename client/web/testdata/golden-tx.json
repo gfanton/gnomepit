@@ -1,0 +1,121 @@
+[
+  {
+    "name": "wallet-call",
+    "request": {
+      "chainId": "dev",
+      "accountNumber": 7,
+      "sequence": 3,
+      "privKey": "0101010101010101010101010101010101010101010101010101010101010101",
+      "sessionAddr": "",
+      "fee": {
+        "gasWanted": 21500000,
+        "gasFee": "21500ugnot"
+      },
+      "memo": "Gnomehall",
+      "msgs": [
+        {
+          "type": "/vm.m_call",
+          "value": {
+            "caller": "g10xcqpzrky6eff2g52qdye53xkk9jxkvrjuxlp8",
+            "send": "1000000ugnot",
+            "max_deposit": "",
+            "pkg_path": "gno.land/r/gfanton/gnomehall/arena",
+            "func": "Play",
+            "args": [
+              "12",
+              "Pick,Brace,Pick"
+            ]
+          }
+        }
+      ]
+    },
+    "tx": "CoUBCgovdm0ubV9jYWxsEncKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSDDEwMDAwMDB1Z25vdCIiZ25vLmxhbmQvci9nZmFudG9uL2dub21laGFsbC9hcmVuYSoEUGxheTICMTIyD1BpY2ssQnJhY2UsUGljaxIRCMDBwBQSCjIxNTAwdWdub3QaqAEKOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiEDG4TFVnsSZECZXT7VqroFZdceGDRgSBn/nBf16dXdB48SQNpDhrkTQQG+QxlfjjW03NghkMmjcfzFXb5fLOqqFYDUezfa//E+2F/fPj6CTq4LchfnSQ62RYj8LEVomffPUhAaKGcxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxbHV1eGUiCUdub21laGFsbA=="
+  },
+  {
+    "name": "session-call",
+    "request": {
+      "chainId": "dev",
+      "accountNumber": 41,
+      "sequence": 0,
+      "privKey": "0202020202020202020202020202020202020202020202020202020202020202",
+      "sessionAddr": "g1a0qwuze2h85zw7nqpsj3ga0z9geyrgwpyrm3m2",
+      "fee": {
+        "gasWanted": 30000000,
+        "gasFee": "30000ugnot"
+      },
+      "memo": "",
+      "msgs": [
+        {
+          "type": "/vm.m_call",
+          "value": {
+            "caller": "g10xcqpzrky6eff2g52qdye53xkk9jxkvrjuxlp8",
+            "send": "",
+            "max_deposit": "",
+            "pkg_path": "gno.land/r/gfanton/gnomehall/arena",
+            "func": "Challenge",
+            "args": [
+              "Pickers",
+              "5e3a1f0c9b8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f",
+              "5e3a1f0c9b8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f",
+              "AQIDBAUGBwgJCgsMDQ4PEA==",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    "tx": "CpECCgovdm0ubV9jYWxsEoICCihnMTB4Y3FwenJreTZlZmYyZzUycWR5ZTUzeGtrOWp4a3ZyanV4bHA4IiJnbm8ubGFuZC9yL2dmYW50b24vZ25vbWVoYWxsL2FyZW5hKglDaGFsbGVuZ2UyB1BpY2tlcnMyQDVlM2ExZjBjOWI4ZDdlNmY1YTRiM2MyZDFlMGY5YThiN2M2ZDVlNGYzYTJiMWMwZDllOGY3YTZiNWM0ZDNlMmYyQDVlM2ExZjBjOWI4ZDdlNmY1YTRiM2MyZDFlMGY5YThiN2M2ZDVlNGYzYTJiMWMwZDllOGY3YTZiNWM0ZDNlMmYyGEFRSURCQVVHQndnSkNnc01EUTRQRUE9PTIAEhEIgI7OHBIKMzAwMDB1Z25vdBqoAQo6ChMvdG0uUHViS2V5U2VjcDI1NmsxEiMKIQJNS2zRNhAyypvSrrnZAKpNRdnq2ArJQjN0xFGnJU0HZhJAtJjIr1Hrz30g7ZZdQBkj9VNgpRuSI/6FbGHpT/hWoEJzgox77EYDeYoz1PmaAQF8CZ0zKQkNeOZPQrTWsYH6xRooZzFhMHF3dXplMmg4NXp3N25xcHNqM2dhMHo5Z2V5cmd3cHlybTNtMg=="
+  },
+  {
+    "name": "create-and-revoke",
+    "request": {
+      "chainId": "dev",
+      "accountNumber": 7,
+      "sequence": 4,
+      "privKey": "0101010101010101010101010101010101010101010101010101010101010101",
+      "sessionAddr": "",
+      "fee": {
+        "gasWanted": 6000000,
+        "gasFee": "6000ugnot"
+      },
+      "memo": "",
+      "msgs": [
+        {
+          "type": "/auth.m_revoke_session",
+          "value": {
+            "creator": "g10xcqpzrky6eff2g52qdye53xkk9jxkvrjuxlp8",
+            "session_key": {
+              "type_url": "/tm.PubKeySecp256k1",
+              "value": "CiECTUts0TYQMsqb0q652QCqTUXZ6tgKyUIzdMRRpyVNB2Y="
+            }
+          }
+        },
+        {
+          "type": "/auth.m_create_session",
+          "value": {
+            "creator": "g10xcqpzrky6eff2g52qdye53xkk9jxkvrjuxlp8",
+            "session_key": {
+              "type_url": "/tm.PubKeySecp256k1",
+              "value": "CiECTUts0TYQMsqb0q652QCqTUXZ6tgKyUIzdMRRpyVNB2Y="
+            },
+            "expires_at": "1760086400",
+            "allow_paths": [
+              "vm/exec:gno.land/r/gfanton/gnomehall/arena"
+            ],
+            "spend_limit": "10000000ugnot",
+            "spend_period": "0"
+          }
+        }
+      ]
+    },
+    "tx": "CoABChYvYXV0aC5tX3Jldm9rZV9zZXNzaW9uEmYKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiECTUts0TYQMsqb0q652QCqTUXZ6tgKyUIzdMRRpyVNB2YKwgEKFi9hdXRoLm1fY3JlYXRlX3Nlc3Npb24SpwEKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiECTUts0TYQMsqb0q652QCqTUXZ6tgKyUIzdMRRpyVNB2YYgKbGjg0iKnZtL2V4ZWM6Z25vLmxhbmQvci9nZmFudG9uL2dub21laGFsbC9hcmVuYSoNMTAwMDAwMDB1Z25vdBIQCIC23AUSCTYwMDB1Z25vdBqoAQo6ChMvdG0uUHViS2V5U2VjcDI1NmsxEiMKIQMbhMVWexJkQJldPtWqugVl1x4YNGBIGf+cF/Xp1d0HjxJA3HDCbLLKhK+zL8g53aS7cGrm+rjClajr4fgY1UqhExh6wUY+517sH4QwfVQoqq05cXbqF4oBH3YpZkmuUJ86sBooZzFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFsdXV4ZQ=="
+  },
+  {
+    "name": "sign-bytes",
+    "request": {
+      "privKey": "0101010101010101010101010101010101010101010101010101010101010101",
+      "bytes": "R25vbWVoYWxsIGF0IGh0dHA6Ly8xMjcuMC4wLjE6ODA4MA=="
+    },
+    "tx": "WR9aZwaNJMtZFUHAajzuKN6tKAqhOLszBa9XGpUX8S91Qx7HaLiXcG+9qD8aY9Dl/44RdBAO2+c24rmbLAjTTA=="
+  }
+]

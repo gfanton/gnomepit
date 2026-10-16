@@ -12,3 +12,5 @@ client/*.webm
 deps/
 # The local indexer's database, written by make indexer.
 .indexer/
+# The signer's npm packages, installed by make vendor.
+client/js/node_modules

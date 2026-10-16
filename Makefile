@@ -15,13 +15,21 @@ DEV_INDEXER := 127.0.0.1:8546
 TX_INDEXER := github.com/gnolang/tx-indexer/cmd@v1.3.0
 INDEXER_DB := .indexer
 
-.PHONY: all wasm serve dev indexer capture fund record e2e test realm-test deps clean help
+.PHONY: all wasm golden vendor serve dev indexer capture fund record e2e test realm-test deps clean help
 
 all: wasm ## Build the page's engine (default)
 
 wasm: ## Compile the engine to WebAssembly and copy the Go runtime glue next to the page
 	GOOS=js GOARCH=wasm go build -o $(WEB)/engine.wasm ./client/wasm
 	cp -f "$(GOROOT)/lib/wasm/wasm_exec.js" $(WEB)/
+
+golden: ## Sign the signer tests' golden transactions with the chain's own Go types
+	go -C client/golden run . > $(WEB)/testdata/golden-tx.json
+
+# The gno clients call Node's Buffer and crypto, which the page has no copy of.
+vendor: ## Bundle what signer.mjs takes from the gno JS clients into client/web/vendor/gno.mjs
+	npm ci --prefix client/js && npx --prefix client/js esbuild client/js/entry.mjs --bundle --format=esm --minify \
+		--inject:client/js/buffer.mjs --alias:crypto=./client/js/crypto.mjs --outfile=$(WEB)/vendor/gno.mjs
 
 serve: ## Serve the page on 127.0.0.1:8080
 	go run ./client/serve -dir $(WEB)
