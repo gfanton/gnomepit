@@ -74,12 +74,9 @@ func Challenge(cur realm, clan, deckSeal, planSeal, box string, opponent address
 		box:        raw,
 	}
 	m.clans[0] = c
-	guard(cur.Previous().IsUser(), m.challenger, m, lastID, true)
+	join(cur.Previous().IsUser(), m.challenger, lastID)
 	saveMatch(rules, lastID, m)
 	openAdd(lastID, m.deadline)
-	p := loadPlayer(m.challenger)
-	p.add(lastID)
-	savePlayer(m.challenger, p)
 	return strconv.Itoa(lastID)
 }
 

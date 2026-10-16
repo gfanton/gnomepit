@@ -5,10 +5,10 @@
 import { fromBase64, fromHex, toBase64, toHex } from "./encoding.mjs";
 
 // Each side's spend limit for one match, in ugnot, as client/ONLINE.md "Session budgets" works it out.
-export const sessionBudget = { challenger: 641_411, acceptor: 526_484 };
+export const sessionBudget = { challenger: 658_778, acceptor: 527_297 };
 // Each side's costliest move, in ugnot: a session with less left counts as used up. opening
 // counts the Challenge and the Accept; later, the moves after them, a Reveal and a Play.
-export const sessionReserve = { opening: { challenger: 256_099, acceptor: 239_750 }, later: { challenger: 52_023, acceptor: 21_146 } };
+export const sessionReserve = { opening: { challenger: 262_602, acceptor: 239_661 }, later: { challenger: 53_446, acceptor: 21_644 } };
 export const sessionLifetime = 24 * 60 * 60; // seconds
 // Gas per session message; creating a session uses about 1.4M.
 export const sessionGas = 3_000_000;

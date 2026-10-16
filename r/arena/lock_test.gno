@@ -28,22 +28,25 @@ func showLocks(locks []sessionLock) string {
 
 func TestUnlockedSessionLocks(t *testing.T) {
 	for _, opening := range []bool{true, false} {
-		locks, refusal := lockSession(nil, keyOne, 2000, 3, opening, 1000)
+		locks, changed, refusal := lockSession(nil, keyOne, 2000, 3, opening, 1000)
 		uassert.Equal(t, "", refusal)
+		uassert.True(t, changed)
 		uassert.Equal(t, "one:3:2000", showLocks(locks))
 	}
-	locks, refusal := lockSession([]sessionLock{{keyTwo, 4, 2000}}, keyOne, 2000, 3, false, 1000)
+	locks, changed, refusal := lockSession([]sessionLock{{keyTwo, 4, 2000}}, keyOne, 2000, 3, false, 1000)
 	uassert.Equal(t, "", refusal)
+	uassert.True(t, changed)
 	uassert.Equal(t, "two:4:2000 one:3:2000", showLocks(locks))
 }
 
 func TestLockedSessionRefusedElsewhere(t *testing.T) {
 	locked := []sessionLock{{keyOne, 3, 2000}}
-	_, refusal := lockSession(locked, keyOne, 2000, 5, false, 1000)
+	_, _, refusal := lockSession(locked, keyOne, 2000, 5, false, 1000)
 	uassert.Equal(t, "session locked to match 3", refusal)
 
-	locks, refusal := lockSession(locked, keyOne, 2000, 3, false, 1000)
+	locks, changed, refusal := lockSession(locked, keyOne, 2000, 3, false, 1000)
 	uassert.Equal(t, "", refusal)
+	uassert.False(t, changed)
 	uassert.Equal(t, "one:3:2000", showLocks(locks))
 }
 
@@ -51,34 +54,55 @@ func TestLockedSessionCannotOpen(t *testing.T) {
 	locked := []sessionLock{{keyOne, 3, 2000}}
 	// Match 3 itself is refused too: a session cannot accept the challenge it posted.
 	for _, id := range []int{3, 7} {
-		_, refusal := lockSession(locked, keyOne, 2000, id, true, 1000)
+		_, _, refusal := lockSession(locked, keyOne, 2000, id, true, 1000)
 		uassert.Equal(t, "session locked to match 3", refusal, strconv.Itoa(id))
 	}
 }
 
 func TestExpiredLockDropped(t *testing.T) {
 	locks := []sessionLock{{keyOne, 3, 1000}, {keyTwo, 4, 1001}}
-	got, refusal := lockSession(locks, keyThree, 2000, 5, true, 1000)
+	got, changed, refusal := lockSession(locks, keyThree, 2000, 5, true, 1000)
 	uassert.Equal(t, "", refusal)
+	// One lock dropped and one added keep the count, and still change the list.
+	uassert.True(t, changed)
 	uassert.Equal(t, "two:4:1001 three:5:2000", showLocks(got))
+
+	got, changed, refusal = lockSession(locks, keyTwo, 1001, 4, false, 1000)
+	uassert.Equal(t, "", refusal)
+	uassert.True(t, changed)
+	uassert.Equal(t, "two:4:1001", showLocks(got))
 }
 
 func TestLockWithoutExpiry(t *testing.T) {
 	const later = int64(2_000_000_000)
 	locks := []sessionLock{{keyOne, 3, 0}}
-	got, refusal := lockSession(locks, keyTwo, 0, 4, true, later)
+	got, _, refusal := lockSession(locks, keyTwo, 0, 4, true, later)
 	uassert.Equal(t, "", refusal)
 	uassert.Equal(t, "one:3:0 two:4:0", showLocks(got))
 
-	_, refusal = lockSession(got, keyOne, 0, 5, false, later)
+	_, _, refusal = lockSession(got, keyOne, 0, 5, false, later)
 	uassert.Equal(t, "session locked to match 3", refusal)
 }
 
 func TestReusedKeyStartsUnlocked(t *testing.T) {
 	locks := []sessionLock{{keyOne, 3, 2000}, {keyTwo, 4, 2000}}
-	got, refusal := lockSession(locks, keyOne, 2500, 5, true, 1000)
+	got, changed, refusal := lockSession(locks, keyOne, 2500, 5, true, 1000)
 	uassert.Equal(t, "", refusal)
+	uassert.True(t, changed)
 	uassert.Equal(t, "two:4:2000 one:5:2500", showLocks(got))
+}
+
+// guard saves the player record only when lock reports a change, so a move in the
+// session's own match writes nothing.
+func TestLockInOwnMatchLeavesRecord(t *testing.T) {
+	p := playerRecord{ids: []int{3, 4}, locks: []sessionLock{{keyOne, 3, 2000}, {keyTwo, 4, 2000}}}
+	uassert.False(t, p.lock(keyOne, 2000, 3, false, 1000))
+	uassert.Equal(t, "one:3:2000 two:4:2000", showLocks(p.locks))
+
+	uassert.True(t, p.lock(keyThree, 2000, 5, true, 1000))
+	uassert.Equal(t, "one:3:2000 two:4:2000 three:5:2000", showLocks(p.locks))
+
+	uassert.PanicsWithMessage(t, nil, "session locked to match 3", func() { p.lock(keyOne, 2000, 4, false, 1000) })
 }
 
 func TestLocksQuery(cur realm, t *testing.T) {

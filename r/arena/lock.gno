@@ -6,14 +6,10 @@ import (
 	"time"
 )
 
-// guard binds the session that signed the transaction to match id, held in m. fromUser
-// says the call came straight from a user: a session belongs to the whole transaction,
-// so a call through another realm is left unchecked.
-func guard(fromUser bool, caller address, m record, id int, opening bool) {
-	if !fromUser {
-		return
-	}
-	session, expires, _, ok := runtime.GetSessionInfo()
+// guard binds the session that signed the transaction to match id, held in m, saving the
+// caller's record only when its locks change.
+func guard(fromUser bool, caller address, m record, id int) {
+	session, expires, ok := signingSession(fromUser)
 	if !ok {
 		return
 	}
@@ -21,19 +17,46 @@ func guard(fromUser bool, caller address, m record, id int, opening bool) {
 		panic("not a player")
 	}
 	p := loadPlayer(caller)
-	locks, refusal := lockSession(p.locks, session, expires, id, opening, time.Now().Unix())
+	if p.lock(session, expires, id, false, time.Now().Unix()) {
+		savePlayer(caller, p)
+	}
+}
+
+// join adds match id to the caller's record and binds the session that signed the
+// transaction to it, refused when that session is bound to a match already.
+func join(fromUser bool, caller address, id int) {
+	p := loadPlayer(caller)
+	if session, expires, ok := signingSession(fromUser); ok {
+		p.lock(session, expires, id, true, time.Now().Unix())
+	}
+	p.add(id)
+	savePlayer(caller, p)
+}
+
+// signingSession returns the signing session key and its expiry when fromUser: a session
+// signs the whole transaction, so a call through another realm is left unchecked.
+func signingSession(fromUser bool) (address, int64, bool) {
+	if !fromUser {
+		return "", 0, false
+	}
+	session, expires, _, ok := runtime.GetSessionInfo()
+	return session, expires, ok
+}
+
+// lock binds session to match id in p's locks, panicking when it is refused, and reports
+// whether the locks changed.
+func (p *playerRecord) lock(session address, expires int64, id int, opening bool, now int64) bool {
+	locks, changed, refusal := lockSession(p.locks, session, expires, id, opening, now)
 	if refusal != "" {
 		panic(refusal)
 	}
 	p.locks = locks
-	savePlayer(caller, p)
+	return changed
 }
 
-// lockSession binds session to match id in locks, or refuses when session is bound to
-// another match, or to any when opening. Expiries are Unix seconds, 0 for none; a lock
-// for session under another expiry belongs to an earlier session with the same key.
-func lockSession(locks []sessionLock, session address, expires int64, id int, opening bool, now int64) ([]sessionLock, string) {
-	var kept []sessionLock
+// lockSession binds session to match id, refused when bound to another, or any when opening.
+// It drops expired locks (Unix seconds, 0 for never) and an earlier session's with the key.
+func lockSession(locks []sessionLock, session address, expires int64, id int, opening bool, now int64) (kept []sessionLock, changed bool, refusal string) {
 	for _, l := range locks {
 		expired := l.expires != 0 && l.expires <= now
 		stale := l.session == session && l.expires != expires
@@ -41,14 +64,15 @@ func lockSession(locks []sessionLock, session address, expires int64, id int, op
 			kept = append(kept, l)
 		}
 	}
+	changed = len(kept) != len(locks)
 	for _, l := range kept {
 		if l.session != session {
 			continue
 		}
 		if opening || l.id != id {
-			return kept, "session locked to match " + strconv.Itoa(l.id)
+			return kept, changed, "session locked to match " + strconv.Itoa(l.id)
 		}
-		return kept, ""
+		return kept, changed, ""
 	}
-	return append(kept, sessionLock{session: session, id: id, expires: expires}), ""
+	return append(kept, sessionLock{session: session, id: id, expires: expires}), true, ""
 }

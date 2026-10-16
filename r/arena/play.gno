@@ -37,7 +37,7 @@ func Accept(cur realm, id, clan, deck, plan string) {
 	}
 
 	m.acceptor = caller
-	guard(cur.Previous().IsUser(), caller, m, n, true)
+	join(cur.Previous().IsUser(), caller, n)
 	m.clans[1] = c
 	m.decks[1] = bits
 	m.plans[1] = withPlan(m.plans[1], 1, b)
@@ -45,9 +45,6 @@ func Accept(cur realm, id, clan, deck, plan string) {
 	m.deadline = now + moveWindow
 	saveMatch(rules, n, m)
 	openRemove(n)
-	p := loadPlayer(caller)
-	p.add(n)
-	savePlayer(caller, p)
 	tell("Turn", m.challenger, caller, n, clan+" accepted your challenge. Your move within 24 hours.")
 }
 
@@ -59,7 +56,7 @@ func Reveal(cur realm, id, deck, deckSalt, plan, planSalt, nextSeal, nextBox str
 	n, m := find(rules, id)
 	now := time.Now().Unix()
 	caller := cur.Previous().Address()
-	guard(cur.Previous().IsUser(), caller, m, n, false)
+	guard(cur.Previous().IsUser(), caller, m, n)
 	m.checkMove(caller, phaseReveal, m.challenger, now)
 
 	s := stateOf(rules, m)
@@ -123,7 +120,7 @@ func Play(cur realm, id, plan string) {
 	n, m := find(rules, id)
 	now := time.Now().Unix()
 	caller := cur.Previous().Address()
-	guard(cur.Previous().IsUser(), caller, m, n, false)
+	guard(cur.Previous().IsUser(), caller, m, n)
 	m.checkMove(caller, phasePlay, m.acceptor, now)
 	s := stateOf(rules, m)
 	b := planOf(rules, plan)
@@ -143,7 +140,7 @@ func Resign(cur realm, id string) {
 	rules := engine.ProofOfConcept()
 	n, m := find(rules, id)
 	caller := cur.Previous().Address()
-	guard(cur.Previous().IsUser(), caller, m, n, false)
+	guard(cur.Previous().IsUser(), caller, m, n)
 	switch m.phase {
 	case phaseOpen:
 		if caller != m.challenger {
@@ -173,7 +170,7 @@ func ClaimForfeit(cur realm, id string) {
 	rules := engine.ProofOfConcept()
 	n, m := find(rules, id)
 	caller := cur.Previous().Address()
-	guard(cur.Previous().IsUser(), caller, m, n, false)
+	guard(cur.Previous().IsUser(), caller, m, n)
 	var result string
 	switch m.phase {
 	case phaseReveal:

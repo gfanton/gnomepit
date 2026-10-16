@@ -119,31 +119,31 @@ The first match is the chain's first, so it carries the one-time costs:
 
 | Move | Storage | Gas used | Fee | Deposit |
 |---|---|---|---|---|
-| Challenge | 2,386 B | 14,498,711 | 17,499 ugnot | 238,600 ugnot |
-| Accept | 2,111 B | 23,790,899 | 28,650 ugnot | 211,100 ugnot |
-| Reveal, round 1 | -71 B | 43,268,883 | 52,023 ugnot | 0 ugnot |
-| Play, round 2 | 0 B | 17,447,653 | 21,038 ugnot | 0 ugnot |
-| Reveal, round 2 | 0 B | 30,618,848 | 36,843 ugnot | 0 ugnot |
-| Play, round 3 | 0 B | 17,537,622 | 21,146 ugnot | 0 ugnot |
-| Reveal, round 3 | -100 B | 29,538,645 | 35,547 ugnot | 0 ugnot |
-| Total | 4,326 B | 176,701,261 | 212,746 ugnot | 449,700 ugnot |
+| Challenge | 2,444 B | 15,084,615 | 18,202 ugnot | 244,400 ugnot |
+| Accept | 2,105 B | 24,217,356 | 29,161 ugnot | 210,500 ugnot |
+| Reveal, round 1 | -71 B | 44,454,282 | 53,446 ugnot | 0 ugnot |
+| Play, round 2 | 0 B | 17,858,842 | 21,531 ugnot | 0 ugnot |
+| Reveal, round 2 | 0 B | 31,842,747 | 38,312 ugnot | 0 ugnot |
+| Play, round 3 | 0 B | 17,953,019 | 21,644 ugnot | 0 ugnot |
+| Reveal, round 3 | -100 B | 30,762,544 | 37,016 ugnot | 0 ugnot |
+| Total | 4,378 B | 182,173,405 | 219,312 ugnot | 454,900 ugnot |
 
 The second match is between players who already have a record, inside the chunk the first match opened:
 
 | Move | Storage | Gas used | Fee | Deposit |
 |---|---|---|---|---|
-| Challenge | 268 B | 15,510,896 | 18,714 ugnot | 26,800 ugnot |
-| Accept | 36 B | 24,380,129 | 29,357 ugnot | 3,600 ugnot |
-| Reveal, round 1 | -70 B | 43,398,470 | 52,179 ugnot | 0 ugnot |
-| Play, round 2 | 0 B | 17,559,081 | 21,171 ugnot | 0 ugnot |
-| Reveal, round 2 | 0 B | 30,725,352 | 36,971 ugnot | 0 ugnot |
-| Play, round 3 | 0 B | 17,634,322 | 21,262 ugnot | 0 ugnot |
-| Reveal, round 3 | -98 B | 29,610,539 | 35,633 ugnot | 0 ugnot |
-| Total | 136 B | 178,818,789 | 215,287 ugnot | 30,400 ugnot |
+| Challenge | 317 B | 16,164,371 | 19,498 ugnot | 31,700 ugnot |
+| Accept | 36 B | 24,778,010 | 29,834 ugnot | 3,600 ugnot |
+| Reveal, round 1 | -71 B | 44,690,275 | 53,729 ugnot | 0 ugnot |
+| Play, round 2 | 0 B | 17,968,166 | 21,662 ugnot | 0 ugnot |
+| Reveal, round 2 | 0 B | 32,036,404 | 38,544 ugnot | 0 ugnot |
+| Play, round 3 | 0 B | 18,030,783 | 21,737 ugnot | 0 ugnot |
+| Reveal, round 3 | -98 B | 30,960,091 | 37,253 ugnot | 0 ugnot |
+| Total | 184 B | 184,628,100 | 222,257 ugnot | 35,300 ugnot |
 
-A finished match between known players keeps 136 bytes locked. Its moves lock 30,400 ugnot, and its reveals give back 16,800 as they drop the deck seal, shrink the box and finally clear the seal and the box.
+A finished match between known players keeps 184 bytes locked, 48 of them for alice's session lock. Her record keeps the lock until that session expires, and her next session-signed call then drops it. The match's moves lock 35,300 ugnot, and its reveals give back 16,900 as they drop the deck seal, shrink the box and finally clear the seal and the box.
 
-The one-time costs, the first match minus the second, are 4,190 bytes and a 419,300 ugnot deposit. The challenge carries 2,118 bytes of them: alice's new player record and the arena's first chunk. The acceptance carries 2,075 bytes: bob's new player record.
+The one-time costs, the first match minus the second, are 4,194 bytes and a 419,600 ugnot deposit. The challenge carries 2,127 bytes of them: alice's new player record and the arena's first chunk. The acceptance carries 2,069 bytes: bob's new player record.
 
 ## Session budgets
 
@@ -151,18 +151,18 @@ Each match gets its own session, and its spend limit is the budget of the player
 
 - the fee and the deposit of each of the side's moves;
 - its costliest move once more, for one failed attempt;
-- 4,800 ugnot for the realm's 48-byte session lock, which a session's first call adds and the measured moves do not include.
+- 4,800 ugnot for the realm's 48-byte session lock, which a session's first call adds. Bob's measured Accept holds none, since his wallet signs it, while alice's Challenge already holds hers.
 
 | | Challenger | Acceptor |
 |---|---|---|
-| Opening move | Challenge: 256,099 | Accept: 239,750 |
-| Later moves | Reveals: 52,023 + 36,843 + 35,547 | Plays: 21,038 + 21,146 |
-| The side's moves | 380,512 | 281,934 |
-| The costliest move again | 256,099 | 239,750 |
+| Opening move | Challenge: 18,202 + 244,400 = 262,602 | Accept: 29,161 + 210,500 = 239,661 |
+| Later moves | Reveals: 53,446 + 38,312 + 37,016 | Plays: 21,531 + 21,644 |
+| The side's moves | 391,376 | 282,836 |
+| The costliest move again | 262,602 | 239,661 |
 | The session lock | 4,800 | 4,800 |
-| Budget | 641,411 ugnot | 526,484 ugnot |
+| Budget | 658,778 ugnot | 527,297 ugnot |
 
-A session with less left than the costliest move it may still pay counts as used up (`sessionReserve`). An unlocked session may still pay an opening: 256,099 ugnot for the challenger and 239,750 for the acceptor. A session locked to a match pays only its side's later moves: 52,023 ugnot for the challenger's costliest Reveal, and 21,146 for the acceptor's costliest Play.
+A session with less left than the costliest move it may still pay counts as used up (`sessionReserve`). An unlocked session may still pay an opening: 262,602 ugnot for the challenger and 239,661 for the acceptor. A session locked to a match pays only its side's later moves: 53,446 ugnot for the challenger's costliest Reveal, and 21,644 for the acceptor's costliest Play.
 
 ## Tests
 
