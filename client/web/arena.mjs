@@ -244,10 +244,8 @@ export function createArena({
   }
   const classify = (found, matches) => classifySessions({ ...found, matches, now: now(), realm, reserve: sessionReserve });
 
-  // prepareSession returns a live unlocked session with role's budget left, for an opening
-  // or a renewed match's next move, the call that locks it. Lacking one, it asks the
-  // wallet, in one approval, to revoke every dead session and create one. It returns null
-  // in the per-move mode, which it switches to when no session can be had.
+  // prepareSession returns a live unlocked session with role's budget, else has the wallet
+  // revoke the dead ones and create one. It returns null in the per-move mode, its fallback.
   async function prepareSession(role) {
     if (mode() === "contract") return null;
     const found = await ownSessions();

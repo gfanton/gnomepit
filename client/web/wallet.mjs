@@ -148,11 +148,8 @@ export function lockedMatches({ onChain, locks, now }) {
   return [...new Set(onChain.filter((s) => !hasExpired(s, now)).map((s) => lockOf(s, locks)?.Match).filter((id) => id !== undefined))];
 }
 
-// classifySessions sorts master's sessions, onChain as chain.sessions lists them, for each
-// generation keys maps to its keys, against the realm's Locks. matches maps each locked
-// match's id to {phase, role}, with no entry for a match the realm no longer knows; reserve
-// is sessionReserve. Entries are {generation, keys, session}, free ones without a session;
-// byMatch holds the live session of each match not ended, by match id.
+// classifySessions sorts each generation's keys into byMatch, by the match id its live
+// session is locked to, unlocked, dead or free; matches lacks ids the realm no longer knows.
 export function classifySessions({ onChain, keys, locks, matches, now, realm, reserve }) {
   const byAddress = new Map(onChain.map((s) => [s.address, s]));
   const out = { byMatch: new Map(), unlocked: [], dead: [], free: [] };

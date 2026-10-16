@@ -1,6 +1,6 @@
 # Online play
 
-Online matches run through the arena realm, `r/arena`, on a gno chain. The page reads the realm, signs moves with a session key the player authorizes once, and replays each round with its own engine. `client/web/arena.mjs` is the one module a lobby needs.
+Online matches run through the arena realm, `r/arena`, on a gno chain. The page reads the realm, signs each match's moves with a session key of its own, and replays each round with its own engine. `client/web/arena.mjs` is the one module a lobby needs.
 
 ## Run a local chain
 
@@ -9,7 +9,12 @@ Online matches run through the arena realm, `r/arena`, on a gno chain. The page 
 3. `make wasm` builds `engine.wasm` with TinyGo 0.42 or later, which must be on `PATH` (`nix shell nixpkgs#tinygo`), then `make serve` serves the page on `http://127.0.0.1:8080/`. `make e2e` and `make test` build it too.
 4. Open `http://127.0.0.1:8080/?dev=alice` in one browser and `?dev=bob` in another, then **Play online**: the lobby, with a dev wallet in place of Adena. Without `dev`, the lobby uses Adena.
 5. `online-dev.html?dev=alice` and `?dev=bob` open a bare console instead, which picks decks and plans at random. Add `&contract=1` to have the wallet sign every move instead of a session, and `&indexer=` with no value to poll the node instead of the indexer.
-6. `make e2e` plays a whole match from node: alice through a session, bob through his wallet on each move. It also checks that the indexer reports every call of the match.
+6. `make e2e` plays from node, with `make indexer` running and TinyGo on `PATH`, such as `nix shell nixpkgs#tinygo --command make e2e`:
+   - **A match through sessions.** Alice and bob each sign through a session of their own. `Locks` lists each player's lock on the match after their opening, and a second challenge signed with alice's locked session fails with `session locked to match 1`. Alice's sessions last 30 seconds, so hers expires after round 1: her match's `session` reads `expired`, and she renews it to finish.
+   - **A second challenge.** Alice posts again and gets a new session, which revokes the session of the ended match. Nobody accepts it.
+   - **A match the wallet signs.** Both players sign every move with the wallet, which locks no session.
+
+   It also checks that the indexer reports every call, in order.
 
 gnodev keeps the chain in memory, so a restart starts from an empty arena. gnodev also watches `deps/`, which `make deps` and `make test` rewrite: it then reloads, replaying the chain's transactions from height 0. Start `make indexer` again after either, since its index holds the old heights.
 
@@ -27,7 +32,8 @@ A failed check 2 prints Adena's reason. The arena then falls back to check 3's p
 ## How a match reaches the chain
 
 - **The root signature.** On each device the player signs one fixed text naming the site with `SignArbitrary`. The same wallet gives the same signature everywhere. HKDF-SHA256 derives two keys from it: a session key per generation (`gnomehall session <n>`) and a box key (`gnomehall box`). The page keeps the signature in local storage.
-- **The session.** One Adena approval creates a session for the session key. It may call the arena alone, spend 10 GNOT, and lasts 7 days. The spend counts gas fees and storage deposits; a challenge alone locks about 0.9 GNOT of deposit. A session with less than 1.5 GNOT left, or one past its expiry, counts as expired; the next authorization creates a session for the first generation the chain holds no session for.
+- **A session per match.** Adena approves one session for each post or accept, and one for each renewal. That transaction revokes the player's dead sessions and creates a session for a free generation, or for a revoked one when none is free. The session may call the arena alone, spend its side's budget, and lasts one day; its spending counts gas fees and storage deposits. The realm locks it to the match of its first call, after which it acts in no other match and posts or accepts nothing more. A session is dead once it has expired, has less left than the costliest move it may still pay, or is locked to a match that ended or that the realm no longer knows.
+- **Renewal.** When the player has no live session locked to a match, nor an unlocked one to lock, the next move there needs a renewal: `renew(id)` asks Adena for a session the same way, and the move locks it to the match. Resigning and claiming a forfeit need none: with no live session, the wallet signs that one call, in one approval.
 - **Boxes.** A challenger's sealed deck and plans travel to the chain encrypted with the box key, beside their seals. Any browser with the same wallet opens them, so a challenger can continue from another device.
 - **The fallback.** When Adena creates no session, or every generation already has one, Adena signs and sends each move through `DoContract`. The account state's `fallback` holds the reason, and after `resumeSessions()` the next challenge, acceptance or renewal asks for a session again.
 
@@ -55,7 +61,7 @@ Without an indexer, or while it does not answer, `subscribe` polls the node inst
 
 ## Signer
 
-`signer.mjs` gives `keyInfo`, `signTx` and `signBytes` on the official gno JS clients, `@gnolang/tm2-js-client` 3.3.0 and `@gnolang/gno-js-client` 3.1.0. `make vendor` bundles them from `client/js` into `vendor/gno.mjs`, with the Node `Buffer` and `crypto` they call: 353,382 bytes, 110,412 gzipped. `make golden` signs five requests with the chain's own Go types into `testdata/golden-tx.json`, and the tests check that `signer.mjs` gives the same bytes. `signTx` refuses a request the chain would refuse: no chain id, no message, an account number or sequence that is not a non-negative integer, a `sessionAddr` other than the signing key's own address, or a session with no spend limit.
+`signer.mjs` gives `keyInfo`, `signTx` and `signBytes` on the official gno JS clients, `@gnolang/tm2-js-client` 3.3.0 and `@gnolang/gno-js-client` 3.1.0. `make vendor` bundles them from `client/js` into `vendor/gno.mjs`, with the Node `Buffer` and `crypto` they call: 353,382 bytes, 110,412 gzipped. `make golden` signs five requests with the chain's own Go types into `testdata/golden-tx.json`, and the tests check that `signer.mjs` gives the same bytes. Run `make vendor` after changing a pin in `client/js/package.json`, and commit the bundle: the page loads no code from a CDN. Run `make golden` after changing a request in `client/golden` or its gno version, pinned at `c97fd36` in `client/golden/go.mod`. `signTx` refuses a request the chain would refuse: no chain id, no message, an account number or sequence that is not a non-negative integer, a `sessionAddr` other than the signing key's own address, or a session with no spend limit.
 
 `engine.wasm` holds the engine alone, built with TinyGo and loaded with TinyGo's own `wasm_exec.js`: 960,874 bytes, 356,853 gzipped.
 
@@ -78,7 +84,7 @@ const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origi
 | `match(id)` | The match view, plus `rounds` (each resolved round replayed: plans, events, state, result), `state`, `pending` (the challenger's next clash, when it is their move), `planning` (`{state, side, deck}` to plan from when the action is `move`), `action`, and `session`: `expired` when the player must call `renew(id)` before acting, `active` otherwise |
 | `challenge({clan, deck, plan, opponent})` | Posts a challenge and returns its id. Deck and plan are card ids. |
 | `accept(id, {clan, deck, plan})` | Accepts a challenge |
-| `renew(id)` | Asks the wallet for a new session for the player's side of match `id`, revoking the dead ones; sends no move |
+| `renew(id)` | Asks the wallet for a new session for the player's side of match `id`, revoking the dead ones, unless a live unlocked session has that side's budget left. It sends no move: the next one locks the session. |
 | `move(id, plan)` | Sends this player's turn: the challenger's reveal and next seal in one call, or the acceptor's plan |
 | `finish(id)` | Sends the challenger's last reveal, after round 3 or a knockout |
 | `resign(id)`, `claimForfeit(id)` | Resigns or withdraws; claims a passed deadline. With no live session for the match, the wallet signs the call. |
@@ -88,23 +94,9 @@ const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origi
 
 `challenge`, `accept` and `move` check the deck and plan with the engine first: a deck or plan it refuses throws `illegalPlan` before anything is sealed or sent. Moves go out one at a time, so two calls in a row never sign with the same sequence.
 
-`challenge` and `accept` sign with an unlocked session that has the side's budget left. Without one, they first ask the wallet, in one approval, to revoke the dead sessions and create one: expired or used-up sessions, and those locked to a match that ended or is gone. Their call locks the session to the match. Every later call in the match signs with that session, or with the one `renew` creates. Without one, `move` and `finish` throw `sessionExpired`, while `resign` and `claimForfeit` have the wallet sign: a claimer's session always ends before the deadline it claims.
+`challenge` and `accept` sign with an unlocked session that has the side's budget left. Without one, they first ask the wallet, in one approval, to revoke the dead sessions and create one: expired or used-up sessions, and those locked to a match that ended or is gone. Their call locks the session to the match. Every later call in the match signs with the live session locked to it or, when there is none, with any live unlocked session, such as the one `renew` creates, which that call locks. Without either, `move` and `finish` throw `sessionExpired`, while `resign` and `claimForfeit` have the wallet sign: a claimer's session always ends before the deadline it claims.
 
 An action is `accept`, `move`, `finish`, `claimForfeit`, `wait` or `done`. A failed call throws an `ArenaError` whose `type` is one of `noWallet`, `wrongNetwork`, `refused`, `unauthorized`, `wrongPhase`, `sealMismatch`, `illegalPlan`, `deadlinePassed`, `sessionExpired`, `insufficientFunds`, `outOfStep`, `network` or `failed`, with a readable `reason`. `outOfStep` means the page's card file differs from the deployed engine.
-
-## Costs
-
-On gnodev, built from gno `c97fd36`, with gas at 1 ugnot per 1,000 and storage at 100 ugnot per byte, for a match with 330-byte boxes on an arena holding a dozen matches:
-
-| Move | Gas | Storage | Fee and deposit |
-|---|---|---|---|
-| Challenge | 13.5M | 9.4 KB | 0.96 GNOT |
-| Accept | 22.6M | 1.0 KB | 0.13 GNOT |
-| Reveal, round 1 | 37.3M | 1.3 KB | 0.17 GNOT |
-| Play | 17.5M | 55 B | 0.03 GNOT |
-| Reveal, later rounds | 35.0M | 0.1 to 0.9 KB | 0.05 to 0.13 GNOT |
-
-The fee is the gas the move uses, plus a fifth and 100,000, at the chain's price; the deposit stays locked while the arena keeps the match.
 
 ## Storage per move
 
@@ -164,7 +156,13 @@ Each match gets its own session, and its spend limit is the budget of the player
 
 A session with less left than the costliest move it may still pay counts as used up (`sessionReserve`). An unlocked session may still pay an opening: 262,602 ugnot for the challenger and 239,661 for the acceptor. A session locked to a match pays only its side's later moves: 53,446 ugnot for the challenger's costliest Reveal, and 21,644 for the acceptor's costliest Play.
 
+## Before onyx
+
+Check two things in onyx's release before deploying the arena there:
+- **`runtime.GetSessionInfo` and session accounts.** The realm calls `GetSessionInfo` to lock each session to its match. Without it the lock has to go, and a session is held only to its per-match budget.
+- **Restricted ugnot transfers.** On a chain that restricts them, freed storage deposits go to the storage fee collector (`gno.land/pkg/sdk/vm/keeper.go`) instead of the caller. A call that frees storage then gets nothing back: a reveal that drops a seal, a withdrawn challenge, or a challenge that clears expired ones.
+
 ## Tests
 
 - `make test` runs the realm's tests, the Go tests and the script tests; the script tests run `engine.wasm`.
-- With `make dev` and `make indexer` running, `make e2e` plays a match. With `make dev` running, `make capture` records the query answers `gnovalue.mjs`'s tests read, and `make record` records the RPC answers the other tests replay.
+- With `make dev` and `make indexer` running, `make e2e` plays its matches. With `make dev` running, `make capture` records the query answers `gnovalue.mjs`'s tests read, and `make record` records the RPC answers the other tests replay.
