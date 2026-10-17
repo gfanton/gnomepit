@@ -108,6 +108,7 @@
   --gh-color-select-ink: var(--gh-palette-mint-33);
   --gh-color-select-line: var(--gh-palette-mint-44);
   --gh-color-done: var(--gh-palette-mint-65);
+  --gh-color-done-text: var(--gh-palette-mint-81);
   --gh-color-vulnerable: var(--gh-palette-orchid-78);
   --gh-color-vulnerable-bright: var(--gh-palette-orchid-84);
   --gh-color-strength: var(--gh-palette-moss-82);
@@ -287,7 +288,7 @@ button.card:hover:not(:disabled), button.card:focus-visible { transform: transla
 .badge--slow { background: var(--gh-color-tier-slow); }
 .badge--rare { background: var(--gh-color-rare); }
 .badge--spent { color: var(--gh-color-text); background: var(--gh-color-spent); }
-/* A card already played reads as gone at a glance; its badge keeps the round. */
+/* A card already played reads as gone at a glance. */
 .card--spent .card__art, .card--spent .card__text { filter: grayscale(.85) brightness(.7); }
 .badge[data-kw], .chip[data-kw], .kw { cursor: help; }
 .kw { text-decoration: underline dotted; text-underline-offset: 3px; }
