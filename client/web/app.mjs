@@ -14,7 +14,7 @@ import { artIndex } from "./art.mjs";
 import { loadArena } from "./arena-provider.mjs";
 import { createLobby } from "./lobby.mjs";
 import { replayView, viewOf } from "./online-model.mjs";
-import { coach, railsNext, tutorialMatch } from "./tutorial.mjs";
+import { afterFiniteAnimations, coach, lessonsFor, railsNext, rememberTutorial, tutorialMatch } from "./tutorial.mjs";
 
 const engine = await loadEngine("engine.wasm", "cards.json");
 const art = artIndex(await (await fetch("art/assets.json")).json());
@@ -34,7 +34,7 @@ let legalPlans = []; // the acting player's legal plans this round
 let onlineContext = null;
 let onlineError = "";
 let onlineSending = false;
-let playback = null; // {start, steps, lines, shown, speed, timer, revealTimer, revealAt, viewer} for the round being played back
+let playback = null; // {start, steps, lines, shown, speed, timer, revealTimer, revealAt, viewer, lessons, lesson} for the round being played back
 let guided = null; // the guided match's decks and plans, from tutorialMatch, while one runs
 let onward = null; // where the player was heading before the guided match: "online", "bot", "hotseat" or null
 
@@ -109,7 +109,7 @@ const lobby = createLobby({
     if (rounds.length) {
       const round = rounds.at(-1);
       playback = {start: round.start.gnomes.map(g => ({...g,block:0,counter:0})),steps:groupSteps(round.events),
-        lines:sentences(round.events,{cards:engine.cards,names:battleNames(),plans:round.plans}),shown:0,timer:null,revealTimer:null,speed:1,viewer:flow.acting};
+        lines:sentences(round.events,{cards:engine.cards,names:battleNames(),plans:round.plans}),shown:0,timer:null,revealTimer:null,speed:1,viewer:flow.acting,lessons:[],lesson:null};
     } else { legalPlans=engine.legalPlans({state,side:flow.acting,deck:decks[flow.acting]}); plan=[]; }
     lobby.model.inGame = true; app.classList.remove("lobby"); render();
   },
@@ -178,9 +178,14 @@ function enter(before) {
       speed: 1,
       revealTimer: null,
       viewer: ["bot", "tutorial"].includes(flow.mode) ? 0 : flow.acting,
+      // The guided match's lessons for this round, each {at, text, shown}, and the one on show
+      // as {text, ready}, ready once the step's motion has ended.
+      lessons: flow.mode === "tutorial" ? lessonsFor(flow.state.round, events, engine.cards).map((l) => ({ ...l, shown: false })) : [],
+      lesson: null,
     };
     dispatch({ type: "resolved", state, result, events });
   }
+  if (flow.screen === "result" && flow.mode === "tutorial") rememberTutorial(localStorage, "done");
 }
 
 // groupSteps turns the event list into [from, to) ranges of events that resolve together.
@@ -261,12 +266,37 @@ const handlers = {
   seal: () => { closeBattleDialogs(); if(flow.mode === "online") return sendOnlinePlan(); dispatch({ type: "planSealed", plan }); },
   next: () => { stopPlaying(); showStep(playback.shown + 1); },
   play: () => (playback.timer || playback.revealTimer ? stopPlaying() : startPlaying()),
-  skip: () => { stopPlaying(); for (const card of app.querySelectorAll(".card-reveal")) card.classList.remove("card-reveal"); showStep(playback.steps.length, false); },
+  skip: () => {
+    stopPlaying();
+    for (const card of app.querySelectorAll(".card-reveal")) card.classList.remove("card-reveal");
+    const lesson = playback.lessons.find((l) => !l.shown);
+    if (lesson === undefined) return showStep(playback.steps.length, false);
+    // In the guided match, skipping runs only as far as the next lesson.
+    const target = playback.steps.findIndex((s) => lesson.at >= s.from && lesson.at < s.to) + 1;
+    showStep(Math.max(target, playback.shown), false);
+    lesson.shown = true;
+    playback.lesson = { text: lesson.text, ready: true };
+    patchPlayback();
+    byId("lesson-continue")?.focus({ preventScroll: true });
+  },
+  lessonDone: () => {
+    if (playback?.lesson == null) return;
+    playback.lesson = null;
+    patchPlayback();
+    startPlaying();
+  },
   playbackDone: () => {
     if(flow.mode !== "online") return dispatch({ type: "playbackDone" });
     stopPlaying(); playback=null;
     if(onlineContext.review || onlineContext.view.action !== "move") return lobby.returnToBoard();
     flow={...flow,screen:"plan"}; legalPlans=engine.legalPlans({state:flow.state,side:flow.acting,deck:flow.decks[flow.acting]}); plan=[];render();
+  },
+  tutorialOnward: () => {
+    const mode = onward;
+    guided = null; onward = null; flow = initial;
+    if (mode === "online") handlers.online();
+    else if (mode === "bot" || mode === "hotseat") handlers.start({ mode });
+    else render();
   },
   rematch: () => dispatch({ type: "rematch" }),
   newMatch: () => dispatch({ type: "newMatch" }),
@@ -376,7 +406,26 @@ function showStep(n, animate = true) {
   if (animate && sequential && target > 0) {
     const step = playback.steps[target - 1];
     animateStep(round.events.slice(step.from, step.to));
+    pauseForLesson(step);
   } else for (const side of [0, 1]) byId(`float-${side}`).replaceChildren();
+}
+
+// pauseForLesson stops the clash on a step that holds a guided lesson, and shows the lesson
+// once the step's own motion has ended.
+function pauseForLesson(step) {
+  const lesson = playback.lessons.find((l) => !l.shown && l.at >= step.from && l.at < step.to);
+  if (lesson === undefined) return;
+  lesson.shown = true;
+  stopPlaying();
+  const session = playback;
+  session.lesson = { text: lesson.text, ready: false };
+  patchPlayback();
+  void afterFiniteAnimations(document.getAnimations()).then(() => {
+    if (playback !== session || flow.screen !== "playback" || session.lesson === null) return;
+    session.lesson.ready = true;
+    patchPlayback();
+    byId("lesson-continue")?.focus({ preventScroll: true });
+  });
 }
 
 function queueReveal(session, delay) {
@@ -758,7 +807,7 @@ function playbackScreen() {
         <p class="battle-event" id="battle-event" role="status" aria-live="polite">Both plans revealed. The clash begins.</p>
       </div>
     </section>
-    <div class="battle-controls playback-controls"><div class="button-row"><button class="button" type="button" data-action="play" id="play">Pause</button><button class="button button--secondary" type="button" data-action="next" id="next">Next step</button><button class="button button--secondary" type="button" data-action="skip" id="skip">Skip</button></div>
+    <div class="battle-controls playback-controls">${flow.mode === "tutorial" ? `<div class="coach coach--lesson" id="lesson" hidden>${portraitHTML("Pickers", 'class="coach__portrait"')}<p class="coach__words" id="lesson-text" role="status"></p><button class="button" type="button" data-action="lessonDone" id="lesson-continue">Continue</button></div>` : ""}<div class="button-row"><button class="button" type="button" data-action="play" id="play">Pause</button><button class="button button--secondary" type="button" data-action="next" id="next">Next step</button><button class="button button--secondary" type="button" data-action="skip" id="skip">Skip</button></div>
       <div class="playback-meta"><span class="label" id="progress"></span><button class="button button--secondary round-log-button" type="button" data-action="roundLog">Round details</button><label class="speed-control">Speed <select id="playback-speed"><option value=".7">Slow</option><option value="1" selected>Normal</option><option value="1.7">Fast</option></select></label></div><div class="battle-finish" id="finish"></div></div>
     <dialog class="battle-drawer" id="round-log" aria-labelledby="log-title"><div class="dialog-heading"><h2 class="heading" id="log-title">Round details</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close round details">×</button></div><p class="muted">Every hit, block and interruption so far.</p><div class="log log--grid" id="log"></div></dialog>
     ${battleDialogsHTML(me)}`;
@@ -797,10 +846,16 @@ function patchPlayback() {
   const names = battleNames();
   const caption = done ? `Round complete. ${names[playback.viewer]}: ${vitals[playback.viewer].hp} HP · ${names[1 - playback.viewer]}: ${vitals[1 - playback.viewer].hp} HP.` : current ? lines.slice(current.from, current.to).join(" · ") : "Both plans revealed. The clash begins.";
   if (byId("battle-event").textContent !== caption) byId("battle-event").textContent = caption;
-  byId("next").disabled = done;byId("skip").disabled = done;byId("play").disabled = done;
+  const held = playback.lesson !== null;
+  byId("next").disabled = done || held;byId("skip").disabled = done || held;byId("play").disabled = done || held;
+  const lesson = byId("lesson");
+  if (lesson) {
+    lesson.hidden = !playback.lesson?.ready;
+    byId("lesson-text").textContent = playback.lesson?.ready ? playback.lesson.text : "";
+  }
   byId("play").textContent = playback.timer || playback.revealTimer ? "Pause" : "Play";
   byId("progress").textContent = done ? "Round resolved" : current ? `Beat ${current.beat} · ${current.phase}` : "Plans revealed";
-  byId("finish").innerHTML = done ? finishHTML() : "";
+  byId("finish").innerHTML = done && !held ? finishHTML() : "";
   dropStaleTip();
 }
 
@@ -832,6 +887,7 @@ function finishHTML() {
 }
 
 function resultScreen() {
+  if (flow.mode === "tutorial") return guidedResultHTML();
   const names = battleNames();
   const sides = [0, 1]
     .map((side) => {
@@ -857,6 +913,25 @@ function resultScreen() {
       <div class="stack">
         <div class="frame__head"><span class="label">Match log</span><span class="button-row"><button class="button button--secondary" type="button" data-action="copyLog">Copy match log</button><span class="muted" id="copied"></span></span></div>
         <textarea class="log-text" id="match-log" readonly rows="10">${escapeHTML(matchLog(flow.rounds, flow.result, { cards: engine.cards, names }))}</textarea>
+      </div>
+    </section>`;
+}
+
+// guidedResultHTML closes the guided match on its health score and leads where the player was
+// heading before it.
+function guidedResultHTML() {
+  const [mine, theirs] = flow.state.gnomes.map((g) => g.hp);
+  const outcome = flow.result === "a" ? `You won on health, ${mine} to ${theirs}.`
+    : flow.result === "b" ? `Ironhide won on health, ${theirs} to ${mine}.`
+    : `An even score: ${mine} to ${theirs}.`;
+  return `
+    ${masthead()}
+    <section class="frame stack guided-result">
+      <p class="banner">${outcome}</p>
+      <p>${coach.result.real}</p>
+      <div class="button-row">
+        <button class="button" type="button" data-action="tutorialOnward">${coach.result.onward[onward ?? "home"]}</button>
+        <button class="button button--secondary" type="button" data-action="tutorial"${onward === null ? "" : ` data-mode="${onward}"`}>${coach.result.again}</button>
       </div>
     </section>`;
 }

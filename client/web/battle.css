@@ -126,6 +126,8 @@
 .card.card--coached:focus-visible { outline-color: var(--gh-color-highlight); }
 .hand-entry button.card.card--coached:hover:not(:disabled), .hand-entry button.card.card--coached:focus-visible { box-shadow: 0 12px 20px color-mix(in srgb, var(--gh-color-shadow) 47%, transparent), 0 0 18px 4px color-mix(in srgb, var(--gh-color-accent) 55%, transparent); }
 .slot__coach { padding: 0 12px; text-align: center; font-weight: bold; color: var(--gh-color-accent); }
+.coach[hidden] { display: none; }
+.playback-controls .coach--lesson { flex-basis: 100%; }
 .flying-card { position: fixed !important; z-index: 120; margin: 0; pointer-events: none; transform-origin: center; }
 .played-pile { display: grid; justify-items: center; gap: 9px; background: transparent; border: 0; color: var(--gh-color-text-warm); padding: 10px; cursor: pointer; }
 .played-pile:disabled { opacity: .45; cursor: default; }
