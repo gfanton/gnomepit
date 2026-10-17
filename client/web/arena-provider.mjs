@@ -10,12 +10,15 @@ import { createIndexer } from "./indexer.mjs";
 import * as signer from "./signer.mjs";
 import { waitForAdena } from "./wallet.mjs";
 
+const defaultChainId = "gnomehall-dev";
+const defaultRPC = "http://127.0.0.1:36657";
+
 export async function loadArena(engine) {
   const params = new URLSearchParams(location.search);
-  const chainId = params.get("chain") ?? "gnomehall-dev";
+  const chainId = params.get("chain") ?? defaultChainId;
   const indexerURL = params.get("indexer") ?? "http://127.0.0.1:8546/graphql/query";
   const devName = params.get("dev");
-  const rpc = params.get("rpc") ?? "http://127.0.0.1:36657";
+  const rpc = params.get("rpc") ?? defaultRPC;
   const chain = createChain({ rpc });
   return createArena({
     chain,
@@ -27,6 +30,13 @@ export async function loadArena(engine) {
     origin: location.origin,
     storage: localStorage,
     indexer: indexerURL === "" ? undefined : createIndexer({ url: indexerURL }),
-    network: { chainName: chainId, rpcUrl: rpc },
+    network: walletNetwork(params),
   });
+}
+
+// walletNetwork is the network the page may ask Adena to add: the default one, and none
+// when params name another, so an RPC address from a link never enters the wallet.
+export function walletNetwork(params) {
+  if (params.has("chain") || params.has("rpc")) return undefined;
+  return { chainName: defaultChainId, rpcUrl: defaultRPC };
 }

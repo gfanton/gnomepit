@@ -308,6 +308,16 @@ test("connecting adds the game's network when Adena does not know it, then switc
   assert.deepEqual(calls, ["switch dev", "add dev http://127.0.0.1:36657", "switch dev"]);
 });
 
+test("without a network to offer, connecting never asks Adena to add one", async () => {
+  let asked = false;
+  const wallet = adena({
+    GetNetwork: async () => ({ status: "success", data: { chainId: "onyx-1" } }),
+    AddNetwork: async () => { asked = true; return { status: "success" }; },
+  });
+  await assert.rejects(connect(wallet, "other-1", undefined), failure("wrongNetwork"));
+  assert.equal(asked, false);
+});
+
 test("a network Adena refuses to add leaves the player on the wrong network", async () => {
   const wallet = adena({
     GetNetwork: async () => ({ status: "success", data: { chainId: "onyx-1" } }),
