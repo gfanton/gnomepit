@@ -287,13 +287,33 @@ test("connecting gives the wallet's address on the right network", async () => {
   assert.deepEqual(await connect(already, "dev"), { address: "g1player" });
 });
 
-test("connecting switches network, or says the network is missing", async () => {
+test("connecting switches network, or says the network is missing when Adena cannot add it", async () => {
   let switched = "";
   const elsewhere = { GetNetwork: async () => ({ status: "success", data: { chainId: "onyx-1" } }) };
   const switching = adena({ ...elsewhere, SwitchNetwork: async (id) => { switched = id; return { status: "success" }; } });
   assert.deepEqual(await connect(switching, "dev"), { address: "g1player" });
   assert.equal(switched, "dev");
   await assert.rejects(connect(adena(elsewhere), "dev"), failure("wrongNetwork"));
+});
+
+test("connecting adds the game's network when Adena does not know it, then switches", async () => {
+  const calls = [];
+  let added = false;
+  const wallet = adena({
+    GetNetwork: async () => ({ status: "success", data: { chainId: "onyx-1" } }),
+    SwitchNetwork: async (id) => { calls.push(`switch ${id}`); return added ? { status: "success" } : { status: "failure", type: "UNADDED_NETWORK" }; },
+    AddNetwork: async (net) => { calls.push(`add ${net.chainId} ${net.rpcUrl}`); added = true; return { status: "success" }; },
+  });
+  assert.deepEqual(await connect(wallet, "dev", { chainName: "dev", rpcUrl: "http://127.0.0.1:36657" }), { address: "g1player" });
+  assert.deepEqual(calls, ["switch dev", "add dev http://127.0.0.1:36657", "switch dev"]);
+});
+
+test("a network Adena refuses to add leaves the player on the wrong network", async () => {
+  const wallet = adena({
+    GetNetwork: async () => ({ status: "success", data: { chainId: "onyx-1" } }),
+    AddNetwork: async () => ({ status: "failure", type: "ADD_NETWORK_REJECTED", message: "User rejected" }),
+  });
+  await assert.rejects(connect(wallet, "dev", { chainName: "dev", rpcUrl: "http://x" }), failure("wrongNetwork"));
 });
 
 test("connecting without a wallet, or when the player refuses, fails with its reason", async () => {

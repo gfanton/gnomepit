@@ -183,9 +183,10 @@ function resolve(engine, state, decks, [a, b]) {
 // signer.mjs; storage keeps the root signature and the signing mode per wallet, like
 // localStorage; notifier is a gnotif client. origin names the site in the root
 // signature's text. signEachMove skips sessions: the wallet signs every move.
-// sessionLifetime is how long each new session lasts, in seconds.
+// sessionLifetime is how long each new session lasts, in seconds. network, {chainName,
+// rpcUrl}, lets connect add chainId to a wallet that does not know it.
 export function createArena({
-  chain, wallet, engine, signer, realm, chainId, origin, storage, notifier, indexer, signEachMove = false, sessionLifetime = defaultLifetime,
+  chain, wallet, engine, signer, realm, chainId, origin, storage, notifier, indexer, network, signEachMove = false, sessionLifetime = defaultLifetime,
   now = () => Math.floor(Date.now() / 1000),
 }) {
   let address = null;
@@ -352,11 +353,16 @@ export function createArena({
   }
 
   const arena = {
+    // hasWallet is false when no wallet was found in this browser; canNotify is false when
+    // the arena has no notifier, so notify can only fail.
+    hasWallet: wallet != null,
+    canNotify: notifier !== undefined,
+
     // connect returns the account's state: {state, address, mode, fallback}, state being
     // noWallet, wrongNetwork, missing (this device is not authorized) or active.
     async connect() {
       try {
-        ({ address } = await connectWallet(wallet, chainId));
+        ({ address } = await connectWallet(wallet, chainId, network));
       } catch (err) {
         if (err instanceof WalletError && (err.type === "noWallet" || err.type === "wrongNetwork")) {
           return { state: err.type, reason: err.reason };

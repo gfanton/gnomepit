@@ -15,7 +15,8 @@ export async function loadArena(engine) {
   const chainId = params.get("chain") ?? "gnomehall-dev";
   const indexerURL = params.get("indexer") ?? "http://127.0.0.1:8546/graphql/query";
   const devName = params.get("dev");
-  const chain = createChain({ rpc: params.get("rpc") ?? "http://127.0.0.1:36657" });
+  const rpc = params.get("rpc") ?? "http://127.0.0.1:36657";
+  const chain = createChain({ rpc });
   return createArena({
     chain,
     wallet: devName === null ? await waitForAdena() : devWallet({ name: devName, signer, chain, chainId }),
@@ -26,5 +27,6 @@ export async function loadArena(engine) {
     origin: location.origin,
     storage: localStorage,
     indexer: indexerURL === "" ? undefined : createIndexer({ url: indexerURL }),
+    network: { chainName: chainId, rpcUrl: rpc },
   });
 }

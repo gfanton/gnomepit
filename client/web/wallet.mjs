@@ -73,13 +73,20 @@ export async function waitForAdena(ms = 5000) {
   return undefined;
 }
 
-export async function connect(wallet, chainId) {
+// network names the chain for Adena to add when it does not know chainId: {chainName, rpcUrl}.
+export async function connect(wallet, chainId, network = {}) {
   if (typeof wallet?.AddEstablish !== "function") throw new WalletError("noWallet", "No Adena wallet in this browser");
   answer(await wallet.AddEstablish("Gnomehall"), ["ALREADY_CONNECTED"]);
-  const network = answer(await wallet.GetNetwork());
-  if (network.chainId !== chainId) {
-    const switched = await wallet.SwitchNetwork(chainId);
-    if (switched?.type === "UNADDED_NETWORK") throw new WalletError("wrongNetwork", `Add the network ${chainId} to Adena`);
+  const current = answer(await wallet.GetNetwork());
+  if (current.chainId !== chainId) {
+    let switched = await wallet.SwitchNetwork(chainId);
+    if (switched?.type === "UNADDED_NETWORK") {
+      const missing = new WalletError("wrongNetwork", `Add the network ${chainId} to Adena`);
+      if (typeof wallet.AddNetwork !== "function" || !network.rpcUrl) throw missing;
+      const added = await wallet.AddNetwork({ chainId, chainName: network.chainName ?? chainId, rpcUrl: network.rpcUrl });
+      if (added?.status !== "success") throw new WalletError("wrongNetwork", added?.message || missing.reason);
+      switched = await wallet.SwitchNetwork(chainId);
+    }
     answer(switched, ["REDUNDANT_CHANGE_REQUEST"]);
   }
   return { address: answer(await wallet.GetAccount()).address };

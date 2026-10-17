@@ -182,6 +182,16 @@ test("notify opts the wallet's address in to the arena's two triggers", async ()
   assert.deepEqual(sent, [[{ trigger: "0000001", value: devAccounts.alice.address }, { trigger: "0000002", value: devAccounts.alice.address }]]);
 });
 
+test("the arena says whether it found a wallet and can send notifications", () => {
+  const realm = "gno.land/r/gfanton/gnomehall/arena";
+  const bare = createArena({ chain: null, wallet: null, engine, signer, realm, chainId: "dev", origin: "http://x", storage: memory() });
+  assert.equal(bare.hasWallet, false);
+  assert.equal(bare.canNotify, false);
+  const full = createArena({ chain: null, wallet: walletFor("g1alice"), engine, signer, realm, chainId: "dev", origin: "http://x", storage: memory(), notifier: {} });
+  assert.equal(full.hasWallet, true);
+  assert.equal(full.canNotify, true);
+});
+
 test("watch reports a match when it changes, and stops", async () => {
   const load = (name) => JSON.parse(readFileSync(new URL(`./testdata/qeval/${name}.json`, import.meta.url)));
   const answers = ["match-play", "match-play", "match-ended"];
