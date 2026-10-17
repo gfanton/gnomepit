@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ArenaError} from './arena.mjs';
-import {createLobby} from './lobby.mjs';
+import {createLobby, setupStep} from './lobby.mjs';
 
 const app = () => ({classList:{add(){},remove(){},toggle(){}},dataset:{},innerHTML:'',querySelector:()=>null});
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -392,4 +392,37 @@ test('leaving online play stops following the arena', async t => {
   assert.equal(typeof arena.onChange, 'function');
   await lobby.action('Exit');
   assert.equal(arena.onChange, null);
+});
+
+test('the setup step follows what the device still lacks', () => {
+  assert.equal(setupStep({hasWallet:false,address:'',ready:false}), 1);
+  assert.equal(setupStep({hasWallet:true,address:'',ready:false}), 2);
+  assert.equal(setupStep({hasWallet:true,address:'g1alice',ready:false}), 3);
+  assert.equal(setupStep({hasWallet:true,address:'g1alice',ready:true}), null);
+});
+
+test('without Adena the board leads with installing it', async () => {
+  const page = app();
+  const lobby = createLobby({app:page,arena:{...followedArena(),hasWallet:false,canNotify:false},storage:memory(),onRender:() => lobby.render()});
+  await lobby.enter();
+  assert.match(page.innerHTML, /Get ready to play online/);
+  assert.match(page.innerHTML, /href="https:\/\/adena\.app"/);
+  assert.doesNotMatch(page.innerHTML, /Online play needs Adena/);
+});
+
+test('a board that fits on one page shows no pager, and Notify me needs a notifier', async () => {
+  const page = app();
+  const lobby = createLobby({app:page,arena:{...followedArena(),hasWallet:true,canNotify:false},storage:memory(),onRender:() => lobby.render()});
+  await lobby.enter();
+  assert.doesNotMatch(page.innerHTML, /Previous/);
+  assert.doesNotMatch(page.innerHTML, /Notify me/);
+});
+
+test('a board the page cannot reach says so in plain words', async () => {
+  const page = app();
+  const arena = {...followedArena(),hasWallet:true,canNotify:false,openChallenges:async () => { throw new ArenaError('network','Failed to fetch'); }};
+  const lobby = createLobby({app:page,arena,storage:memory(),onRender:() => lobby.render()});
+  await lobby.enter();
+  assert.match(page.innerHTML, /Can't reach the hall right now\. Check your connection and try again\./);
+  assert.doesNotMatch(page.innerHTML, /Failed to fetch/);
 });
