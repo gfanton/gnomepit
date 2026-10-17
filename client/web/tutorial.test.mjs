@@ -73,6 +73,13 @@ test("round 2 teaches Block then Parry, and round 3 teaches Counter", () => {
   assert.equal(three.events[counter[0].at].kind, "CounterHit");
 });
 
+test("each rails round has one coach step per rails card", () => {
+  const m = tutorialMatch(engine);
+  m.rails.forEach((rails, i) => {
+    if (rails !== null) assert.equal(coach.rounds[i].steps.length, rails.length);
+  });
+});
+
 test("round 3's hint leaves Ironhide's plan for the player to work out", () => {
   const m = tutorialMatch(engine);
   for (const id of m.opponent[2]) assert.doesNotMatch(coach.rounds[2].hint, new RegExp(engine.cards[id].name));
