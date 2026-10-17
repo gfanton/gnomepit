@@ -353,8 +353,7 @@ export function createArena({
   }
 
   const arena = {
-    // hasWallet is false when no wallet was found in this browser; canNotify is false when
-    // the arena has no notifier, so notify can only fail.
+    // canNotify is false without a notifier, so notify can only fail.
     hasWallet: wallet != null,
     canNotify: notifier !== undefined,
 

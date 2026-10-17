@@ -203,7 +203,6 @@ function groupSteps(events) {
   return steps;
 }
 
-// enterMode starts online play, a bot match or a two-player match.
 function enterMode(mode) {
   if (mode === "online") handlers.online();
   else handlers.start({ mode });
@@ -994,11 +993,10 @@ function hpWidth(hp) {
   return `${Math.max(0, Math.min(100, (hp / flow.hp) * 100))}%`;
 }
 
-// cardHTML draws a playing card; with an action it is a button, otherwise a plain card. A
-// pressed value marks a toggle's state; locked marks a toggle that does nothing; coached marks
-// the card the guided match asks for next. A small card
-// shows cost, name and badges and peeks the full card on hover or focus. spentRound, when
-// above 0, marks the round the card was played in.
+// cardHTML draws a playing card; with an action it is a button, otherwise a plain card.
+// pressed marks a toggle's state, locked a toggle that does nothing, coached the card the
+// guided match asks for next. A small card shows cost, name and badges and peeks the full
+// card on hover or focus. spentRound, when above 0, marks the round the card was played in.
 function cardHTML(c, { selected = false, dimmed = false, small = false, locked = false, pressed = null, action = null, data = "", spentRound = 0, hand = false, track = false, coached = false } = {}) {
   const clan = cardClan(c);
   const classes = ["card", `card--${clan.toLowerCase()}`, hand ? "card--hand" : "", track ? "card--track" : "", c.rare ? "card--rare" : "", c.special ? "" : "card--basic", selected ? "card--selected" : "", dimmed ? "card--dimmed" : "", small ? "card--small" : "", locked ? "card--locked" : "", coached ? "card--coached" : "", spentRound > 0 ? "card--spent" : ""].join(" ");

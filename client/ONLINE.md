@@ -69,7 +69,7 @@ Without an indexer, or while it does not answer, `subscribe` polls the node inst
 ## The arena API
 
 ```js
-const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origin, storage, notifier, indexer, signEachMove, sessionLifetime });
+const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origin, storage, notifier, indexer, network, signEachMove, sessionLifetime });
 ```
 
 `chain` comes from `createChain({ rpc })`, `wallet` is `window.adena` or a `devWallet`, `engine` from `loadEngine`, `signer` is `signer.mjs` (`import * as signer`), `storage` is `localStorage`, `notifier` a gnotif `Gnotif`, and `indexer` comes from `createIndexer({ url })` with the indexer's GraphQL URL, such as `http://127.0.0.1:8546/graphql/query`. Without `indexer`, `subscribe` polls the node. `signEachMove` skips sessions. `sessionLifetime` is how long each new session lasts, in seconds, one day unless given. `network`, `{chainName, rpcUrl}`, lets `connect()` add the chain to a wallet that does not know it; `loadArena` passes the chain ID as its name and the page's RPC address.
@@ -77,8 +77,8 @@ const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origi
 | Call | Returns or does |
 |---|---|
 | `connect()` | `{state, address, mode, fallback}`. `state` is `noWallet`, `wrongNetwork`, `missing` (this device has not authorized) or `active`. `noWallet` and `wrongNetwork` return `{state, reason}` and no address. When the wallet does not know the chain and `network` is set, it asks Adena's `AddNetwork` first, then switches; `wrongNetwork` means Adena could not or would not add it. |
-| `hasWallet` | `true` when a wallet was found in this browser. The board's setup panel starts at installing Adena otherwise. |
-| `canNotify` | `true` when the arena has a notifier; without one, `notify()` can only fail, so the board hides Notify me. |
+| `hasWallet` (property) | `true` when a wallet was found in this browser. The board's setup panel starts at installing Adena otherwise. |
+| `canNotify` (property) | `true` when the arena has a notifier; without one, `notify()` can only fail, so the board hides Notify me. |
 | `authorize()` | Asks for the root signature once per device; returns the new state |
 | `account()` | The account state `connect()` gives, without asking the wallet. `mode` is `contract` once the wallet could not create a session for a challenge, acceptance or renewal, or no generation was free. |
 | `resumeSessions()` | Leaves the per-move fallback, so the next challenge, acceptance or renewal asks for a session again; returns the new state |
