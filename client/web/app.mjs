@@ -14,7 +14,7 @@ import { artIndex } from "./art.mjs";
 import { loadArena } from "./arena-provider.mjs";
 import { createLobby } from "./lobby.mjs";
 import { replayView, viewOf } from "./online-model.mjs";
-import { afterFiniteAnimations, coach, lessonsFor, railsNext, rememberTutorial, tutorialMatch, tutorialSeen } from "./tutorial.mjs";
+import { afterFiniteAnimations, coach, lessonsFor, railsNext, tutorialMatch, tutorialMemory } from "./tutorial.mjs";
 
 const engine = await loadEngine("engine.wasm", "cards.json");
 const art = artIndex(await (await fetch("art/assets.json")).json());
@@ -80,6 +80,7 @@ function masthead(note = "A duel beneath the mountain") {
   return `<header class="masthead"><a class="wordmark" href="./">Gnomehall<span>UNDER THE MOUNTAIN</span></a><span class="masthead__note">${note}</span></header>`;
 }
 
+const tutorialFlag = tutorialMemory(localStorage);
 const arena = await loadArena(engine);
 const lobby = createLobby({
   app, arena, storage: localStorage, onRender: render, portrait: portraitHTML, emblem,
@@ -188,7 +189,7 @@ function enter(before) {
     };
     dispatch({ type: "resolved", state, result, events });
   }
-  if (flow.screen === "result" && flow.mode === "tutorial") rememberTutorial(localStorage, "done");
+  if (flow.screen === "result" && flow.mode === "tutorial") tutorialFlag.remember("done");
 }
 
 // groupSteps turns the event list into [from, to) ranges of events that resolve together.
@@ -219,14 +220,14 @@ const handlers = {
   // playMode enters a mode from home, offering the guided match first to a browser that has
   // neither played nor skipped it.
   playMode: ({ mode }) => {
-    if (tutorialSeen(localStorage)) return enterMode(mode);
+    if (tutorialFlag.seen()) return enterMode(mode);
     const offer = byId("tutorial-offer");
     for (const button of offer.querySelectorAll("[data-action]")) button.dataset.mode = mode;
     openDialog(offer);
   },
   tutorialSkip: ({ mode }) => {
     closeBattleDialogs();
-    rememberTutorial(localStorage, "skipped");
+    tutorialFlag.remember("skipped");
     enterMode(mode);
   },
   tutorial: ({ mode }) => {

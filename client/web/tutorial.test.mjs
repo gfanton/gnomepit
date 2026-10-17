@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { nodeEngine } from "./engine-node.mjs";
-import { afterFiniteAnimations, coach, lessonsFor, railsNext, rememberTutorial, tutorialMatch, tutorialSeen } from "./tutorial.mjs";
+import { afterFiniteAnimations, coach, lessonsFor, railsNext, tutorialMatch, tutorialMemory } from "./tutorial.mjs";
 
 const engine = await nodeEngine();
 const g = () => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] });
@@ -93,17 +93,23 @@ test("a lesson whose event does not happen is skipped", () => {
   assert.deepEqual(lessonsFor(1, events, engine.cards), []);
 });
 
-test("the flag reads done or skipped, and storage that throws changes nothing", () => {
+test("the flag reads done or skipped from storage", () => {
   const items = new Map();
   const storage = { getItem: (k) => items.get(k) ?? null, setItem: (k, v) => items.set(k, v) };
-  assert.equal(tutorialSeen(storage), false);
-  rememberTutorial(storage, "skipped");
+  assert.equal(tutorialMemory(storage).seen(), false);
+  tutorialMemory(storage).remember("skipped");
   assert.equal(items.get("gnomehall:tutorial"), "skipped");
-  assert.equal(tutorialSeen(storage), true);
+  assert.equal(tutorialMemory(storage).seen(), true);
+  assert.equal(tutorialMemory(undefined).seen(), false);
+});
+
+test("storage that throws keeps the answer for the rest of the visit only", () => {
   const broken = { getItem() { throw new Error("denied"); }, setItem() { throw new Error("denied"); } };
-  assert.equal(tutorialSeen(broken), false);
-  assert.doesNotThrow(() => rememberTutorial(broken, "done"));
-  assert.equal(tutorialSeen(undefined), false);
+  const flag = tutorialMemory(broken);
+  assert.equal(flag.seen(), false);
+  assert.doesNotThrow(() => flag.remember("skipped"));
+  assert.equal(flag.seen(), true);
+  assert.equal(tutorialMemory(broken).seen(), false);
 });
 
 test("waiting on animations ignores the ones that never end", async () => {

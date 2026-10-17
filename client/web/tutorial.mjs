@@ -76,20 +76,26 @@ export function lessonsFor(round, events, cards) {
   return lessons.sort((a, b) => a.at - b.at);
 }
 
-export function tutorialSeen(storage) {
-  try {
-    return ["done", "skipped"].includes(storage.getItem(tutorialKey));
-  } catch {
-    return false;
-  }
-}
-
-export function rememberTutorial(storage, value) {
-  try {
-    storage.setItem(tutorialKey, value);
-  } catch {
-    // Without storage the offer simply shows again on the next visit.
-  }
+// tutorialMemory keeps whether this browser finished or skipped the guided match. Storage
+// that throws keeps the answer for this visit only, so the offer shows again on the next.
+export function tutorialMemory(storage) {
+  let answer = null;
+  return {
+    seen() {
+      if (answer !== null) return true;
+      try {
+        return ["done", "skipped"].includes(storage.getItem(tutorialKey));
+      } catch {
+        return false;
+      }
+    },
+    remember(value) {
+      answer = value;
+      try {
+        storage.setItem(tutorialKey, value);
+      } catch {}
+    },
+  };
 }
 
 // afterFiniteAnimations waits for the animations that end; looping ones, like a breathing
