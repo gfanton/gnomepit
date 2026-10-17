@@ -60,6 +60,19 @@ test("each lesson shows once, at the first event it names", () => {
   assert.equal(events[lessons[0].at].kind, "Cancelled");
 });
 
+test("round 2 teaches Block then Parry, and round 3 teaches Counter", () => {
+  const m = tutorialMatch(engine);
+  const one = engine.resolve({ state: fresh(), decks: m.decks, a: m.rails[0], b: m.opponent[0] });
+  const two = engine.resolve({ state: one.state, decks: m.decks, a: m.rails[1], b: m.opponent[1] });
+  assert.deepEqual(lessonsFor(2, two.events, engine.cards).map((l) => l.text), coach.lessons.filter((l) => l.round === 2).map((l) => l.text));
+  const best = ["Undermine", "Boot and Heel"].map((name) => engine.cards.find((c) => c.name === name).id);
+  const three = engine.resolve({ state: two.state, decks: m.decks, a: best, b: m.opponent[2] });
+  const counter = lessonsFor(3, three.events, engine.cards);
+  assert.deepEqual(counter.map((l) => l.text), coach.lessons.filter((l) => l.round === 3).map((l) => l.text));
+  // The lesson describes damage dealt back, so it waits for the first hit Counter answers.
+  assert.equal(three.events[counter[0].at].kind, "CounterHit");
+});
+
 test("a lesson whose event does not happen is skipped", () => {
   const m = tutorialMatch(engine);
   const pick = engine.cards.find((c) => c.name === "Pick").id;
