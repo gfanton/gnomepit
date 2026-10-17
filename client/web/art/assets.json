@@ -312,6 +312,14 @@
       "master": "delvers-selection-v5.png",
       "display": "delvers-selection-v5.jpg",
       "prompts": "delvers-selection-v5-prompt.json"
+    },
+    {
+      "name": "Delvers portrait",
+      "clan": "Delvers",
+      "kind": "portrait",
+      "master": "delvers-portrait-v1.png",
+      "display": "delvers-portrait-v1.jpg",
+      "prompts": "delvers-portrait-v1-prompt.json"
     }
   ],
   "superseded_assets": [

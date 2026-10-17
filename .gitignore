@@ -19,6 +19,7 @@ client/mockups/
 !client/web/art/delvers-selection-v3.jpg
 !client/web/art/delvers-selection-v4.jpg
 !client/web/art/delvers-selection-v5.jpg
+!client/web/art/delvers-portrait-v1.jpg
 # The gnotif registry, copied by make deps.
 deps/
 # The local indexer's database, written by make indexer.
