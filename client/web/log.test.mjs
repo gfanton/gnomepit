@@ -142,3 +142,7 @@ test("matchLog prints each round's plans, sentences and HP, then the result", ()
   assert.ok(matchLog(rounds, "draw", { cards, names: ["Pickers", "Ironhide"] }).endsWith("Draw.\n"));
   assert.ok(matchLog(rounds, "a", { cards, names: ["Pickers", "Ironhide"] }).endsWith("Winner: Pickers.\n"));
 });
+
+test("the guided match calls you You and the opponent by its clan", () => {
+  assert.deepEqual(sideNames(["Pickers", "Ironhide"], "tutorial"), ["You", "Ironhide"]);
+});

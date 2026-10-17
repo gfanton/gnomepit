@@ -59,8 +59,10 @@ const hitKey = (ev) => `${ev.side}:${ev.card}:${ev.beat}`;
 
 const verb = (name, form, youForm) => (name === "You" ? youForm : form);
 
-// sideNames names the sides by clan, or by player when both play the same clan.
+// sideNames names the sides by clan, or by player when both play the same clan. The guided
+// match calls its player You.
 export function sideNames(clans, mode) {
+  if (mode === "tutorial") return ["You", clans[1]];
   if (clans[0] !== clans[1]) return [...clans];
   return mode === "bot" ? ["You", "Bot"] : ["Player 1", "Player 2"];
 }

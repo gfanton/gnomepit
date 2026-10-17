@@ -179,3 +179,28 @@ test("a hot-seat match with a knockout in round 2 reaches the result with two ro
   assert.equal(f.rounds.length, 2);
   assert.deepEqual(f.state, round2);
 });
+
+const startTutorial = { type: "startTutorial", hp, clans: ["Pickers", "Ironhide"], decks: [deckA, deckB] };
+
+test("the guided match starts on your round 1 plan with both decks set", () => {
+  const flow = reduce(initial, startTutorial);
+  assert.equal(flow.screen, "plan");
+  assert.equal(flow.mode, "tutorial");
+  assert.equal(flow.acting, 0);
+  assert.deepEqual(flow.clans, ["Pickers", "Ironhide"]);
+  assert.deepEqual(flow.decks, [deckA, deckB]);
+  assert.deepEqual(flow.state, startState);
+});
+
+test("in the guided match the script plays Ironhide's turn, with no hand-off", () => {
+  const flow = play([startTutorial, planSealed([0, 0, 0])]);
+  assert.equal(flow.screen, "plan");
+  assert.equal(flow.acting, 1);
+  assert.equal(botTurn(flow), true);
+  assert.equal(play([planSealed([1, 1, 1])], flow).screen, "playback");
+});
+
+test("the guided match starts only from the title screen", () => {
+  const library = { ...initial, screen: "library" };
+  assert.equal(reduce(library, startTutorial), library);
+});

@@ -3,7 +3,7 @@
 
 export const initial = Object.freeze({
   screen: "title",
-  mode: null, // "hotseat" or "bot"
+  mode: null, // "hotseat", "bot" or "tutorial"
   hp: null,
   acting: 0, // the player choosing a deck or a plan
   clans: [null, null],
@@ -15,8 +15,10 @@ export const initial = Object.freeze({
   after: null, // the screen a hand-off leads to: {screen, acting}
 });
 
-// botTurn is true when the bot has to choose a deck or a plan.
+// botTurn is true when the bot has to choose a deck or a plan, or the guided match's script
+// has to play Ironhide's plan.
 export function botTurn(flow) {
+  if (flow.mode === "tutorial") return flow.acting === 1 && flow.screen === "plan";
   return flow.mode === "bot" && flow.acting === 1 && (flow.screen === "deck" || flow.screen === "plan");
 }
 
@@ -24,6 +26,8 @@ export function reduce(flow, action) {
   switch (`${flow.screen}/${action.type}`) {
     case "title/start":
       return { ...initial, screen: "deck", mode: action.mode, hp: action.hp, state: freshState(action.hp) };
+    case "title/startTutorial":
+      return { ...initial, screen: "plan", mode: "tutorial", hp: action.hp, clans: action.clans, decks: action.decks, state: freshState(action.hp) };
     case "deck/deckReady": {
       const next = { ...flow, clans: withAt(flow.clans, flow.acting, action.clan), decks: withAt(flow.decks, flow.acting, action.deck) };
       return flow.acting === 0 ? toward(next, "deck", 1) : toward(next, "plan", 0);
