@@ -1,0 +1,287 @@
+{
+  "results": [
+    {
+      "T": {
+        "@type": "/gno.RefType",
+        "ID": "gno.land/r/gfanton/gnomehall/arena.MatchView"
+      },
+      "V": {
+        "@type": "/gno.StructValue",
+        "ObjectInfo": {
+          "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+          "ModTime": "0",
+          "RefCount": "0",
+          "LastObjectSize": "0"
+        },
+        "Fields": [
+          {
+            "T": {
+              "@type": "/gno.RefType",
+              "ID": "gno.land/r/gfanton/gnomehall/arena.MatchSummary"
+            },
+            "V": {
+              "@type": "/gno.StructValue",
+              "ObjectInfo": {
+                "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                "ModTime": "0",
+                "RefCount": "0",
+                "LastObjectSize": "0"
+              },
+              "Fields": [
+                {
+                  "T": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": "1"
+                  }
+                },
+                {
+                  "T": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": "reveal"
+                  }
+                },
+                {
+                  "T": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "32"
+                  },
+                  "N": "AQAAAAAAAAA="
+                },
+                {
+                  "T": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5"
+                  }
+                },
+                {
+                  "T": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5"
+                  }
+                },
+                {
+                  "T": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": "Pickers"
+                  }
+                },
+                {
+                  "T": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": "Ironhide"
+                  }
+                },
+                {
+                  "T": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5"
+                  }
+                },
+                {
+                  "T": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "1024"
+                  },
+                  "N": "KmzRagAAAAA="
+                },
+                {
+                  "T": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  }
+                },
+                {
+                  "T": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "T": {
+              "@type": "/gno.PrimitiveType",
+              "value": "16"
+            },
+            "V": {
+              "@type": "/gno.StringValue",
+              "value": ""
+            }
+          },
+          {
+            "T": {
+              "@type": "/gno.PrimitiveType",
+              "value": "16"
+            }
+          },
+          {
+            "T": {
+              "@type": "/gno.PrimitiveType",
+              "value": "16"
+            },
+            "V": {
+              "@type": "/gno.StringValue",
+              "value": "Stone Guard,Bulwark,Hammer Blow,Cobble Throw,Spiked Shield,Anvil Stomp,Feint,Avalanche"
+            }
+          },
+          {
+            "T": {
+              "@type": "/gno.SliceType",
+              "Elt": {
+                "@type": "/gno.SliceType",
+                "Elt": {
+                  "@type": "/gno.PrimitiveType",
+                  "value": "16"
+                },
+                "Vrd": false
+              },
+              "Vrd": false
+            },
+            "V": {
+              "@type": "/gno.SliceValue",
+              "Base": {
+                "@type": "/gno.ArrayValue",
+                "ObjectInfo": {
+                  "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                  "ModTime": "0",
+                  "RefCount": "0",
+                  "LastObjectSize": "0"
+                },
+                "List": [
+                  {
+                    "T": {
+                      "@type": "/gno.SliceType",
+                      "Elt": {
+                        "@type": "/gno.PrimitiveType",
+                        "value": "16"
+                      },
+                      "Vrd": false
+                    },
+                    "V": {
+                      "@type": "/gno.SliceValue",
+                      "Base": {
+                        "@type": "/gno.ArrayValue",
+                        "ObjectInfo": {
+                          "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                          "ModTime": "0",
+                          "RefCount": "0",
+                          "LastObjectSize": "0"
+                        },
+                        "List": [
+                          {
+                            "T": {
+                              "@type": "/gno.PrimitiveType",
+                              "value": "16"
+                            },
+                            "V": {
+                              "@type": "/gno.StringValue",
+                              "value": ""
+                            }
+                          },
+                          {
+                            "T": {
+                              "@type": "/gno.PrimitiveType",
+                              "value": "16"
+                            },
+                            "V": {
+                              "@type": "/gno.StringValue",
+                              "value": "Brace,Brace,Brace"
+                            }
+                          }
+                        ],
+                        "Data": null
+                      },
+                      "Offset": "0",
+                      "Length": "2",
+                      "Maxcap": "2"
+                    }
+                  }
+                ],
+                "Data": null
+              },
+              "Offset": "0",
+              "Length": "1",
+              "Maxcap": "1"
+            }
+          },
+          {
+            "T": {
+              "@type": "/gno.PrimitiveType",
+              "value": "16"
+            },
+            "V": {
+              "@type": "/gno.StringValue",
+              "value": "box1"
+            }
+          },
+          {
+            "T": {
+              "@type": "/gno.SliceType",
+              "Elt": {
+                "@type": "/gno.SliceType",
+                "Elt": {
+                  "@type": "/gno.PrimitiveType",
+                  "value": "32"
+                },
+                "Vrd": false
+              },
+              "Vrd": false
+            },
+            "V": {
+              "@type": "/gno.SliceValue",
+              "Base": {
+                "@type": "/gno.ArrayValue",
+                "ObjectInfo": {
+                  "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                  "ModTime": "0",
+                  "RefCount": "0",
+                  "LastObjectSize": "0"
+                },
+                "List": [],
+                "Data": null
+              },
+              "Offset": "0",
+              "Length": "0",
+              "Maxcap": "0"
+            }
+          },
+          {
+            "T": {
+              "@type": "/gno.PrimitiveType",
+              "value": "4"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

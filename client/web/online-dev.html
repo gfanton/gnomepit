@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gnomehall online console</title>
+<style>
+  body { font: 15px/1.4 system-ui, sans-serif; margin: 16px; max-width: 980px; color: #1d2326; background: #f4f1ea; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 20px 0 6px; }
+  .note { color: #5b6366; margin: 0 0 12px; }
+  #status { font-family: ui-monospace, monospace; background: #fff; padding: 8px; border: 1px solid #d6d0c4; }
+  table { border-collapse: collapse; width: 100%; background: #fff; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #e4dfd4; font-size: 14px; }
+  button { font: inherit; padding: 4px 10px; margin-right: 4px; }
+  #log { font-family: ui-monospace, monospace; font-size: 13px; background: #fff; border: 1px solid #d6d0c4; max-height: 260px; overflow: auto; padding: 8px 8px 8px 40px; margin: 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<h1>Gnomehall online console</h1>
+<p class="note">A development page for the arena realm: decks and plans are picked at random. Add <code>?dev=alice</code> or <code>?dev=bob</code> for a dev wallet, and <code>&amp;contract=1</code> to sign every move with the wallet.</p>
+
+<p id="status">Not connected.</p>
+<div class="row">
+  <button type="button" id="connect">Connect</button>
+  <button type="button" id="authorize">Authorize</button>
+</div>
+
+<h2>Post a challenge</h2>
+<div class="row">
+  <label>Clan <select id="clan"></select></label>
+  <label>Opponent <input id="opponent" placeholder="anyone" size="44"></label>
+  <button type="button" id="post">Post</button>
+</div>
+
+<h2>Open challenges</h2>
+<table><thead><tr><th>Match</th><th>Clan</th><th>Challenger</th><th>Reserved for</th><th></th></tr></thead><tbody id="board"></tbody></table>
+
+<h2>My matches</h2>
+<table><thead><tr><th>Match</th><th>Phase</th><th>Round</th><th>Clans</th><th>HP</th><th>To move</th><th></th></tr></thead><tbody id="matches"></tbody></table>
+
+<h2>Log</h2>
+<ol id="log" reversed></ol>
+
+<script src="wasm_exec.js"></script>
+<script type="module" src="online-dev.mjs"></script>
+</body>
+</html>

@@ -8,3 +8,9 @@ client/web/art/*.jpg
 !client/web/art/duel-table.jpg
 client/*.png
 client/*.webm
+# The gnotif registry, copied by make deps.
+deps/
+# The local indexer's database, written by make indexer.
+.indexer/
+# The signer's npm packages, installed by make vendor.
+client/js/node_modules

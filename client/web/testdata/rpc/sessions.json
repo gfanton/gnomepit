@@ -1,0 +1,19 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "response": {
+      "ResponseBase": {
+        "Error": null,
+        "Data": "WwogIHsKICAgICJAdHlwZSI6ICIvZ25vLlNlc3Npb25BY2NvdW50IiwKICAgICJCYXNlU2Vzc2lvbkFjY291bnQiOiB7CiAgICAgICJCYXNlQWNjb3VudCI6IHsKICAgICAgICAiYWRkcmVzcyI6ICJnMWFuejc1Y3JlN3hkdjNnMnV0bnVtdzczdHZ3NTVnZTl6eDB2am1yIiwKICAgICAgICAiY29pbnMiOiAiIiwKICAgICAgICAicHVibGljX2tleSI6IHsKICAgICAgICAgICJAdHlwZSI6ICIvdG0uUHViS2V5U2VjcDI1NmsxIiwKICAgICAgICAgICJ2YWx1ZSI6ICJBdHNYSFFaekUrVjV1b1hGUDBUKzEvK3BXWmxyRnVoUzUrc3BuUVM3SkVyTCIKICAgICAgICB9LAogICAgICAgICJhY2NvdW50X251bWJlciI6ICIxNCIsCiAgICAgICAgInNlcXVlbmNlIjogIjAiCiAgICAgIH0sCiAgICAgICJtYXN0ZXJfYWRkcmVzcyI6ICJnMXZ6cG41dGRoYXQwdnk5MGV5cW5jczA5NDc0MjU3dGd6MnV3MDl3IiwKICAgICAgImV4cGlyZXNfYXQiOiAiMTc5Mjc0ODM3NyIsCiAgICAgICJzcGVuZF9saW1pdCI6ICIxMDAwMDAwdWdub3QiLAogICAgICAic3BlbmRfcmVzZXQiOiAiMTc5MjE0MzU3NyIKICAgIH0sCiAgICAiYWxsb3dfcGF0aHMiOiBbCiAgICAgICJ2bS9leGVjOmduby5sYW5kL3IvZ2ZhbnRvbi9nbm9tZWhhbGwvYXJlbmEiCiAgICBdCiAgfQpd",
+        "Events": null,
+        "Log": "",
+        "Info": ""
+      },
+      "Key": null,
+      "Value": null,
+      "Proof": null,
+      "Height": "0"
+    }
+  }
+}

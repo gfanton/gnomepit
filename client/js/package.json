@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@gnolang/gno-js-client": "3.1.0",
+    "@gnolang/tm2-js-client": "3.3.0",
+    "buffer": "6.0.3"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

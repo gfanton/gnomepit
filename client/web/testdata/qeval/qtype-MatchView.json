@@ -1,0 +1,164 @@
+{
+  "typeid": "gno.land/r/gfanton/gnomehall/arena.MatchView",
+  "type": {
+    "@type": "/gno.DeclaredType",
+    "PkgPath": "gno.land/r/gfanton/gnomehall/arena",
+    "Name": "MatchView",
+    "Base": {
+      "@type": "/gno.StructType",
+      "Fields": [
+        {
+          "Name": "MatchSummary",
+          "Type": {
+            "@type": "/gno.DeclaredType",
+            "PkgPath": "gno.land/r/gfanton/gnomehall/arena",
+            "Name": "MatchSummary",
+            "Base": {
+              "@type": "/gno.StructType",
+              "Fields": [
+                {
+                  "Name": "ID",
+                  "Type": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  }
+                },
+                {
+                  "Name": "Phase",
+                  "Type": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  }
+                },
+                {
+                  "Name": "Round",
+                  "Type": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "32"
+                  }
+                },
+                {
+                  "Name": "Challenger",
+                  "Type": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  }
+                },
+                {
+                  "Name": "Acceptor",
+                  "Type": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  }
+                },
+                {
+                  "Name": "ChallengerClan",
+                  "Type": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  }
+                },
+                {
+                  "Name": "AcceptorClan",
+                  "Type": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  }
+                },
+                {
+                  "Name": "ToMove",
+                  "Type": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  }
+                },
+                {
+                  "Name": "Deadline",
+                  "Type": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "1024"
+                  }
+                },
+                {
+                  "Name": "Result",
+                  "Type": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  }
+                },
+                {
+                  "Name": "Reason",
+                  "Type": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "Name": "Opponent",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "ChallengerDeck",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "AcceptorDeck",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "Plans",
+          "Type": {
+            "@type": "/gno.SliceType",
+            "Elt": {
+              "@type": "/gno.SliceType",
+              "Elt": {
+                "@type": "/gno.PrimitiveType",
+                "value": "16"
+              }
+            }
+          }
+        },
+        {
+          "Name": "Box",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "HP",
+          "Type": {
+            "@type": "/gno.SliceType",
+            "Elt": {
+              "@type": "/gno.SliceType",
+              "Elt": {
+                "@type": "/gno.PrimitiveType",
+                "value": "32"
+              }
+            }
+          }
+        },
+        {
+          "Name": "DeadlinePassed",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "4"
+          }
+        }
+      ]
+    }
+  }
+}
