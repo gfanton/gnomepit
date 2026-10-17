@@ -54,6 +54,7 @@ export async function build(options: BuildOptions): Promise<void> {
     ...browserBundle(),
     entryPoints: shipped.map(({ entry }) => ({ in: join(web, `${entry}.mjs`), out: entry })),
     outdir: options.outDir,
+    minify: true,
     define: { GNOMEHALL_NETWORK: JSON.stringify(options.network) },
   });
   // ceiling: names are not hashed and Pages caches each file ten minutes, so for ten minutes after a
