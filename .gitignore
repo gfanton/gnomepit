@@ -26,3 +26,7 @@ deps/
 .indexer/
 # The signer's npm packages, installed by make vendor.
 client/js/node_modules
+# Overrides a global .claude ignore so the shared settings stay tracked.
+!/.claude/
+/.claude/*
+!/.claude/settings.json
