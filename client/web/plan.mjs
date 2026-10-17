@@ -8,13 +8,13 @@ export function beatsUsed(plan, cards) {
   return plan.reduce((sum, id) => sum + cards[id].cost, 0);
 }
 
-// canAdd: the card fits the remaining beats, and a special is available and not already
+// canAdd: the card fits the remaining beats and is available, and a special is not already
 // in the plan.
 export function canAdd(plan, cardId, cards, available) {
   const card = cards[cardId];
   if (beatsUsed(plan, cards) + card.cost > beats) return false;
-  if (!card.special) return true;
-  return available.includes(cardId) && !plan.includes(cardId);
+  if (!available.includes(cardId)) return false;
+  return !card.special || !plan.includes(cardId);
 }
 
 export function addCard(plan, cardId, cards, available) {

@@ -29,6 +29,11 @@ test("canAdd allows a basic any number of times", () => {
   assert.equal(canAdd([0, 0], 0, cards, available), true);
 });
 
+test("canAdd refuses a basic left out of what the player may play", () => {
+  assert.equal(canAdd([], 0, cards, [3]), false);
+  assert.equal(canAdd([], 3, cards, [3]), true);
+});
+
 test("addCard appends when allowed and returns the same array when refused", () => {
   const plan = [0];
   assert.deepEqual(addCard(plan, 5, cards, available), [0, 5]);

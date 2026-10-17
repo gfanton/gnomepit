@@ -14,6 +14,7 @@ import { artIndex } from "./art.mjs";
 import { loadArena } from "./arena-provider.mjs";
 import { createLobby } from "./lobby.mjs";
 import { replayView, viewOf } from "./online-model.mjs";
+import { coach, railsNext, tutorialMatch } from "./tutorial.mjs";
 
 const engine = await loadEngine("engine.wasm", "cards.json");
 const art = artIndex(await (await fetch("art/assets.json")).json());
@@ -34,6 +35,8 @@ let onlineContext = null;
 let onlineError = "";
 let onlineSending = false;
 let playback = null; // {start, steps, lines, shown, speed, timer, revealTimer, revealAt, viewer} for the round being played back
+let guided = null; // the guided match's decks and plans, from tutorialMatch, while one runs
+let onward = null; // where the player was heading before the guided match: "online", "bot", "hotseat" or null
 
 // Shared cards, and any clan missing here, get no emblem and no blurb.
 const clanLook = {
@@ -156,7 +159,7 @@ function enter(before) {
   if (flow.screen === "plan") {
     const plans = engine.legalPlans({ state: flow.state, side: flow.acting, deck: flow.decks[flow.acting] });
     if (botTurn(flow)) {
-      dispatch({ type: "planSealed", plan: randomPlan(plans, Math.random) });
+      dispatch({ type: "planSealed", plan: flow.mode === "tutorial" ? guided.opponent[flow.state.round - 1] : randomPlan(plans, Math.random) });
       return;
     }
     legalPlans = plans;
@@ -174,7 +177,7 @@ function enter(before) {
       timer: null,
       speed: 1,
       revealTimer: null,
-      viewer: flow.mode === "bot" ? 0 : flow.acting,
+      viewer: ["bot", "tutorial"].includes(flow.mode) ? 0 : flow.acting,
     };
     dispatch({ type: "resolved", state, result, events });
   }
@@ -197,6 +200,13 @@ const handlers = {
   online: () => { flow = {...initial,screen:"lobby"}; lobby.enter(); },
   onlineBack: () => { if(onlineSending)return; stopPlaying(); playback=null; if(["plan","deck"].includes(flow.screen))lobby.model.draft={flow,deck,plan,legalPlans,onlineContext,choosingClan}; lobby.returnToBoard(); },
   library: () => { flow = {...initial,screen:"library"}; render(); },
+  tutorial: ({ mode }) => {
+    closeBattleDialogs();
+    onward = mode ?? null;
+    guided = tutorialMatch(engine);
+    flow = initial;
+    dispatch({ type: "startTutorial", hp: engine.hp, clans: guided.clans, decks: guided.decks });
+  },
   home: () => { flow=initial; render(); },
   homeClan: ({ name }) => { if(!clanNamed(name))return; handlers.start({mode:"bot"}); handlers.clan({name}); },
   changeClan: () => { choosingClan=true; render(); },
@@ -241,7 +251,7 @@ const handlers = {
     const legal = flow.screen === "plan" && canAdd(plan, c.id, engine.cards, available());
     const reader = byId("card-reader");
     byId("reader-content").innerHTML = `${cardHTML(c)}<p class="muted">${c.cost} ${c.cost === 1 ? "beat" : "beats"}${c.special ? " · Once per match" : " · Reusable basic"}</p>
-      ${legal ? `<button class="button" type="button" data-action="addCard" data-id="${c.id}">Play ${c.name}</button>` : `<p class="muted">${flow.screen === "playback" ? "Committed this round." : flow.state.gnomes[flow.acting].spent.includes(c.id) ? "Already spent this match." : "This card does not fit your current plan."}</p>`}`;
+      ${legal ? `<button class="button" type="button" data-action="addCard" data-id="${c.id}">Play ${c.name}</button>` : `<p class="muted">${flow.screen === "playback" ? "Committed this round." : flow.state.gnomes[flow.acting].spent.includes(c.id) ? "Already spent this match." : coachedCard() !== undefined ? `The guided match asks for ${engine.cards[coachedCard()].name} now.` : "This card does not fit your current plan."}</p>`}`;
     openDialog(reader);
   },
   playedCards: () => { if (flow.screen === "playback") stopPlaying(); openDialog(byId("played-cards")); },
@@ -332,10 +342,22 @@ function placeTip(anchor) {
   tip.style.left = `${left}px`;
 }
 
-// available lists the ids the acting player may play: the basics and the deck's unspent specials.
+// available lists the ids the acting player may play: the basics and the deck's unspent specials,
+// or only the card a guided round's rails ask for next.
 function available() {
+  if (flow.mode === "tutorial" && guided.rails[flow.state.round - 1] !== null) {
+    const next = coachedCard();
+    return next === undefined ? [] : [next];
+  }
   const spent = flow.state.gnomes[flow.acting].spent;
   return [...basics, ...flow.decks[flow.acting].filter((id) => !spent.includes(id))];
+}
+
+// coachedCard is the card the guided match's rails ask for next, if any.
+function coachedCard() {
+  if (flow.mode !== "tutorial") return undefined;
+  const rails = guided.rails[flow.state.round - 1];
+  return rails === null ? undefined : railsNext(rails, plan);
 }
 
 // ---- Playback
@@ -508,7 +530,11 @@ function render() {
   }
   app.classList.toggle("board--battle", ["plan", "playback"].includes(flow.screen));
   if (flow.screen === "plan") {
-    app.querySelector(".battle-hand").scrollLeft = previousScreen === "plan" ? handScroll : 0;
+    const hand = app.querySelector(".battle-hand");
+    hand.scrollLeft = previousScreen === "plan" ? handScroll : 0;
+    // A phone's hand scrolls sideways; bring the card the guided match asks for into view.
+    const coached = hand.querySelector(".card--coached")?.closest(".hand-entry");
+    if (coached) hand.scrollLeft += coached.getBoundingClientRect().left - hand.getBoundingClientRect().left - (hand.clientWidth - coached.offsetWidth) / 2;
     if (previousScreen === "plan" && key) {
       let target = [...app.querySelectorAll("[data-action]")].find(el => el.dataset.action === key.action && el.dataset.id === key.id && el.dataset.beat === key.beat && !el.disabled);
       target ??= byId("seal")?.disabled ? app.querySelector('.battle-hand [data-action="addCard"]:not(:disabled)') : byId("seal");
@@ -544,7 +570,7 @@ function clanChoicesHTML(home=false) {
   }).join('')}</div>`;
 }
 function title() {
-  return `<header class="masthead"><a class="wordmark" href="./">Gnomehall<span>UNDER THE MOUNTAIN</span></a><nav class="home-nav" aria-label="Explore the game"><a href="#how-duels-work">How to play</a><button type="button" data-action="library">Card library</button></nav></header>
+  return `<header class="masthead"><a class="wordmark" href="./">Gnomehall<span>UNDER THE MOUNTAIN</span></a><nav class="home-nav" aria-label="Explore the game"><button type="button" data-action="tutorial">How to play</button><button type="button" data-action="library">Card library</button></nav></header>
     <section class="intro intro--home">
       <div class="intro__copy"><span class="eyebrow">A TACTICAL CARD DUEL</span>
         <h1>Small gnomes.<br>Big grudges.</h1>
@@ -641,25 +667,33 @@ function planScreen() {
   const sealable = isSealable(plan, legalPlans);
   const handIds = [...basics, ...flow.decks[me].filter(id => !flow.state.gnomes[me].spent.includes(id) && !plan.includes(id))];
   const playedCount = flow.rounds.reduce((n, round) => n + round.plans[me].length, 0);
+  const coached = coachedCard();
   const hand = handIds.map((id, index) => {
     const c = engine.cards[id];
     return `<div class="hand-entry" style="--hand-order:${index};--hand-tilt:${(index - (handIds.length - 1) / 2) * 4}deg;--hand-rise:${Math.pow(index - (handIds.length - 1) / 2, 2) * 2}px">
-      ${cardHTML(c, { action: matchMedia("(hover: none)").matches ? "inspectCard" : "addCard", hand: true, dimmed: !canAdd(plan, id, engine.cards, available()) })}
+      ${cardHTML(c, { action: matchMedia("(hover: none)").matches ? "inspectCard" : "addCard", hand: true, dimmed: !canAdd(plan, id, engine.cards, available()), coached: id === coached })}
       <button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Details: ${c.name}">Details</button></div>`;
   }).join("");
   const backs = [1, 2, 3].map(() => `<div class="card-back card-back--${(flow.clans[opponent] || "shared").toLowerCase()}" aria-hidden="true"><span>${emblem(flow.clans[opponent])}</span></div>`).join("");
+  const practice = flow.mode === "tutorial" && guided.rails[flow.state.round - 1] !== null ? guided.opponent[flow.state.round - 1] : null;
+  const opponentTrack = practice === null
+    ? `<div class="plan-track plan-track--hidden" aria-label="Opponent plan hidden">${backs}</div>`
+    : `<div class="plan-track">${practiceTrackHTML(practice)}</div>`;
+  const title = flow.mode === "tutorial"
+    ? coachHTML(sealable)
+    : `<div class="hand-zone__title"><h2 class="heading">Plot your next move</h2><span class="muted" id="plan-status" role="status">${sealable ? "Your plan is ready. Confirm it when you're sure." : "Play cards to fill all three beats."}</span></div>`;
   return `${battleHeaderHTML(flow.state.round, "Planning")}
     <section class="duel-table" aria-label="Round ${flow.state.round} battle table">
       <div class="duel-fighters">${gnomeHTML(me, flow.state.gnomes[me], names[me])}${gnomeHTML(opponent, flow.state.gnomes[opponent], names[opponent])}</div>
       <div class="duel-center">
-        <div class="track-row track-row--opponent"><div class="track-row__label"><span class="label">${possessive(names[opponent])} plan</span><span class="track-hint">Sealed in secret</span></div><div class="plan-track plan-track--hidden" aria-label="Opponent plan hidden">${backs}</div></div>
+        <div class="track-row track-row--opponent"><div class="track-row__label"><span class="label">${possessive(names[opponent])} plan</span><span class="track-hint">${practice === null ? "Sealed in secret" : "Shown for practice"}</span></div>${opponentTrack}</div>
         ${beatMarkersHTML()}
         <div class="track-row track-row--yours"><div class="track-row__label"><span class="label">Your plan</span><span class="track-hint">${used} of 3 beats filled</span></div>${slotsHTML()}</div>
         <p class="table-caption">Choose the order. Anticipate their move.</p>
       </div>
     </section>
     <section class="hand-zone" aria-label="Your hand"><div class="hand-zone__heading">
-      <div class="hand-zone__title"><h2 class="heading">Plot your next move</h2><span class="muted" id="plan-status" role="status">${sealable ? "Your plan is ready. Confirm it when you're sure." : "Play cards to fill all three beats."}</span></div>
+      ${title}
       <div class="hand-zone__hint"><span class="label">Your hand <span>${handIds.length} cards</span></span><span class="muted">Lift a card to read · click to play · tap to inspect</span></div>
       <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}>${flow.mode === "online" ? onlineContext.intent === "challenge" ? "Post challenge" : onlineContext.intent === "accept" ? "Accept challenge" : "Send plan" : "Seal plan"}</button></div></div>
       <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount ? "" : "disabled"} aria-label="Open played cards, ${playedCount} cards"><span class="pile-back card-back card-back--${(flow.clans[me] || "shared").toLowerCase()}"><span>${emblem(flow.clans[me])}</span></span><span class="label">Played cards</span><span class="muted">${playedCount} cards · inspect</span></button></div></section>
@@ -673,8 +707,36 @@ function slotsHTML() {
     const c = engine.cards[id]; const from = beat; beat += c.cost;
     return `<div class="slot" data-plan-index="${index}" style="grid-column:span ${c.cost}">${cardHTML(c, { track: true, action: "clearFrom", data: `data-beat="${from}"` })}<span class="track-note">${c.parry > 0 ? `Guards ${c.cost === 1 ? `beat ${beat}` : `beats ${from + 1}–${beat}`}` : c.cost > 1 ? `Lands on beat ${beat}` : "Click to remove"}</span></div>`;
   });
-  const empty = Array.from({ length: 3 - beat }, (_, index) => `<div class="slot"><div class="slot__well"><span class="slot__number">${beat + index + 1}</span><span>Choose a card</span></div><span class="track-note">Empty beat</span></div>`);
+  const coached = coachedCard();
+  const empty = Array.from({ length: 3 - beat }, (_, index) => `<div class="slot"><div class="slot__well"><span class="slot__number">${beat + index + 1}</span>${index === 0 && coached !== undefined ? `<span class="slot__coach">${engine.cards[coached].name} goes here</span>` : "<span>Choose a card</span>"}</div><span class="track-note">Empty beat</span></div>`);
   return `<div class="plan-track plan-track--yours">${filled.join("")}${empty.join("")}</div>`;
+}
+
+// trackNote names the beats a revealed card guards or lands on; from and to are 1-based.
+function trackNote(c, from, to) {
+  if (c.parry > 0) return `Guards ${from === to ? `beat ${to}` : `beats ${from}–${to}`}`;
+  return c.cost > 1 ? `Lands on beat ${to}` : `Beat ${to}`;
+}
+
+// practiceTrackHTML lays out the guided match opponent's plan face up.
+function practiceTrackHTML(ids) {
+  let beat = 0;
+  return ids.map((id) => {
+    const c = engine.cards[id]; const from = beat + 1; beat += c.cost;
+    return `<div class="slot" style="grid-column:span ${c.cost}">${cardHTML(c, { track: true })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
+  }).join("");
+}
+
+// coachHTML is the guided match's coach strip: the round's lesson title, what to do now, and
+// the step count while the rails lead.
+function coachHTML(sealable) {
+  const round = flow.state.round;
+  const words = coach.rounds[round - 1];
+  const rails = guided.rails[round - 1];
+  const line = rails === null ? words.hint : coachedCard() !== undefined ? words.steps[plan.length] : words.seal;
+  const step = rails === null ? "" : `<span class="coach__step">Round ${round} · step ${plan.length + 1} of ${words.steps.length + 1}</span>`;
+  return `<div class="coach">${portraitHTML("Pickers", 'class="coach__portrait"')}<p class="coach__words"><strong>${words.title}</strong> ${line}</p>${step}
+    <span class="coach__status" id="plan-status" role="status">${sealable ? "Your plan is ready. Confirm it when you're sure." : "Play cards to fill all three beats."}</span></div>`;
 }
 
 function playbackScreen() {
@@ -685,8 +747,7 @@ function playbackScreen() {
     let beat = 0;
     return `<div class="track-row ${side === me ? "track-row--yours" : "track-row--opponent"}"><div class="track-row__label"><span class="label">${possessive(names[side])} plan</span><span class="track-hint">Revealed</span></div><div class="plan-track">${round.plans[side].map((id, index) => {
       const c = engine.cards[id];const from = beat + 1;beat += c.cost;
-      const note = c.parry > 0 ? `Guards ${from === beat ? `beat ${beat}` : `beats ${from}–${beat}`}` : c.cost > 1 ? `Lands on beat ${beat}` : `Beat ${beat}`;
-      return `<div class="slot card-reveal" style="grid-column:span ${c.cost};--reveal-delay:${index * 120}ms">${cardHTML(c, { track: true, action: "inspectCard", data: `data-side="${side}" data-index="${index}"` })}<span class="track-note">${note}</span></div>`;
+      return `<div class="slot card-reveal" style="grid-column:span ${c.cost};--reveal-delay:${index * 120}ms">${cardHTML(c, { track: true, action: "inspectCard", data: `data-side="${side}" data-index="${index}"` })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
     }).join("")}</div></div>`;
   };
   return `${battleHeaderHTML(round.state.round - 1, "The clash")}
@@ -826,12 +887,13 @@ function hpWidth(hp) {
 }
 
 // cardHTML draws a playing card; with an action it is a button, otherwise a plain card. A
-// pressed value marks a toggle's state; locked marks a toggle that does nothing. A small card
+// pressed value marks a toggle's state; locked marks a toggle that does nothing; coached marks
+// the card the guided match asks for next. A small card
 // shows cost, name and badges and peeks the full card on hover or focus. spentRound, when
 // above 0, marks the round the card was played in.
-function cardHTML(c, { selected = false, dimmed = false, small = false, locked = false, pressed = null, action = null, data = "", spentRound = 0, hand = false, track = false } = {}) {
+function cardHTML(c, { selected = false, dimmed = false, small = false, locked = false, pressed = null, action = null, data = "", spentRound = 0, hand = false, track = false, coached = false } = {}) {
   const clan = cardClan(c);
-  const classes = ["card", `card--${clan.toLowerCase()}`, hand ? "card--hand" : "", track ? "card--track" : "", c.rare ? "card--rare" : "", c.special ? "" : "card--basic", selected ? "card--selected" : "", dimmed ? "card--dimmed" : "", small ? "card--small" : "", locked ? "card--locked" : ""].join(" ");
+  const classes = ["card", `card--${clan.toLowerCase()}`, hand ? "card--hand" : "", track ? "card--track" : "", c.rare ? "card--rare" : "", c.special ? "" : "card--basic", selected ? "card--selected" : "", dimmed ? "card--dimmed" : "", small ? "card--small" : "", locked ? "card--locked" : "", coached ? "card--coached" : ""].join(" ");
   const state = [pressed === null ? "" : `aria-pressed="${pressed}"`, locked ? `aria-disabled="true" title="The Rare stays in"` : "", small ? `data-peek="${c.id}"` : ""].join(" ");
   const badges = [
     c.tier !== "Normal" ? `<span class="badge badge--${c.tier.toLowerCase()}" data-kw="${c.tier.toLowerCase()}">${c.tier}</span>` : "",

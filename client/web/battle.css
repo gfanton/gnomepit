@@ -114,6 +114,18 @@
 .hand-entry button.card:hover:not(:disabled), .hand-entry button.card:focus-visible { transform: none; box-shadow: 0 12px 20px color-mix(in srgb, var(--gh-color-shadow) 47%, transparent); }
 .card-inspect { position: absolute; right: 6px; bottom: -12px; z-index: 1; background: color-mix(in srgb, var(--gh-color-surface) 94%, transparent); color: var(--gh-color-text-glow); border: 1px solid color-mix(in srgb, var(--gh-color-border-muted) 33%, transparent); border-radius: 4px; font-size: 9px; padding: 3px 6px; cursor: pointer; opacity: 0; }
 .hand-entry:hover .card-inspect, .hand-entry:has(:focus-visible) .card-inspect { opacity: 1; }
+/* The guided match's coach sits in the hand's heading row, never over the board; its marks
+   style the cards themselves so they rise and fly with them. */
+.coach { display: flex; align-items: center; gap: 12px; flex: 1 1 420px; min-width: 0; margin-right: auto; padding: 8px 12px; border: 1px solid var(--gh-color-trim); border-radius: 8px; background: color-mix(in srgb, var(--gh-color-surface) 82%, transparent); }
+.coach__portrait { flex: none; width: 40px; height: 40px; border: 2px solid var(--gh-color-trim); border-radius: 50%; object-fit: cover; }
+.coach__words { flex: 1 1 0; min-width: 0; margin: 0; font-size: 14px; line-height: 1.4; color: var(--gh-color-text); }
+.coach__words strong { margin-right: 4px; font-family: var(--gh-font-display); color: var(--gh-color-text-bright); }
+.coach__step { font-size: 11px; color: var(--gh-color-text-muted); white-space: nowrap; }
+.coach__status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.card.card--coached { outline: 2px solid var(--gh-color-accent); outline-offset: 3px; box-shadow: 0 0 18px 4px color-mix(in srgb, var(--gh-color-accent) 55%, transparent); }
+.card.card--coached:focus-visible { outline-color: var(--gh-color-highlight); }
+.hand-entry button.card.card--coached:hover:not(:disabled), .hand-entry button.card.card--coached:focus-visible { box-shadow: 0 12px 20px color-mix(in srgb, var(--gh-color-shadow) 47%, transparent), 0 0 18px 4px color-mix(in srgb, var(--gh-color-accent) 55%, transparent); }
+.slot__coach { padding: 0 12px; text-align: center; font-weight: bold; color: var(--gh-color-accent); }
 .flying-card { position: fixed !important; z-index: 120; margin: 0; pointer-events: none; transform-origin: center; }
 .played-pile { display: grid; justify-items: center; gap: 9px; background: transparent; border: 0; color: var(--gh-color-text-warm); padding: 10px; cursor: pointer; }
 .played-pile:disabled { opacity: .45; cursor: default; }
@@ -193,7 +205,7 @@ dialog::backdrop { background: color-mix(in srgb, var(--gh-color-canvas) 74%, tr
   .plan-track .slot__well { width: 180px; height: 268px; }
   .board--battle .card--track { width: 180px; height: 268px; min-height: 268px; grid-template-rows: 32px 110px 1fr 24px; }
   .table-caption, .battle-event { position: sticky; left: 0; }
-  .hand-zone__title { flex-basis: 100%; }
+  .hand-zone__title, .coach { flex-basis: 100%; }
   .hand-zone__hint { justify-items: start; }
   .hand-layout { grid-template-columns: minmax(0, 1fr) 86px; gap: 6px; }
   .board--battle .battle-hand { padding-bottom: 30px; scroll-snap-type: x proximity; }
@@ -206,6 +218,8 @@ dialog::backdrop { background: color-mix(in srgb, var(--gh-color-canvas) 74%, tr
 }
 @media (max-width: 540px) {
   .board.board--battle { padding: 10px 10px 20px; }
+  .coach { flex-wrap: wrap; }
+  .coach__step { flex-basis: 100%; }
   .battle-header { gap: 8px; min-height: 38px; }
   .battle-header .wordmark { font-size: 23px; }
   .battle-intel-button { font-size: 10px; padding: 8px; }
