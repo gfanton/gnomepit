@@ -1,0 +1,26 @@
+{
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "check": "tsc -p client/web",
+    "lint": "oxlint --type-aware client scripts",
+    "fmt": "prettier --write \"{client,scripts}/**/*.ts\"",
+    "fmt:check": "prettier --check \"{client,scripts}/**/*.ts\"",
+    "test": "node --test \"client/web/*.test.mjs\""
+  },
+  "dependencies": {
+    "@gnolang/gno-js-client": "3.1.0",
+    "@gnolang/tm2-js-client": "3.3.0",
+    "buffer": "6.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "esbuild": "0.28.2",
+    "oxlint": "1.88.0",
+    "oxlint-tsgolint": "7.0.2004",
+    "prettier": "3.9.10",
+    "typescript": "7.0.2",
+    "valibot": "1.5.0"
+  }
+}

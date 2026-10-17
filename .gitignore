@@ -24,8 +24,8 @@ client/mockups/
 deps/
 # The local indexer's database, written by make indexer.
 .indexer/
-# The signer's npm packages, installed by make vendor.
-client/js/node_modules
+# The toolchain and bundled libraries, installed by pnpm.
+node_modules/
 # direnv's cache of the flake's dev shell, and nix build outputs.
 .direnv/
 result
