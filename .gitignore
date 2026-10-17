@@ -26,6 +26,10 @@ deps/
 .indexer/
 # The signer's npm packages, installed by make vendor.
 client/js/node_modules
+# direnv's cache of the flake's dev shell, and nix build outputs.
+.direnv/
+result
+result-*
 # Overrides a global .claude ignore so the shared settings stay tracked.
 !/.claude/
 /.claude/*
