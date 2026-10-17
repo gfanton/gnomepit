@@ -36,6 +36,17 @@ test("status gains and cancellations retain their side and beat", () => {
   assert.deepEqual(f.cancelled, [{ side: 1, card: 4, beat: 2 }]);
 });
 
+test("self-given, moved and stripped tokens reach the gnome they change", () => {
+  const gained = stepFeedback([{ kind: "VulnerableGained", side: 0, n: 1 }]);
+  assert.equal(gained.sides[0].vulnerable, 1);
+  const moved = stepFeedback([{ kind: "VulnerableMoved", side: 0, n: 2 }]);
+  assert.equal(moved.sides[0].vulnerable, -2);
+  assert.equal(moved.sides[1].vulnerable, 2);
+  const stripped = stepFeedback([{ kind: "BlockStripped", side: 0, n: 5 }]);
+  assert.equal(stripped.sides[1].block, -5);
+  assert.equal(stripped.sides[0].block, 0);
+});
+
 // Kneecap on beat 2 cancels Bulwark, which spans beats 1 and 2.
 const plans = [[id("Pick"), id("Kneecap"), id("Pick")], [id("Bulwark"), id("Brace")]];
 

@@ -68,7 +68,7 @@ function artHTML(c) {
 }
 function collectionHTML() {
   const groups = [...engine.clans.map((clan) => ({ name: clan.name, ids: clan.cards })), { name: "Shared", ids: basics }];
-  return `<details class="collection"><summary>Browse all ${engine.cards.length} cards<span>Pickers, Ironhide & shared techniques</span></summary>
+  return `<details class="collection"><summary>Browse all ${engine.cards.length} cards<span>${engine.clans.map((clan) => clan.name).join(", ")} & shared techniques</span></summary>
     <div class="collection__groups">${groups.map(({ name, ids }) => `<section class="stack"><div class="frame__head"><h2 class="heading">${name === "Shared" ? "Shared techniques" : name}</h2><span class="label">${ids.length} cards</span></div><div class="card-grid">${ids.map((id) => cardHTML(engine.cards[id])).join("")}</div></section>`).join("")}</div>
   </details>`;
 }
@@ -420,9 +420,11 @@ function animateStep(events) {
       f.damage > 0 ? `<span class="combat-float combat-float--damage">−${f.damage} HP</span>` : "",
       f.blocked > 0 ? `<span class="combat-float combat-float--block">Blocked ${f.blocked}</span>` : "",
       f.block > 0 ? `<span class="combat-float combat-float--block">+${f.block} Block</span>` : "",
+      f.block < 0 ? `<span class="combat-float combat-float--debuff">−${-f.block} Block</span>` : "",
       f.counter > 0 ? `<span class="combat-float combat-float--buff">Counter +${f.counter}</span>` : "",
       f.strength > 0 ? `<span class="combat-float combat-float--buff">Strength +${f.strength}</span>` : "",
       f.vulnerable > 0 ? `<span class="combat-float combat-float--debuff">Vulnerable +${f.vulnerable}</span>` : "",
+      f.vulnerable < 0 ? `<span class="combat-float combat-float--buff">Vulnerable −${-f.vulnerable}</span>` : "",
     ].join("");
     byId(`float-${side}`).innerHTML = labels;
     const portrait = byId(`sprite-${side}`);

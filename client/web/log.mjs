@@ -37,6 +37,14 @@ export function sentences(events, { cards, names, plans }) {
         return `Counter deals ${ev.n} to ${me}. ${me} ${ev.after[ev.side].hp}.`;
       case "VulnerableApplied":
         return `${card}: ${other} is Vulnerable ${ev.after[1 - ev.side].vulnerable}.`;
+      case "VulnerableGained":
+        return `${card}: ${me} is Vulnerable ${ev.after[ev.side].vulnerable}.`;
+      case "VulnerableMoved":
+        if (ev.n === 0) return `${card}: ${me} has no Vulnerable to move.`;
+        return `${card}: ${me} moves ${ev.n} Vulnerable to ${other}, who is Vulnerable ${ev.after[1 - ev.side].vulnerable}.`;
+      case "BlockStripped":
+        if (ev.n === 0) return `${card}: ${other} has no Block to lose.`;
+        return `${card}: ${other} loses ${ev.n} Block.`;
       case "StrengthGained":
         return `${card}: ${me} +${ev.n} Strength.`;
       default:
