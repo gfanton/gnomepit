@@ -73,6 +73,12 @@ test("round 2 teaches Block then Parry, and round 3 teaches Counter", () => {
   assert.equal(three.events[counter[0].at].kind, "CounterHit");
 });
 
+test("round 3's hint leaves Ironhide's plan for the player to work out", () => {
+  const m = tutorialMatch(engine);
+  for (const id of m.opponent[2]) assert.doesNotMatch(coach.rounds[2].hint, new RegExp(engine.cards[id].name));
+  assert.match(coach.rounds[2].hint, /cards/);
+});
+
 test("a lesson whose event does not happen is skipped", () => {
   const m = tutorialMatch(engine);
   const pick = engine.cards.find((c) => c.name === "Pick").id;

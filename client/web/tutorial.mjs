@@ -14,7 +14,7 @@ export const coach = {
       "From round 2 both decks are open: Opponent & history shows all eight of Ironhide's cards. Bulwark lands on beat 2 with 5 Block, so hit first: play Pick on beat 1. Pick and Brace never run out.",
       "Avalanche deals damage equal to Ironhide's Block. Dodge Roll's Parry guards beats 2 and 3 and cancels a hit that lands there.",
     ], seal: "Kneecap, Chalk Dust and Sling Stone are spent: a special card plays once per match. Seal your plan." },
-    { title: "Read the card.", hint: "Your call. Ironhide opens with Feint: it deals 4, but if it is cancelled it gains 4 Block instead. Your Rare, Undermine, can cancel it and make Ironhide Vulnerable 2. After this round the higher health wins." },
+    { title: "Read the card.", hint: "Your call: Ironhide's plan is hidden now, as in a real match. Look at the cards it still has, read what each does, and guess what it will play. Then plan your three beats. After this round the higher health wins.", look: "See Ironhide's cards" },
   ],
   lessons: [
     { round: 1, kind: "Cancelled", card: "Hammer Blow", text: "Hammer Blow was still winding up, so Kneecap's Interrupt cancelled it. A cancelled card is spent and does nothing." },

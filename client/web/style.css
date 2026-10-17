@@ -287,6 +287,8 @@ button.card:hover:not(:disabled), button.card:focus-visible { transform: transla
 .badge--slow { background: var(--gh-color-tier-slow); }
 .badge--rare { background: var(--gh-color-rare); }
 .badge--spent { color: var(--gh-color-text); background: var(--gh-color-spent); }
+/* A card already played reads as gone at a glance; its badge keeps the round. */
+.card--spent .card__art, .card--spent .card__text { filter: grayscale(.85) brightness(.7); }
 .badge[data-kw], .chip[data-kw], .kw { cursor: help; }
 .kw { text-decoration: underline dotted; text-underline-offset: 3px; }
 .card-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; padding: 5px; }

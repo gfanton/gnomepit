@@ -725,11 +725,17 @@ function battleDialogsHTML(viewer) {
   const knownHead = known.open
     ? `<h3 class="heading">${possessive(names[opponent])} deck</h3><p class="muted">Decks are open from round 2. Spent cards show the round they were played in; the current plan stays hidden until the reveal.</p>`
     : `<h3 class="heading">${possessive(names[opponent])} clan pool</h3><p class="muted">${deckSize} of these ${known.cards.length} cards are in their deck. The Rare always is. Decks open from round 2; the current plan stays hidden until the reveal.</p>`;
+  const knownGrid = (list) => `<div class="card-grid">${list.map(({ id, spentRound }) => cardHTML(engine.cards[id], { spentRound })).join("")}</div>`;
+  const left = known.cards.filter((c) => c.spentRound === 0);
+  const spent = known.cards.filter((c) => c.spentRound > 0);
+  const knownCardsHTML = known.open
+    ? `<span class="label">Still to play · ${left.length}</span>${knownGrid(left)}${spent.length ? `<span class="label">Already played · ${spent.length}</span>${knownGrid(spent)}` : ""}`
+    : knownGrid(known.cards);
   const history = past.map((round, i) => `<section class="stack"><h3 class="heading">Round ${i + 1}</h3>${[0, 1].map(side => `<div><span class="label">${names[side]}</span><div class="row">${smallCards(round.plans[side])}</div></div>`).join("")}</section>`).join("");
   const played = past.map((round, i) => `<section class="stack"><h3 class="heading">Round ${i + 1}</h3><div class="card-grid">${round.plans[viewer].map(id => cardHTML(engine.cards[id])).join("")}</div></section>`).join("");
   return `<dialog class="battle-drawer" id="played-cards" aria-labelledby="played-title"><div class="dialog-heading"><h2 class="heading" id="played-title">Your played cards</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close played cards">×</button></div>${played || `<p class="muted">No cards played yet.</p>`}</dialog><dialog class="battle-drawer" id="battle-info" aria-labelledby="intel-title"><div class="dialog-heading"><h2 class="heading" id="intel-title">Across the table</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close opponent information">×</button></div>
     <section class="stack">${knownHead}
-      <div class="card-grid">${known.cards.map(({ id, spentRound }) => cardHTML(engine.cards[id], { spentRound })).join("")}</div></section>
+      ${knownCardsHTML}</section>
     <section class="stack intel-history"><h3 class="heading">Earlier rounds</h3>${history || `<p class="muted">No rounds played yet.</p>`}</section></dialog>
     <dialog class="card-reader" id="card-reader" aria-label="Card details"><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close card details">×</button><div id="reader-content" class="stack"></div></dialog>`;
 }
@@ -808,7 +814,9 @@ function coachHTML(sealable) {
   const words = coach.rounds[round - 1];
   const rails = guided.rails[round - 1];
   const line = rails === null ? words.hint : coachedCard() !== undefined ? words.steps[plan.length] : words.seal;
-  const step = rails === null ? "" : `<span class="coach__step">Round ${round} · step ${plan.length + 1} of ${words.steps.length + 1}</span>`;
+  const step = rails === null
+    ? `<button class="button button--secondary" type="button" data-action="intel">${words.look}</button>`
+    : `<span class="coach__step">Round ${round} · step ${plan.length + 1} of ${words.steps.length + 1}</span>`;
   return `<div class="coach">${portraitHTML("Pickers", 'class="coach__portrait"')}<p class="coach__words"><strong>${words.title}</strong> ${line}</p>${step}
     <span class="coach__status" id="plan-status" role="status">${sealable ? "Your plan is ready. Confirm it when you're sure." : "Play cards to fill all three beats."}</span></div>`;
 }
@@ -993,7 +1001,7 @@ function hpWidth(hp) {
 // above 0, marks the round the card was played in.
 function cardHTML(c, { selected = false, dimmed = false, small = false, locked = false, pressed = null, action = null, data = "", spentRound = 0, hand = false, track = false, coached = false } = {}) {
   const clan = cardClan(c);
-  const classes = ["card", `card--${clan.toLowerCase()}`, hand ? "card--hand" : "", track ? "card--track" : "", c.rare ? "card--rare" : "", c.special ? "" : "card--basic", selected ? "card--selected" : "", dimmed ? "card--dimmed" : "", small ? "card--small" : "", locked ? "card--locked" : "", coached ? "card--coached" : ""].join(" ");
+  const classes = ["card", `card--${clan.toLowerCase()}`, hand ? "card--hand" : "", track ? "card--track" : "", c.rare ? "card--rare" : "", c.special ? "" : "card--basic", selected ? "card--selected" : "", dimmed ? "card--dimmed" : "", small ? "card--small" : "", locked ? "card--locked" : "", coached ? "card--coached" : "", spentRound > 0 ? "card--spent" : ""].join(" ");
   const state = [pressed === null ? "" : `aria-pressed="${pressed}"`, locked ? `aria-disabled="true" title="The Rare stays in"` : "", small ? `data-peek="${c.id}"` : ""].join(" ");
   const badges = [
     c.tier !== "Normal" ? `<span class="badge badge--${c.tier.toLowerCase()}" data-kw="${c.tier.toLowerCase()}">${c.tier}</span>` : "",
