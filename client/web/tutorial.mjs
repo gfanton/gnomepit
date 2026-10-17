@@ -56,3 +56,45 @@ export function tutorialMatch(engine) {
     rails: script.rails.map((plan) => (plan === null ? null : ids(plan))),
   };
 }
+
+// railsNext is the card the rails ask for next, or undefined once the plan is complete, has
+// left the rails, or the round has none.
+export function railsNext(rails, plan) {
+  if (rails === null || plan.length >= rails.length) return undefined;
+  return plan.every((id, i) => id === rails[i]) ? rails[plan.length] : undefined;
+}
+
+// lessonsFor places each of the round's lessons at the index of the first event it describes.
+export function lessonsFor(round, events, cards) {
+  const lessons = [];
+  for (const lesson of coach.lessons.filter((l) => l.round === round)) {
+    const at = events.findIndex((ev) => ev.kind === lesson.kind
+      && (lesson.card === undefined || cards[ev.card]?.name === lesson.card)
+      && (lesson.doubled === undefined || ev.doubled === lesson.doubled));
+    if (at >= 0) lessons.push({ at, text: lesson.text });
+  }
+  return lessons.sort((a, b) => a.at - b.at);
+}
+
+export function tutorialSeen(storage) {
+  try {
+    return ["done", "skipped"].includes(storage.getItem(tutorialKey));
+  } catch {
+    return false;
+  }
+}
+
+export function rememberTutorial(storage, value) {
+  try {
+    storage.setItem(tutorialKey, value);
+  } catch {
+    // Without storage the offer simply shows again on the next visit.
+  }
+}
+
+// afterFiniteAnimations waits for the animations that end; looping ones, like a breathing
+// portrait, would never let it resolve.
+export async function afterFiniteAnimations(animations) {
+  const ending = animations.filter((a) => Number.isFinite(a.effect?.getTiming().iterations));
+  await Promise.all(ending.map((a) => a.finished.catch(() => {})));
+}

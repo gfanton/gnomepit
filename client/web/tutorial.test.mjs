@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { nodeEngine } from "./engine-node.mjs";
-import { tutorialMatch } from "./tutorial.mjs";
+import { afterFiniteAnimations, coach, lessonsFor, railsNext, rememberTutorial, tutorialMatch, tutorialSeen } from "./tutorial.mjs";
 
 const engine = await nodeEngine();
 const g = () => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] });
@@ -41,4 +41,56 @@ test("no legal round 3 plan loses the guided match", () => {
 test("a card name the engine does not know is refused", () => {
   const cards = engine.cards.filter((c) => c.name !== "Kneecap");
   assert.throws(() => tutorialMatch({ ...engine, cards }), /unknown card: Kneecap/);
+});
+
+test("the rails offer the next card while the plan follows them", () => {
+  assert.equal(railsNext([4, 6, 3], []), 4);
+  assert.equal(railsNext([4, 6, 3], [4]), 6);
+  assert.equal(railsNext([4, 6, 3], [4, 6, 3]), undefined);
+  assert.equal(railsNext([4, 6, 3], [6]), undefined);
+  assert.equal(railsNext(null, []), undefined);
+});
+
+test("each lesson shows once, at the first event it names", () => {
+  const m = tutorialMatch(engine);
+  const { events } = engine.resolve({ state: fresh(), decks: m.decks, a: m.rails[0], b: m.opponent[0] });
+  const lessons = lessonsFor(1, events, engine.cards);
+  assert.deepEqual(lessons.map((l) => l.text), coach.lessons.filter((l) => l.round === 1).map((l) => l.text));
+  assert.ok(lessons.every((l, i) => i === 0 || l.at > lessons[i - 1].at));
+  assert.equal(events[lessons[0].at].kind, "Cancelled");
+});
+
+test("a lesson whose event does not happen is skipped", () => {
+  const m = tutorialMatch(engine);
+  const pick = engine.cards.find((c) => c.name === "Pick").id;
+  const { events } = engine.resolve({ state: fresh(), decks: m.decks, a: [pick, pick, pick], b: m.opponent[0] });
+  assert.deepEqual(lessonsFor(1, events, engine.cards), []);
+});
+
+test("the flag reads done or skipped, and storage that throws changes nothing", () => {
+  const items = new Map();
+  const storage = { getItem: (k) => items.get(k) ?? null, setItem: (k, v) => items.set(k, v) };
+  assert.equal(tutorialSeen(storage), false);
+  rememberTutorial(storage, "skipped");
+  assert.equal(items.get("gnomehall:tutorial"), "skipped");
+  assert.equal(tutorialSeen(storage), true);
+  const broken = { getItem() { throw new Error("denied"); }, setItem() { throw new Error("denied"); } };
+  assert.equal(tutorialSeen(broken), false);
+  assert.doesNotThrow(() => rememberTutorial(broken, "done"));
+  assert.equal(tutorialSeen(undefined), false);
+});
+
+test("waiting on animations ignores the ones that never end", async () => {
+  const endless = { effect: { getTiming: () => ({ iterations: Infinity }) }, finished: new Promise(() => {}) };
+  let end;
+  const once = { effect: { getTiming: () => ({ iterations: 1 }) }, finished: new Promise((r) => { end = r; }) };
+  let done = false;
+  void afterFiniteAnimations([endless, once]).then(() => { done = true; });
+  await Promise.resolve();
+  assert.equal(done, false);
+  end();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(done, true);
+  await afterFiniteAnimations([]);
+  await afterFiniteAnimations([endless]);
 });
