@@ -12,11 +12,12 @@ import { cardIDs, createArena } from "../client/web/arena.mjs";
 import { createChain, feeFor, gasWantedFor } from "../client/web/chain.mjs";
 import { devWallet } from "../client/web/devwallet.mjs";
 import { nodeEngine } from "../client/web/engine-node.mjs";
+import { networks } from "../client/web/network.ts";
 import * as signer from "../client/web/signer.mjs";
 
-const rpc = process.argv[2] ?? "http://127.0.0.1:36657";
-const realm = "gno.land/r/gfanton/gnomehall/arena";
-const chainId = process.env.CHAIN ?? "gnomehall-dev";
+const rpc = process.argv[2] ?? networks.local.rpc;
+const { realm } = networks.local;
+const chainId = process.env.CHAIN ?? networks.local.chainId;
 
 // The worked match of r/arena/play_test.gno.
 const deckA = "Pickaxe Flurry,Kneecap,Sling Stone,Dodge Roll,Chalk Dust,Double Tap,Momentum,Undermine";

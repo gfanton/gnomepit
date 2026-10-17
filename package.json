@@ -3,11 +3,11 @@
   "type": "module",
   "engines": { "node": ">=24" },
   "scripts": {
-    "check": "tsc -p client/web",
+    "check": "tsc -p client/web && tsc -p .",
     "lint": "oxlint --type-aware client scripts",
     "fmt": "prettier --write \"{client,scripts}/**/*.ts\"",
     "fmt:check": "prettier --check \"{client,scripts}/**/*.ts\"",
-    "test": "node --test \"client/web/*.test.mjs\""
+    "test": "node --test \"client/web/*.test.mjs\" \"client/web/*.test.ts\""
   },
   "dependencies": {
     "@gnolang/gno-js-client": "3.1.0",

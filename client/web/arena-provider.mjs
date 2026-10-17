@@ -7,36 +7,32 @@ import { createArena } from "./arena.mjs";
 import { createChain } from "./chain.mjs";
 import { devWallet } from "./devwallet.mjs";
 import { createIndexer } from "./indexer.mjs";
+import { networkFrom } from "./network.ts";
 import * as signer from "./signer.mjs";
 import { waitForAdena } from "./wallet.mjs";
 
-const defaultChainId = "gnomehall-dev";
-const defaultRPC = "http://127.0.0.1:36657";
-
-export async function loadArena(engine) {
+export async function loadArena(engine, built) {
   const params = new URLSearchParams(location.search);
-  const chainId = params.get("chain") ?? defaultChainId;
-  const indexerURL = params.get("indexer") ?? "http://127.0.0.1:8546/graphql/query";
+  const { chainId, rpc, realm, indexer } = networkFrom(params, built);
   const devName = params.get("dev");
-  const rpc = params.get("rpc") ?? defaultRPC;
   const chain = createChain({ rpc });
   return createArena({
     chain,
     wallet: devName === null ? await waitForAdena() : devWallet({ name: devName, signer, chain, chainId }),
     engine,
     signer,
-    realm: params.get("realm") ?? "gno.land/r/gfanton/gnomehall/arena",
+    realm,
     chainId,
     origin: location.origin,
     storage: localStorage,
-    indexer: indexerURL === "" ? undefined : createIndexer({ url: indexerURL }),
-    network: walletNetwork(params),
+    indexer: indexer === null ? undefined : createIndexer({ url: indexer }),
+    network: walletNetwork(params, built),
   });
 }
 
-// walletNetwork is the network the page may ask Adena to add: the default one, and none
+// walletNetwork is the network the page may ask Adena to add: the build's own, and none
 // when params name another, so an RPC address from a link never enters the wallet.
-export function walletNetwork(params) {
+export function walletNetwork(params, built) {
   if (params.has("chain") || params.has("rpc")) return undefined;
-  return { chainName: defaultChainId, rpcUrl: defaultRPC };
+  return { chainName: built.chainId, rpcUrl: built.rpc };
 }

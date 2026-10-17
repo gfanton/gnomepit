@@ -12,13 +12,14 @@ import { devWallet } from "../web/devwallet.mjs";
 import { nodeEngine } from "../web/engine-node.mjs";
 import { createReader } from "../web/gnovalue.mjs";
 import { createIndexer } from "../web/indexer.mjs";
+import { networks } from "../web/network.ts";
 import * as signer from "../web/signer.mjs";
 import { deriveKeys, generations, rootSignature } from "../web/wallet.mjs";
 
-const rpc = process.argv[2] ?? "http://127.0.0.1:36657";
+const rpc = process.argv[2] ?? networks.local.rpc;
 const indexerURL = process.argv[3];
-const realm = "gno.land/r/gfanton/gnomehall/arena";
-const chainId = process.env.CHAIN ?? "gnomehall-dev";
+const { realm } = networks.local;
+const chainId = process.env.CHAIN ?? networks.local.chainId;
 const origin = "http://e2e.local";
 // Alice's sessions last this many seconds, so one expires mid-match. Each, the renewed one
 // included, must outlast the moves that follow it.

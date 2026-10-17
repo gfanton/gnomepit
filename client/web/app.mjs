@@ -13,6 +13,7 @@ import { stepFeedback, cardBehind } from "./battle-feedback.mjs";
 import { artIndex } from "./art.mjs";
 import { loadArena } from "./arena-provider.mjs";
 import { createLobby } from "./lobby.mjs";
+import { networks } from "./network.ts";
 import { replayView, viewOf } from "./online-model.mjs";
 import { afterFiniteAnimations, coach, lessonsFor, railsNext, tutorialMatch, tutorialMemory } from "./tutorial.mjs";
 
@@ -87,7 +88,7 @@ function masthead(note = "A duel beneath the mountain") {
 }
 
 const tutorialFlag = tutorialMemory(localStorage);
-const arena = await loadArena(engine);
+const arena = await loadArena(engine, networks.local);
 const lobby = createLobby({
   app,
   arena,

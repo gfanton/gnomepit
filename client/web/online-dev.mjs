@@ -9,21 +9,19 @@ import { createChain } from "./chain.mjs";
 import { devWallet } from "./devwallet.mjs";
 import { loadEngine } from "./engine.mjs";
 import { createIndexer } from "./indexer.mjs";
+import { networkFrom, networks } from "./network.ts";
 import * as signer from "./signer.mjs";
 import { waitForAdena } from "./wallet.mjs";
 
 const params = new URLSearchParams(location.search);
-const rpc = params.get("rpc") ?? "http://127.0.0.1:36657";
-const chainId = params.get("chain") ?? "gnomehall-dev";
-const realm = params.get("realm") ?? "gno.land/r/gfanton/gnomehall/arena";
-const indexerURL = params.get("indexer") ?? "http://127.0.0.1:8546/graphql/query";
+const { chainId, rpc, realm, indexer: indexerURL } = networkFrom(params, networks.local);
 const devName = params.get("dev");
 
 const $ = (id) => document.getElementById(id);
 const engine = await loadEngine("engine.wasm", "cards.json");
 const chain = createChain({ rpc });
 const wallet = devName === null ? await waitForAdena() : devWallet({ name: devName, signer, chain, chainId });
-const indexer = indexerURL === "" ? undefined : createIndexer({ url: indexerURL });
+const indexer = indexerURL === null ? undefined : createIndexer({ url: indexerURL });
 const arena = createArena({
   chain,
   wallet,

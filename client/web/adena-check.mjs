@@ -9,13 +9,12 @@ import { createChain } from "./chain.mjs";
 import { devWallet } from "./devwallet.mjs";
 import { loadEngine } from "./engine.mjs";
 import { createReader } from "./gnovalue.mjs";
+import { networkFrom, networks } from "./network.ts";
 import * as signer from "./signer.mjs";
 import { answer, rootText, waitForAdena } from "./wallet.mjs";
 
 const params = new URLSearchParams(location.search);
-const rpc = params.get("rpc") ?? "http://127.0.0.1:36657";
-const chainId = params.get("chain") ?? "gnomehall-dev";
-const realm = params.get("realm") ?? "gno.land/r/gfanton/gnomehall/arena";
+const { chainId, rpc, realm } = networkFrom(params, networks.local);
 const devName = params.get("dev");
 
 const $ = (id) => document.getElementById(id);

@@ -8,12 +8,13 @@ import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 
 import { fromBase64, toBase64 } from "../client/web/encoding.mjs";
+import { networks } from "../client/web/network.ts";
 import * as signer from "../client/web/signer.mjs";
 
-const rpc = process.argv[2] ?? "http://127.0.0.1:36657";
-const chainId = process.env.CHAIN ?? "gnomehall-dev";
+const rpc = process.argv[2] ?? networks.local.rpc;
+const chainId = process.env.CHAIN ?? networks.local.chainId;
 const out = new URL("../client/web/testdata/rpc/", import.meta.url);
-const arena = "gno.land/r/gfanton/gnomehall/arena";
+const arena = networks.local.realm;
 const devKey = (name) => createHash("sha256").update(`gnomehall dev ${name}`).digest("hex");
 const seal = "0101010101010101010101010101010101010101010101010101010101010101";
 const box = btoa("box");
