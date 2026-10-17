@@ -61,6 +61,29 @@ test("a gain of Strength names the gainer", () => {
   assert.deepEqual(sentences([gained], ctx), ["Momentum: Pickers +1 Strength."]);
 });
 
+const delversCtx = { cards, names: ["Delvers", "Ironhide"], plans };
+
+test("Vulnerable a gnome gives itself names the gnome and its tokens", () => {
+  const gained = e(1, "Damage", "Normal", 2, "VulnerableGained", 0, "Overdig", 1, 0, false, [B(15, 0, 0, 2), B(9, 0, 0, 0)]);
+  assert.deepEqual(sentences([gained], delversCtx), ["Overdig: Delvers is Vulnerable 2."]);
+});
+
+test("a Vulnerable move names the tokens moved and the receiver's total", () => {
+  const moved = e(2, "Block", "Normal", 1, "VulnerableMoved", 0, "Blowback", 2, 0, false, [A(11), B(13, 0, 0, 3)]);
+  assert.deepEqual(sentences([moved], delversCtx), ["Blowback: Delvers moves 2 Vulnerable to Ironhide, who is Vulnerable 3."]);
+});
+
+test("stripped Block names what the opponent lost", () => {
+  const stripped = e(3, "Damage", "Slow", 1, "BlockStripped", 0, "Cave-In", 5, 0, false, [A(15), B(15, 0, 0, 0)]);
+  assert.deepEqual(sentences([stripped], delversCtx), ["Cave-In: Ironhide loses 5 Block."]);
+});
+
+test("a move or a strip with nothing to take says so", () => {
+  const moved = e(2, "Block", "Normal", 1, "VulnerableMoved", 0, "Blowback", 0, 0, false, [A(11), A(13)]);
+  const stripped = e(3, "Damage", "Slow", 1, "BlockStripped", 0, "Cave-In", 0, 0, false, [A(15), A(15)]);
+  assert.deepEqual(sentences([moved, stripped], delversCtx), ["Blowback: Delvers has no Vulnerable to move.", "Cave-In: Ironhide has no Block to lose."]);
+});
+
 test("a single-hit card gets no hit number", () => {
   assert.equal(sentences(events, ctx)[1], "Hammer Blow: 4 damage. Pickers 11.");
 });
