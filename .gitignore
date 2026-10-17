@@ -26,6 +26,8 @@ deps/
 .indexer/
 # The toolchain and bundled libraries, installed by pnpm.
 node_modules/
+# The built site, written by make build.
+dist/
 # direnv's cache of the flake's dev shell, and nix build outputs.
 .direnv/
 result

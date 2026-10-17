@@ -2,7 +2,8 @@
 // session messages, by an account's own key or by a session key acting for it. It
 // leaves the network to the page.
 
-import { MsgCall, MsgCreateSession, MsgRevokeSession, Tx, Wallet, decodeTxMessages } from "./vendor/gno.mjs";
+import { Tx, Wallet } from "@gnolang/tm2-js-client";
+import { MsgCall, MsgCreateSession, MsgRevokeSession, decodeTxMessages } from "@gnolang/gno-js-client";
 import { fromBase64, fromHex, toBase64 } from "./encoding.mjs";
 
 const codecs = {

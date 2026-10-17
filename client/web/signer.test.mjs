@@ -1,7 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import * as esbuild from "esbuild";
 
+import { browserBundle } from "../build.ts";
 import { fromBase64 } from "./encoding.mjs";
 import { keyInfo, signBytes, signTx } from "./signer.mjs";
 
@@ -9,12 +15,29 @@ import { keyInfo, signBytes, signTx } from "./signer.mjs";
 const golden = JSON.parse(readFileSync(new URL("./testdata/golden-tx.json", import.meta.url)));
 const goldenRequest = (name) => golden.find((c) => c.name === name).request;
 
+const signGolden = (signer, name, request) =>
+  name === "sign-bytes" ? signer.signBytes(request.privKey, request.bytes) : signer.signTx(request);
+
 for (const { name, request, tx } of golden) {
   test(`${name} signs to the chain's own bytes`, async () => {
-    const signed = name === "sign-bytes" ? await signBytes(request.privKey, request.bytes) : await signTx(request);
+    const signed = await signGolden({ signBytes, signTx }, name, request);
     assert.equal(signed, tx);
   });
 }
+
+// The page runs the gno clients on the shims' Buffer and crypto, not Node's.
+test("the page's bundle of the signer signs the golden transactions the same", async () => {
+  const outfile = join(await mkdtemp(join(tmpdir(), "gnomehall-signer-")), "signer.mjs");
+  await esbuild.build({
+    ...browserBundle(),
+    entryPoints: [fileURLToPath(new URL("./signer.mjs", import.meta.url))],
+    outfile,
+  });
+  const bundle = await import(pathToFileURL(outfile).href);
+  for (const { name, request, tx } of golden) {
+    assert.equal(await signGolden(bundle, name, request), tx, name);
+  }
+});
 
 test("keyInfo gives the addresses and session key the golden requests carry", async () => {
   const wallet = goldenRequest("wallet-call");

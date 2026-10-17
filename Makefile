@@ -1,6 +1,5 @@
 SHELL := /bin/sh
 WEB := client/web
-JS := client/js
 PNPM_STAMP := node_modules/.modules.yaml
 GOLDEN := $(WEB)/testdata/golden-tx.json
 # The gnotif checkout whose registry the arena imports, at its development path.
@@ -17,7 +16,7 @@ DEV_INDEXER := 127.0.0.1:8546
 TX_INDEXER := github.com/gnolang/tx-indexer/cmd@v1.3.0
 INDEXER_DB := .indexer
 
-.PHONY: all wasm golden vendor check serve dev indexer capture fund record e2e test realm-test deps clean fclean help
+.PHONY: all wasm golden build check serve dev indexer capture fund record e2e test realm-test deps clean fclean help
 
 all: wasm ## Build the page's engine (default)
 
@@ -29,10 +28,8 @@ golden: ## Sign the signer tests' golden transactions with the chain's own Go ty
 	go -C client/golden run . > $(GOLDEN).tmp
 	mv -f $(GOLDEN).tmp $(GOLDEN)
 
-# The gno clients call Node's Buffer and crypto, which the page has no copy of.
-vendor: $(PNPM_STAMP) ## Bundle what signer.mjs takes from the gno JS clients into client/web/vendor/gno.mjs
-	pnpm exec esbuild $(JS)/entry.mjs --bundle --format=esm --minify \
-		--inject:$(WEB)/shims/buffer.ts --alias:crypto=./$(WEB)/shims/crypto.ts --outfile=$(WEB)/vendor/gno.mjs
+build: wasm $(PNPM_STAMP) ## Bundle each page with esbuild into dist/ with its files, for GNOMEHALL_NETWORK (local by default)
+	pnpm run build
 
 $(PNPM_STAMP): package.json pnpm-lock.yaml
 	pnpm install --frozen-lockfile
@@ -42,8 +39,8 @@ check: $(PNPM_STAMP) ## Type-check, lint and format-check the TypeScript
 	pnpm run lint
 	pnpm run fmt:check
 
-serve: ## Serve the page on 127.0.0.1:8080
-	go run ./client/serve -dir $(WEB)
+serve: build ## Build dist/ and serve it on 127.0.0.1:8080
+	go run ./client/serve -dir dist
 
 dev: deps ## Run gnodev with the engine, the arena, the gnotif registry and the dev accounts
 	gnodev local -chain-id $(DEV_CHAIN) -node-rpc-listener $(DEV_RPC) -web-listener $(DEV_WEB) \
@@ -67,7 +64,7 @@ record: ## Record the RPC answers the script tests replay, from a running make d
 e2e: wasm ## Play two arena matches on a running make dev and make indexer, one through per-match sessions and one the wallet signs
 	CHAIN=$(DEV_CHAIN) node client/e2e/match.mjs http://$(DEV_RPC) http://$(DEV_INDEXER)/graphql/query
 
-test: realm-test wasm check ## Run the Gno, Go and script tests; script tests run engine.wasm
+test: realm-test build check ## Run the Gno, Go and script tests; script tests run engine.wasm
 	go vet ./...
 	go test ./...
 	pnpm test
@@ -82,6 +79,7 @@ deps: ## Copy the gnotif registry from GNOTIF_DIR into deps/, without its tests
 	find $(GNOTIF_DIR)/gno/r/gnotif/v0 -maxdepth 1 -name '*.gno' ! -name '*_test.gno' -exec cp -f {} $(REGISTRY)/ \;
 
 clean: ## Remove the build outputs
+	rm -rf dist
 	rm -f $(WEB)/engine.wasm $(WEB)/wasm_exec.js
 
 fclean: clean ## Remove the build outputs and the installed packages
