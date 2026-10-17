@@ -985,14 +985,20 @@ test("watch reads a match again on a call to it, and not on a call to another ma
 // While the indexer answers, nothing but a call to the match makes watch read it again, and
 // a session expires without one.
 test("watch reads a match again when the session for it expires", async () => {
-  const unixNow = () => Math.floor(Date.now() / 1000);
-  const expires = unixNow() + 1;
+  // The arena's clock stays put until watch has seen the live session, however long the setup
+  // takes, then moves past the expiry; the expiry timer still waits its real second.
+  const start = Math.floor(Date.now() / 1000);
+  const expires = start + 1;
+  let clock = start;
   const chain = arenaChain({ sessions: [await sessionOf(0, { expiresAt: expires })], locks: [await lockOn(0, "1", expires)], matches: { 1: "match-play" } });
-  const { arena } = sessionPlayer(chain, { indexer: fakeIndexer(), now: unixNow });
+  const { arena } = sessionPlayer(chain, { indexer: fakeIndexer(), now: () => clock });
   await arena.connect();
   await arena.authorize();
   const seen = [];
-  const stop = arena.watch("1", (view, err) => seen.push(err ?? view.session));
+  const stop = arena.watch("1", (view, err) => {
+    seen.push(err ?? view.session);
+    clock = expires + 1;
+  });
   for (const start = Date.now(); seen.length < 2 && Date.now() - start < 3000; ) await sleep(10);
   stop();
   assert.deepEqual(seen, ["active", "expired"]);
