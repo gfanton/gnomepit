@@ -559,7 +559,7 @@ function title() {
     <footer class="hall-footer"><span>Forged below. Settled at the table.</span><button type="button" class="text-button" data-action="library">Explore the card library →</button></footer>`;
 }
 function libraryScreen() {
-  return `${masthead("Know your tools. Read your rival.")}<div class="section-intro"><div><span class="eyebrow">THE CLAN ARCHIVES</span><h1 class="heading">Card library</h1><p>Every card available in this build. Read the rules and find your favorites.</p></div><button class="button button--secondary" data-action="home">Back to the hall</button></div>${collectionHTML().replace('<details class="collection">','<details class="collection" open>')}<a class="library-study" href="delvers-preview.html">Explore the Delvers art study · New clan coming soon →</a>`;
+  return `${masthead("Know your tools. Read your rival.")}<div class="section-intro"><div><span class="eyebrow">THE CLAN ARCHIVES</span><h1 class="heading">Card library</h1><p>Every card available in this build. Read the rules and find your favorites.</p></div><button class="button button--secondary" data-action="home">Back to the hall</button></div>${collectionHTML().replace('<details class="collection">','<details class="collection" open>')}<a class="library-study" href="delvers-preview.html">Explore the Delvers art study →</a>`;
 }
 function clanSelectionScreen() {
   const heading=flow.mode==='hotseat'?`Player ${flow.acting+1}, choose your clan`:'Choose your clan';
