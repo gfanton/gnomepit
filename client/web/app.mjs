@@ -41,15 +41,18 @@ let onward = null; // where the player was heading before the guided match: "onl
 // Shared cards, and any clan missing here, get no emblem and no blurb.
 const clanLook = {
   Delvers: {
-    emblem: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M12 3h8M12 3 8 15M20 3l5 13M8 15l8-5 9 6-2 10-10 3-8-6ZM16 10l-3 8 6 2-6 9"/></svg>',
+    emblem:
+      '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M12 3h8M12 3 8 15M20 3l5 13M8 15l8-5 9 6-2 10-10 3-8-6ZM16 10l-3 8 6 2-6 9"/></svg>',
     blurb: "Bad ideas. Excellent timing. Push your luck and return the punishment.",
   },
   Pickers: {
-    emblem: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M14.5 8.5V28h3V8.5"/><path d="M4 11C10 2 22 2 28 11 20 7 12 7 4 11Z"/></svg>',
+    emblem:
+      '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M14.5 8.5V28h3V8.5"/><path d="M4 11C10 2 22 2 28 11 20 7 12 7 4 11Z"/></svg>',
     blurb: "Quick hands. Dirty tricks. A miner’s tools, a duelist’s timing.",
   },
   Ironhide: {
-    emblem: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 6 16 3 26 6v12c0 5-6 9-10 12C12 27 6 23 6 18Z"/><path d="M16 8v15M10 15h12"/></svg>',
+    emblem:
+      '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 6 16 3 26 6v12c0 5-6 9-10 12C12 27 6 23 6 18Z"/><path d="M16 8v15M10 15h12"/></svg>',
     blurb: "Stand firm. Strike hard. Iron shields and the weight of the mountain.",
   },
 };
@@ -70,7 +73,10 @@ function artHTML(c) {
     : `<div class="card__art card__art--pending">${emblem(cardClan(c))}<span>Clan study · art to come</span></div>`;
 }
 function collectionHTML() {
-  const groups = [...engine.clans.map((clan) => ({ name: clan.name, ids: clan.cards })), { name: "Shared", ids: basics }];
+  const groups = [
+    ...engine.clans.map((clan) => ({ name: clan.name, ids: clan.cards })),
+    { name: "Shared", ids: basics },
+  ];
   return `<details class="collection"><summary>Browse all ${engine.cards.length} cards<span>${engine.clans.map((clan) => clan.name).join(", ")} & shared techniques</span></summary>
     <div class="collection__groups">${groups.map(({ name, ids }) => `<section class="stack" id="library-${name.toLowerCase()}"><div class="frame__head"><h2 class="heading">${name === "Shared" ? "Shared techniques" : name}</h2><span class="label">${ids.length} cards</span></div><div class="card-grid">${ids.map((id) => cardHTML(engine.cards[id])).join("")}</div></section>`).join("")}</div>
   </details>`;
@@ -83,57 +89,128 @@ function masthead(note = "A duel beneath the mountain") {
 const tutorialFlag = tutorialMemory(localStorage);
 const arena = await loadArena(engine);
 const lobby = createLobby({
-  app, arena, storage: localStorage, onRender: render, portrait: portraitHTML, emblem,
+  app,
+  arena,
+  storage: localStorage,
+  onRender: render,
+  portrait: portraitHTML,
+  emblem,
   onResume: () => {
-    const draft=lobby.model.draft; if(!draft)return;
-    ({flow,deck,plan,legalPlans,onlineContext}=draft);choosingClan=draft.choosingClan ?? false;lobby.model.inGame=true;app.classList.remove("lobby");render();
+    const draft = lobby.model.draft;
+    if (!draft) return;
+    ({ flow, deck, plan, legalPlans, onlineContext } = draft);
+    choosingClan = draft.choosingClan ?? false;
+    lobby.model.inGame = true;
+    app.classList.remove("lobby");
+    render();
   },
   onExit: (offline) => {
-    stopPlaying(); playback = null; onlineContext = null; flow = initial; render();
+    stopPlaying();
+    playback = null;
+    onlineContext = null;
+    flow = initial;
+    render();
     if (offline) app.querySelector(".offline-row")?.scrollIntoView({ block: "center" });
   },
-  onCompose: context => {
-    onlineContext = context; onlineError = ""; lobby.model.draft=null; app.classList.remove("lobby");
+  onCompose: (context) => {
+    onlineContext = context;
+    onlineError = "";
+    lobby.model.draft = null;
+    app.classList.remove("lobby");
     const opponent = context.view?.clans[0] || "";
-    if(opponent && !clanNamed(opponent)) throw new Error("The arena returned an unknown clan. Reload before playing.");
-    flow = { ...initial, screen: "deck", mode: "online", hp: engine.hp, acting: context.intent === "accept" ? 1 : 0,
-      clans: context.intent === "accept" ? [opponent, null] : [null, ""], decks: [[], []],
-      state: {round: 1, gnomes: [0, 1].map(() => ({hp: engine.hp, vulnerable: 0, strength: 0, spent: []}))} };
-    choosingClan = true; deck = newDeck(engine.clans[0], engine.cards); render();
+    if (opponent && !clanNamed(opponent)) throw new Error("The arena returned an unknown clan. Reload before playing.");
+    flow = {
+      ...initial,
+      screen: "deck",
+      mode: "online",
+      hp: engine.hp,
+      acting: context.intent === "accept" ? 1 : 0,
+      clans: context.intent === "accept" ? [opponent, null] : [null, ""],
+      decks: [[], []],
+      state: { round: 1, gnomes: [0, 1].map(() => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] })) },
+    };
+    choosingClan = true;
+    deck = newDeck(engine.clans[0], engine.cards);
+    render();
   },
   onPlay: (raw, address, review) => {
     const restored = replayView(raw, engine, address);
     const { view, decks, state, rounds, result } = restored;
-    if(!review && view.side === 0 && view.phase === "reveal" && !raw.pending) throw new Error("This device cannot open your sealed plan yet. Approve the session on this device, then open the match again.");
-    if (!review && (view.side < 0 || !decks[view.side]?.length)) throw new Error("Your private deck is needed to resume this turn. The arena adapter must recover it before play.");
-    if (!review && rounds.length === 0 && view.round > 1) throw new Error("The arena has not supplied the resolved round yet. Refresh this match.");
-    onlineContext = {intent: "move", view, account: address, review}; onlineError = "";
-    flow = {...initial, mode: "online", hp: engine.hp, acting: view.side >= 0 ? view.side : 0, clans: view.clans, decks,
-      state, rounds, result, screen: rounds.length ? "playback" : "plan"};
+    if (!review && view.side === 0 && view.phase === "reveal" && !raw.pending)
+      throw new Error(
+        "This device cannot open your sealed plan yet. Approve the session on this device, then open the match again.",
+      );
+    if (!review && (view.side < 0 || !decks[view.side]?.length))
+      throw new Error(
+        "Your private deck is needed to resume this turn. The arena adapter must recover it before play.",
+      );
+    if (!review && rounds.length === 0 && view.round > 1)
+      throw new Error("The arena has not supplied the resolved round yet. Refresh this match.");
+    onlineContext = { intent: "move", view, account: address, review };
+    onlineError = "";
+    flow = {
+      ...initial,
+      mode: "online",
+      hp: engine.hp,
+      acting: view.side >= 0 ? view.side : 0,
+      clans: view.clans,
+      decks,
+      state,
+      rounds,
+      result,
+      screen: rounds.length ? "playback" : "plan",
+    };
     if (rounds.length) {
       const round = rounds.at(-1);
-      playback = {start: round.start.gnomes.map(g => ({...g,block:0,counter:0})),steps:groupSteps(round.events),
-        lines:sentences(round.events,{cards:engine.cards,names:battleNames(),plans:round.plans}),shown:0,timer:null,revealTimer:null,speed:1,viewer:flow.acting,lessons:[],lesson:null};
-    } else { legalPlans=engine.legalPlans({state,side:flow.acting,deck:decks[flow.acting]}); plan=[]; }
-    lobby.model.inGame = true; app.classList.remove("lobby"); render();
+      playback = {
+        start: round.start.gnomes.map((g) => ({ ...g, block: 0, counter: 0 })),
+        steps: groupSteps(round.events),
+        lines: sentences(round.events, { cards: engine.cards, names: battleNames(), plans: round.plans }),
+        shown: 0,
+        timer: null,
+        revealTimer: null,
+        speed: 1,
+        viewer: flow.acting,
+        lessons: [],
+        lesson: null,
+      };
+    } else {
+      legalPlans = engine.legalPlans({ state, side: flow.acting, deck: decks[flow.acting] });
+      plan = [];
+    }
+    lobby.model.inGame = true;
+    app.classList.remove("lobby");
+    render();
   },
 });
 function battleNames() {
-  return flow.mode === "online" ? flow.clans.map((clan, side) => side === flow.acting ? "You" : clan || "Rival to come") : sideNames(flow.clans, flow.mode);
+  return flow.mode === "online"
+    ? flow.clans.map((clan, side) => (side === flow.acting ? "You" : clan || "Rival to come"))
+    : sideNames(flow.clans, flow.mode);
 }
 function onlineBar() {
-  return flow.mode !== "online" ? "" : `<section class="online-match-bar"><button class="button button--secondary" data-action="onlineBack" ${onlineSending ? "disabled" : ""}>Back to board</button><span>${onlineContext?.view?.deadline ? `Your move deadline: ${escapeHTML(new Date(onlineContext.view.deadline * 1000).toLocaleString())}` : onlineContext?.intent === "accept" ? "Accepting a challenge · Round 1" : "Posting a challenge · Round 1"}</span><p role="status">${escapeHTML(onlineError || (onlineSending ? "Sending your move… Waiting for confirmation." : ""))}</p></section>`;
+  return flow.mode !== "online"
+    ? ""
+    : `<section class="online-match-bar"><button class="button button--secondary" data-action="onlineBack" ${onlineSending ? "disabled" : ""}>Back to board</button><span>${onlineContext?.view?.deadline ? `Your move deadline: ${escapeHTML(new Date(onlineContext.view.deadline * 1000).toLocaleString())}` : onlineContext?.intent === "accept" ? "Accepting a challenge · Round 1" : "Posting a challenge · Round 1"}</span><p role="status">${escapeHTML(onlineError || (onlineSending ? "Sending your move… Waiting for confirmation." : ""))}</p></section>`;
 }
 async function sendOnlinePlan() {
   if (onlineSending || !isSealable(plan, legalPlans)) return;
-  onlineSending = true; onlineError = ""; render();
+  onlineSending = true;
+  onlineError = "";
+  render();
   const saved = [...plan];
   try {
     const me = flow.acting;
     await lobby.sendDraft(onlineContext, flow.clans[me], flow.decks[me], saved);
-    stopPlaying(); playback = null; flow = {...initial,screen:"lobby"};
-  } catch (error) { onlineError = error.message; }
-  finally { onlineSending = false; render(); }
+    stopPlaying();
+    playback = null;
+    flow = { ...initial, screen: "lobby" };
+  } catch (error) {
+    onlineError = error.message;
+  } finally {
+    onlineSending = false;
+    render();
+  }
 }
 
 // ---- Actions
@@ -150,7 +227,10 @@ function dispatch(action) {
 function enter(before) {
   const arrived = flow.screen !== before.screen || flow.acting !== before.acting;
   if (!arrived) return;
-  if (before.screen === "playback") { stopPlaying(); playback = null; }
+  if (before.screen === "playback") {
+    stopPlaying();
+    playback = null;
+  }
   if (flow.screen === "deck") {
     if (botTurn(flow)) {
       const clan = engine.clans[Math.floor(Math.random() * engine.clans.length)];
@@ -163,15 +243,29 @@ function enter(before) {
   if (flow.screen === "plan") {
     const plans = engine.legalPlans({ state: flow.state, side: flow.acting, deck: flow.decks[flow.acting] });
     if (botTurn(flow)) {
-      dispatch({ type: "planSealed", plan: flow.mode === "tutorial" ? guided.opponent[flow.state.round - 1] : randomPlan(plans, Math.random) });
+      dispatch({
+        type: "planSealed",
+        plan: flow.mode === "tutorial" ? guided.opponent[flow.state.round - 1] : randomPlan(plans, Math.random),
+      });
       return;
     }
     legalPlans = plans;
     plan = [];
   }
   if (flow.screen === "playback") {
-    const start = flow.state.gnomes.map((g) => ({ hp: g.hp, block: 0, counter: 0, vulnerable: g.vulnerable, strength: g.strength }));
-    const { state, result, events } = engine.resolve({ state: flow.state, decks: flow.decks, a: flow.plans[0], b: flow.plans[1] });
+    const start = flow.state.gnomes.map((g) => ({
+      hp: g.hp,
+      block: 0,
+      counter: 0,
+      vulnerable: g.vulnerable,
+      strength: g.strength,
+    }));
+    const { state, result, events } = engine.resolve({
+      state: flow.state,
+      decks: flow.decks,
+      a: flow.plans[0],
+      b: flow.plans[1],
+    });
     const names = battleNames();
     playback = {
       start,
@@ -184,7 +278,10 @@ function enter(before) {
       viewer: ["bot", "tutorial"].includes(flow.mode) ? 0 : flow.acting,
       // The guided match's lessons for this round, each {at, text, shown}, and the one on show
       // as {text, ready}, ready once the step's motion has ended.
-      lessons: flow.mode === "tutorial" ? lessonsFor(flow.state.round, events, engine.cards).map((l) => ({ ...l, shown: false })) : [],
+      lessons:
+        flow.mode === "tutorial"
+          ? lessonsFor(flow.state.round, events, engine.cards).map((l) => ({ ...l, shown: false }))
+          : [],
       lesson: null,
     };
     dispatch({ type: "resolved", state, result, events });
@@ -211,10 +308,21 @@ function enterMode(mode) {
 
 const handlers = {
   start: ({ mode }) => dispatch({ type: "start", mode, hp: engine.hp }),
-  online: () => { flow = {...initial,screen:"lobby"}; lobby.enter(); },
-  onlineBack: () => { if(onlineSending)return; stopPlaying(); playback=null; if(["plan","deck"].includes(flow.screen))lobby.model.draft={flow,deck,plan,legalPlans,onlineContext,choosingClan}; lobby.returnToBoard(); },
+  online: () => {
+    flow = { ...initial, screen: "lobby" };
+    lobby.enter();
+  },
+  onlineBack: () => {
+    if (onlineSending) return;
+    stopPlaying();
+    playback = null;
+    if (["plan", "deck"].includes(flow.screen))
+      lobby.model.draft = { flow, deck, plan, legalPlans, onlineContext, choosingClan };
+    lobby.returnToBoard();
+  },
   library: ({ clan }) => {
-    flow = {...initial,screen:"library"}; render();
+    flow = { ...initial, screen: "library" };
+    render();
     if (clan) byId(`library-${clan.toLowerCase()}`)?.scrollIntoView({ block: "start" });
   },
   // playMode enters a mode from home, offering the guided match first to a browser that has
@@ -237,12 +345,19 @@ const handlers = {
     flow = initial;
     dispatch({ type: "startTutorial", hp: engine.hp, clans: guided.clans, decks: guided.decks });
   },
-  home: () => { flow=initial; render(); },
-  changeClan: () => { choosingClan=true; render(); },
+  home: () => {
+    flow = initial;
+    render();
+  },
+  changeClan: () => {
+    choosingClan = true;
+    render();
+  },
   clan: ({ name }) => {
-    const clan=clanNamed(name); if(!clan)return;
-    if(deck?.clan !== name) deck = newDeck(clan, engine.cards);
-    choosingClan=false;
+    const clan = clanNamed(name);
+    if (!clan) return;
+    if (deck?.clan !== name) deck = newDeck(clan, engine.cards);
+    choosingClan = false;
     render();
   },
   toggle: ({ id }) => {
@@ -250,9 +365,15 @@ const handlers = {
     render();
   },
   deckReady: () => {
-    if(flow.mode !== "online") return dispatch({ type: "deckReady", clan: deck.clan, deck: [...deck.picks].sort((a, b) => a - b) });
-    const me = flow.acting; flow.clans[me] = deck.clan; flow.decks[me] = [...deck.picks].sort((a,b)=>a-b);
-    flow = {...flow,screen:"plan"}; legalPlans = engine.legalPlans({state:flow.state,side:me,deck:flow.decks[me]}); plan=[]; render();
+    if (flow.mode !== "online")
+      return dispatch({ type: "deckReady", clan: deck.clan, deck: [...deck.picks].sort((a, b) => a - b) });
+    const me = flow.acting;
+    flow.clans[me] = deck.clan;
+    flow.decks[me] = [...deck.picks].sort((a, b) => a - b);
+    flow = { ...flow, screen: "plan" };
+    legalPlans = engine.legalPlans({ state: flow.state, side: me, deck: flow.decks[me] });
+    plan = [];
+    render();
   },
   handoffDone: () => dispatch({ type: "handoffDone" }),
   addCard: ({ id }) => {
@@ -265,30 +386,51 @@ const handlers = {
     closeBattleDialogs();
     plan = next;
     render();
-    app.querySelectorAll(".hand-entry").forEach(el => el.classList.add("hand-entry--resting"));
+    app.querySelectorAll(".hand-entry").forEach((el) => el.classList.add("hand-entry--resting"));
     flyCard(source, from, app.querySelector(`[data-plan-index="${index}"]`));
-    byId("plan-status").textContent = `${engine.cards[cardId].name} added. ${beatsUsed(plan, engine.cards)} of 3 beats filled.`;
+    byId("plan-status").textContent =
+      `${engine.cards[cardId].name} added. ${beatsUsed(plan, engine.cards)} of 3 beats filled.`;
   },
   clearFrom: ({ beat }) => {
     plan = clearFrom(plan, Number(beat), engine.cards);
     render();
   },
-  clearPlan: () => { plan = []; render(); },
+  clearPlan: () => {
+    plan = [];
+    render();
+  },
   inspectCard: ({ id }) => {
     if (flow.screen === "playback") stopPlaying();
     const c = engine.cards[Number(id)];
     const legal = flow.screen === "plan" && canAdd(plan, c.id, engine.cards, available());
     const reader = byId("card-reader");
-    byId("reader-content").innerHTML = `${cardHTML(c)}<p class="muted">${c.cost} ${c.cost === 1 ? "beat" : "beats"}${c.special ? " · Once per match" : " · Reusable basic"}</p>
+    byId("reader-content").innerHTML =
+      `${cardHTML(c)}<p class="muted">${c.cost} ${c.cost === 1 ? "beat" : "beats"}${c.special ? " · Once per match" : " · Reusable basic"}</p>
       ${legal ? `<button class="button" type="button" data-action="addCard" data-id="${c.id}">Play ${c.name}</button>` : `<p class="muted">${flow.screen === "playback" ? "Committed this round." : flow.state.gnomes[flow.acting].spent.includes(c.id) ? "Already spent this match." : coachedCard() !== undefined ? `The guided match asks for ${engine.cards[coachedCard()].name} now.` : "This card does not fit your current plan."}</p>`}`;
     openDialog(reader);
   },
-  playedCards: () => { if (flow.screen === "playback") stopPlaying(); openDialog(byId("played-cards")); },
-  intel: () => { if (flow.screen === "playback") stopPlaying(); openDialog(byId("battle-info")); },
-  roundLog: () => { stopPlaying(); openDialog(byId("round-log")); },
+  playedCards: () => {
+    if (flow.screen === "playback") stopPlaying();
+    openDialog(byId("played-cards"));
+  },
+  intel: () => {
+    if (flow.screen === "playback") stopPlaying();
+    openDialog(byId("battle-info"));
+  },
+  roundLog: () => {
+    stopPlaying();
+    openDialog(byId("round-log"));
+  },
   closeDialog: () => closeBattleDialogs(),
-  seal: () => { closeBattleDialogs(); if(flow.mode === "online") return sendOnlinePlan(); dispatch({ type: "planSealed", plan }); },
-  next: () => { stopPlaying(); showStep(playback.shown + 1); },
+  seal: () => {
+    closeBattleDialogs();
+    if (flow.mode === "online") return sendOnlinePlan();
+    dispatch({ type: "planSealed", plan });
+  },
+  next: () => {
+    stopPlaying();
+    showStep(playback.shown + 1);
+  },
   play: () => (playback.timer || playback.revealTimer ? stopPlaying() : startPlaying()),
   skip: () => {
     stopPlaying();
@@ -310,14 +452,20 @@ const handlers = {
     startPlaying();
   },
   playbackDone: () => {
-    if(flow.mode !== "online") return dispatch({ type: "playbackDone" });
-    stopPlaying(); playback=null;
-    if(onlineContext.review || onlineContext.view.action !== "move") return lobby.returnToBoard();
-    flow={...flow,screen:"plan"}; legalPlans=engine.legalPlans({state:flow.state,side:flow.acting,deck:flow.decks[flow.acting]}); plan=[];render();
+    if (flow.mode !== "online") return dispatch({ type: "playbackDone" });
+    stopPlaying();
+    playback = null;
+    if (onlineContext.review || onlineContext.view.action !== "move") return lobby.returnToBoard();
+    flow = { ...flow, screen: "plan" };
+    legalPlans = engine.legalPlans({ state: flow.state, side: flow.acting, deck: flow.decks[flow.acting] });
+    plan = [];
+    render();
   },
   tutorialOnward: () => {
     const mode = onward;
-    guided = null; onward = null; flow = initial;
+    guided = null;
+    onward = null;
+    flow = initial;
     if (mode === null) render();
     else enterMode(mode);
   },
@@ -326,24 +474,32 @@ const handlers = {
   copyLog: () => copyMatchLog(),
 };
 
-document.addEventListener("pointermove", event => {
+document.addEventListener("pointermove", (event) => {
   for (const entry of app.querySelectorAll(".hand-entry--resting")) {
     const rect = entry.getBoundingClientRect();
-    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) entry.classList.remove("hand-entry--resting");
+    if (
+      event.clientX < rect.left ||
+      event.clientX > rect.right ||
+      event.clientY < rect.top ||
+      event.clientY > rect.bottom
+    )
+      entry.classList.remove("hand-entry--resting");
   }
 });
-app.addEventListener("pointerout", event => {
+app.addEventListener("pointerout", (event) => {
   const entry = event.target.closest?.(".hand-entry--resting");
   if (entry && !entry.contains(event.relatedTarget)) entry.classList.remove("hand-entry--resting");
 });
-document.addEventListener("keydown", () => app.querySelectorAll(".hand-entry--resting").forEach(el => el.classList.remove("hand-entry--resting")));
+document.addEventListener("keydown", () =>
+  app.querySelectorAll(".hand-entry--resting").forEach((el) => el.classList.remove("hand-entry--resting")),
+);
 app.addEventListener("click", (event) => {
   const target = event.target.closest("[data-action]");
   if (!target || target.disabled) return;
   if (target.dataset.action.startsWith("online") && target.dataset.action !== "onlineBack") {
-    if(target.tagName === "A") event.preventDefault();
-    if(target.dataset.action === "online") handlers.online();
-    else lobby.action(target.dataset.action.slice(6),target.dataset);
+    if (target.tagName === "A") event.preventDefault();
+    if (target.dataset.action === "online") handlers.online();
+    else lobby.action(target.dataset.action.slice(6), target.dataset);
     return;
   }
   if (onlineSending) return;
@@ -388,7 +544,8 @@ function placeTip(anchor) {
   const gap = 8;
   const at = anchor.getBoundingClientRect();
   let top = anchor.closest(".battle-hand") ? at.top - gap - tip.offsetHeight : at.bottom + gap;
-  if (top + tip.offsetHeight > window.innerHeight && at.top - gap - tip.offsetHeight >= 0) top = at.top - gap - tip.offsetHeight;
+  if (top + tip.offsetHeight > window.innerHeight && at.top - gap - tip.offsetHeight >= 0)
+    top = at.top - gap - tip.offsetHeight;
   top = Math.max(gap, Math.min(top, window.innerHeight - tip.offsetHeight - gap));
   const left = Math.max(gap, Math.min(at.left, window.innerWidth - tip.offsetWidth - gap));
   tip.style.top = `${top}px`;
@@ -424,7 +581,10 @@ function showStep(n, animate = true) {
   const target = Math.min(n, playback.steps.length);
   const sequential = target === playback.shown + 1;
   playback.shown = target;
-  if (target === playback.steps.length && playback.timer) { clearInterval(playback.timer); playback.timer = null; }
+  if (target === playback.steps.length && playback.timer) {
+    clearInterval(playback.timer);
+    playback.timer = null;
+  }
   patchPlayback();
   if (animate && sequential && target > 0) {
     const step = playback.steps[target - 1];
@@ -454,7 +614,10 @@ function pauseForLesson(step) {
 function queueReveal(session, delay) {
   session.revealAt = performance.now() + delay;
   session.revealTimer = setTimeout(() => {
-    if (playback === session && flow.screen === "playback") { session.revealTimer = null; startPlaying(); }
+    if (playback === session && flow.screen === "playback") {
+      session.revealTimer = null;
+      startPlaying();
+    }
   }, delay);
   patchPlayback();
 }
@@ -489,19 +652,47 @@ function flyCard(source, from, destination) {
   if (!source || !from || !destination || reducedMotion.matches) return;
   const to = destination.getBoundingClientRect();
   const ghost = source.cloneNode(true);
-  ghost.removeAttribute("data-action"); ghost.removeAttribute("data-peek");
-  ghost.setAttribute("aria-hidden", "true"); ghost.tabIndex = -1;
+  ghost.removeAttribute("data-action");
+  ghost.removeAttribute("data-peek");
+  ghost.setAttribute("aria-hidden", "true");
+  ghost.tabIndex = -1;
   ghost.classList.add("flying-card");
-  Object.assign(ghost.style, { left: `${from.left}px`, top: `${from.top}px`, width: `${from.width}px`, height: `${from.height}px` });
-  document.body.append(ghost); flights.add(ghost);
+  Object.assign(ghost.style, {
+    left: `${from.left}px`,
+    top: `${from.top}px`,
+    width: `${from.width}px`,
+    height: `${from.height}px`,
+  });
+  document.body.append(ghost);
+  flights.add(ghost);
   const x = to.left + to.width / 2 - from.left - from.width / 2;
   const y = to.top + to.height / 2 - from.top - from.height / 2;
-  const animation = animateElement(ghost, [
-    { transform: "translate(0,0) scale(1)", opacity: 1 },
-    { transform: `translate(${x}px,${y}px) scale(.65)`, opacity: 0 },
-  ], { duration: 440 });
-  animateElement(destination, [{ opacity: .15, transform: "scale(.92)" }, { opacity: 1, transform: "scale(1)" }], { delay: 180, duration: 280 });
-  animation?.finished.then(() => { ghost.remove(); flights.delete(ghost); }, () => { ghost.remove(); flights.delete(ghost); });
+  const animation = animateElement(
+    ghost,
+    [
+      { transform: "translate(0,0) scale(1)", opacity: 1 },
+      { transform: `translate(${x}px,${y}px) scale(.65)`, opacity: 0 },
+    ],
+    { duration: 440 },
+  );
+  animateElement(
+    destination,
+    [
+      { opacity: 0.15, transform: "scale(.92)" },
+      { opacity: 1, transform: "scale(1)" },
+    ],
+    { delay: 180, duration: 280 },
+  );
+  animation?.finished.then(
+    () => {
+      ghost.remove();
+      flights.delete(ghost);
+    },
+    () => {
+      ghost.remove();
+      flights.delete(ghost);
+    },
+  );
 }
 
 function animateStep(events) {
@@ -522,40 +713,88 @@ function animateStep(events) {
     ].join("");
     byId(`float-${side}`).innerHTML = labels;
     const portrait = byId(`sprite-${side}`);
-    if (f.damage > 0) animateElement(portrait, [{ transform: "translateX(0)", filter: "brightness(1)" }, { transform: "translateX(-7px)", filter: "brightness(1.5)" }, { transform: "translateX(5px)" }, { transform: "translateX(0)", filter: "brightness(1)" }], { duration: 320 });
-    if (f.blocked > 0 || f.block > 0) animateElement(byId(`portrait-frame-${side}`), [{ boxShadow: "0 0 0 0 transparent" }, { boxShadow: "0 0 0 9px color-mix(in srgb, var(--gh-color-block) 53%, transparent)" }, { boxShadow: "0 0 0 15px transparent" }], { duration: 600 });
-    if (f.strength || f.counter || f.vulnerable) animateElement(byId(`chips-${side}`), [{ opacity: .3, transform: "translateY(4px)" }, { opacity: 1, transform: "translateY(0)" }]);
+    if (f.damage > 0)
+      animateElement(
+        portrait,
+        [
+          { transform: "translateX(0)", filter: "brightness(1)" },
+          { transform: "translateX(-7px)", filter: "brightness(1.5)" },
+          { transform: "translateX(5px)" },
+          { transform: "translateX(0)", filter: "brightness(1)" },
+        ],
+        { duration: 320 },
+      );
+    if (f.blocked > 0 || f.block > 0)
+      animateElement(
+        byId(`portrait-frame-${side}`),
+        [
+          { boxShadow: "0 0 0 0 transparent" },
+          { boxShadow: "0 0 0 9px color-mix(in srgb, var(--gh-color-block) 53%, transparent)" },
+          { boxShadow: "0 0 0 15px transparent" },
+        ],
+        { duration: 600 },
+      );
+    if (f.strength || f.counter || f.vulnerable)
+      animateElement(byId(`chips-${side}`), [
+        { opacity: 0.3, transform: "translateY(4px)" },
+        { opacity: 1, transform: "translateY(0)" },
+      ]);
   }
   const active = new Set();
   for (const event of events) {
     const { side, index } = cardBehind(event, round.plans, engine.cards);
     const key = `${side}:${index}`;
-    if (!active.has(key)) animateElement(app.querySelector(`.card--track[data-side="${side}"][data-index="${index}"]`), [{ transform: "translateY(0)" }, { transform: "translateY(-7px) scale(1.03)" }, { transform: "translateY(0)" }], { duration: 500 });
+    if (!active.has(key))
+      animateElement(
+        app.querySelector(`.card--track[data-side="${side}"][data-index="${index}"]`),
+        [{ transform: "translateY(0)" }, { transform: "translateY(-7px) scale(1.03)" }, { transform: "translateY(0)" }],
+        { duration: 500 },
+      );
     active.add(key);
   }
   for (const cancelled of feedback.cancelled) {
     const index = laid[cancelled.side][cancelled.beat - 1]?.index;
     const card = app.querySelector(`.card--track[data-side="${cancelled.side}"][data-index="${index}"]`);
-    animateElement(card, [{ transform: "rotate(0)" }, { transform: "rotate(-3deg)" }, { transform: "rotate(3deg)" }, { transform: "rotate(0)" }], { duration: 350 });
+    animateElement(
+      card,
+      [
+        { transform: "rotate(0)" },
+        { transform: "rotate(-3deg)" },
+        { transform: "rotate(3deg)" },
+        { transform: "rotate(0)" },
+      ],
+      { duration: 350 },
+    );
   }
 }
 
 function openDialog(dialog) {
   showTip(null);
-  if (dialog && !dialog.open) { dialog.showModal(); dialog.append(tip); }
+  if (dialog && !dialog.open) {
+    dialog.showModal();
+    dialog.append(tip);
+  }
 }
 function closeBattleDialogs() {
   for (const dialog of app.querySelectorAll("dialog[open]")) dialog.close();
   document.body.append(tip);
   showTip(null);
 }
-app.addEventListener("close", () => { document.body.append(tip); showTip(null); }, true);
+app.addEventListener(
+  "close",
+  () => {
+    document.body.append(tip);
+    showTip(null);
+  },
+  true,
+);
 app.addEventListener("change", (event) => {
   if (event.target.id !== "playback-speed" || !playback) return;
   const running = Boolean(playback.timer);
   const revealing = Boolean(playback.revealTimer);
   const remaining = revealing ? Math.max(0, playback.revealAt - performance.now()) : 0;
-  stopPlaying(); playback.speed = Number(event.target.value);
+  stopPlaying();
+  playback.speed = Number(event.target.value);
   if (revealing) queueReveal(playback, remaining);
   else if (running) startPlaying(false);
 });
@@ -563,10 +802,13 @@ app.addEventListener("scroll", () => showTip(null), true);
 app.addEventListener("click", (event) => {
   if (event.target instanceof HTMLDialogElement) {
     const box = event.target.getBoundingClientRect();
-    if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) event.target.close();
+    if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom)
+      event.target.close();
   }
 });
-document.addEventListener("visibilitychange", () => { if (document.hidden) stopPlaying(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) stopPlaying();
+});
 
 // copyMatchLog copies the log shown on the result screen; the text stays visible either way.
 function copyMatchLog() {
@@ -575,30 +817,52 @@ function copyMatchLog() {
   const done = () => {
     byId("copied").textContent = "Copied.";
   };
-  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(area.value).then(done, () => done(document.execCommand("copy")));
+  if (navigator.clipboard?.writeText)
+    navigator.clipboard.writeText(area.value).then(done, () => done(document.execCommand("copy")));
   else done(document.execCommand("copy"));
 }
 
 // ---- Rendering
 
 function render() {
-  if(lobby.model.active && !lobby.model.inGame) { if(app.contains(tip))document.body.append(tip);tip.hidden=true;return lobby.render(); }
+  if (lobby.model.active && !lobby.model.inGame) {
+    if (app.contains(tip)) document.body.append(tip);
+    tip.hidden = true;
+    return lobby.render();
+  }
   app.classList.remove("lobby");
-  const screens = { title, library: libraryScreen, deck: deckScreen, handoff, plan: planScreen, playback: playbackScreen, result: resultScreen };
+  const screens = {
+    title,
+    library: libraryScreen,
+    deck: deckScreen,
+    handoff,
+    plan: planScreen,
+    playback: playbackScreen,
+    result: resultScreen,
+  };
   if (flow.screen === "playback" && app.dataset.screen === "playback") return;
   const previousScreen = app.dataset.screen;
   const previousStage = app.dataset.stage;
   const focus = document.activeElement;
-  const key = focus?.matches(":focus-visible") && focus?.dataset.action ? { action: focus.dataset.action, id: focus.dataset.id, beat: focus.dataset.beat } : null;
+  const key =
+    focus?.matches(":focus-visible") && focus?.dataset.action
+      ? { action: focus.dataset.action, id: focus.dataset.id, beat: focus.dataset.beat }
+      : null;
   handScroll = app.querySelector(".battle-hand")?.scrollLeft ?? 0;
-  for (const ghost of flights) ghost.remove(); flights.clear();
+  for (const ghost of flights) ghost.remove();
+  flights.clear();
   if (app.contains(tip)) document.body.append(tip);
   app.innerHTML = onlineBar() + screens[flow.screen]();
   app.dataset.screen = flow.screen;
-  app.dataset.stage = flow.screen === "deck" ? choosingClan ? "clan" : "cards" : "";
-  if ((flow.screen === "deck" && (previousStage !== app.dataset.stage || previousScreen !== flow.screen)) || flow.screen === "library") {
-    const heading=app.querySelector("h1,h2"); heading?.setAttribute("tabindex","-1"); heading?.focus({preventScroll:true});
-    app.scrollIntoView({block:"start"});
+  app.dataset.stage = flow.screen === "deck" ? (choosingClan ? "clan" : "cards") : "";
+  if (
+    (flow.screen === "deck" && (previousStage !== app.dataset.stage || previousScreen !== flow.screen)) ||
+    flow.screen === "library"
+  ) {
+    const heading = app.querySelector("h1,h2");
+    heading?.setAttribute("tabindex", "-1");
+    heading?.focus({ preventScroll: true });
+    app.scrollIntoView({ block: "start" });
   }
   app.classList.toggle("board--battle", ["plan", "playback"].includes(flow.screen));
   if (flow.screen === "plan") {
@@ -606,10 +870,19 @@ function render() {
     hand.scrollLeft = previousScreen === "plan" ? handScroll : 0;
     // A phone's hand scrolls sideways; bring the card the guided match asks for into view.
     const coached = hand.querySelector(".card--coached")?.closest(".hand-entry");
-    if (coached) hand.scrollLeft += coached.getBoundingClientRect().left - hand.getBoundingClientRect().left - (hand.clientWidth - coached.offsetWidth) / 2;
+    if (coached)
+      hand.scrollLeft +=
+        coached.getBoundingClientRect().left -
+        hand.getBoundingClientRect().left -
+        (hand.clientWidth - coached.offsetWidth) / 2;
     if (previousScreen === "plan" && key) {
-      let target = [...app.querySelectorAll("[data-action]")].find(el => el.dataset.action === key.action && el.dataset.id === key.id && el.dataset.beat === key.beat && !el.disabled);
-      target ??= byId("seal")?.disabled ? app.querySelector('.battle-hand [data-action="addCard"]:not(:disabled)') : byId("seal");
+      let target = [...app.querySelectorAll("[data-action]")].find(
+        (el) =>
+          el.dataset.action === key.action && el.dataset.id === key.id && el.dataset.beat === key.beat && !el.disabled,
+      );
+      target ??= byId("seal")?.disabled
+        ? app.querySelector('.battle-hand [data-action="addCard"]:not(:disabled)')
+        : byId("seal");
       target?.focus({ preventScroll: true });
     }
   }
@@ -618,7 +891,15 @@ function render() {
     const session = playback;
     queueReveal(session, reducedMotion.matches ? 450 : 1050);
   }
-  if (previousScreen !== flow.screen) animateElement(app.querySelector(".duel-table"), [{ opacity: .2, transform: "translateY(7px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 360 });
+  if (previousScreen !== flow.screen)
+    animateElement(
+      app.querySelector(".duel-table"),
+      [
+        { opacity: 0.2, transform: "translateY(7px)" },
+        { opacity: 1, transform: "translateY(0)" },
+      ],
+      { duration: 360 },
+    );
   dropStaleTip();
 }
 
@@ -628,19 +909,40 @@ function dropStaleTip() {
 }
 
 const clanPresentation = [
-  {name:"Pickers",file:"pickers-selection-v1.jpg",tag:"QUICK HANDS · DIRTY TRICKS",description:"Strike before they’re ready. Nimble miners turn everyday tools into a flurry of blows.",style:"Fast attacks · Disruption"},
-  {name:"Ironhide",file:"ironhide-selection-v1.jpg",tag:"HOLD FIRM · HIT HARD",description:"Weather the blow, then answer with force. Heavy shields and patient timing win the day.",style:"Block · Heavy hits"},
-  {name:"Delvers",file:"delvers-selection-v5.jpg",tag:"BAD IDEAS · EXCELLENT TIMING",description:"Push your luck. Exploit an opening. Take the hit—and send the punishment back.",style:"Risk · Big payoffs · Retaliation"},
+  {
+    name: "Pickers",
+    file: "pickers-selection-v1.jpg",
+    tag: "QUICK HANDS · DIRTY TRICKS",
+    description: "Strike before they’re ready. Nimble miners turn everyday tools into a flurry of blows.",
+    style: "Fast attacks · Disruption",
+  },
+  {
+    name: "Ironhide",
+    file: "ironhide-selection-v1.jpg",
+    tag: "HOLD FIRM · HIT HARD",
+    description: "Weather the blow, then answer with force. Heavy shields and patient timing win the day.",
+    style: "Block · Heavy hits",
+  },
+  {
+    name: "Delvers",
+    file: "delvers-selection-v5.jpg",
+    tag: "BAD IDEAS · EXCELLENT TIMING",
+    description: "Push your luck. Exploit an opening. Take the hit—and send the punishment back.",
+    style: "Risk · Big payoffs · Retaliation",
+  },
 ];
-function clanChoicesHTML(home=false) {
-  return `<div class="clan-choices">${clanPresentation.map(c=>{
-    const available=Boolean(clanNamed(c.name));
-    const body=`<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="${home?'lazy':'eager'}"></div><div class="clan-choice__body"><span class="clan-choice__eyebrow">${c.tag}</span><h3>${emblem(c.name)}${c.name}</h3><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available?home?`See the ${c.name} cards →`:`Choose ${c.name} →`:home?'Explore Delvers · Coming soon →':'Coming soon'}</span></div>`;
-    const cls=`clan-choice clan-choice--${c.name.toLowerCase()}`;
-    if(home&&!available)return `<a class="${cls}" href="delvers-preview.html">${body}</a>`;
-    if(home)return `<button class="${cls}" type="button" data-action="library" data-clan="${c.name}">${body}</button>`;
-    return `<button class="${cls}" type="button" data-action="clan" data-name="${c.name}" ${available?'':'disabled'}>${body}</button>`;
-  }).join('')}</div>`;
+function clanChoicesHTML(home = false) {
+  return `<div class="clan-choices">${clanPresentation
+    .map((c) => {
+      const available = Boolean(clanNamed(c.name));
+      const body = `<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="${home ? "lazy" : "eager"}"></div><div class="clan-choice__body"><span class="clan-choice__eyebrow">${c.tag}</span><h3>${emblem(c.name)}${c.name}</h3><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available ? (home ? `See the ${c.name} cards →` : `Choose ${c.name} →`) : home ? "Explore Delvers · Coming soon →" : "Coming soon"}</span></div>`;
+      const cls = `clan-choice clan-choice--${c.name.toLowerCase()}`;
+      if (home && !available) return `<a class="${cls}" href="delvers-preview.html">${body}</a>`;
+      if (home)
+        return `<button class="${cls}" type="button" data-action="library" data-clan="${c.name}">${body}</button>`;
+      return `<button class="${cls}" type="button" data-action="clan" data-name="${c.name}" ${available ? "" : "disabled"}>${body}</button>`;
+    })
+    .join("")}</div>`;
 }
 function title() {
   return `<header class="masthead"><a class="wordmark" href="./">Gnomehall<span>UNDER THE MOUNTAIN</span></a><nav class="home-nav" aria-label="Explore the game"><button type="button" data-action="tutorial">How to play</button><button type="button" data-action="library">Card library</button></nav></header>
@@ -659,15 +961,15 @@ function title() {
       <div class="button-row"><button class="button" type="button" data-action="tutorial">${coach.offer.start}</button><button class="button button--secondary" type="button" data-action="tutorialSkip">${coach.offer.skip}</button></div></dialog>`;
 }
 function libraryScreen() {
-  return `${masthead("Know your tools. Read your rival.")}<div class="section-intro"><div><span class="eyebrow">THE CLAN ARCHIVES</span><h1 class="heading">Card library</h1><p>Every card available in this build. Read the rules and find your favorites.</p></div><button class="button button--secondary" data-action="home">Back to the hall</button></div>${collectionHTML().replace('<details class="collection">','<details class="collection" open>')}`;
+  return `${masthead("Know your tools. Read your rival.")}<div class="section-intro"><div><span class="eyebrow">THE CLAN ARCHIVES</span><h1 class="heading">Card library</h1><p>Every card available in this build. Read the rules and find your favorites.</p></div><button class="button button--secondary" data-action="home">Back to the hall</button></div>${collectionHTML().replace('<details class="collection">', '<details class="collection" open>')}`;
 }
 function clanSelectionScreen() {
-  const heading=flow.mode==='hotseat'?`Player ${flow.acting+1}, choose your clan`:'Choose your clan';
-  return `${masthead("Different clans. Shared grudges.")}<section class="clan-selection" aria-labelledby="clan-select-title"><nav class="setup-steps" aria-label="Match setup"><span aria-current="step">1 · Choose clan</span><span>2 · Build deck</span><span>3 · Plan your round</span></nav><div class="section-intro"><div><span class="eyebrow">CHOOSE YOUR ALLEGIANCE</span><h1 id="clan-select-title">${heading}</h1><p>Find your fighting style. You’ll choose your cards next.</p></div>${flow.mode==='online'?'':'<button class="button button--secondary" data-action="home">Back to the hall</button>'}</div>${clanChoicesHTML()}<p class="clan-selection__note">${engine.clans.some(c=>c.name==='Delvers')?'Every clan brings its own tools. Your timing makes the difference.':'The Delvers are preparing their tools. Choose Pickers or Ironhide to play now.'}</p></section>`;
+  const heading = flow.mode === "hotseat" ? `Player ${flow.acting + 1}, choose your clan` : "Choose your clan";
+  return `${masthead("Different clans. Shared grudges.")}<section class="clan-selection" aria-labelledby="clan-select-title"><nav class="setup-steps" aria-label="Match setup"><span aria-current="step">1 · Choose clan</span><span>2 · Build deck</span><span>3 · Plan your round</span></nav><div class="section-intro"><div><span class="eyebrow">CHOOSE YOUR ALLEGIANCE</span><h1 id="clan-select-title">${heading}</h1><p>Find your fighting style. You’ll choose your cards next.</p></div>${flow.mode === "online" ? "" : '<button class="button button--secondary" data-action="home">Back to the hall</button>'}</div>${clanChoicesHTML()}<p class="clan-selection__note">${engine.clans.some((c) => c.name === "Delvers") ? "Every clan brings its own tools. Your timing makes the difference." : "The Delvers are preparing their tools. Choose Pickers or Ironhide to play now."}</p></section>`;
 }
 
 function deckScreen() {
-  if(choosingClan)return clanSelectionScreen();
+  if (choosingClan) return clanSelectionScreen();
   const clan = clanNamed(deck.clan);
   const rare = rareOf(clan, engine.cards);
   const picked = deck.picks.length - 1;
@@ -677,7 +979,13 @@ function deckScreen() {
   const pool = clan.cards
     .map((id) => {
       const picked = deck.picks.includes(id);
-      return cardHTML(engine.cards[id], { selected: picked, pressed: picked, locked: id === rare, dimmed: full && !picked, action: "toggle" });
+      return cardHTML(engine.cards[id], {
+        selected: picked,
+        pressed: picked,
+        locked: id === rare,
+        dimmed: full && !picked,
+        action: "toggle",
+      });
     })
     .join("");
   return `
@@ -710,29 +1018,46 @@ function battleHeaderHTML(round, phase) {
 
 function roundHTML(round, phase) {
   return `<div class="round-medallion"><span class="eyebrow">${phase}</span><span class="round-medallion__number">${round}<small> / 3</small></span>
-    <div class="round-pips" aria-label="Round ${round} of 3">${[1, 2, 3].map(n => `<span class="${n === round ? "round-pip--current" : n < round ? "round-pip--done" : ""}"></span>`).join("")}</div></div>`;
+    <div class="round-pips" aria-label="Round ${round} of 3">${[1, 2, 3].map((n) => `<span class="${n === round ? "round-pip--current" : n < round ? "round-pip--done" : ""}"></span>`).join("")}</div></div>`;
 }
 
 function beatMarkersHTML() {
-  return `<div class="beat-markers">${[1, 2, 3].map(n => `<span class="timeline__beat" id="beat-${n}"><span class="beat-marker__gem" aria-hidden="true"></span>Beat ${n}</span>`).join("")}</div>`;
+  return `<div class="beat-markers">${[1, 2, 3].map((n) => `<span class="timeline__beat" id="beat-${n}"><span class="beat-marker__gem" aria-hidden="true"></span>Beat ${n}</span>`).join("")}</div>`;
 }
 
 function battleDialogsHTML(viewer) {
   const opponent = 1 - viewer;
   const names = battleNames();
   const past = flow.screen === "playback" ? flow.rounds.slice(0, -1) : flow.rounds;
-  const known = knownCards(past, opponent, (clanNamed(flow.clans[opponent])?.cards ?? []), flow.decks[opponent], engine.cards);
+  const known = knownCards(
+    past,
+    opponent,
+    clanNamed(flow.clans[opponent])?.cards ?? [],
+    flow.decks[opponent],
+    engine.cards,
+  );
   const knownHead = known.open
     ? `<h3 class="heading">${possessive(names[opponent])} deck</h3><p class="muted">Decks are open from round 2. Spent cards show the round they were played in; the current plan stays hidden until the reveal.</p>`
     : `<h3 class="heading">${possessive(names[opponent])} clan pool</h3><p class="muted">${deckSize} of these ${known.cards.length} cards are in their deck. The Rare always is. Decks open from round 2; the current plan stays hidden until the reveal.</p>`;
-  const knownGrid = (list) => `<div class="card-grid">${list.map(({ id, spentRound }) => cardHTML(engine.cards[id], { spentRound })).join("")}</div>`;
+  const knownGrid = (list) =>
+    `<div class="card-grid">${list.map(({ id, spentRound }) => cardHTML(engine.cards[id], { spentRound })).join("")}</div>`;
   const left = known.cards.filter((c) => c.spentRound === 0);
   const spent = known.cards.filter((c) => c.spentRound > 0);
   const knownCardsHTML = known.open
     ? `<span class="label">Still to play · ${left.length}</span>${knownGrid(left)}${spent.length ? `<span class="label">Already played · ${spent.length}</span>${knownGrid(spent)}` : ""}`
     : knownGrid(known.cards);
-  const history = past.map((round, i) => `<section class="stack"><h3 class="heading">Round ${i + 1}</h3>${[0, 1].map(side => `<div><span class="label">${names[side]}</span><div class="row">${smallCards(round.plans[side])}</div></div>`).join("")}</section>`).join("");
-  const played = past.map((round, i) => `<section class="stack"><h3 class="heading">Round ${i + 1}</h3><div class="card-grid">${round.plans[viewer].map(id => cardHTML(engine.cards[id])).join("")}</div></section>`).join("");
+  const history = past
+    .map(
+      (round, i) =>
+        `<section class="stack"><h3 class="heading">Round ${i + 1}</h3>${[0, 1].map((side) => `<div><span class="label">${names[side]}</span><div class="row">${smallCards(round.plans[side])}</div></div>`).join("")}</section>`,
+    )
+    .join("");
+  const played = past
+    .map(
+      (round, i) =>
+        `<section class="stack"><h3 class="heading">Round ${i + 1}</h3><div class="card-grid">${round.plans[viewer].map((id) => cardHTML(engine.cards[id])).join("")}</div></section>`,
+    )
+    .join("");
   return `<dialog class="battle-drawer" id="played-cards" aria-labelledby="played-title"><div class="dialog-heading"><h2 class="heading" id="played-title">Your played cards</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close played cards">×</button></div>${played || `<p class="muted">No cards played yet.</p>`}</dialog><dialog class="battle-drawer" id="battle-info" aria-labelledby="intel-title"><div class="dialog-heading"><h2 class="heading" id="intel-title">Across the table</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close opponent information">×</button></div>
     <section class="stack">${knownHead}
       ${knownCardsHTML}</section>
@@ -741,27 +1066,43 @@ function battleDialogsHTML(viewer) {
 }
 
 function planScreen() {
-  const me = flow.acting, opponent = 1 - me;
+  const me = flow.acting,
+    opponent = 1 - me;
   const names = battleNames();
   const used = beatsUsed(plan, engine.cards);
   const sealable = isSealable(plan, legalPlans);
-  const handIds = [...basics, ...flow.decks[me].filter(id => !flow.state.gnomes[me].spent.includes(id) && !plan.includes(id))];
+  const handIds = [
+    ...basics,
+    ...flow.decks[me].filter((id) => !flow.state.gnomes[me].spent.includes(id) && !plan.includes(id)),
+  ];
   const playedCount = flow.rounds.reduce((n, round) => n + round.plans[me].length, 0);
   const coached = coachedCard();
-  const hand = handIds.map((id, index) => {
-    const c = engine.cards[id];
-    return `<div class="hand-entry" style="--hand-order:${index};--hand-tilt:${(index - (handIds.length - 1) / 2) * 4}deg;--hand-rise:${Math.pow(index - (handIds.length - 1) / 2, 2) * 2}px">
+  const hand = handIds
+    .map((id, index) => {
+      const c = engine.cards[id];
+      return `<div class="hand-entry" style="--hand-order:${index};--hand-tilt:${(index - (handIds.length - 1) / 2) * 4}deg;--hand-rise:${Math.pow(index - (handIds.length - 1) / 2, 2) * 2}px">
       ${cardHTML(c, { action: matchMedia("(hover: none)").matches ? "inspectCard" : "addCard", hand: true, dimmed: !canAdd(plan, id, engine.cards, available()), coached: id === coached })}
       <button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Details: ${c.name}">Details</button></div>`;
-  }).join("");
-  const backs = [1, 2, 3].map(() => `<div class="card-back card-back--${(flow.clans[opponent] || "shared").toLowerCase()}" aria-hidden="true"><span>${emblem(flow.clans[opponent])}</span></div>`).join("");
-  const practice = flow.mode === "tutorial" && guided.rails[flow.state.round - 1] !== null ? guided.opponent[flow.state.round - 1] : null;
-  const opponentTrack = practice === null
-    ? `<div class="plan-track plan-track--hidden" aria-label="Opponent plan hidden">${backs}</div>`
-    : `<div class="plan-track">${practiceTrackHTML(practice)}</div>`;
-  const title = flow.mode === "tutorial"
-    ? coachHTML(sealable)
-    : `<div class="hand-zone__title"><h2 class="heading">Plot your next move</h2><span class="muted" id="plan-status" role="status">${sealable ? "Your plan is ready. Confirm it when you're sure." : "Play cards to fill all three beats."}</span></div>`;
+    })
+    .join("");
+  const backs = [1, 2, 3]
+    .map(
+      () =>
+        `<div class="card-back card-back--${(flow.clans[opponent] || "shared").toLowerCase()}" aria-hidden="true"><span>${emblem(flow.clans[opponent])}</span></div>`,
+    )
+    .join("");
+  const practice =
+    flow.mode === "tutorial" && guided.rails[flow.state.round - 1] !== null
+      ? guided.opponent[flow.state.round - 1]
+      : null;
+  const opponentTrack =
+    practice === null
+      ? `<div class="plan-track plan-track--hidden" aria-label="Opponent plan hidden">${backs}</div>`
+      : `<div class="plan-track">${practiceTrackHTML(practice)}</div>`;
+  const title =
+    flow.mode === "tutorial"
+      ? coachHTML(sealable)
+      : `<div class="hand-zone__title"><h2 class="heading">Plot your next move</h2><span class="muted" id="plan-status" role="status">${sealable ? "Your plan is ready. Confirm it when you're sure." : "Play cards to fill all three beats."}</span></div>`;
   return `${battleHeaderHTML(flow.state.round, "Planning")}
     <section class="duel-table" aria-label="Round ${flow.state.round} battle table">
       <div class="duel-fighters">${gnomeHTML(me, flow.state.gnomes[me], names[me])}${gnomeHTML(opponent, flow.state.gnomes[opponent], names[opponent])}</div>
@@ -775,7 +1116,7 @@ function planScreen() {
     <section class="hand-zone" aria-label="Your hand"><div class="hand-zone__heading">
       ${title}
       <div class="hand-zone__hint"><span class="label">Your hand <span>${handIds.length} cards</span></span><span class="muted">Lift a card to read · click to play · tap to inspect</span></div>
-      <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}>${flow.mode === "online" ? onlineContext.intent === "challenge" ? "Post challenge" : onlineContext.intent === "accept" ? "Accept challenge" : "Send plan" : "Seal plan"}</button></div></div>
+      <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}>${flow.mode === "online" ? (onlineContext.intent === "challenge" ? "Post challenge" : onlineContext.intent === "accept" ? "Accept challenge" : "Send plan") : "Seal plan"}</button></div></div>
       <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount ? "" : "disabled"} aria-label="Open played cards, ${playedCount} cards"><span class="pile-back card-back card-back--${(flow.clans[me] || "shared").toLowerCase()}"><span>${emblem(flow.clans[me])}</span></span><span class="label">Played cards</span><span class="muted">${playedCount} cards · inspect</span></button></div></section>
     ${battleDialogsHTML(me)}`;
 }
@@ -784,11 +1125,17 @@ function planScreen() {
 function slotsHTML() {
   let beat = 0;
   const filled = plan.map((id, index) => {
-    const c = engine.cards[id]; const from = beat; beat += c.cost;
+    const c = engine.cards[id];
+    const from = beat;
+    beat += c.cost;
     return `<div class="slot" data-plan-index="${index}" style="grid-column:span ${c.cost}">${cardHTML(c, { track: true, action: "clearFrom", data: `data-beat="${from}"` })}<span class="track-note">${c.parry > 0 ? `Guards ${c.cost === 1 ? `beat ${beat}` : `beats ${from + 1}–${beat}`}` : c.cost > 1 ? `Lands on beat ${beat}` : "Click to remove"}</span></div>`;
   });
   const coached = coachedCard();
-  const empty = Array.from({ length: 3 - beat }, (_, index) => `<div class="slot"><div class="slot__well"><span class="slot__number">${beat + index + 1}</span>${index === 0 && coached !== undefined ? `<span class="slot__coach">${engine.cards[coached].name} goes here</span>` : "<span>Choose a card</span>"}</div><span class="track-note">Empty beat</span></div>`);
+  const empty = Array.from(
+    { length: 3 - beat },
+    (_, index) =>
+      `<div class="slot"><div class="slot__well"><span class="slot__number">${beat + index + 1}</span>${index === 0 && coached !== undefined ? `<span class="slot__coach">${engine.cards[coached].name} goes here</span>` : "<span>Choose a card</span>"}</div><span class="track-note">Empty beat</span></div>`,
+  );
   return `<div class="plan-track plan-track--yours">${filled.join("")}${empty.join("")}</div>`;
 }
 
@@ -801,10 +1148,14 @@ function trackNote(c, from, to) {
 // practiceTrackHTML lays out the guided match opponent's plan face up.
 function practiceTrackHTML(ids) {
   let beat = 0;
-  return ids.map((id) => {
-    const c = engine.cards[id]; const from = beat + 1; beat += c.cost;
-    return `<div class="slot" style="grid-column:span ${c.cost}">${cardHTML(c, { track: true })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
-  }).join("");
+  return ids
+    .map((id) => {
+      const c = engine.cards[id];
+      const from = beat + 1;
+      beat += c.cost;
+      return `<div class="slot" style="grid-column:span ${c.cost}">${cardHTML(c, { track: true })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
+    })
+    .join("");
 }
 
 // coachHTML is the guided match's coach strip: the round's lesson title, what to do now, and
@@ -814,9 +1165,10 @@ function coachHTML(sealable) {
   const words = coach.rounds[round - 1];
   const rails = guided.rails[round - 1];
   const line = rails === null ? words.hint : coachedCard() !== undefined ? words.steps[plan.length] : words.seal;
-  const step = rails === null
-    ? `<button class="button button--secondary" type="button" data-action="intel">${words.look}</button>`
-    : `<span class="coach__step">Round ${round} · step ${plan.length + 1} of ${words.steps.length + 1}</span>`;
+  const step =
+    rails === null
+      ? `<button class="button button--secondary" type="button" data-action="intel">${words.look}</button>`
+      : `<span class="coach__step">Round ${round} · step ${plan.length + 1} of ${words.steps.length + 1}</span>`;
   return `<div class="coach">${portraitHTML("Pickers", 'class="coach__portrait"')}<p class="coach__words"><strong>${words.title}</strong> ${line}</p>${step}
     <span class="coach__status" id="plan-status" role="status">${sealable ? "Your plan is ready. Confirm it when you're sure." : "Play cards to fill all three beats."}</span></div>`;
 }
@@ -824,13 +1176,20 @@ function coachHTML(sealable) {
 function playbackScreen() {
   const round = flow.rounds.at(-1);
   const names = battleNames();
-  const me = playback.viewer, opponent = 1 - me;
-  const row = side => {
+  const me = playback.viewer,
+    opponent = 1 - me;
+  const row = (side) => {
     let beat = 0;
-    return `<div class="track-row ${side === me ? "track-row--yours" : "track-row--opponent"}"><div class="track-row__label"><span class="label">${possessive(names[side])} plan</span><span class="track-hint">Revealed</span></div><div class="plan-track">${round.plans[side].map((id, index) => {
-      const c = engine.cards[id];const from = beat + 1;beat += c.cost;
-      return `<div class="slot card-reveal" style="grid-column:span ${c.cost};--reveal-delay:${index * 120}ms">${cardHTML(c, { track: true, action: "inspectCard", data: `data-side="${side}" data-index="${index}"` })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
-    }).join("")}</div></div>`;
+    return `<div class="track-row ${side === me ? "track-row--yours" : "track-row--opponent"}"><div class="track-row__label"><span class="label">${possessive(names[side])} plan</span><span class="track-hint">Revealed</span></div><div class="plan-track">${round.plans[
+      side
+    ]
+      .map((id, index) => {
+        const c = engine.cards[id];
+        const from = beat + 1;
+        beat += c.cost;
+        return `<div class="slot card-reveal" style="grid-column:span ${c.cost};--reveal-delay:${index * 120}ms">${cardHTML(c, { track: true, action: "inspectCard", data: `data-side="${side}" data-index="${index}"` })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
+      })
+      .join("")}</div></div>`;
   };
   return `${battleHeaderHTML(round.state.round - 1, "The clash")}
     <section class="duel-table duel-table--playback" aria-label="Round ${round.state.round - 1} battle table">
@@ -850,7 +1209,7 @@ function patchPlayback() {
   if (!playback || flow.screen !== "playback" || app.dataset.screen !== "playback") return;
   const round = flow.rounds.at(-1);
   const { steps, shown, lines } = playback;
-  const vitalsAt = n => n === 0 ? playback.start : round.events[steps[n - 1].to - 1].after;
+  const vitalsAt = (n) => (n === 0 ? playback.start : round.events[steps[n - 1].to - 1].after);
   const vitals = vitalsAt(shown);
   const current = shown > 0 ? steps[shown - 1] : null;
   for (const side of [0, 1]) {
@@ -860,10 +1219,22 @@ function patchPlayback() {
     byId(`chips-${side}`).innerHTML = chipsHTML(vitals[side]);
     byId(`fighter-${side}`).classList.toggle("fighter--defeated", vitals[side].hp <= 0);
   }
-  const laid = round.plans.map(p => slots(p, engine.cards));
-  const acting = new Set(current ? round.events.slice(current.from, current.to).map(ev => { const { side, index } = cardBehind(ev, round.plans, engine.cards); return `${side}:${index}`; }) : []);
+  const laid = round.plans.map((p) => slots(p, engine.cards));
+  const acting = new Set(
+    current
+      ? round.events.slice(current.from, current.to).map((ev) => {
+          const { side, index } = cardBehind(ev, round.plans, engine.cards);
+          return `${side}:${index}`;
+        })
+      : [],
+  );
   const until = shown > 0 ? steps[shown - 1].to : 0;
-  const cancelled = new Set(round.events.slice(0, until).filter(ev => ev.kind === "Cancelled").map(ev => `${ev.side}:${laid[ev.side][ev.beat - 1]?.index}`));
+  const cancelled = new Set(
+    round.events
+      .slice(0, until)
+      .filter((ev) => ev.kind === "Cancelled")
+      .map((ev) => `${ev.side}:${laid[ev.side][ev.beat - 1]?.index}`),
+  );
   for (const b of [1, 2, 3]) {
     byId(`beat-${b}`).classList.toggle("timeline__beat--current", current?.beat === b);
     byId(`beat-${b}`).classList.toggle("timeline__beat--past", current?.beat > b);
@@ -872,22 +1243,35 @@ function patchPlayback() {
     const key = `${el.dataset.side}:${el.dataset.index}`;
     el.classList.toggle("card--acting", acting.has(key));
     el.classList.toggle("card--cancelled", cancelled.has(key));
-    el.setAttribute("aria-label", `${engine.cards[Number(el.dataset.id)].name}${cancelled.has(key) ? ", cancelled" : ""}. Inspect card.`);
+    el.setAttribute(
+      "aria-label",
+      `${engine.cards[Number(el.dataset.id)].name}${cancelled.has(key) ? ", cancelled" : ""}. Inspect card.`,
+    );
   }
   byId("log").innerHTML = logHTML(round, steps, shown, lines);
   const done = shown >= steps.length;
   const names = battleNames();
-  const caption = done ? `Round complete. ${names[playback.viewer]}: ${vitals[playback.viewer].hp} HP · ${names[1 - playback.viewer]}: ${vitals[1 - playback.viewer].hp} HP.` : current ? lines.slice(current.from, current.to).join(" · ") : "Both plans revealed. The clash begins.";
+  const caption = done
+    ? `Round complete. ${names[playback.viewer]}: ${vitals[playback.viewer].hp} HP · ${names[1 - playback.viewer]}: ${vitals[1 - playback.viewer].hp} HP.`
+    : current
+      ? lines.slice(current.from, current.to).join(" · ")
+      : "Both plans revealed. The clash begins.";
   if (byId("battle-event").textContent !== caption) byId("battle-event").textContent = caption;
   const held = playback.lesson !== null;
-  byId("next").disabled = done || held;byId("skip").disabled = done || held;byId("play").disabled = done || held;
+  byId("next").disabled = done || held;
+  byId("skip").disabled = done || held;
+  byId("play").disabled = done || held;
   const lesson = byId("lesson");
   if (lesson) {
     lesson.hidden = !playback.lesson?.ready;
     byId("lesson-text").textContent = playback.lesson?.ready ? playback.lesson.text : "";
   }
   byId("play").textContent = playback.timer || playback.revealTimer ? "Pause" : "Play";
-  byId("progress").textContent = done ? "Round resolved" : current ? `Beat ${current.beat} · ${current.phase}` : "Plans revealed";
+  byId("progress").textContent = done
+    ? "Round resolved"
+    : current
+      ? `Beat ${current.beat} · ${current.phase}`
+      : "Plans revealed";
   byId("finish").innerHTML = done && !held ? finishHTML() : "";
   dropStaleTip();
 }
@@ -904,11 +1288,17 @@ function logHTML(round, steps, shown, lines) {
     else groups.push({ beat, lines: [line] });
   }
   if (until === 0) return `<span class="muted">Press Next to resolve the first step.</span>`;
-  return groups.map((g) => `<span class="log__beat" style="grid-row: span ${g.lines.length}">Beat ${g.beat}</span>${g.lines.join("")}`).join("");
+  return groups
+    .map(
+      (g) =>
+        `<span class="log__beat" style="grid-row: span ${g.lines.length}">Beat ${g.beat}</span>${g.lines.join("")}`,
+    )
+    .join("");
 }
 
 function finishHTML() {
-  if(flow.mode === "online") return `<div class="button-row"><button class="button" data-action="playbackDone">${onlineContext.review ? "Back to match" : "Plan your next round"}</button></div>`;
+  if (flow.mode === "online")
+    return `<div class="button-row"><button class="button" data-action="playbackDone">${onlineContext.review ? "Back to match" : "Plan your next round"}</button></div>`;
   const names = battleNames();
   if (flow.result === "ongoing") {
     return `<div class="button-row"><button class="button" type="button" data-action="playbackDone">Round ${flow.state.round}</button></div>`;
@@ -925,7 +1315,10 @@ function resultScreen() {
   const sides = [0, 1]
     .map((side) => {
       const g = flow.state.gnomes[side];
-      const unplayed = flow.decks[side].filter((id) => !g.spent.includes(id)).map((id) => cardHTML(engine.cards[id], { small: true })).join("");
+      const unplayed = flow.decks[side]
+        .filter((id) => !g.spent.includes(id))
+        .map((id) => cardHTML(engine.cards[id], { small: true }))
+        .join("");
       return `
         <div class="stack">
           <div class="frame__head"><span class="heading">${names[side]}</span><span class="number">HP ${g.hp}</span></div>
@@ -954,9 +1347,12 @@ function resultScreen() {
 // heading before it.
 function guidedResultHTML() {
   const [mine, theirs] = flow.state.gnomes.map((g) => g.hp);
-  const outcome = flow.result === "a" ? `You won on health, ${mine} to ${theirs}.`
-    : flow.result === "b" ? `Ironhide won on health, ${theirs} to ${mine}.`
-    : `An even score: ${mine} to ${theirs}.`;
+  const outcome =
+    flow.result === "a"
+      ? `You won on health, ${mine} to ${theirs}.`
+      : flow.result === "b"
+        ? `Ironhide won on health, ${theirs} to ${mine}.`
+        : `An even score: ${mine} to ${theirs}.`;
   return `
     ${masthead()}
     <section class="frame stack guided-result">
@@ -986,7 +1382,9 @@ function chipsHTML(vitals) {
     ["strength", "Strength"],
   ]
     .filter(([key]) => vitals[key] > 0)
-    .map(([key, label]) => `<span class="chip chip--${key}" data-kw="${key}" tabindex="0">${label} ${vitals[key]}</span>`)
+    .map(
+      ([key, label]) => `<span class="chip chip--${key}" data-kw="${key}" tabindex="0">${label} ${vitals[key]}</span>`,
+    )
     .join("");
 }
 
@@ -998,12 +1396,46 @@ function hpWidth(hp) {
 // pressed marks a toggle's state, locked a toggle that does nothing, coached the card the
 // guided match asks for next. A small card shows cost, name and badges and peeks the full
 // card on hover or focus. spentRound, when above 0, marks the round the card was played in.
-function cardHTML(c, { selected = false, dimmed = false, small = false, locked = false, pressed = null, action = null, data = "", spentRound = 0, hand = false, track = false, coached = false } = {}) {
+function cardHTML(
+  c,
+  {
+    selected = false,
+    dimmed = false,
+    small = false,
+    locked = false,
+    pressed = null,
+    action = null,
+    data = "",
+    spentRound = 0,
+    hand = false,
+    track = false,
+    coached = false,
+  } = {},
+) {
   const clan = cardClan(c);
-  const classes = ["card", `card--${clan.toLowerCase()}`, hand ? "card--hand" : "", track ? "card--track" : "", c.rare ? "card--rare" : "", c.special ? "" : "card--basic", selected ? "card--selected" : "", dimmed ? "card--dimmed" : "", small ? "card--small" : "", locked ? "card--locked" : "", coached ? "card--coached" : "", spentRound > 0 ? "card--spent" : ""].join(" ");
-  const state = [pressed === null ? "" : `aria-pressed="${pressed}"`, locked ? `aria-disabled="true" title="The Rare stays in"` : "", small ? `data-peek="${c.id}"` : ""].join(" ");
+  const classes = [
+    "card",
+    `card--${clan.toLowerCase()}`,
+    hand ? "card--hand" : "",
+    track ? "card--track" : "",
+    c.rare ? "card--rare" : "",
+    c.special ? "" : "card--basic",
+    selected ? "card--selected" : "",
+    dimmed ? "card--dimmed" : "",
+    small ? "card--small" : "",
+    locked ? "card--locked" : "",
+    coached ? "card--coached" : "",
+    spentRound > 0 ? "card--spent" : "",
+  ].join(" ");
+  const state = [
+    pressed === null ? "" : `aria-pressed="${pressed}"`,
+    locked ? `aria-disabled="true" title="The Rare stays in"` : "",
+    small ? `data-peek="${c.id}"` : "",
+  ].join(" ");
   const badges = [
-    c.tier !== "Normal" ? `<span class="badge badge--${c.tier.toLowerCase()}" data-kw="${c.tier.toLowerCase()}">${c.tier}</span>` : "",
+    c.tier !== "Normal"
+      ? `<span class="badge badge--${c.tier.toLowerCase()}" data-kw="${c.tier.toLowerCase()}">${c.tier}</span>`
+      : "",
     c.rare ? `<span class="badge badge--rare" data-kw="rare"><span aria-hidden="true">✦</span> Rare</span>` : "",
     spentRound > 0 ? `<span class="badge badge--spent">Spent R${spentRound}</span>` : "",
   ].join("");
@@ -1032,5 +1464,7 @@ function byId(id) {
 }
 
 const matchLink = location.hash.match(/^#match=(.+)$/);
-if(matchLink) { flow={...initial,screen:"lobby"}; await lobby.enter(decodeURIComponent(matchLink[1])); }
-else render();
+if (matchLink) {
+  flow = { ...initial, screen: "lobby" };
+  await lobby.enter(decodeURIComponent(matchLink[1]));
+} else render();

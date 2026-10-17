@@ -27,9 +27,21 @@ export function reduce(flow, action) {
     case "title/start":
       return { ...initial, screen: "deck", mode: action.mode, hp: action.hp, state: freshState(action.hp) };
     case "title/startTutorial":
-      return { ...initial, screen: "plan", mode: "tutorial", hp: action.hp, clans: action.clans, decks: action.decks, state: freshState(action.hp) };
+      return {
+        ...initial,
+        screen: "plan",
+        mode: "tutorial",
+        hp: action.hp,
+        clans: action.clans,
+        decks: action.decks,
+        state: freshState(action.hp),
+      };
     case "deck/deckReady": {
-      const next = { ...flow, clans: withAt(flow.clans, flow.acting, action.clan), decks: withAt(flow.decks, flow.acting, action.deck) };
+      const next = {
+        ...flow,
+        clans: withAt(flow.clans, flow.acting, action.clan),
+        decks: withAt(flow.decks, flow.acting, action.deck),
+      };
       return flow.acting === 0 ? toward(next, "deck", 1) : toward(next, "plan", 0);
     }
     case "handoff/handoffDone":
@@ -49,7 +61,11 @@ export function reduce(flow, action) {
     case "playback/playbackDone":
       return flow.result === "ongoing" ? toward(flow, "plan", 0) : { ...flow, screen: "result" };
     case "result/rematch":
-      return toward({ ...flow, state: freshState(flow.hp), rounds: [], plans: [null, null], result: "ongoing" }, "plan", 0);
+      return toward(
+        { ...flow, state: freshState(flow.hp), rounds: [], plans: [null, null], result: "ongoing" },
+        "plan",
+        0,
+      );
     case "result/newMatch":
       return initial;
     default:

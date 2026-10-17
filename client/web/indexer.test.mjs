@@ -24,14 +24,22 @@ function fakeIndexer(answer) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const latest = (height) => ({ data: { latestBlockHeight: height } });
-const calls = (...txs) => ({ data: { getTransactions: txs.map(([height, value]) => ({ block_height: height, messages: [{ value }] })) } });
+const calls = (...txs) => ({
+  data: { getTransactions: txs.map(([height, value]) => ({ block_height: height, messages: [{ value }] })) },
+});
 const isWindow = (request) => request.variables?.where !== undefined;
 
 test("the first poll starts at the indexer's latest height, so no earlier call is reported", async () => {
-  const indexer = fakeIndexer((r) => (isWindow(r) ? calls([3, { caller: alice, pkg_path: realm, func: "Play", args: ["1"] }]) : latest(10)));
+  const indexer = fakeIndexer((r) =>
+    isWindow(r) ? calls([3, { caller: alice, pkg_path: realm, func: "Play", args: ["1"] }]) : latest(10),
+  );
   const reported = [];
   const states = [];
-  const stop = createIndexer({ url, fetch: indexer.fetch, interval: 5 }).watchCalls(realm, (c) => reported.push(c), (s) => states.push(s));
+  const stop = createIndexer({ url, fetch: indexer.fetch, interval: 5 }).watchCalls(
+    realm,
+    (c) => reported.push(c),
+    (s) => states.push(s),
+  );
   await sleep(30);
   stop();
   assert.deepEqual(states, ["up"]);
@@ -43,7 +51,10 @@ test("when the latest height moves, the poll reads the realm's successful calls 
   const heights = [10, 12];
   const indexer = fakeIndexer((r) => {
     if (!isWindow(r)) return latest(heights.length > 1 ? heights.shift() : heights[0]);
-    return calls([11, { caller: alice, pkg_path: realm, func: "Accept", args: ["4", "Ironhide"] }], [12, { caller: alice, pkg_path: realm, func: "Play", args: ["4", "Pick,Pick,Pick"] }]);
+    return calls(
+      [11, { caller: alice, pkg_path: realm, func: "Accept", args: ["4", "Ironhide"] }],
+      [12, { caller: alice, pkg_path: realm, func: "Play", args: ["4", "Pick,Pick,Pick"] }],
+    );
   });
   const reported = [];
   const stop = createIndexer({ url, fetch: indexer.fetch, interval: 5 }).watchCalls(realm, (c) => reported.push(c));
@@ -88,7 +99,11 @@ test("an indexer that stops answering reports down once, then up, and the calls 
   });
   const reported = [];
   const states = [];
-  const stop = createIndexer({ url, fetch: indexer.fetch, interval: 5 }).watchCalls(realm, (c) => reported.push(c), (s) => states.push(s));
+  const stop = createIndexer({ url, fetch: indexer.fetch, interval: 5 }).watchCalls(
+    realm,
+    (c) => reported.push(c),
+    (s) => states.push(s),
+  );
   await sleep(60);
   stop();
   assert.deepEqual(states, ["up", "down", "up"]);
@@ -99,7 +114,11 @@ test("an indexer that stops answering reports down once, then up, and the calls 
 test("a GraphQL error counts as the indexer not answering", async () => {
   const indexer = fakeIndexer(() => ({ errors: [{ message: "too many transactions" }] }));
   const states = [];
-  const stop = createIndexer({ url, fetch: indexer.fetch, interval: 5 }).watchCalls(realm, () => {}, (s) => states.push(s));
+  const stop = createIndexer({ url, fetch: indexer.fetch, interval: 5 }).watchCalls(
+    realm,
+    () => {},
+    (s) => states.push(s),
+  );
   await sleep(30);
   stop();
   assert.deepEqual(states, ["down"]);

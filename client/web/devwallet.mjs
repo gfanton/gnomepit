@@ -33,9 +33,19 @@ export function devWallet({ name, signer, chain, chainId }) {
 
   async function sign({ messages: msgs, memo = "", gasWanted, gasFee }) {
     const account = await chain.account(address);
-    const base = { chainId, accountNumber: account.accountNumber, sequence: account.sequence, privKey: key, memo, msgs };
+    const base = {
+      chainId,
+      accountNumber: account.accountNumber,
+      sequence: account.sequence,
+      privKey: key,
+      memo,
+      msgs,
+    };
     if (msgs.every((msg) => sessionAdmin.has(msg.type))) {
-      return signer.signTx({ ...base, fee: { gasWanted: gasWanted || adenaGasWanted, gasFee: `${gasFee || adenaGasFee}ugnot` } });
+      return signer.signTx({
+        ...base,
+        fee: { gasWanted: gasWanted || adenaGasWanted, gasFee: `${gasFee || adenaGasFee}ugnot` },
+      });
     }
     return payFor(chain, (fee) => signer.signTx({ ...base, fee }));
   }
@@ -55,12 +65,20 @@ export function devWallet({ name, signer, chain, chainId }) {
         account_number: "0",
         sequence: "0",
         fee: { amount: [], gas: "0" },
-        msgs: [{ type: "sign/MsgSignData", value: { signer: address, data: toBase64(new TextEncoder().encode(data)) } }],
+        msgs: [
+          { type: "sign/MsgSignData", value: { signer: address, data: toBase64(new TextEncoder().encode(data)) } },
+        ],
         memo: "",
       };
       const bytes = new TextEncoder().encode(sortedJSON(signed));
       const { pubKey } = await signer.keyInfo(key);
-      return success({ signed, signature: { pubKey: { typeUrl: "/tm.PubKeySecp256k1", value: pubKey }, signature: await signer.signBytes(key, toBase64(bytes)) } });
+      return success({
+        signed,
+        signature: {
+          pubKey: { typeUrl: "/tm.PubKeySecp256k1", value: pubKey },
+          signature: await signer.signBytes(key, toBase64(bytes)),
+        },
+      });
     },
 
     async SignTx(params) {
@@ -85,7 +103,10 @@ export function devWallet({ name, signer, chain, chainId }) {
 function sortedJSON(value) {
   if (Array.isArray(value)) return `[${value.map(sortedJSON).join(",")}]`;
   if (value !== null && typeof value === "object") {
-    return `{${Object.keys(value).sort().map((k) => `${JSON.stringify(k)}:${sortedJSON(value[k])}`).join(",")}}`;
+    return `{${Object.keys(value)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${sortedJSON(value[k])}`)
+      .join(",")}}`;
   }
   return JSON.stringify(value);
 }

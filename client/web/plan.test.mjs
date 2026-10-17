@@ -59,7 +59,10 @@ test("slots lays the plan's cards over the three beats", () => {
 });
 
 test("isSealable is true only for a plan in the legal list, in order", () => {
-  const legal = [[0, 0, 0], [0, 5]];
+  const legal = [
+    [0, 0, 0],
+    [0, 5],
+  ];
   assert.equal(isSealable([0, 5], legal), true);
   assert.equal(isSealable([5, 0], legal), false);
   assert.equal(isSealable([], legal), false);

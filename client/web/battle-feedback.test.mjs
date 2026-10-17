@@ -48,7 +48,10 @@ test("self-given, moved and stripped tokens reach the gnome they change", () => 
 });
 
 // Kneecap on beat 2 cancels Bulwark, which spans beats 1 and 2.
-const plans = [[id("Pick"), id("Kneecap"), id("Pick")], [id("Bulwark"), id("Brace")]];
+const plans = [
+  [id("Pick"), id("Kneecap"), id("Pick")],
+  [id("Bulwark"), id("Brace")],
+];
 
 test("the card behind a cancellation is the opponent's card on that beat", () => {
   const ev = { kind: "Cancelled", side: 1, card: id("Bulwark"), beat: 2, n: 0 };
@@ -56,6 +59,12 @@ test("the card behind a cancellation is the opponent's card on that beat", () =>
 });
 
 test("the card behind any other event is its own side's card on that beat", () => {
-  assert.deepEqual(cardBehind({ kind: "HitLanded", side: 0, card: id("Pick"), beat: 3, n: 1 }, plans, cards), { side: 0, index: 2 });
-  assert.deepEqual(cardBehind({ kind: "BlockGained", side: 1, card: id("Brace"), beat: 3, n: 1 }, plans, cards), { side: 1, index: 1 });
+  assert.deepEqual(cardBehind({ kind: "HitLanded", side: 0, card: id("Pick"), beat: 3, n: 1 }, plans, cards), {
+    side: 0,
+    index: 2,
+  });
+  assert.deepEqual(cardBehind({ kind: "BlockGained", side: 1, card: id("Brace"), beat: 3, n: 1 }, plans, cards), {
+    side: 1,
+    index: 1,
+  });
 });

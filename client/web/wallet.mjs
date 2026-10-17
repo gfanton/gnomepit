@@ -40,7 +40,10 @@ export function sessionBudget(role, price) {
 export function sessionReserve(price) {
   const later = (role) => Math.ceil(costAt({ gasUsed: costliestLaterGas[role], deposit: 0 }, price) * laterMargin);
   return {
-    opening: { challenger: costAt(measuredMoves.challenger[0], price), acceptor: costAt(measuredMoves.acceptor[0], price) },
+    opening: {
+      challenger: costAt(measuredMoves.challenger[0], price),
+      acceptor: costAt(measuredMoves.acceptor[0], price),
+    },
     later: { challenger: later("challenger"), acceptor: later("acceptor") },
   };
 }
@@ -83,7 +86,11 @@ export async function connect(wallet, chainId, network = {}) {
     if (switched?.type === "UNADDED_NETWORK") {
       const missing = new WalletError("wrongNetwork", `Add the network ${chainId} to Adena`);
       if (typeof wallet.AddNetwork !== "function" || !network.rpcUrl) throw missing;
-      const added = await wallet.AddNetwork({ chainId, chainName: network.chainName ?? chainId, rpcUrl: network.rpcUrl });
+      const added = await wallet.AddNetwork({
+        chainId,
+        chainName: network.chainName ?? chainId,
+        rpcUrl: network.rpcUrl,
+      });
       if (added?.status !== "success") throw new WalletError("wrongNetwork", added?.message || missing.reason);
       switched = await wallet.SwitchNetwork(chainId);
     }
@@ -114,11 +121,27 @@ export async function rootSignature(wallet, address, origin) {
 // box key, with HKDF-SHA256. signer is signer.mjs, which turns a private key into its
 // address and public key.
 export async function deriveKeys(signature, generation, signer) {
-  const material = await crypto.subtle.importKey("raw", fromBase64(signature), "HKDF", false, ["deriveBits", "deriveKey"]);
-  const hkdf = (info) => ({ name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: new TextEncoder().encode(info) });
-  const sessionKey = toHex(new Uint8Array(await crypto.subtle.deriveBits(hkdf(`gnomehall session ${generation}`), material, 256)));
+  const material = await crypto.subtle.importKey("raw", fromBase64(signature), "HKDF", false, [
+    "deriveBits",
+    "deriveKey",
+  ]);
+  const hkdf = (info) => ({
+    name: "HKDF",
+    hash: "SHA-256",
+    salt: new Uint8Array(0),
+    info: new TextEncoder().encode(info),
+  });
+  const sessionKey = toHex(
+    new Uint8Array(await crypto.subtle.deriveBits(hkdf(`gnomehall session ${generation}`), material, 256)),
+  );
   const { address, pubKey } = await signer.keyInfo(sessionKey);
-  const boxKey = await crypto.subtle.deriveKey(hkdf("gnomehall box"), material, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  const boxKey = await crypto.subtle.deriveKey(
+    hkdf("gnomehall box"),
+    material,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
   return { sessionKey, sessionAddress: address, sessionPubKey: pubKey, boxKey };
 }
 
@@ -153,7 +176,9 @@ export async function openBox(boxKey, box) {
   let data;
   try {
     const bytes = fromBase64(box);
-    data = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: bytes.subarray(0, 12) }, boxKey, bytes.subarray(12)));
+    data = new Uint8Array(
+      await crypto.subtle.decrypt({ name: "AES-GCM", iv: bytes.subarray(0, 12) }, boxKey, bytes.subarray(12)),
+    );
   } catch {
     throw new WalletError("box", "This wallet's keys did not seal this plan");
   }
@@ -161,10 +186,15 @@ export async function openBox(boxKey, box) {
   const salts = round1 ? 2 * saltSize : saltSize;
   const plan = data.subarray(round1 ? salts + cardSetSize : salts);
   const count = plan[0];
-  if (!(count >= 1 && count <= maxPlan && plan.length === 1 + count)) throw new WalletError("box", "This box holds no plan this page can read");
+  if (!(count >= 1 && count <= maxPlan && plan.length === 1 + count))
+    throw new WalletError("box", "This box holds no plan this page can read");
   const sealed = { plan: [...plan.subarray(1)], planSalt: toHex(data.subarray(salts - saltSize, salts)) };
   if (!round1) return sealed;
-  return { ...sealed, deck: cardIDsOf(data.subarray(salts, salts + cardSetSize)), deckSalt: toHex(data.subarray(0, saltSize)) };
+  return {
+    ...sealed,
+    deck: cardIDsOf(data.subarray(salts, salts + cardSetSize)),
+    deckSalt: toHex(data.subarray(0, saltSize)),
+  };
 }
 
 // cardSet packs card ids as the engine's card set: a big-endian 64-bit word, bit i set for
@@ -188,7 +218,14 @@ const lockOf = (session, locks) => locks.find((l) => l.Session === session.addre
 // lockedMatches lists the ids of the matches master's live sessions, onChain, are locked to:
 // the matches whose phase classifySessions needs.
 export function lockedMatches({ onChain, locks, now }) {
-  return [...new Set(onChain.filter((s) => !hasExpired(s, now)).map((s) => lockOf(s, locks)?.Match).filter((id) => id !== undefined))];
+  return [
+    ...new Set(
+      onChain
+        .filter((s) => !hasExpired(s, now))
+        .map((s) => lockOf(s, locks)?.Match)
+        .filter((id) => id !== undefined),
+    ),
+  ];
 }
 
 // classifySessions sorts entries {generation, keys, session} into byMatch, by the match id the
@@ -210,7 +247,8 @@ export function classifySessions({ onChain, keys, locks, matches, now, realm, re
     const gone = lock !== undefined && (match === undefined || match.phase === "ended");
     // An unlocked session has no side yet and may pay either opening; a locked one pays only
     // its side's later moves.
-    const needed = match === undefined ? Math.min(reserve.opening.challenger, reserve.opening.acceptor) : reserve.later[match.role];
+    const needed =
+      match === undefined ? Math.min(reserve.opening.challenger, reserve.opening.acceptor) : reserve.later[match.role];
     const entry = { generation, keys: k, session };
     if (expired || gone || session.spendLimit - session.spendUsed < needed) out.dead.push(entry);
     else if (lock === undefined) out.unlocked.push(entry);

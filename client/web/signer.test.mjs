@@ -24,7 +24,10 @@ test("keyInfo gives the addresses and session key the golden requests carry", as
   const sessionKey = await keyInfo(session.privKey);
   assert.equal(sessionKey.address, session.sessionAddr);
   const create = goldenRequest("create-and-revoke").msgs.find((m) => m.type === "/auth.m_create_session");
-  assert.deepEqual(fromBase64(create.value.session_key.value), Uint8Array.of(0x0a, 33, ...fromBase64(sessionKey.pubKey)));
+  assert.deepEqual(
+    fromBase64(create.value.session_key.value),
+    Uint8Array.of(0x0a, 33, ...fromBase64(sessionKey.pubKey)),
+  );
 });
 
 test("a private key that is not 32 bytes of hex is refused", async () => {
@@ -74,10 +77,17 @@ test("a request with no message is refused", async () => {
 });
 
 test("an account number or sequence that is not a non-negative integer is refused", async () => {
-  for (const [field, name] of [["accountNumber", "account number"], ["sequence", "sequence"]]) {
+  for (const [field, name] of [
+    ["accountNumber", "account number"],
+    ["sequence", "sequence"],
+  ]) {
     for (const value of [-1, 1.5, "3", undefined, Number.NaN, 2 ** 53]) {
       const request = { ...goldenRequest("wallet-call"), [field]: value };
-      await assert.rejects(signTx(request), (err) => err.message === `${name} must be a non-negative integer`, `${field} ${value}`);
+      await assert.rejects(
+        signTx(request),
+        (err) => err.message === `${name} must be a non-negative integer`,
+        `${field} ${value}`,
+      );
     }
   }
 });
@@ -86,7 +96,11 @@ test("a session address that is not the signing key's own is refused", async () 
   const wallet = goldenRequest("wallet-call");
   const session = goldenRequest("session-call");
   // The master key signing as its session, the session key naming its master, and text that is no address.
-  for (const request of [{ ...wallet, sessionAddr: session.sessionAddr }, { ...session, sessionAddr: wallet.msgs[0].value.caller }, { ...session, sessionAddr: "g1nope" }]) {
+  for (const request of [
+    { ...wallet, sessionAddr: session.sessionAddr },
+    { ...session, sessionAddr: wallet.msgs[0].value.caller },
+    { ...session, sessionAddr: "g1nope" },
+  ]) {
     await assert.rejects(signTx(request), /session address is not the signing key's address/, request.sessionAddr);
   }
 });
@@ -96,7 +110,9 @@ test("a session address that is not the signing key's own is refused", async () 
 test("a session with no spend limit is refused", async () => {
   const request = goldenRequest("create-and-revoke");
   for (const spendLimit of ["", undefined]) {
-    const msgs = request.msgs.map((m) => (m.type === "/auth.m_create_session" ? { ...m, value: { ...m.value, spend_limit: spendLimit } } : m));
+    const msgs = request.msgs.map((m) =>
+      m.type === "/auth.m_create_session" ? { ...m, value: { ...m.value, spend_limit: spendLimit } } : m,
+    );
     await assert.rejects(signTx({ ...request, msgs }), /session needs a spend limit/, String(spendLimit));
   }
 });

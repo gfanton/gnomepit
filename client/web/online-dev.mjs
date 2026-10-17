@@ -25,7 +25,16 @@ const chain = createChain({ rpc });
 const wallet = devName === null ? await waitForAdena() : devWallet({ name: devName, signer, chain, chainId });
 const indexer = indexerURL === "" ? undefined : createIndexer({ url: indexerURL });
 const arena = createArena({
-  chain, wallet, engine, signer, realm, chainId, origin: location.origin, storage: localStorage, indexer, signEachMove: params.get("contract") === "1",
+  chain,
+  wallet,
+  engine,
+  signer,
+  realm,
+  chainId,
+  origin: location.origin,
+  storage: localStorage,
+  indexer,
+  signEachMove: params.get("contract") === "1",
 });
 let connected = false;
 
@@ -52,11 +61,15 @@ async function run(label, action) {
 function showStatus(account) {
   connected = account.address !== undefined;
   const fallback = account.fallback ? `, fallback: ${account.fallback}` : "";
-  $("status").textContent = `${account.address ?? "no address"}: ${account.state}, mode ${account.mode ?? "?"}${fallback}`;
+  $("status").textContent =
+    `${account.address ?? "no address"}: ${account.state}, mode ${account.mode ?? "?"}${fallback}`;
   return account.state;
 }
 
-const startState = () => ({ round: 1, gnomes: [0, 1].map(() => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] })) });
+const startState = () => ({
+  round: 1,
+  gnomes: [0, 1].map(() => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] })),
+});
 const clanOf = (name) => engine.clans.find((c) => c.name === name);
 const short = (address) => (address === "" ? "" : `${address.slice(0, 8)}…${address.slice(-4)}`);
 
@@ -92,7 +105,8 @@ function row(cells, buttons) {
 
 async function play(id) {
   const view = await arena.match(id);
-  if (view.planning === undefined) throw new ArenaError("unauthorized", "Authorize this device to open your sealed plan");
+  if (view.planning === undefined)
+    throw new ArenaError("unauthorized", "Authorize this device to open your sealed plan");
   const { state, side, deck } = view.planning;
   const plan = randomPlan(engine.legalPlans({ state, side, deck }), Math.random);
   await arena.move(id, plan);
@@ -103,10 +117,16 @@ function actionButtons(m) {
   const id = m.ID;
   const out = [];
   if (m.action === "move") out.push(button("Move", "move", id, () => run(`move in ${id}`, () => play(id))));
-  if (m.action === "finish") out.push(button("Finish", "finish", id, () => run(`finish ${id}`, () => arena.finish(id))));
-  if (m.action === "claimForfeit") out.push(button("Claim forfeit", "claimForfeit", id, () => run(`claim ${id}`, () => arena.claimForfeit(id))));
+  if (m.action === "finish")
+    out.push(button("Finish", "finish", id, () => run(`finish ${id}`, () => arena.finish(id))));
+  if (m.action === "claimForfeit")
+    out.push(button("Claim forfeit", "claimForfeit", id, () => run(`claim ${id}`, () => arena.claimForfeit(id))));
   if (m.Phase === "open" || m.Phase === "reveal" || m.Phase === "play") {
-    out.push(button(m.Phase === "open" ? "Withdraw" : "Resign", "resign", id, () => run(`resign ${id}`, () => arena.resign(id))));
+    out.push(
+      button(m.Phase === "open" ? "Withdraw" : "Resign", "resign", id, () =>
+        run(`resign ${id}`, () => arena.resign(id)),
+      ),
+    );
   }
   return out;
 }
@@ -114,18 +134,34 @@ function actionButtons(m) {
 async function refresh() {
   try {
     const board = await arena.openChallenges();
-    $("board").replaceChildren(...board.map((c) => row(
-      [c.ID, c.Clan, short(c.Challenger), short(c.Opponent) || "anyone"],
-      c.action === "accept" ? [button("Accept", "accept", c.ID, () => run(`accept ${c.ID}`, () => arena.accept(c.ID, opening(1))))] : [],
-    )));
+    $("board").replaceChildren(
+      ...board.map((c) =>
+        row(
+          [c.ID, c.Clan, short(c.Challenger), short(c.Opponent) || "anyone"],
+          c.action === "accept"
+            ? [button("Accept", "accept", c.ID, () => run(`accept ${c.ID}`, () => arena.accept(c.ID, opening(1))))]
+            : [],
+        ),
+      ),
+    );
     if (!connected) return;
     const mine = await arena.myMatches();
     const views = await Promise.all(mine.map((m) => (m.Phase === "open" ? m : arena.match(m.ID))));
-    $("matches").replaceChildren(...views.map((m) => row(
-      [m.ID, m.Result === "" ? m.Phase : `${m.Phase}: ${m.Result} by ${m.Reason}`, String(m.Round),
-        `${m.ChallengerClan} v ${m.AcceptorClan || "?"}`, (m.HP ?? []).map((hp) => hp.join("-")).join(" "), short(m.ToMove)],
-      actionButtons(m),
-    )));
+    $("matches").replaceChildren(
+      ...views.map((m) =>
+        row(
+          [
+            m.ID,
+            m.Result === "" ? m.Phase : `${m.Phase}: ${m.Result} by ${m.Reason}`,
+            String(m.Round),
+            `${m.ChallengerClan} v ${m.AcceptorClan || "?"}`,
+            (m.HP ?? []).map((hp) => hp.join("-")).join(" "),
+            short(m.ToMove),
+          ],
+          actionButtons(m),
+        ),
+      ),
+    );
   } catch (err) {
     log(`refresh: ${err.type ?? "error"}: ${err.reason ?? err.message}`);
   }
@@ -138,6 +174,7 @@ $("post").onclick = () => run("post", () => arena.challenge({ ...opening(0), opp
 log(wallet === undefined ? "no Adena in this browser" : `wallet: ${devName ?? "Adena"}, chain ${chainId} at ${rpc}`);
 await refresh();
 arena.subscribe((change) => {
-  if (change.func !== undefined) log(`chain: ${short(change.caller)} called ${change.func}${change.match === null ? "" : ` on ${change.match}`}`);
+  if (change.func !== undefined)
+    log(`chain: ${short(change.caller)} called ${change.func}${change.match === null ? "" : ` on ${change.match}`}`);
   void refresh();
 });

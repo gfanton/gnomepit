@@ -15,7 +15,11 @@ const callsQuery = `query Calls($where: FilterTransaction!) {
 // interval ms while the page is visible.
 export function createIndexer({ url, fetch = globalThis.fetch, interval = 3000 }) {
   async function ask(query, variables) {
-    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ query, variables }) });
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query, variables }),
+    });
     if (!res.ok) throw new Error(`indexer answered ${res.status}`);
     const body = await res.json();
     if (body.errors?.length) throw new Error(body.errors[0].message);
@@ -53,7 +57,8 @@ export function createIndexer({ url, fetch = globalThis.fetch, interval = 3000 }
               const { getTransactions } = await ask(callsQuery, { where: where(read, to) });
               for (const tx of getTransactions ?? []) {
                 for (const { value } of tx.messages ?? []) {
-                  if (value?.pkg_path === realm && !stopped) onCall({ height: tx.block_height, caller: value.caller, func: value.func, args: value.args ?? [] });
+                  if (value?.pkg_path === realm && !stopped)
+                    onCall({ height: tx.block_height, caller: value.caller, func: value.func, args: value.args ?? [] });
                 }
               }
             }

@@ -5,7 +5,9 @@ export function stepFeedback(events) {
   const sides = [0, 1].map(() => ({ damage: 0, blocked: 0, block: 0, counter: 0, strength: 0, vulnerable: 0 }));
   const cancelled = [];
   for (const event of events) {
-    const target = ["HitLanded", "VulnerableApplied", "BlockStripped"].includes(event.kind) ? 1 - event.side : event.side;
+    const target = ["HitLanded", "VulnerableApplied", "BlockStripped"].includes(event.kind)
+      ? 1 - event.side
+      : event.side;
     const side = sides[target];
     if (event.kind === "HitLanded" || event.kind === "CounterHit") {
       side.damage += event.n;
@@ -19,8 +21,7 @@ export function stepFeedback(events) {
       // ceiling: shows the tokens that left the mover, not those the receiver's cap kept.
       side.vulnerable -= event.n;
       sides[1 - event.side].vulnerable += event.n;
-    }
-    else if (event.kind === "Cancelled") cancelled.push({ side: event.side, card: event.card, beat: event.beat });
+    } else if (event.kind === "Cancelled") cancelled.push({ side: event.side, card: event.card, beat: event.beat });
   }
   return { sides, cancelled };
 }

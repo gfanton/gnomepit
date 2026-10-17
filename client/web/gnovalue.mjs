@@ -28,7 +28,10 @@ export function typeFields(answer) {
   const out = new Map();
   walk(answer.type, (node) => {
     if (node["@type"] === "/gno.DeclaredType" && node.Base?.["@type"] === "/gno.StructType") {
-      out.set(`${node.PkgPath}.${node.Name}`, node.Base.Fields.map((f) => f.Name));
+      out.set(
+        `${node.PkgPath}.${node.Name}`,
+        node.Base.Fields.map((f) => f.Name),
+      );
     }
   });
   return out;
@@ -64,7 +67,8 @@ export function decode(typedValue, fields) {
 function struct(id, value, fields) {
   const names = fields.get(id);
   if (names === undefined) throw new Error(`no fields known for ${id}`);
-  if (names.length !== value.Fields.length) throw new Error(`${id} has ${value.Fields.length} fields, not ${names.length}`);
+  if (names.length !== value.Fields.length)
+    throw new Error(`${id} has ${value.Fields.length} fields, not ${names.length}`);
   const out = {};
   value.Fields.forEach((field, i) => {
     const decoded = decode(field, fields);
@@ -92,7 +96,6 @@ function primitive(kind, { N, V }) {
   }
   throw new Error(`unsupported primitive type ${kind}`);
 }
-
 
 // walk calls visit on every object inside node, node included.
 function walk(node, visit) {

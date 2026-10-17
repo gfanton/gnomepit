@@ -42,7 +42,9 @@ const landed = [];
 const broadcast = chain.broadcast;
 chain.broadcast = async (tx) => {
   const result = await broadcast(tx);
-  const deposits = (answer.result.deliver_tx.ResponseBase.Events ?? []).filter((e) => e["@type"] === "/tm.StorageDepositEvent");
+  const deposits = (answer.result.deliver_tx.ResponseBase.Events ?? []).filter(
+    (e) => e["@type"] === "/tm.StorageDepositEvent",
+  );
   landed.push({ ...result, deposit: deposits.reduce((sum, e) => sum + parseInt(e.fee_delta, 10), 0) });
   return result;
 };
@@ -54,7 +56,16 @@ function memory() {
 
 function player(name) {
   const wallet = devWallet({ name, signer, chain, chainId });
-  return createArena({ chain, wallet, engine, signer, realm, chainId, origin: "http://measure.local", storage: memory() });
+  return createArena({
+    chain,
+    wallet,
+    engine,
+    signer,
+    realm,
+    chainId,
+    origin: "http://measure.local",
+    storage: memory(),
+  });
 }
 
 const alice = player("alice");
@@ -76,7 +87,9 @@ async function step(move, make) {
 }
 
 async function playMatch() {
-  const { id, row: posted } = await step("Challenge", () => alice.challenge({ clan: "Pickers", deck: ids(deckA), plan: ids("Chalk Dust,Double Tap") }));
+  const { id, row: posted } = await step("Challenge", () =>
+    alice.challenge({ clan: "Pickers", deck: ids(deckA), plan: ids("Chalk Dust,Double Tap") }),
+  );
   const rows = [posted];
   const moves = [
     ["Accept", () => bob.accept(id, { clan: "Ironhide", deck: ids(deckB), plan: ids("Hammer Blow,Spiked Shield") })],
@@ -94,9 +107,13 @@ async function playMatch() {
 }
 
 const sum = (rows, column) => rows.reduce((total, row) => total + row[column], 0);
-const totals = (rows) => ({ move: "Total", ...Object.fromEntries(["storage", "gasUsed", "fee", "deposit"].map((c) => [c, sum(rows, c)])) });
+const totals = (rows) => ({
+  move: "Total",
+  ...Object.fromEntries(["storage", "gasUsed", "fee", "deposit"].map((c) => [c, sum(rows, c)])),
+});
 const n = (value) => value.toLocaleString("en-US");
-const line = ({ move, storage, gasUsed, fee, deposit }) => `| ${move} | ${n(storage)} B | ${n(gasUsed)} | ${n(fee)} ugnot | ${n(deposit)} ugnot |`;
+const line = ({ move, storage, gasUsed, fee, deposit }) =>
+  `| ${move} | ${n(storage)} B | ${n(gasUsed)} | ${n(fee)} ugnot | ${n(deposit)} ugnot |`;
 
 const matches = [await playMatch()];
 assert.equal(matches[0].id, "1", "the first match must be the chain's first; restart gnodev");
@@ -108,5 +125,7 @@ for (const { id, rows } of matches) {
   for (const row of [...rows, totals(rows)]) console.log(line(row));
 }
 const [first, second] = matches.map(({ rows }) => totals(rows));
-console.log(`\nOne-time costs, match ${matches[0].id} minus match ${matches[1].id}: ${n(first.storage - second.storage)} B, ${n(first.deposit - second.deposit)} ugnot deposit`);
+console.log(
+  `\nOne-time costs, match ${matches[0].id} minus match ${matches[1].id}: ${n(first.storage - second.storage)} B, ${n(first.deposit - second.deposit)} ugnot deposit`,
+);
 process.exit(0);

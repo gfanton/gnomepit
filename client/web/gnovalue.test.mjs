@@ -54,7 +54,10 @@ test("a match view merges its summary and decodes nested slices", () => {
   assert.equal(v.Round, 2);
   assert.equal(v.ToMove, player);
   assert.equal(v.Box, "box2");
-  assert.deepEqual(v.Plans, [["Pick,Pick,Pick", "Brace,Brace,Brace"], ["", ""]]);
+  assert.deepEqual(v.Plans, [
+    ["Pick,Pick,Pick", "Brace,Brace,Brace"],
+    ["", ""],
+  ]);
   assert.deepEqual(v.HP, [[15, 15]]);
   assert.equal(v.DeadlinePassed, false);
   assert.equal(v.MatchSummary, undefined);
@@ -81,25 +84,44 @@ test("negative ints and bools decode", () => {
 });
 
 test("an object reference throws", () => {
-  const ref = { T: { "@type": "/gno.RefType", ID: `${arena}.MatchView` }, V: { "@type": "/gno.RefValue", ObjectID: "abc:1" } };
+  const ref = {
+    T: { "@type": "/gno.RefType", ID: `${arena}.MatchView` },
+    V: { "@type": "/gno.RefValue", ObjectID: "abc:1" },
+  };
   assert.throws(() => decode(ref, fields), /object reference in a query result/);
 });
 
 test("a struct of an unknown type throws", () => {
-  assert.throws(() => decode(result("open"), new Map()), /no fields known for gno.land\/r\/gfanton\/gnomehall\/arena.OpenChallenge/);
+  assert.throws(
+    () => decode(result("open"), new Map()),
+    /no fields known for gno.land\/r\/gfanton\/gnomehall\/arena.OpenChallenge/,
+  );
 });
 
 test("integer kinds narrower than 8 bytes throw", () => {
   // gno fills only their low bytes of N, so reading all 8 would give a wrong value.
-  for (const [kind, N] of [["64", "/gAAAAAAAAA="], ["512", "/////wAAAAA="], ["4096", "//////////8="]]) {
-    assert.throws(() => decode({ T: { "@type": "/gno.PrimitiveType", value: kind }, N }, fields), /unsupported primitive type/);
+  for (const [kind, N] of [
+    ["64", "/gAAAAAAAAA="],
+    ["512", "/////wAAAAA="],
+    ["4096", "//////////8="],
+  ]) {
+    assert.throws(
+      () => decode({ T: { "@type": "/gno.PrimitiveType", value: kind }, N }, fields),
+      /unsupported primitive type/,
+    );
   }
 });
 
 test("a byte slice throws", () => {
   const bytes = {
     T: { "@type": "/gno.SliceType", Elt: { "@type": "/gno.PrimitiveType", value: "4096" } },
-    V: { "@type": "/gno.SliceValue", Base: { "@type": "/gno.ArrayValue", List: null, Data: "YWI=" }, Offset: "0", Length: "2", Maxcap: "2" },
+    V: {
+      "@type": "/gno.SliceValue",
+      Base: { "@type": "/gno.ArrayValue", List: null, Data: "YWI=" },
+      Offset: "0",
+      Length: "2",
+      Maxcap: "2",
+    },
   };
   assert.throws(() => decode(bytes, fields), /unsupported byte slice/);
 });
@@ -107,7 +129,13 @@ test("a byte slice throws", () => {
 test("a slice left in storage throws", () => {
   const stored = {
     T: { "@type": "/gno.SliceType", Elt: { "@type": "/gno.PrimitiveType", value: "16" } },
-    V: { "@type": "/gno.SliceValue", Base: { "@type": "/gno.RefValue", ObjectID: "abc:2" }, Offset: "0", Length: "2", Maxcap: "2" },
+    V: {
+      "@type": "/gno.SliceValue",
+      Base: { "@type": "/gno.RefValue", ObjectID: "abc:2" },
+      Offset: "0",
+      Length: "2",
+      Maxcap: "2",
+    },
   };
   assert.throws(() => decode(stored, fields), /object reference in a query result/);
 });

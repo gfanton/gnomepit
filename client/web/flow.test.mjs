@@ -8,7 +8,13 @@ const deckA = [2, 3, 4, 5, 6, 7, 8, 9];
 const deckB = [12, 13, 14, 15, 16, 17, 18, 19];
 const gnome = { hp, vulnerable: 0, strength: 0, spent: [] };
 const startState = { round: 1, gnomes: [gnome, gnome] };
-const nextState = { round: 2, gnomes: [{ ...gnome, hp: 7, spent: [6, 7] }, { ...gnome, hp: 12, spent: [14, 16] }] };
+const nextState = {
+  round: 2,
+  gnomes: [
+    { ...gnome, hp: 7, spent: [6, 7] },
+    { ...gnome, hp: 12, spent: [14, 16] },
+  ],
+};
 
 const start = (mode) => ({ type: "start", mode, hp });
 const deckReady = (clan, deck) => ({ type: "deckReady", clan, deck });
@@ -94,14 +100,20 @@ test("bot: player 1's plan leads straight to the bot's plan turn", () => {
 test("player 2's plan leads to playback", () => {
   const f = play([...bothDecks("hotseat"), ...bothPlans("hotseat")]);
   assert.equal(f.screen, "playback");
-  assert.deepEqual(f.plans, [[0, 0, 0], [1, 1, 1]]);
+  assert.deepEqual(f.plans, [
+    [0, 0, 0],
+    [1, 1, 1],
+  ]);
 });
 
 test("resolved records the round, replaces the state and clears the plans", () => {
   const f = play([...bothDecks("hotseat"), ...bothPlans("hotseat"), resolved("ongoing")]);
   assert.equal(f.screen, "playback");
   assert.equal(f.rounds.length, 1);
-  assert.deepEqual(f.rounds[0].plans, [[0, 0, 0], [1, 1, 1]]);
+  assert.deepEqual(f.rounds[0].plans, [
+    [0, 0, 0],
+    [1, 1, 1],
+  ]);
   assert.deepEqual(f.rounds[0].events, [{ kind: "HitLanded" }]);
   assert.deepEqual(f.rounds[0].state, nextState);
   assert.deepEqual(f.state, nextState);
@@ -169,11 +181,22 @@ test("reduce returns a new object and never mutates its input", () => {
 });
 
 test("a hot-seat match with a knockout in round 2 reaches the result with two rounds", () => {
-  const round2 = { round: 3, gnomes: [{ ...gnome, hp: 2, spent: [6, 7, 8] }, { ...gnome, hp: -1, spent: [14, 16, 13] }] };
+  const round2 = {
+    round: 3,
+    gnomes: [
+      { ...gnome, hp: 2, spent: [6, 7, 8] },
+      { ...gnome, hp: -1, spent: [14, 16, 13] },
+    ],
+  };
   const f = play([
     ...bothDecks("hotseat"),
-    ...bothPlans("hotseat"), resolved("ongoing"), playbackDone, handoffDone,
-    ...bothPlans("hotseat"), resolved("a", round2), playbackDone,
+    ...bothPlans("hotseat"),
+    resolved("ongoing"),
+    playbackDone,
+    handoffDone,
+    ...bothPlans("hotseat"),
+    resolved("a", round2),
+    playbackDone,
   ]);
   assert.equal(f.screen, "result");
   assert.equal(f.rounds.length, 2);

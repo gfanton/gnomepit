@@ -42,10 +42,16 @@ const locksOn = async (address, id) => (await read(`${realm}.Locks("${address}")
 
 const deckOf = (clan) => {
   const { cards } = engine.clans.find((c) => c.name === clan);
-  return cards.slice(0, 8).some((id) => engine.cards[id].rare) ? cards.slice(0, 8) : [...cards.slice(0, 7), cards.find((id) => engine.cards[id].rare)];
+  return cards.slice(0, 8).some((id) => engine.cards[id].rare)
+    ? cards.slice(0, 8)
+    : [...cards.slice(0, 7), cards.find((id) => engine.cards[id].rare)];
 };
 const decks = { a: deckOf("Pickers"), b: deckOf("Ironhide") };
-for (const [clan, deck] of [["Pickers", decks.a], ["Ironhide", decks.b]]) assert.equal(engine.legalDeck({ clan, deck }), true);
+for (const [clan, deck] of [
+  ["Pickers", decks.a],
+  ["Ironhide", decks.b],
+])
+  assert.equal(engine.legalDeck({ clan, deck }), true);
 
 // planFor picks a legal plan that spends a special when one is left, so rounds differ.
 function planFor(state, side, deck) {
@@ -65,7 +71,9 @@ const unixNow = () => Math.floor(Date.now() / 1000);
 async function ready(name, arena) {
   const before = await arena.connect();
   const after = await arena.authorize();
-  log(`${name}: ${before.state} -> ${after.state} (${after.mode})${after.fallback ? `, fallback: ${after.fallback}` : ""}`);
+  log(
+    `${name}: ${before.state} -> ${after.state} (${after.mode})${after.fallback ? `, fallback: ${after.fallback}` : ""}`,
+  );
   assert.equal(after.state, "active");
   return after.address;
 }
@@ -74,7 +82,16 @@ async function ready(name, arena) {
 const feed = [];
 let stopFeed = () => {};
 if (indexerURL !== undefined) {
-  const watcher = createArena({ chain, wallet: null, engine, realm, chainId, origin, storage: memory(), indexer: createIndexer({ url: indexerURL }) });
+  const watcher = createArena({
+    chain,
+    wallet: null,
+    engine,
+    realm,
+    chainId,
+    origin,
+    storage: memory(),
+    indexer: createIndexer({ url: indexerURL }),
+  });
   await new Promise((resolve) => {
     stopFeed = watcher.subscribe((change) => (change.func === undefined ? resolve() : feed.push(change)));
   });
@@ -138,7 +155,15 @@ async function forceCall(master, root, session, func, args) {
   }
   assert.ok(keys !== undefined, "the session's key is one of the root signature's generations");
   const msg = { type: "/vm.m_call", value: { caller: master, send: "", max_deposit: "", pkg_path: realm, func, args } };
-  const request = { chainId, accountNumber: session.accountNumber, sequence: session.sequence, privKey: keys.sessionKey, sessionAddr: keys.sessionAddress, memo: "", msgs: [msg] };
+  const request = {
+    chainId,
+    accountNumber: session.accountNumber,
+    sequence: session.sequence,
+    privKey: keys.sessionKey,
+    sessionAddr: keys.sessionAddress,
+    memo: "",
+    msgs: [msg],
+  };
   try {
     await chain.broadcast(await payFor(chain, (fee) => signer.signTx({ ...request, fee })));
   } catch (err) {
@@ -160,7 +185,9 @@ const [first] = await locksOn(aliceAddress, id);
 assert.ok(first !== undefined, `Locks lists alice's lock on match ${id}`);
 log(`alice's session ${first.Session} is locked to match ${id}`);
 
-const firstSession = (await chain.sessions(aliceAddress)).find((s) => s.address === first.Session && s.expiresAt === first.Expires);
+const firstSession = (await chain.sessions(aliceAddress)).find(
+  (s) => s.address === first.Session && s.expiresAt === first.Expires,
+);
 assert.ok(firstSession !== undefined, `the chain lists the session locked to match ${id}`);
 // The dev wallet signs the root text the same way every time, so this is the arena's root.
 const root = await rootSignature(devWallet({ name: "alice", signer, chain, chainId }), aliceAddress, origin);
@@ -192,7 +219,10 @@ await play(id, alice, bob, async () => {
   await alice.renew(id);
   assert.equal((await alice.match(id)).session, "active");
   const sessions = await chain.sessions(aliceAddress);
-  assert.ok(!sessions.some((s) => s.address === first.Session && s.expiresAt === first.Expires), "renewing revoked the expired session");
+  assert.ok(
+    !sessions.some((s) => s.address === first.Session && s.expiresAt === first.Expires),
+    "renewing revoked the expired session",
+  );
   log(`alice renewed her session for match ${id}, revoking the expired one`);
   renewedAfterRound1 = true;
 });
@@ -202,15 +232,26 @@ assert.ok(renewedAfterRound1, `match ${id} went past round 1, so alice's session
 const renewedLocks = await locksOn(aliceAddress, id);
 assert.equal(renewedLocks.length, 1, `Locks lists one lock of alice's on match ${id}`);
 const [renewed] = renewedLocks;
-assert.notDeepEqual([renewed.Session, renewed.Expires], [first.Session, first.Expires], `the renewed session holds the lock on match ${id}`);
+assert.notDeepEqual(
+  [renewed.Session, renewed.Expires],
+  [first.Session, first.Expires],
+  `the renewed session holds the lock on match ${id}`,
+);
 assert.ok(renewed.Expires > unixNow(), "the renewed session is live, so only its ended match can make it dead");
 
 const second = await post(alice);
 const [next] = await locksOn(aliceAddress, second);
 assert.ok(next !== undefined, `Locks lists alice's lock on match ${second}`);
-assert.notDeepEqual([next.Session, next.Expires], [renewed.Session, renewed.Expires], `match ${second} has a session of its own`);
+assert.notDeepEqual(
+  [next.Session, next.Expires],
+  [renewed.Session, renewed.Expires],
+  `match ${second} has a session of its own`,
+);
 const sessions = await chain.sessions(aliceAddress);
-assert.ok(!sessions.some((s) => s.address === renewed.Session && s.expiresAt === renewed.Expires), `posting match ${second} revoked the session of ended match ${id}`);
+assert.ok(
+  !sessions.some((s) => s.address === renewed.Session && s.expiresAt === renewed.Expires),
+  `posting match ${second} revoked the session of ended match ${id}`,
+);
 log(`match ${second} got session ${next.Session}, revoking ${renewed.Session} of ended match ${id}`);
 
 // ---- The wallet signs each move
@@ -220,7 +261,8 @@ await ready("bob", bobByWallet);
 const third = await post(aliceByWallet);
 await accept(bobByWallet, third);
 await play(third, aliceByWallet, bobByWallet);
-for (const address of [aliceAddress, bobAddress]) assert.deepEqual(await locksOn(address, third), [], "a wallet-signed call locks nothing");
+for (const address of [aliceAddress, bobAddress])
+  assert.deepEqual(await locksOn(address, third), [], "a wallet-signed call locks nothing");
 
 if (indexerURL !== undefined) {
   const calls = () => feed.map((c) => [c.func, c.match]);

@@ -6,8 +6,22 @@ import { readFileSync } from "node:fs";
 import { nodeEngine } from "./engine-node.mjs";
 import * as signer from "./signer.mjs";
 import {
-  WalletError, classifySessions, connect, deriveKeys, generations, lockedMatches, newSalt, openBox, revokeMessage, rootText, sealBox, sealOf,
-  sessionBudget, sessionMessage, sessionReserve, waitForAdena,
+  WalletError,
+  classifySessions,
+  connect,
+  deriveKeys,
+  generations,
+  lockedMatches,
+  newSalt,
+  openBox,
+  revokeMessage,
+  rootText,
+  sealBox,
+  sealOf,
+  sessionBudget,
+  sessionMessage,
+  sessionReserve,
+  waitForAdena,
 } from "./wallet.mjs";
 
 const engine = await nodeEngine();
@@ -96,12 +110,24 @@ test("a box whose contents are not a plan, or a deck and a plan, is refused", as
   const salt = Array(32).fill(7);
   const deck = Array(8).fill(0);
   const refused = [
-    [], salt, [...salt, 0], [...salt, 2, 0], [...salt, 4, 0, 0, 0, 0], Array(50).fill(1),
-    [...salt, ...salt, ...deck], [...salt, ...salt, ...deck, 0], [...salt, ...salt, ...deck, 1], [...salt, ...salt, ...deck, 4, 0, 0, 0, 0],
+    [],
+    salt,
+    [...salt, 0],
+    [...salt, 2, 0],
+    [...salt, 4, 0, 0, 0, 0],
+    Array(50).fill(1),
+    [...salt, ...salt, ...deck],
+    [...salt, ...salt, ...deck, 0],
+    [...salt, ...salt, ...deck, 1],
+    [...salt, ...salt, ...deck, 4, 0, 0, 0, 0],
     [...new TextEncoder().encode(JSON.stringify({ plan: "Pick,Pick,Pick", planSalt: "00".repeat(32) }))],
   ];
   for (const contents of refused) {
-    await assert.rejects(openBox(boxKey, await sealContents(boxKey, new Uint8Array(contents))), failure("box"), `${contents.length} bytes`);
+    await assert.rejects(
+      openBox(boxKey, await sealContents(boxKey, new Uint8Array(contents))),
+      failure("box"),
+      `${contents.length} bytes`,
+    );
   }
 });
 
@@ -118,7 +144,14 @@ test("a new salt is 32 random bytes in hex", () => {
 
 test("a session message lets the session key call the arena alone, for its lifetime and spend limit", async () => {
   const keys = await deriveKeys(signature, 0, signer);
-  const { type, value } = sessionMessage("g1master", keys.sessionPubKey, now, realm, sessionBudget("challenger", floor), 30);
+  const { type, value } = sessionMessage(
+    "g1master",
+    keys.sessionPubKey,
+    now,
+    realm,
+    sessionBudget("challenger", floor),
+    30,
+  );
   assert.equal(type, "/auth.m_create_session");
   assert.equal(value.creator, "g1master");
   assert.equal(value.session_key.type_url, "/tm.PubKeySecp256k1");
@@ -141,13 +174,24 @@ test("a revoke message names the session key as the chain's own revoke does", as
 });
 
 const keys = new Map();
-for (let generation = 0; generation < generations; generation++) keys.set(generation, await deriveKeys(signature, generation, signer));
+for (let generation = 0; generation < generations; generation++)
+  keys.set(generation, await deriveKeys(signature, generation, signer));
 const addressOf = (generation) => keys.get(generation).sessionAddress;
 const sessionAt = (generation, fields = {}) => ({
   address: addressOf(generation),
-  accountNumber: 9, sequence: 2, expiresAt: now + 3600, spendLimit: sessionBudget("challenger", floor), spendUsed: 0, allowPaths: [`vm/exec:${realm}`], ...fields,
+  accountNumber: 9,
+  sequence: 2,
+  expiresAt: now + 3600,
+  spendLimit: sessionBudget("challenger", floor),
+  spendUsed: 0,
+  allowPaths: [`vm/exec:${realm}`],
+  ...fields,
 });
-const lockOf = (generation, match, expires = now + 3600) => ({ Session: addressOf(generation), Match: match, Expires: expires });
+const lockOf = (generation, match, expires = now + 3600) => ({
+  Session: addressOf(generation),
+  Match: match,
+  Expires: expires,
+});
 const classify = (onChain, locks = [], matches = new Map(), price = floor) =>
   classifySessions({ onChain, keys, locks, matches, now, realm, reserve: sessionReserve(price) });
 const reserve = sessionReserve(floor);
@@ -156,20 +200,29 @@ const budget = sessionBudget("challenger", floor);
 test("at the floor price, the budgets and reserves are client/ONLINE.md's", () => {
   assert.equal(sessionBudget("challenger", floor), 654_056);
   assert.equal(sessionBudget("acceptor", floor), 535_923);
-  assert.deepEqual(reserve, { opening: { challenger: 262_607, acceptor: 245_023 }, later: { challenger: 59_036, acceptor: 25_555 } });
+  assert.deepEqual(reserve, {
+    opening: { challenger: 262_607, acceptor: 245_023 },
+    later: { challenger: 59_036, acceptor: 25_555 },
+  });
 });
 
 // Deposits are priced per byte and stay; only the fees follow the gas price.
 test("at five times the floor price, budgets and reserves pay five times the fees and the same deposits", () => {
   assert.equal(sessionBudget("challenger", busy), 1_315_067);
   assert.equal(sessionBudget("acceptor", busy), 957_202);
-  assert.deepEqual(sessionReserve(busy), { opening: { challenger: 335_431, acceptor: 363_911 }, later: { challenger: 295_177, acceptor: 127_767 } });
+  assert.deepEqual(sessionReserve(busy), {
+    opening: { challenger: 335_431, acceptor: 363_911 },
+    later: { challenger: 295_177, acceptor: 127_767 },
+  });
 });
 
 // The chain refuses a move the session can no longer pay at the price of its block, and
 // charges nothing, so only the price tells the page the session is used up.
 test("a session live at the floor price is dead at five times that price", () => {
-  const sessions = [sessionAt(0, { spendUsed: budget - reserve.later.challenger }), sessionAt(1, { spendUsed: budget - reserve.opening.challenger })];
+  const sessions = [
+    sessionAt(0, { spendUsed: budget - reserve.later.challenger }),
+    sessionAt(1, { spendUsed: budget - reserve.opening.challenger }),
+  ];
   const locks = [lockOf(0, "4")];
   const running = new Map([["4", { phase: "reveal", role: "challenger" }]]);
   const atFloor = classify(sessions, locks, running);
@@ -184,7 +237,11 @@ const generationsOf = (entries) => entries.map((e) => e.generation);
 const allBut = (...taken) => [...keys.keys()].filter((g) => !taken.includes(g));
 
 test("a live session locked to a running match is that match's, and a live one locked to none is unlocked", () => {
-  const out = classify([sessionAt(0), sessionAt(1)], [lockOf(0, "4")], new Map([["4", { phase: "play", role: "acceptor" }]]));
+  const out = classify(
+    [sessionAt(0), sessionAt(1)],
+    [lockOf(0, "4")],
+    new Map([["4", { phase: "play", role: "acceptor" }]]),
+  );
   assert.deepEqual([...out.byMatch.keys()], ["4"]);
   assert.equal(out.byMatch.get("4").generation, 0);
   assert.equal(out.byMatch.get("4").session.address, addressOf(0));
@@ -211,7 +268,10 @@ test("an expired or used-up session is dead, locked or not", () => {
 // judged by its side in that match.
 test("a locked session is used up below the reserve of its side in the match", () => {
   const left = { spendUsed: budget - reserve.later.challenger + 1 };
-  const matches = new Map([["4", { phase: "reveal", role: "challenger" }], ["5", { phase: "play", role: "acceptor" }]]);
+  const matches = new Map([
+    ["4", { phase: "reveal", role: "challenger" }],
+    ["5", { phase: "play", role: "acceptor" }],
+  ]);
   const out = classify([sessionAt(0, left), sessionAt(1, left)], [lockOf(0, "4"), lockOf(1, "5")], matches);
   assert.deepEqual(generationsOf(out.dead), [0]);
   assert.deepEqual([...out.byMatch.keys()], ["5"]);
@@ -220,7 +280,11 @@ test("a locked session is used up below the reserve of its side in the match", (
 // A locked session never pays an opening again, while an unlocked one may still pay either side's.
 test("a locked session needs only its side's later moves left, an unlocked one an opening", () => {
   const left = { spendUsed: budget - reserve.later.challenger };
-  const out = classify([sessionAt(0, left), sessionAt(1, left)], [lockOf(0, "4")], new Map([["4", { phase: "reveal", role: "challenger" }]]));
+  const out = classify(
+    [sessionAt(0, left), sessionAt(1, left)],
+    [lockOf(0, "4")],
+    new Map([["4", { phase: "reveal", role: "challenger" }]]),
+  );
   assert.equal(out.byMatch.get("4").generation, 0);
   assert.deepEqual(generationsOf(out.dead), [1]);
 });
@@ -228,13 +292,22 @@ test("a locked session needs only its side's later moves left, an unlocked one a
 // Only a live session's lock can make it a match's; the realm keeps a revoked session's lock
 // until that session's expiry.
 test("the matches to read are those the live sessions are locked to", () => {
-  const onChain = [sessionAt(0), sessionAt(1, { expiresAt: now - 1 }), sessionAt(2, { expiresAt: now + 7200 }), sessionAt(3)];
+  const onChain = [
+    sessionAt(0),
+    sessionAt(1, { expiresAt: now - 1 }),
+    sessionAt(2, { expiresAt: now + 7200 }),
+    sessionAt(3),
+  ];
   const locks = [lockOf(0, "4"), lockOf(1, "5", now - 1), lockOf(2, "6"), lockOf(4, "7"), lockOf(3, "4")];
   assert.deepEqual(lockedMatches({ onChain, locks, now }), ["4"]);
 });
 
 test("a session locked to an ended match, or to one the realm no longer knows, is dead", () => {
-  const out = classify([sessionAt(0), sessionAt(1)], [lockOf(0, "4"), lockOf(1, "9")], new Map([["4", { phase: "ended", role: "challenger" }]]));
+  const out = classify(
+    [sessionAt(0), sessionAt(1)],
+    [lockOf(0, "4"), lockOf(1, "9")],
+    new Map([["4", { phase: "ended", role: "challenger" }]]),
+  );
   assert.deepEqual(generationsOf(out.dead), [0, 1]);
   assert.equal(out.byMatch.size, 0);
 });
@@ -251,13 +324,21 @@ test("generations with no session are free, and other apps' sessions are left al
 // Revoking a key and registering it again gives a session with a new expiry, which the
 // realm treats as unlocked.
 test("a lock under another expiry is an earlier session's, so the session is unlocked", () => {
-  const out = classify([sessionAt(0, { expiresAt: now + 7200 })], [lockOf(0, "4", now + 3600)], new Map([["4", { phase: "play", role: "acceptor" }]]));
+  const out = classify(
+    [sessionAt(0, { expiresAt: now + 7200 })],
+    [lockOf(0, "4", now + 3600)],
+    new Map([["4", { phase: "play", role: "acceptor" }]]),
+  );
   assert.equal(out.byMatch.size, 0);
   assert.deepEqual(generationsOf(out.unlocked), [0]);
 });
 
 test("a generation registered again signs with the account number the chain gives it", () => {
-  const out = classify([sessionAt(0, { accountNumber: 31, sequence: 0, expiresAt: now + 7200 })], [lockOf(0, "4", now + 3600)], new Map([["4", { phase: "ended", role: "challenger" }]]));
+  const out = classify(
+    [sessionAt(0, { accountNumber: 31, sequence: 0, expiresAt: now + 7200 })],
+    [lockOf(0, "4", now + 3600)],
+    new Map([["4", { phase: "ended", role: "challenger" }]]),
+  );
   assert.deepEqual(out.dead, []);
   assert.equal(out.unlocked[0].session.accountNumber, 31);
   assert.equal(out.unlocked[0].session.sequence, 0);
@@ -290,7 +371,13 @@ test("connecting gives the wallet's address on the right network", async () => {
 test("connecting switches network, or says the network is missing when Adena cannot add it", async () => {
   let switched = "";
   const elsewhere = { GetNetwork: async () => ({ status: "success", data: { chainId: "onyx-1" } }) };
-  const switching = adena({ ...elsewhere, SwitchNetwork: async (id) => { switched = id; return { status: "success" }; } });
+  const switching = adena({
+    ...elsewhere,
+    SwitchNetwork: async (id) => {
+      switched = id;
+      return { status: "success" };
+    },
+  });
   assert.deepEqual(await connect(switching, "dev"), { address: "g1player" });
   assert.equal(switched, "dev");
   await assert.rejects(connect(adena(elsewhere), "dev"), failure("wrongNetwork"));
@@ -301,10 +388,19 @@ test("connecting adds the game's network when Adena does not know it, then switc
   let added = false;
   const wallet = adena({
     GetNetwork: async () => ({ status: "success", data: { chainId: "onyx-1" } }),
-    SwitchNetwork: async (id) => { calls.push(`switch ${id}`); return added ? { status: "success" } : { status: "failure", type: "UNADDED_NETWORK" }; },
-    AddNetwork: async (net) => { calls.push(`add ${net.chainId} ${net.rpcUrl}`); added = true; return { status: "success" }; },
+    SwitchNetwork: async (id) => {
+      calls.push(`switch ${id}`);
+      return added ? { status: "success" } : { status: "failure", type: "UNADDED_NETWORK" };
+    },
+    AddNetwork: async (net) => {
+      calls.push(`add ${net.chainId} ${net.rpcUrl}`);
+      added = true;
+      return { status: "success" };
+    },
   });
-  assert.deepEqual(await connect(wallet, "dev", { chainName: "dev", rpcUrl: "http://127.0.0.1:36657" }), { address: "g1player" });
+  assert.deepEqual(await connect(wallet, "dev", { chainName: "dev", rpcUrl: "http://127.0.0.1:36657" }), {
+    address: "g1player",
+  });
   assert.deepEqual(calls, ["switch dev", "add dev http://127.0.0.1:36657", "switch dev"]);
 });
 
@@ -312,7 +408,10 @@ test("without a network to offer, connecting never asks Adena to add one", async
   let asked = false;
   const wallet = adena({
     GetNetwork: async () => ({ status: "success", data: { chainId: "onyx-1" } }),
-    AddNetwork: async () => { asked = true; return { status: "success" }; },
+    AddNetwork: async () => {
+      asked = true;
+      return { status: "success" };
+    },
   });
   await assert.rejects(connect(wallet, "other-1", undefined), failure("wrongNetwork"));
   assert.equal(asked, false);
@@ -328,6 +427,8 @@ test("a network Adena refuses to add leaves the player on the wrong network", as
 
 test("connecting without a wallet, or when the player refuses, fails with its reason", async () => {
   await assert.rejects(connect(undefined, "dev"), failure("noWallet"));
-  const refused = adena({ AddEstablish: async () => ({ status: "failure", type: "CONNECTION_REJECTED", message: "User rejected" }) });
+  const refused = adena({
+    AddEstablish: async () => ({ status: "failure", type: "CONNECTION_REJECTED", message: "User rejected" }),
+  });
   await assert.rejects(connect(refused, "dev"), (err) => err.type === "refused" && err.reason === "User rejected");
 });

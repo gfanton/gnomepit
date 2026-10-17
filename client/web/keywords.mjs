@@ -12,7 +12,8 @@ export const glossary = {
   vulnerable:
     "Vulnerable N: each of the next N hits against the gnome deals double damage and removes one token, blocked or not. Tokens carry over to the next round.",
   strength: "Strength adds 1 damage to each hit the gnome deals, until the end of the round.",
-  cancel: "A cancelled card is spent and has no effect, and its remaining beats stay empty. Any \"if cancelled\" text on it resolves this beat.",
+  cancel:
+    'A cancelled card is spent and has no effect, and its remaining beats stay empty. Any "if cancelled" text on it resolves this beat.',
   quick: "The card's effects resolve in the first tier of each phase, before Normal and Slow cards.",
   slow: "The card's effects resolve in the last tier of each phase, after Quick and Normal cards.",
   rare: "The clan's signature card. Every deck of the clan holds it.",
@@ -23,7 +24,10 @@ const words = /\b(Interrupt|Parry|Block|Counter|Vulnerable|Strength|cancelled|ca
 
 // markKeywords turns a card text into HTML with each rule word wrapped in a tip anchor.
 export function markKeywords(text) {
-  return escapeHTML(text).replace(words, (word) => `<span class="kw" data-kw="${forms[word] ?? word.toLowerCase()}">${word}</span>`);
+  return escapeHTML(text).replace(
+    words,
+    (word) => `<span class="kw" data-kw="${forms[word] ?? word.toLowerCase()}">${word}</span>`,
+  );
 }
 
 export function escapeHTML(text) {

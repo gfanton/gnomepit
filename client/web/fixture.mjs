@@ -1,7 +1,16 @@
 // Test fixture mirroring client/web/cards.json: the card view and the three clans.
 
 const def = (id, name, cost, tier, extra = {}) => ({
-  id, name, cost, tier, special: id > 1, rare: false, interrupt: false, parry: 0, text: "", ...extra,
+  id,
+  name,
+  cost,
+  tier,
+  special: id > 1,
+  rare: false,
+  interrupt: false,
+  parry: 0,
+  text: "",
+  ...extra,
 });
 
 export const cards = [

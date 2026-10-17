@@ -6,7 +6,10 @@ import { glossary, markKeywords, escapeHTML } from "./keywords.mjs";
 const kw = (key, word) => `<span class="kw" data-kw="${key}">${word}</span>`;
 
 test("markKeywords wraps each rule word in a span naming its glossary entry", () => {
-  assert.equal(markKeywords("Gain 1 Block. Counter 1."), `Gain 1 ${kw("block", "Block")}. ${kw("counter", "Counter")} 1.`);
+  assert.equal(
+    markKeywords("Gain 1 Block. Counter 1."),
+    `Gain 1 ${kw("block", "Block")}. ${kw("counter", "Counter")} 1.`,
+  );
   assert.equal(markKeywords("Parry 2."), `${kw("parry", "Parry")} 2.`);
   assert.equal(markKeywords("Gain 1 Strength."), `Gain 1 ${kw("strength", "Strength")}.`);
 });
@@ -37,7 +40,18 @@ test("the Interrupt tip says a Parry card cannot be interrupted", () => {
 });
 
 test("every key the markup and the badges use has a glossary entry", () => {
-  for (const key of ["interrupt", "parry", "block", "counter", "vulnerable", "strength", "cancel", "quick", "slow", "rare"]) {
+  for (const key of [
+    "interrupt",
+    "parry",
+    "block",
+    "counter",
+    "vulnerable",
+    "strength",
+    "cancel",
+    "quick",
+    "slow",
+    "rare",
+  ]) {
     assert.equal(typeof glossary[key], "string", key);
     assert.ok(glossary[key].length > 0, key);
   }

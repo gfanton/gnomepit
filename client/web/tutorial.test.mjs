@@ -24,18 +24,31 @@ test("both guided decks are legal decks of their clans", () => {
 test("the rails rounds leave you at 13 and Ironhide at 10, then 9", () => {
   const m = tutorialMatch(engine);
   const one = play(m, [[m.rails[0], m.opponent[0]]]);
-  assert.deepEqual(one.state.gnomes.map((g) => g.hp), [13, 10]);
-  const two = play(m, [[m.rails[0], m.opponent[0]], [m.rails[1], m.opponent[1]]]);
-  assert.deepEqual(two.state.gnomes.map((g) => g.hp), [13, 9]);
+  assert.deepEqual(
+    one.state.gnomes.map((g) => g.hp),
+    [13, 10],
+  );
+  const two = play(m, [
+    [m.rails[0], m.opponent[0]],
+    [m.rails[1], m.opponent[1]],
+  ]);
+  assert.deepEqual(
+    two.state.gnomes.map((g) => g.hp),
+    [13, 9],
+  );
   assert.equal(two.result, "ongoing");
 });
 
 test("no legal round 3 plan loses the guided match", () => {
   const m = tutorialMatch(engine);
-  const { state } = play(m, [[m.rails[0], m.opponent[0]], [m.rails[1], m.opponent[1]]]);
+  const { state } = play(m, [
+    [m.rails[0], m.opponent[0]],
+    [m.rails[1], m.opponent[1]],
+  ]);
   const plans = engine.legalPlans({ state, side: 0, deck: m.decks[0] });
   assert.equal(plans.length, 60);
-  for (const plan of plans) assert.notEqual(engine.resolve({ state, decks: m.decks, a: plan, b: m.opponent[2] }).result, "b");
+  for (const plan of plans)
+    assert.notEqual(engine.resolve({ state, decks: m.decks, a: plan, b: m.opponent[2] }).result, "b");
 });
 
 test("a card name the engine does not know is refused", () => {
@@ -55,7 +68,10 @@ test("each lesson shows once, at the first event it names", () => {
   const m = tutorialMatch(engine);
   const { events } = engine.resolve({ state: fresh(), decks: m.decks, a: m.rails[0], b: m.opponent[0] });
   const lessons = lessonsFor(1, events, engine.cards);
-  assert.deepEqual(lessons.map((l) => l.text), coach.lessons.filter((l) => l.round === 1).map((l) => l.text));
+  assert.deepEqual(
+    lessons.map((l) => l.text),
+    coach.lessons.filter((l) => l.round === 1).map((l) => l.text),
+  );
   assert.ok(lessons.every((l, i) => i === 0 || l.at > lessons[i - 1].at));
   assert.equal(events[lessons[0].at].kind, "Cancelled");
 });
@@ -64,11 +80,17 @@ test("round 2 teaches Block then Parry, and round 3 teaches Counter", () => {
   const m = tutorialMatch(engine);
   const one = engine.resolve({ state: fresh(), decks: m.decks, a: m.rails[0], b: m.opponent[0] });
   const two = engine.resolve({ state: one.state, decks: m.decks, a: m.rails[1], b: m.opponent[1] });
-  assert.deepEqual(lessonsFor(2, two.events, engine.cards).map((l) => l.text), coach.lessons.filter((l) => l.round === 2).map((l) => l.text));
+  assert.deepEqual(
+    lessonsFor(2, two.events, engine.cards).map((l) => l.text),
+    coach.lessons.filter((l) => l.round === 2).map((l) => l.text),
+  );
   const best = ["Undermine", "Boot and Heel"].map((name) => engine.cards.find((c) => c.name === name).id);
   const three = engine.resolve({ state: two.state, decks: m.decks, a: best, b: m.opponent[2] });
   const counter = lessonsFor(3, three.events, engine.cards);
-  assert.deepEqual(counter.map((l) => l.text), coach.lessons.filter((l) => l.round === 3).map((l) => l.text));
+  assert.deepEqual(
+    counter.map((l) => l.text),
+    coach.lessons.filter((l) => l.round === 3).map((l) => l.text),
+  );
   // The lesson describes damage dealt back, so it waits for the first hit Counter answers.
   assert.equal(three.events[counter[0].at].kind, "CounterHit");
 });
@@ -104,7 +126,14 @@ test("the flag reads done or skipped from storage", () => {
 });
 
 test("storage that throws keeps the answer for the rest of the visit only", () => {
-  const broken = { getItem() { throw new Error("denied"); }, setItem() { throw new Error("denied"); } };
+  const broken = {
+    getItem() {
+      throw new Error("denied");
+    },
+    setItem() {
+      throw new Error("denied");
+    },
+  };
   const flag = tutorialMemory(broken);
   assert.equal(flag.seen(), false);
   assert.doesNotThrow(() => flag.remember("skipped"));
@@ -115,9 +144,16 @@ test("storage that throws keeps the answer for the rest of the visit only", () =
 test("waiting on animations ignores the ones that never end", async () => {
   const endless = { effect: { getTiming: () => ({ iterations: Infinity }) }, finished: new Promise(() => {}) };
   let end;
-  const once = { effect: { getTiming: () => ({ iterations: 1 }) }, finished: new Promise((r) => { end = r; }) };
+  const once = {
+    effect: { getTiming: () => ({ iterations: 1 }) },
+    finished: new Promise((r) => {
+      end = r;
+    }),
+  };
   let done = false;
-  void afterFiniteAnimations([endless, once]).then(() => { done = true; });
+  void afterFiniteAnimations([endless, once]).then(() => {
+    done = true;
+  });
   await Promise.resolve();
   assert.equal(done, false);
   end();

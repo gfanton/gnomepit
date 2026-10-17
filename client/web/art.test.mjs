@@ -10,9 +10,30 @@ const readJSON = (path) => JSON.parse(readFileSync(new URL(path, import.meta.url
 const manifest = {
   generation_tool: "built-in image_gen",
   assets: [
-    { name: "Bulwark", clan: "Ironhide", kind: "card", master: "bulwark-v2.png", display: "bulwark-v2.jpg", prompts: "variance-prompts.json" },
-    { name: "Ironhide portrait", clan: "Ironhide", kind: "portrait", master: "ironhide-portrait-v2.png", display: "ironhide-portrait-v2.jpg", prompts: "p.json" },
-    { name: "Gnomehall hero", clan: "Both", kind: "hero", master: "hall-hero-v2.png", display: "hall-hero-v2.jpg", prompts: "p.json" },
+    {
+      name: "Bulwark",
+      clan: "Ironhide",
+      kind: "card",
+      master: "bulwark-v2.png",
+      display: "bulwark-v2.jpg",
+      prompts: "variance-prompts.json",
+    },
+    {
+      name: "Ironhide portrait",
+      clan: "Ironhide",
+      kind: "portrait",
+      master: "ironhide-portrait-v2.png",
+      display: "ironhide-portrait-v2.jpg",
+      prompts: "p.json",
+    },
+    {
+      name: "Gnomehall hero",
+      clan: "Both",
+      kind: "hero",
+      master: "hall-hero-v2.png",
+      display: "hall-hero-v2.jpg",
+      prompts: "p.json",
+    },
   ],
 };
 

@@ -6,8 +6,23 @@
 import { ChainError, feeFor, payFor } from "./chain.mjs";
 import { createReader } from "./gnovalue.mjs";
 import {
-  WalletError, classifySessions, connect as connectWallet, deriveKeys, generations, lockedMatches, newSalt, openBox, revokeMessage, rootSignature,
-  sealBox, sealOf, sessionBudget, sessionGas, sessionLifetime as defaultLifetime, sessionMessage, sessionReserve,
+  WalletError,
+  classifySessions,
+  connect as connectWallet,
+  deriveKeys,
+  generations,
+  lockedMatches,
+  newSalt,
+  openBox,
+  revokeMessage,
+  rootSignature,
+  sealBox,
+  sealOf,
+  sessionBudget,
+  sessionGas,
+  sessionLifetime as defaultLifetime,
+  sessionMessage,
+  sessionReserve,
 } from "./wallet.mjs";
 
 const pageSize = 50; // the realm's maxPage
@@ -136,8 +151,13 @@ export function moveCall(view, opened, next, cards) {
   return {
     func: "Reveal",
     args: [
-      view.ID, first ? cardNames(opened.deck, cards) : "", first ? opened.deckSalt : "", cardNames(opened.plan, cards), opened.planSalt,
-      next?.seal ?? "", next?.box ?? "",
+      view.ID,
+      first ? cardNames(opened.deck, cards) : "",
+      first ? opened.deckSalt : "",
+      cardNames(opened.plan, cards),
+      opened.planSalt,
+      next?.seal ?? "",
+      next?.box ?? "",
     ],
   };
 }
@@ -147,7 +167,10 @@ const realmErrors = [
   [/^seal mismatch/, "sealMismatch"],
   [/^(illegal plan|illegal deck|unknown card|unknown clan)/, "illegalPlan"],
   [/^(deadline passed|challenge expired)/, "deadlinePassed"],
-  [/^(unknown session|session expired|session spend limit|session has no spend limit|session locked)/, "sessionExpired"],
+  [
+    /^(unknown session|session expired|session spend limit|session has no spend limit|session locked)/,
+    "sessionExpired",
+  ],
   [/^insufficient (funds|fees)/, "insufficientFunds"],
 ];
 
@@ -186,7 +209,19 @@ function resolve(engine, state, decks, [a, b]) {
 // sessionLifetime is how long each new session lasts, in seconds. network, {chainName,
 // rpcUrl}, lets connect add chainId to a wallet that does not know it.
 export function createArena({
-  chain, wallet, engine, signer, realm, chainId, origin, storage, notifier, indexer, network, signEachMove = false, sessionLifetime = defaultLifetime,
+  chain,
+  wallet,
+  engine,
+  signer,
+  realm,
+  chainId,
+  origin,
+  storage,
+  notifier,
+  indexer,
+  network,
+  signEachMove = false,
+  sessionLifetime = defaultLifetime,
   now = () => Math.floor(Date.now() / 1000),
 }) {
   let address = null;
@@ -220,11 +255,17 @@ export function createArena({
   }
 
   const readMatch = (id) => read(`${realm}.Match("${id}")`);
-  const roleOf = (view) => (view.Challenger === address ? "challenger" : view.Acceptor === address ? "acceptor" : undefined);
+  const roleOf = (view) =>
+    view.Challenger === address ? "challenger" : view.Acceptor === address ? "acceptor" : undefined;
   const left = (session) => session.spendLimit - session.spendUsed;
 
   function status() {
-    return { address, state: stored("root") === null ? "missing" : "active", mode: mode(), fallback: stored("fallback") || null };
+    return {
+      address,
+      state: stored("root") === null ? "missing" : "active",
+      mode: mode(),
+      fallback: stored("fallback") || null,
+    };
   }
 
   // fallBack switches to the per-move mode for reason, and returns null: no session.
@@ -239,9 +280,15 @@ export function createArena({
   async function ownSessions() {
     const keys = new Map();
     for (let generation = 0; generation < generations; generation++) keys.set(generation, await keysFor(generation));
-    return { onChain: await chain.sessions(address), keys, locks: await read(`${realm}.Locks("${address}")`), price: await chain.gasPrice() };
+    return {
+      onChain: await chain.sessions(address),
+      keys,
+      locks: await read(`${realm}.Locks("${address}")`),
+      price: await chain.gasPrice(),
+    };
   }
-  const classify = ({ price, ...found }, matches) => classifySessions({ ...found, matches, now: now(), realm, reserve: sessionReserve(price) });
+  const classify = ({ price, ...found }, matches) =>
+    classifySessions({ ...found, matches, now: now(), realm, reserve: sessionReserve(price) });
 
   // prepareSession returns a live unlocked session with role's budget, else has the wallet
   // revoke the dead ones and create one, and throws refused when the player rejects that.
@@ -270,10 +317,17 @@ export function createArena({
       sessionMessage(address, target.keys.sessionPubKey, start, realm, budget, sessionLifetime),
     ];
     const gasWanted = sessionGas * messages.length;
-    const response = await wallet.DoContract({ messages, memo: "Gnomehall session", gasWanted, gasFee: feeFor(gasWanted, found.price) });
+    const response = await wallet.DoContract({
+      messages,
+      memo: "Gnomehall session",
+      gasWanted,
+      gasFee: feeFor(gasWanted, found.price),
+    });
     // Adena's answer when the player rejects the approval or closes its window.
-    if (response?.type === "TRANSACTION_REJECTED") throw new ArenaError("refused", response.message || "The session was not approved");
-    if (response?.status !== "success") return fallBack(response?.message || response?.type || "The wallet created no session");
+    if (response?.type === "TRANSACTION_REJECTED")
+      throw new ArenaError("refused", response.message || "The session was not approved");
+    if (response?.status !== "success")
+      return fallBack(response?.message || response?.type || "The wallet created no session");
     // A read served before the approval's block applies may still show the revoked session.
     const created = (s) => s.address === target.keys.sessionAddress && s.expiresAt === start + sessionLifetime;
     const session = (await chain.sessions(address)).find(created);
@@ -298,7 +352,8 @@ export function createArena({
   // wallet in the per-move mode.
   async function signingIn(id, view) {
     const found = await sessionIn(id, view);
-    if (found === null && mode() !== "contract") throw new ArenaError("sessionExpired", `The session for match ${id} has expired or run out; renew it`);
+    if (found === null && mode() !== "contract")
+      throw new ArenaError("sessionExpired", `The session for match ${id} has expired or run out; renew it`);
     return found;
   }
 
@@ -308,7 +363,8 @@ export function createArena({
   // id and "active" otherwise, always in the per-move mode, and sessionExpires, the expiry of
   // the session that signs their next call there, when there is one.
   async function sessionState(id, view) {
-    if (mode() === "contract" || stored("root") === null || roleOf(view) === undefined || view.Phase === "ended") return { session: "active" };
+    if (mode() === "contract" || stored("root") === null || roleOf(view) === undefined || view.Phase === "ended")
+      return { session: "active" };
     const found = await sessionIn(id, view);
     return found === null ? { session: "expired" } : { session: "active", sessionExpires: found.session.expiresAt };
   }
@@ -329,7 +385,10 @@ export function createArena({
 
   async function sendNow(func, args, signing) {
     requireAddress();
-    const msg = { type: "/vm.m_call", value: { caller: address, send: "", max_deposit: "", pkg_path: realm, func, args } };
+    const msg = {
+      type: "/vm.m_call",
+      value: { caller: address, send: "", max_deposit: "", pkg_path: realm, func, args },
+    };
     try {
       const signedBy = signEachMove ? null : await signing();
       if (signedBy === null) {
@@ -339,8 +398,13 @@ export function createArena({
       }
       const { keys, session } = signedBy;
       const request = {
-        chainId, accountNumber: session.accountNumber, sequence: session.sequence,
-        privKey: keys.sessionKey, sessionAddr: keys.sessionAddress, memo: "", msgs: [msg],
+        chainId,
+        accountNumber: session.accountNumber,
+        sequence: session.sequence,
+        privKey: keys.sessionKey,
+        sessionAddr: keys.sessionAddress,
+        memo: "",
+        msgs: [msg],
       };
       await chain.broadcast(await payFor(chain, (fee) => signer.signTx({ ...request, fee })));
     } catch (err) {
@@ -413,7 +477,11 @@ export function createArena({
 
     async openChallenges(page = 0) {
       const list = await read(`${realm}.Open(${page * pageSize}, ${pageSize})`);
-      return list.map((c) => ({ ...c, action: actionFor({ ...c, Phase: "open" }, address, now()), deadline: c.Expires }));
+      return list.map((c) => ({
+        ...c,
+        action: actionFor({ ...c, Phase: "open" }, address, now()),
+        deadline: c.Expires,
+      }));
     },
 
     async myMatches(page = 0) {
@@ -439,8 +507,20 @@ export function createArena({
           pending = pendingClash(view, opened, state, engine);
         }
         const action = actionFor(view, address, now(), pending);
-        const planning = action === "move" ? planFrom(view, state, pending, challengerDeck(view, opened, engine.cards), engine.cards) : undefined;
-        return { ...view, rounds, state, pending, planning, action, ...(await sessionState(id, view)), deadline: view.Deadline };
+        const planning =
+          action === "move"
+            ? planFrom(view, state, pending, challengerDeck(view, opened, engine.cards), engine.cards)
+            : undefined;
+        return {
+          ...view,
+          rounds,
+          state,
+          pending,
+          planning,
+          action,
+          ...(await sessionState(id, view)),
+          deadline: view.Deadline,
+        };
       } catch (err) {
         throw errorFrom(err);
       }
@@ -456,7 +536,9 @@ export function createArena({
       const sealed = { deck: [...deck].sort((a, b) => a - b), deckSalt: newSalt(), plan, planSalt: newSalt() };
       const deckSeal = await sealOf(sealed.deckSalt, cardNames(sealed.deck, engine.cards));
       const planSeal = await sealOf(sealed.planSalt, cardNames(plan, engine.cards));
-      await send("Challenge", [clan, deckSeal, planSeal, await sealBox(key, sealed), opponent], () => prepareSession("challenger"));
+      await send("Challenge", [clan, deckSeal, planSeal, await sealBox(key, sealed), opponent], () =>
+        prepareSession("challenger"),
+      );
       const [latest] = await read(`${realm}.Matches("${address}", 0, 1)`);
       return latest.ID;
     },
@@ -464,14 +546,17 @@ export function createArena({
     async accept(id, { clan, deck, plan }) {
       checkID(id);
       checkOpening(engine, clan, deck, plan, 1);
-      await send("Accept", [id, clan, cardNames(deck, engine.cards), cardNames(plan, engine.cards)], () => prepareSession("acceptor"));
+      await send("Accept", [id, clan, cardNames(deck, engine.cards), cardNames(plan, engine.cards)], () =>
+        prepareSession("acceptor"),
+      );
     },
 
     // move sends this player's plan, as card ids, for the round being played.
     async move(id, plan) {
       const view = await arena.match(id);
       if (view.action !== "move") throw new ArenaError("wrongPhase", `There is no move to make in match ${id}`);
-      if (view.planning === undefined) throw new ArenaError("unauthorized", "Authorize this device to open your sealed plan");
+      if (view.planning === undefined)
+        throw new ArenaError("unauthorized", "Authorize this device to open your sealed plan");
       checkPlan(engine, view.planning, plan);
       const planText = cardNames(plan, engine.cards);
       try {
@@ -481,7 +566,11 @@ export function createArena({
         }
         const key = await boxKey();
         const planSalt = newSalt();
-        const next = { plan: planText, seal: await sealOf(planSalt, planText), box: await sealBox(key, { plan, planSalt }) };
+        const next = {
+          plan: planText,
+          seal: await sealOf(planSalt, planText),
+          box: await sealBox(key, { plan, planSalt }),
+        };
         const { func, args } = moveCall(view, await openBox(key, view.Box), next, engine.cards);
         return await send(func, args, () => signingIn(id, view));
       } catch (err) {
@@ -538,7 +627,8 @@ export function createArena({
       }
       const stopFeed = indexer.watchCalls(
         realm,
-        ({ height, caller, func, args }) => onChange({ match: func === "Challenge" ? null : (args[0] ?? null), func, caller, height }),
+        ({ height, caller, func, args }) =>
+          onChange({ match: func === "Challenge" ? null : (args[0] ?? null), func, caller, height }),
         (state) => {
           if (state === "down") return startPolling();
           stopPolling();
@@ -565,8 +655,18 @@ export function createArena({
           try {
             const view = await arena.match(id);
             clearTimeout(expiry);
-            if (view.sessionExpires > 0) expiry = setTimeout(read, Math.min((view.sessionExpires - now()) * 1000, longestTimer));
-            const seen = JSON.stringify([view.Phase, view.Round, view.ToMove, view.Plans, view.HP, view.Result, view.DeadlinePassed, view.session]);
+            if (view.sessionExpires > 0)
+              expiry = setTimeout(read, Math.min((view.sessionExpires - now()) * 1000, longestTimer));
+            const seen = JSON.stringify([
+              view.Phase,
+              view.Round,
+              view.ToMove,
+              view.Plans,
+              view.HP,
+              view.Result,
+              view.DeadlinePassed,
+              view.session,
+            ]);
             if (seen !== last && !stopped) {
               last = seen;
               onChange(view);
@@ -576,9 +676,12 @@ export function createArena({
           }
         });
       };
-      const unsubscribe = arena.subscribe((change) => {
-        if (change.match === undefined || change.match === id) read();
-      }, { interval });
+      const unsubscribe = arena.subscribe(
+        (change) => {
+          if (change.match === undefined || change.match === id) read();
+        },
+        { interval },
+      );
       read();
       return () => {
         stopped = true;

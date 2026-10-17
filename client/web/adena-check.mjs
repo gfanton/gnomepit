@@ -59,7 +59,8 @@ async function post(arena) {
 $("add-network").onclick = async () => {
   if (wallet === undefined) return void ($("connection").textContent = "No Adena in this browser.");
   const added = await wallet.AddNetwork?.({ chainId, chainName: "Gnomehall gnodev", rpcUrl: rpc });
-  $("connection").textContent = `AddNetwork: ${added?.status ?? "not offered"} ${added?.type ?? ""} ${added?.message ?? ""}`;
+  $("connection").textContent =
+    `AddNetwork: ${added?.status ?? "not offered"} ${added?.type ?? ""} ${added?.message ?? ""}`;
 };
 
 check("connect", "connection", async () => {
@@ -70,7 +71,8 @@ check("connect", "connection", async () => {
 
 check("check-signature", "signature", async () => {
   const { address } = await bySession.connect();
-  const sign = async () => answer(await wallet.SignArbitrary({ signer: address, data: rootText(location.origin) })).signature.signature;
+  const sign = async () =>
+    answer(await wallet.SignArbitrary({ signer: address, data: rootText(location.origin) })).signature.signature;
   const [first, second] = [await sign(), await sign()];
   return [first === second, first === second ? `both signatures are ${first}` : `first ${first}\nsecond ${second}`];
 });
@@ -83,7 +85,8 @@ check("check-session", "session", async () => {
   bySession.resumeSessions();
   const posted = await post(bySession);
   const account = await bySession.connect();
-  if (account.mode !== "session") return [false, `no session: mode ${account.mode}, reason: ${account.fallback ?? "none"}`];
+  if (account.mode !== "session")
+    return [false, `no session: mode ${account.mode}, reason: ${account.fallback ?? "none"}`];
   return [posted?.Challenger === address, `match ${posted?.ID} posted by ${posted?.Challenger} through its session`];
 });
 
@@ -95,13 +98,18 @@ check("check-revoke", "revoke", async () => {
   bySession.resumeSessions();
   const withdrawn = await post(bySession);
   const [lock] = (await read(`${realm}.Locks("${address}")`)).filter((l) => l.Match === withdrawn?.ID);
-  if (lock === undefined) return [false, `no session locked to match ${withdrawn?.ID}: mode ${bySession.account().mode}`];
+  if (lock === undefined)
+    return [false, `no session locked to match ${withdrawn?.ID}: mode ${bySession.account().mode}`];
   await bySession.resign(withdrawn.ID);
   const posted = await post(bySession);
   const account = bySession.account();
-  if (account.mode !== "session") return [false, `no session: mode ${account.mode}, reason: ${account.fallback ?? "none"}`];
+  if (account.mode !== "session")
+    return [false, `no session: mode ${account.mode}, reason: ${account.fallback ?? "none"}`];
   const kept = (await chain.sessions(address)).some((s) => s.address === lock.Session && s.expiresAt === lock.Expires);
-  return [!kept && posted?.Challenger === address, `match ${withdrawn.ID} withdrawn, its session ${lock.Session} ${kept ? "still on the chain" : "revoked"}; match ${posted?.ID} posted through a new session`];
+  return [
+    !kept && posted?.Challenger === address,
+    `match ${withdrawn.ID} withdrawn, its session ${lock.Session} ${kept ? "still on the chain" : "revoked"}; match ${posted?.ID} posted through a new session`,
+  ];
 });
 
 check("check-contract", "contract", async () => {

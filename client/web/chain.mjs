@@ -42,7 +42,8 @@ export function createChain({ rpc, fetch = globalThis.fetch.bind(globalThis) }) 
     if (base.Error !== null) throw new ChainError("failed", reasonOf(base.Error, base.Log));
     return response;
   }
-  const query = async (path, text = "") => decodeText((await abci(path, toBase64(new TextEncoder().encode(text)))).ResponseBase.Data);
+  const query = async (path, text = "") =>
+    decodeText((await abci(path, toBase64(new TextEncoder().encode(text)))).ResponseBase.Data);
 
   return {
     // evalJSON returns the typed values of a read-only call such as `pkg.F("1")`.
@@ -95,7 +96,10 @@ export function createChain({ rpc, fetch = globalThis.fetch.bind(globalThis) }) 
         if (err.type === "rejected" && err.reason === "request timeout") throw new ChainError("network", err.reason);
         throw err;
       }
-      for (const [phase, type] of [[result.check_tx, "rejected"], [result.deliver_tx, "failed"]]) {
+      for (const [phase, type] of [
+        [result.check_tx, "rejected"],
+        [result.deliver_tx, "failed"],
+      ]) {
         const base = phase.ResponseBase;
         if (base.Error !== null) throw new ChainError(type, reasonOf(base.Error, base.Log));
       }
@@ -230,4 +234,3 @@ function* fields(bytes) {
 function decodeText(base64) {
   return base64 === null ? null : new TextDecoder().decode(fromBase64(base64));
 }
-

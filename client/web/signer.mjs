@@ -28,11 +28,15 @@ export async function keyInfo(privKeyHex) {
 export async function signTx({ chainId, accountNumber, sequence, privKey, sessionAddr = "", fee, memo = "", msgs }) {
   if (typeof chainId !== "string" || chainId === "") throw new Error("missing chain id");
   if (!Array.isArray(msgs) || msgs.length === 0) throw new Error("no message to sign");
-  for (const [name, value] of [["account number", accountNumber], ["sequence", sequence]]) {
+  for (const [name, value] of [
+    ["account number", accountNumber],
+    ["sequence", sequence],
+  ]) {
     if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${name} must be a non-negative integer`);
   }
   const wallet = await walletOf(privKey);
-  if (sessionAddr !== "" && sessionAddr !== (await wallet.getAddress())) throw new Error("session address is not the signing key's address");
+  if (sessionAddr !== "" && sessionAddr !== (await wallet.getAddress()))
+    throw new Error("session address is not the signing key's address");
   wallet.connect({ getStatus: async () => ({ node_info: { network: chainId } }) });
   const tx = {
     messages: msgs.map(toAny),
@@ -40,7 +44,10 @@ export async function signTx({ chainId, accountNumber, sequence, privKey, sessio
     signatures: [],
     memo,
   };
-  const signed = await wallet.signTransaction(tx, aminoMessages, { accountNumber: String(accountNumber), sequence: String(sequence) });
+  const signed = await wallet.signTransaction(tx, aminoMessages, {
+    accountNumber: String(accountNumber),
+    sequence: String(sequence),
+  });
   signed.signatures[0].session_addr = sessionAddr === "" ? noSession : sessionAddr;
   return toBase64(Tx.encode(signed).finish());
 }
@@ -64,7 +71,8 @@ function toAny({ type, value }) {
   if (!Object.hasOwn(codecs, type)) throw new Error(`unsupported message ${type}`);
   // Like a zero spend_period, an empty spend_limit is left out of the chain's amino JSON
   // but not decodeTxMessages', so the chain would refuse the signature.
-  if (type === "/auth.m_create_session" && (value.spend_limit ?? "") === "") throw new Error("a session needs a spend limit");
+  if (type === "/auth.m_create_session" && (value.spend_limit ?? "") === "")
+    throw new Error("a session needs a spend limit");
   const codec = codecs[type];
   return { type_url: type, value: codec.encode(codec.fromJSON(value)).finish() };
 }

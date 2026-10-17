@@ -108,7 +108,11 @@ test("a broadcast that frees storage reports it as negative", async () => {
 
 test("a transaction CheckTx refuses is rejected with its reason", async () => {
   const { chain } = replay("broadcast-checktx");
-  await rejects(chain.broadcast("dHg="), "rejected", "signature verification failed; verify correct account, sequence, and chain-id");
+  await rejects(
+    chain.broadcast("dHg="),
+    "rejected",
+    "signature verification failed; verify correct account, sequence, and chain-id",
+  );
 });
 
 test("a transaction the node already holds is rejected", async () => {
@@ -156,7 +160,10 @@ test("a transaction pays for the gas its simulation used, with a margin", async 
   // A simulation checks no fee against the gas price, but a session's allowance must
   // cover it, so it pays the least it can.
   assert.deepEqual(fees[0], { gasWanted: 100_000_000, gasFee: "1ugnot" });
-  const used = await createChain({ rpc: "", fetch: async () => ({ ok: true, json: async () => recorded("simulate") }) }).simulate("x");
+  const used = await createChain({
+    rpc: "",
+    fetch: async () => ({ ok: true, json: async () => recorded("simulate") }),
+  }).simulate("x");
   const gasWanted = gasWantedFor(used);
   assert.deepEqual(fees[1], { gasWanted, gasFee: `${Math.ceil(gasWanted / 1000)}ugnot` });
 });
@@ -167,14 +174,29 @@ test("a transaction wants the gas its simulation used, plus a fifth and 100,000"
 });
 
 test("a broadcast that times out may still land, so it is a network error", async () => {
-  const timeout = { jsonrpc: "2.0", id: 1, error: { code: -32603, message: "Internal error", data: "request timeout" } };
-  const chain = createChain({ rpc: "http://node", fetch: async () => ({ ok: true, status: 200, json: async () => timeout }) });
+  const timeout = {
+    jsonrpc: "2.0",
+    id: 1,
+    error: { code: -32603, message: "Internal error", data: "request timeout" },
+  };
+  const chain = createChain({
+    rpc: "http://node",
+    fetch: async () => ({ ok: true, status: 200, json: async () => timeout }),
+  });
   await rejects(chain.broadcast("dHg="), "network", "request timeout");
 });
 
 test("no answer from the node is a network error", async () => {
-  const chain = createChain({ rpc: "http://node", fetch: async () => { throw new TypeError("fetch failed"); } });
+  const chain = createChain({
+    rpc: "http://node",
+    fetch: async () => {
+      throw new TypeError("fetch failed");
+    },
+  });
   await rejects(chain.gasPrice(), "network", "fetch failed");
-  const down = createChain({ rpc: "http://node", fetch: async () => ({ ok: false, status: 502, json: async () => ({}) }) });
+  const down = createChain({
+    rpc: "http://node",
+    fetch: async () => ({ ok: false, status: 502, json: async () => ({}) }),
+  });
   await rejects(down.gasPrice(), "network", "the node answered 502");
 });
