@@ -26,6 +26,7 @@ let handScroll = 0;
 const flights = new Set();
 
 let flow = initial;
+let choosingClan = true;
 let deck = null; // the deck being picked on the deck screen
 let plan = []; // the plan being built on the plan screen
 let legalPlans = []; // the acting player's legal plans this round
@@ -36,8 +37,12 @@ let playback = null; // {start, steps, lines, shown, speed, timer, revealTimer, 
 
 // Shared cards, and any clan missing here, get no emblem and no blurb.
 const clanLook = {
+  Delvers: {
+    emblem: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M12 3h8M12 3 8 15M20 3l5 13M8 15l8-5 9 6-2 10-10 3-8-6ZM16 10l-3 8 6 2-6 9"/></svg>',
+    blurb: "Bad ideas. Excellent timing. Push your luck and return the punishment.",
+  },
   Pickers: {
-    emblem: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 26 23 6M5 7c9-5 16-3 23 5M12 26 24 12"/></svg>',
+    emblem: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M14.5 8.5V28h3V8.5"/><path d="M4 11C10 2 22 2 28 11 20 7 12 7 4 11Z"/></svg>',
     blurb: "Quick hands. Dirty tricks. A miner’s tools, a duelist’s timing.",
   },
   Ironhide: {
@@ -77,7 +82,7 @@ const lobby = createLobby({
   app, arena, storage: localStorage, onRender: render, portrait: portraitHTML, emblem,
   onResume: () => {
     const draft=lobby.model.draft; if(!draft)return;
-    ({flow,deck,plan,legalPlans,onlineContext}=draft);lobby.model.inGame=true;app.classList.remove("lobby");render();
+    ({flow,deck,plan,legalPlans,onlineContext}=draft);choosingClan=draft.choosingClan ?? false;lobby.model.inGame=true;app.classList.remove("lobby");render();
   },
   onExit: () => { stopPlaying(); playback = null; onlineContext = null; flow = initial; render(); },
   onCompose: context => {
@@ -87,7 +92,7 @@ const lobby = createLobby({
     flow = { ...initial, screen: "deck", mode: "online", hp: engine.hp, acting: context.intent === "accept" ? 1 : 0,
       clans: context.intent === "accept" ? [opponent, null] : [null, ""], decks: [[], []],
       state: {round: 1, gnomes: [0, 1].map(() => ({hp: engine.hp, vulnerable: 0, strength: 0, spent: []}))} };
-    deck = newDeck(engine.clans[0], engine.cards); render();
+    choosingClan = true; deck = newDeck(engine.clans[0], engine.cards); render();
   },
   onPlay: (raw, address, review) => {
     const restored = replayView(raw, engine, address);
@@ -145,6 +150,7 @@ function enter(before) {
       dispatch({ type: "deckReady", clan: clan.name, deck: randomDeck(clan, engine.cards, Math.random) });
       return;
     }
+    choosingClan = true;
     deck = newDeck(engine.clans[0], engine.cards);
   }
   if (flow.screen === "plan") {
@@ -189,9 +195,15 @@ function groupSteps(events) {
 const handlers = {
   start: ({ mode }) => dispatch({ type: "start", mode, hp: engine.hp }),
   online: () => { flow = {...initial,screen:"lobby"}; lobby.enter(); },
-  onlineBack: () => { if(onlineSending)return; stopPlaying(); playback=null; if(["plan","deck"].includes(flow.screen))lobby.model.draft={flow,deck,plan,legalPlans,onlineContext}; lobby.returnToBoard(); },
+  onlineBack: () => { if(onlineSending)return; stopPlaying(); playback=null; if(["plan","deck"].includes(flow.screen))lobby.model.draft={flow,deck,plan,legalPlans,onlineContext,choosingClan}; lobby.returnToBoard(); },
+  library: () => { flow = {...initial,screen:"library"}; render(); },
+  home: () => { flow=initial; render(); },
+  homeClan: ({ name }) => { if(!clanNamed(name))return; handlers.start({mode:"bot"}); handlers.clan({name}); },
+  changeClan: () => { choosingClan=true; render(); },
   clan: ({ name }) => {
-    deck = newDeck(clanNamed(name), engine.cards);
+    const clan=clanNamed(name); if(!clan)return;
+    if(deck?.clan !== name) deck = newDeck(clan, engine.cards);
+    choosingClan=false;
     render();
   },
   toggle: ({ id }) => {
@@ -476,9 +488,10 @@ function copyMatchLog() {
 function render() {
   if(lobby.model.active && !lobby.model.inGame) { if(app.contains(tip))document.body.append(tip);tip.hidden=true;return lobby.render(); }
   app.classList.remove("lobby");
-  const screens = { title, deck: deckScreen, handoff, plan: planScreen, playback: playbackScreen, result: resultScreen };
+  const screens = { title, library: libraryScreen, deck: deckScreen, handoff, plan: planScreen, playback: playbackScreen, result: resultScreen };
   if (flow.screen === "playback" && app.dataset.screen === "playback") return;
   const previousScreen = app.dataset.screen;
+  const previousStage = app.dataset.stage;
   const focus = document.activeElement;
   const key = focus?.matches(":focus-visible") && focus?.dataset.action ? { action: focus.dataset.action, id: focus.dataset.id, beat: focus.dataset.beat } : null;
   handScroll = app.querySelector(".battle-hand")?.scrollLeft ?? 0;
@@ -486,6 +499,11 @@ function render() {
   if (app.contains(tip)) document.body.append(tip);
   app.innerHTML = onlineBar() + screens[flow.screen]();
   app.dataset.screen = flow.screen;
+  app.dataset.stage = flow.screen === "deck" ? choosingClan ? "clan" : "cards" : "";
+  if ((flow.screen === "deck" && (previousStage !== app.dataset.stage || previousScreen !== flow.screen)) || flow.screen === "library") {
+    const heading=app.querySelector("h1,h2"); heading?.setAttribute("tabindex","-1"); heading?.focus({preventScroll:true});
+    app.scrollIntoView({block:"start"});
+  }
   app.classList.toggle("board--battle", ["plan", "playback"].includes(flow.screen));
   if (flow.screen === "plan") {
     app.querySelector(".battle-hand").scrollLeft = previousScreen === "plan" ? handScroll : 0;
@@ -509,38 +527,50 @@ function dropStaleTip() {
   if (tipAnchor && !tipAnchor.isConnected) showTip(null);
 }
 
+const clanPresentation = [
+  {name:"Pickers",file:"pickers-selection-v1.jpg",tag:"QUICK HANDS · DIRTY TRICKS",description:"Strike before they’re ready. Nimble miners turn everyday tools into a flurry of blows.",style:"Fast attacks · Disruption"},
+  {name:"Ironhide",file:"ironhide-selection-v1.jpg",tag:"HOLD FIRM · HIT HARD",description:"Weather the blow, then answer with force. Heavy shields and patient timing win the day.",style:"Block · Heavy hits"},
+  {name:"Delvers",file:"delvers-selection-v5.jpg",tag:"BAD IDEAS · EXCELLENT TIMING",description:"Push your luck. Exploit an opening. Take the hit—and send the punishment back.",style:"Risk · Big payoffs · Retaliation"},
+];
+function clanChoicesHTML(home=false) {
+  return `<div class="clan-choices">${clanPresentation.map(c=>{
+    const available=Boolean(clanNamed(c.name));
+    const body=`<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="${home?'lazy':'eager'}"></div><div class="clan-choice__body"><span class="clan-choice__eyebrow">${c.tag}</span><h3>${emblem(c.name)}${c.name}</h3><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available?home?`Practice as ${c.name} →`:`Choose ${c.name} →`:home?'Explore Delvers · Coming soon →':'Coming soon'}</span></div>`;
+    const cls=`clan-choice clan-choice--${c.name.toLowerCase()}`;
+    if(home&&!available)return `<a class="${cls}" href="delvers-preview.html">${body}</a>`;
+    return `<button class="${cls}" type="button" data-action="${home?'homeClan':'clan'}" data-name="${c.name}" ${available?'':'disabled'}>${body}</button>`;
+  }).join('')}</div>`;
+}
 function title() {
-  const studies = ["Sling Stone", "Momentum", "Hunker Down", "Bulwark", "Cobble Throw", "Loose Timbers"]
-    .map((name) => engine.cards.find((c) => c.name === name))
-    .filter((c) => c !== undefined)
-    .map((c) => cardHTML(c)).join("");
-  return `${masthead("Two clans. One unsettled score.")}
-    <section class="intro">
+  return `<header class="masthead"><a class="wordmark" href="./">Gnomehall<span>UNDER THE MOUNTAIN</span></a><nav class="home-nav" aria-label="Explore the game"><a href="#how-duels-work">How to play</a><button type="button" data-action="library">Card library</button></nav></header>
+    <section class="intro intro--home">
       <div class="intro__copy"><span class="eyebrow">A TACTICAL CARD DUEL</span>
         <h1>Small gnomes.<br>Big grudges.</h1>
-        <p>Deep beneath the mountain, a quarrel is settled in three rounds. Choose your clan. Plot three beats. Let the sparks fly.</p>
-        <div class="button-row">
-          <button class="button" type="button" data-action="online">Play online <span aria-hidden="true">→</span></button>
-          <button class="button button--secondary" type="button" data-action="start" data-mode="bot">Practice against bot</button>
-          <button class="button button--secondary" type="button" data-action="start" data-mode="hotseat">Two players</button>
-        </div><span class="intro__caption">Online rivals, a practice bot, or a friend at the same table.</span>
+        <p>Choose a clan. Plot three beats. Settle your grudge beneath the mountain.</p>
+        <div class="home-play"><button class="button" type="button" data-action="online">Play online <span aria-hidden="true">→</span></button><span>24 hours per move</span></div>
+        <div class="home-local"><button class="button button--secondary" type="button" data-action="start" data-mode="bot">Practice against bot</button><button class="button button--secondary" type="button" data-action="start" data-mode="hotseat">Two players</button></div>
       </div>
-      <div class="intro__art"><img src="art/hall-hero-v2.jpg" alt="Gnomes from both clans gather around a card table in the underground hall"><span class="intro__art-label">GNOMEHALL <span>Different clans. Shared grudges.</span></span></div>
+      <div class="intro__art"><img src="art/hall-hero-v2.jpg" alt="Gnomes gather around a card table in the underground hall"><span class="intro__art-label">WELCOME TO GNOMEHALL<span>Different clans. Shared grudges.</span></span></div>
     </section>
-    <section class="showcase showcase--roster"><div class="frame__head"><div><span class="eyebrow">FROM THE CLAN ARCHIVES</span><h2 class="heading">Many faces. Shared grudges.</h2></div><span class="muted">Three Pickers · three Ironhide</span></div><div class="showcase__cards">${studies}</div></section>
-    ${collectionHTML()}
-    <footer class="hall-footer"><span>Forged below. Settled at the table.</span><span>3 rounds <b>·</b> 3 beats <b>·</b> 1 rival</span></footer>`;
+    <section class="home-clans" aria-labelledby="home-clans-title"><div class="section-intro"><div><span class="eyebrow">FIND YOUR WAY TO FIGHT</span><h2 id="home-clans-title">Which clan calls to you?</h2></div><p>Three personalities. One table.</p></div>${clanChoicesHTML(true)}</section>
+    <section id="how-duels-work" class="how-duels-work" aria-labelledby="how-title"><div class="section-intro"><div><span class="eyebrow">A LITTLE FORESIGHT GOES A LONG WAY</span><h2 id="how-title">Your first duel</h2></div></div><ol class="duel-steps"><li><span aria-hidden="true">01</span><div><h3>Build your eight</h3><p>Your clan’s Rare stays in. Choose seven more cards to make the deck your own.</p></div></li><li><span aria-hidden="true">02</span><div><h3>Plot three beats</h3><p>Choose your cards and their order in secret. Anticipate what your rival will play.</p></div></li><li><span aria-hidden="true">03</span><div><h3>Watch the clash</h3><p>Both plans unfold beat by beat. HP carries across three rounds; a knockout ends it early.</p></div></li></ol></section>
+    <footer class="hall-footer"><span>Forged below. Settled at the table.</span><button type="button" class="text-button" data-action="library">Explore the card library →</button></footer>`;
+}
+function libraryScreen() {
+  return `${masthead("Know your tools. Read your rival.")}<div class="section-intro"><div><span class="eyebrow">THE CLAN ARCHIVES</span><h1 class="heading">Card library</h1><p>Every card available in this build. Read the rules and find your favorites.</p></div><button class="button button--secondary" data-action="home">Back to the hall</button></div>${collectionHTML().replace('<details class="collection">','<details class="collection" open>')}<a class="library-study" href="delvers-preview.html">Explore the Delvers art study · New clan coming soon →</a>`;
+}
+function clanSelectionScreen() {
+  const heading=flow.mode==='hotseat'?`Player ${flow.acting+1}, choose your clan`:'Choose your clan';
+  return `${masthead("Different clans. Shared grudges.")}<section class="clan-selection" aria-labelledby="clan-select-title"><nav class="setup-steps" aria-label="Match setup"><span aria-current="step">1 · Choose clan</span><span>2 · Build deck</span><span>3 · Plan your round</span></nav><div class="section-intro"><div><span class="eyebrow">CHOOSE YOUR ALLEGIANCE</span><h1 id="clan-select-title">${heading}</h1><p>Find your fighting style. You’ll choose your cards next.</p></div>${flow.mode==='online'?'':'<button class="button button--secondary" data-action="home">Back to the hall</button>'}</div>${clanChoicesHTML()}<p class="clan-selection__note">${engine.clans.some(c=>c.name==='Delvers')?'Every clan brings its own tools. Your timing makes the difference.':'The Delvers are preparing their tools. Choose Pickers or Ironhide to play now.'}</p></section>`;
 }
 
 function deckScreen() {
+  if(choosingClan)return clanSelectionScreen();
   const clan = clanNamed(deck.clan);
   const rare = rareOf(clan, engine.cards);
   const picked = deck.picks.length - 1;
   const legal = engine.legalDeck({ clan: deck.clan, deck: deck.picks });
   const heading = ["bot", "online"].includes(flow.mode) ? "Pick your deck" : `Player ${flow.acting + 1} picks a deck`;
-  const tabs = engine.clans
-    .map((c) => `<button class="button ${c.name === deck.clan ? "" : "button--secondary"}" type="button" data-action="clan" data-name="${c.name}">${c.name}</button>`)
-    .join("");
   const full = deck.picks.length >= deckSize;
   const pool = clan.cards
     .map((id) => {
@@ -550,9 +580,10 @@ function deckScreen() {
     .join("");
   return `
     ${masthead()}
+    <nav class="setup-steps" aria-label="Match setup"><button class="text-button" data-action="changeClan">1 · Choose clan</button><span aria-current="step">2 · Build deck</span><span>3 · Plan your round</span></nav>
     <section class="frame frame--acting stack">
       <div class="frame__head"><h2 class="heading">${heading}</h2><span class="hint">The Rare stays in. Pick 7 more.</span></div>
-      <div class="clan-banner clan-banner--${deck.clan.toLowerCase()}">${portraitHTML(deck.clan, `class="clan-banner__portrait"`)}<div><span class="eyebrow">CHOOSE YOUR ALLEGIANCE</span><h3 class="heading clan-banner__name">${emblem(deck.clan)}${deck.clan}</h3><p>${clanLook[deck.clan]?.blurb ?? ""}</p></div><div class="button-row">${tabs}</div></div>
+      <div class="clan-banner clan-banner--${deck.clan.toLowerCase()}">${portraitHTML(deck.clan, `class="clan-banner__portrait"`)}<div><span class="eyebrow">CHOOSE YOUR ALLEGIANCE</span><h3 class="heading clan-banner__name">${emblem(deck.clan)}${deck.clan}</h3><p>${clanLook[deck.clan]?.blurb ?? ""}</p></div><button class="button button--secondary" type="button" data-action="changeClan">Change clan</button></div>
       <div class="card-grid">${pool}</div>
       <div class="button-row"><button class="button" type="button" data-action="deckReady" ${legal ? "" : "disabled"}>Ready ${picked} / 7</button></div>
     </section>`;

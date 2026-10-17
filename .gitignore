@@ -8,6 +8,16 @@ client/web/art/*.jpg
 !client/web/art/duel-table.jpg
 client/*.png
 client/*.webm
+# Approved Delvers direction and individual illustration exports; keep PNG masters local.
+!client/web/art/delvers-study-v1.jpg
+!client/web/art/*-delvers-v1.jpg
+!client/web/art/*-selection-v1.jpg
+!client/web/art/*-delvers-v2.jpg
+!client/web/art/delvers-selection-v2.jpg
+!client/web/art/*-delvers-v3.jpg
+!client/web/art/delvers-selection-v3.jpg
+!client/web/art/delvers-selection-v4.jpg
+!client/web/art/delvers-selection-v5.jpg
 # The gnotif registry, copied by make deps.
 deps/
 # The local indexer's database, written by make indexer.
