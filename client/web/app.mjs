@@ -13,7 +13,7 @@ import { stepFeedback, cardBehind } from "./battle-feedback.mjs";
 import { artIndex } from "./art.mjs";
 import { loadArena } from "./arena-provider.mjs";
 import { createLobby } from "./lobby.mjs";
-import { networks } from "./network.ts";
+import { networkFor } from "./network.ts";
 import { replayView, viewOf } from "./online-model.mjs";
 import { afterFiniteAnimations, coach, lessonsFor, railsNext, tutorialMatch, tutorialMemory } from "./tutorial.mjs";
 
@@ -88,102 +88,107 @@ function masthead(note = "A duel beneath the mountain") {
 }
 
 const tutorialFlag = tutorialMemory(localStorage);
-const arena = await loadArena(engine, networks.local);
-const lobby = createLobby({
-  app,
-  arena,
-  storage: localStorage,
-  onRender: render,
-  portrait: portraitHTML,
-  emblem,
-  onResume: () => {
-    const draft = lobby.model.draft;
-    if (!draft) return;
-    ({ flow, deck, plan, legalPlans, onlineContext } = draft);
-    choosingClan = draft.choosingClan ?? false;
-    lobby.model.inGame = true;
-    app.classList.remove("lobby");
-    render();
-  },
-  onExit: (offline) => {
-    stopPlaying();
-    playback = null;
-    onlineContext = null;
-    flow = initial;
-    render();
-    if (offline) app.querySelector(".offline-row")?.scrollIntoView({ block: "center" });
-  },
-  onCompose: (context) => {
-    onlineContext = context;
-    onlineError = "";
-    lobby.model.draft = null;
-    app.classList.remove("lobby");
-    const opponent = context.view?.clans[0] || "";
-    if (opponent && !clanNamed(opponent)) throw new Error("The arena returned an unknown clan. Reload before playing.");
-    flow = {
-      ...initial,
-      screen: "deck",
-      mode: "online",
-      hp: engine.hp,
-      acting: context.intent === "accept" ? 1 : 0,
-      clans: context.intent === "accept" ? [opponent, null] : [null, ""],
-      decks: [[], []],
-      state: { round: 1, gnomes: [0, 1].map(() => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] })) },
-    };
-    choosingClan = true;
-    deck = newDeck(engine.clans[0], engine.cards);
-    render();
-  },
-  onPlay: (raw, address, review) => {
-    const restored = replayView(raw, engine, address);
-    const { view, decks, state, rounds, result } = restored;
-    if (!review && view.side === 0 && view.phase === "reveal" && !raw.pending)
-      throw new Error(
-        "This device cannot open your sealed plan yet. Approve the session on this device, then open the match again.",
-      );
-    if (!review && (view.side < 0 || !decks[view.side]?.length))
-      throw new Error(
-        "Your private deck is needed to resume this turn. The arena adapter must recover it before play.",
-      );
-    if (!review && rounds.length === 0 && view.round > 1)
-      throw new Error("The arena has not supplied the resolved round yet. Refresh this match.");
-    onlineContext = { intent: "move", view, account: address, review };
-    onlineError = "";
-    flow = {
-      ...initial,
-      mode: "online",
-      hp: engine.hp,
-      acting: view.side >= 0 ? view.side : 0,
-      clans: view.clans,
-      decks,
-      state,
-      rounds,
-      result,
-      screen: rounds.length ? "playback" : "plan",
-    };
-    if (rounds.length) {
-      const round = rounds.at(-1);
-      playback = {
-        start: round.start.gnomes.map((g) => ({ ...g, block: 0, counter: 0 })),
-        steps: groupSteps(round.events),
-        lines: sentences(round.events, { cards: engine.cards, names: battleNames(), plans: round.plans }),
-        shown: 0,
-        timer: null,
-        revealTimer: null,
-        speed: 1,
-        viewer: flow.acting,
-        lessons: [],
-        lesson: null,
-      };
-    } else {
-      legalPlans = engine.legalPlans({ state, side: flow.acting, deck: decks[flow.acting] });
-      plan = [];
-    }
-    lobby.model.inGame = true;
-    app.classList.remove("lobby");
-    render();
-  },
-});
+const built = networkFor(GNOMEHALL_NETWORK);
+const arena = built === null ? null : await loadArena(engine, built);
+const lobby =
+  arena === null
+    ? null
+    : createLobby({
+        app,
+        arena,
+        storage: localStorage,
+        onRender: render,
+        portrait: portraitHTML,
+        emblem,
+        onResume: () => {
+          const draft = lobby.model.draft;
+          if (!draft) return;
+          ({ flow, deck, plan, legalPlans, onlineContext } = draft);
+          choosingClan = draft.choosingClan ?? false;
+          lobby.model.inGame = true;
+          app.classList.remove("lobby");
+          render();
+        },
+        onExit: (offline) => {
+          stopPlaying();
+          playback = null;
+          onlineContext = null;
+          flow = initial;
+          render();
+          if (offline) app.querySelector(".offline-row")?.scrollIntoView({ block: "center" });
+        },
+        onCompose: (context) => {
+          onlineContext = context;
+          onlineError = "";
+          lobby.model.draft = null;
+          app.classList.remove("lobby");
+          const opponent = context.view?.clans[0] || "";
+          if (opponent && !clanNamed(opponent))
+            throw new Error("The arena returned an unknown clan. Reload before playing.");
+          flow = {
+            ...initial,
+            screen: "deck",
+            mode: "online",
+            hp: engine.hp,
+            acting: context.intent === "accept" ? 1 : 0,
+            clans: context.intent === "accept" ? [opponent, null] : [null, ""],
+            decks: [[], []],
+            state: { round: 1, gnomes: [0, 1].map(() => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] })) },
+          };
+          choosingClan = true;
+          deck = newDeck(engine.clans[0], engine.cards);
+          render();
+        },
+        onPlay: (raw, address, review) => {
+          const restored = replayView(raw, engine, address);
+          const { view, decks, state, rounds, result } = restored;
+          if (!review && view.side === 0 && view.phase === "reveal" && !raw.pending)
+            throw new Error(
+              "This device cannot open your sealed plan yet. Approve the session on this device, then open the match again.",
+            );
+          if (!review && (view.side < 0 || !decks[view.side]?.length))
+            throw new Error(
+              "Your private deck is needed to resume this turn. The arena adapter must recover it before play.",
+            );
+          if (!review && rounds.length === 0 && view.round > 1)
+            throw new Error("The arena has not supplied the resolved round yet. Refresh this match.");
+          onlineContext = { intent: "move", view, account: address, review };
+          onlineError = "";
+          flow = {
+            ...initial,
+            mode: "online",
+            hp: engine.hp,
+            acting: view.side >= 0 ? view.side : 0,
+            clans: view.clans,
+            decks,
+            state,
+            rounds,
+            result,
+            screen: rounds.length ? "playback" : "plan",
+          };
+          if (rounds.length) {
+            const round = rounds.at(-1);
+            playback = {
+              start: round.start.gnomes.map((g) => ({ ...g, block: 0, counter: 0 })),
+              steps: groupSteps(round.events),
+              lines: sentences(round.events, { cards: engine.cards, names: battleNames(), plans: round.plans }),
+              shown: 0,
+              timer: null,
+              revealTimer: null,
+              speed: 1,
+              viewer: flow.acting,
+              lessons: [],
+              lesson: null,
+            };
+          } else {
+            legalPlans = engine.legalPlans({ state, side: flow.acting, deck: decks[flow.acting] });
+            plan = [];
+          }
+          lobby.model.inGame = true;
+          app.classList.remove("lobby");
+          render();
+        },
+      });
 function battleNames() {
   return flow.mode === "online"
     ? flow.clans.map((clan, side) => (side === flow.acting ? "You" : clan || "Rival to come"))
@@ -826,7 +831,7 @@ function copyMatchLog() {
 // ---- Rendering
 
 function render() {
-  if (lobby.model.active && !lobby.model.inGame) {
+  if (lobby?.model.active && !lobby.model.inGame) {
     if (app.contains(tip)) document.body.append(tip);
     tip.hidden = true;
     return lobby.render();
@@ -951,8 +956,8 @@ function title() {
       <div class="intro__copy"><span class="eyebrow">A TACTICAL CARD DUEL</span>
         <h1>Small gnomes.<br>Big grudges.</h1>
         <p>Choose a clan. Plot three beats. Settle your grudge beneath the mountain.</p>
-        <div class="home-play"><button class="button" type="button" data-action="playMode" data-mode="online">Play online <span aria-hidden="true">→</span></button><button class="button button--secondary" type="button" data-action="tutorial">How to play</button></div>
-        <p class="home-play__note">24 hours per move · needs the Adena wallet</p>
+        <div class="home-play">${lobby ? `<button class="button" type="button" data-action="playMode" data-mode="online">Play online <span aria-hidden="true">→</span></button>` : ""}<button class="button button--secondary" type="button" data-action="tutorial">How to play</button></div>
+        ${lobby ? `<p class="home-play__note">24 hours per move · needs the Adena wallet</p>` : ""}
       </div>
       <div class="intro__art"><img src="art/hall-hero-v2.jpg" alt="Gnomes gather around a card table in the underground hall"><span class="intro__art-label">WELCOME TO GNOMEHALL<span>Different clans. Shared grudges.</span></span></div>
     </section>
@@ -1464,7 +1469,7 @@ function byId(id) {
   return document.getElementById(id);
 }
 
-const matchLink = location.hash.match(/^#match=(.+)$/);
+const matchLink = lobby && location.hash.match(/^#match=(.+)$/);
 if (matchLink) {
   flow = { ...initial, screen: "lobby" };
   await lobby.enter(decodeURIComponent(matchLink[1]));
