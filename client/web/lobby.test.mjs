@@ -9,7 +9,7 @@ const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 // followedArena is an arena whose board the test sets, and whose subscribe hands the test
 // the lobby's change handler.
 function followedArena() {
-  const arena = {board:[],reads:0,onChange:null};
+  const arena = {board:[],reads:0,onChange:null,hasWallet:true};
   arena.openChallenges = async () => { arena.reads++; return arena.board; };
   arena.myMatches = async () => [];
   arena.subscribe = fn => { arena.onChange = fn; return () => { arena.onChange = null; }; };
@@ -408,6 +408,26 @@ test('without Adena the board leads with installing it', async () => {
   assert.match(page.innerHTML, /Get ready to play online/);
   assert.match(page.innerHTML, /href="https:\/\/adena\.app"/);
   assert.doesNotMatch(page.innerHTML, /Online play needs Adena/);
+});
+
+test('an arena that does not say it found a wallet starts the setup at installing Adena', async () => {
+  const page = app();
+  const {hasWallet, ...arena} = followedArena();
+  const lobby = createLobby({app:page,arena,storage:memory(),onRender:() => lobby.render()});
+  await lobby.enter();
+  assert.match(page.innerHTML, /aria-current="step"><strong>1 · Install Adena/);
+});
+
+test('Play offline leads home to the offline row, and the wordmark home', async () => {
+  const exits = [];
+  const lobby = createLobby({app:app(),arena:followedArena(),storage:memory(),onRender(){},onExit:offline => exits.push(offline)});
+  globalThis.history = {replaceState(){}};
+  globalThis.location = {pathname:'/',search:''};
+  try {
+    await lobby.action('Offline');
+    await lobby.action('Exit');
+  } finally { delete globalThis.history; delete globalThis.location; }
+  assert.deepEqual(exits, [true, false]);
 });
 
 test('a board that fits on one page shows no pager, and Notify me needs a notifier', async () => {

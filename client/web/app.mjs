@@ -87,7 +87,10 @@ const lobby = createLobby({
     const draft=lobby.model.draft; if(!draft)return;
     ({flow,deck,plan,legalPlans,onlineContext}=draft);choosingClan=draft.choosingClan ?? false;lobby.model.inGame=true;app.classList.remove("lobby");render();
   },
-  onExit: () => { stopPlaying(); playback = null; onlineContext = null; flow = initial; render(); },
+  onExit: (offline) => {
+    stopPlaying(); playback = null; onlineContext = null; flow = initial; render();
+    if (offline) app.querySelector(".offline-row")?.scrollIntoView({ block: "center" });
+  },
   onCompose: context => {
     onlineContext = context; onlineError = ""; lobby.model.draft=null; app.classList.remove("lobby");
     const opponent = context.view?.clans[0] || "";
@@ -829,7 +832,7 @@ function playbackScreen() {
         <p class="battle-event" id="battle-event" role="status" aria-live="polite">Both plans revealed. The clash begins.</p>
       </div>
     </section>
-    <div class="battle-controls playback-controls">${flow.mode === "tutorial" ? `<div class="coach coach--lesson" id="lesson" hidden>${portraitHTML("Pickers", 'class="coach__portrait"')}<p class="coach__words" id="lesson-text" role="status"></p><button class="button" type="button" data-action="lessonDone" id="lesson-continue">Continue</button></div>` : ""}<div class="button-row"><button class="button" type="button" data-action="play" id="play">Pause</button><button class="button button--secondary" type="button" data-action="next" id="next">Next step</button><button class="button button--secondary" type="button" data-action="skip" id="skip">Skip</button></div>
+    <div class="battle-controls playback-controls">${flow.mode === "tutorial" ? `<div class="coach coach--lesson" id="lesson" hidden>${portraitHTML("Pickers", 'class="coach__portrait"')}<p class="coach__words" id="lesson-text" role="status"></p><button class="button" type="button" data-action="lessonDone" id="lesson-continue" aria-describedby="lesson-text">Continue</button></div>` : ""}<div class="button-row"><button class="button" type="button" data-action="play" id="play">Pause</button><button class="button button--secondary" type="button" data-action="next" id="next">Next step</button><button class="button button--secondary" type="button" data-action="skip" id="skip">Skip</button></div>
       <div class="playback-meta"><span class="label" id="progress"></span><button class="button button--secondary round-log-button" type="button" data-action="roundLog">Round details</button><label class="speed-control">Speed <select id="playback-speed"><option value=".7">Slow</option><option value="1" selected>Normal</option><option value="1.7">Fast</option></select></label></div><div class="battle-finish" id="finish"></div></div>
     <dialog class="battle-drawer" id="round-log" aria-labelledby="log-title"><div class="dialog-heading"><h2 class="heading" id="log-title">Round details</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close round details">×</button></div><p class="muted">Every hit, block and interruption so far.</p><div class="log log--grid" id="log"></div></dialog>
     ${battleDialogsHTML(me)}`;
