@@ -14,7 +14,7 @@ import { artIndex } from "./art.mjs";
 import { loadArena } from "./arena-provider.mjs";
 import { createLobby } from "./lobby.mjs";
 import { replayView, viewOf } from "./online-model.mjs";
-import { afterFiniteAnimations, coach, lessonsFor, railsNext, rememberTutorial, tutorialMatch } from "./tutorial.mjs";
+import { afterFiniteAnimations, coach, lessonsFor, railsNext, rememberTutorial, tutorialMatch, tutorialSeen } from "./tutorial.mjs";
 
 const engine = await loadEngine("engine.wasm", "cards.json");
 const art = artIndex(await (await fetch("art/assets.json")).json());
@@ -72,7 +72,7 @@ function artHTML(c) {
 function collectionHTML() {
   const groups = [...engine.clans.map((clan) => ({ name: clan.name, ids: clan.cards })), { name: "Shared", ids: basics }];
   return `<details class="collection"><summary>Browse all ${engine.cards.length} cards<span>${engine.clans.map((clan) => clan.name).join(", ")} & shared techniques</span></summary>
-    <div class="collection__groups">${groups.map(({ name, ids }) => `<section class="stack"><div class="frame__head"><h2 class="heading">${name === "Shared" ? "Shared techniques" : name}</h2><span class="label">${ids.length} cards</span></div><div class="card-grid">${ids.map((id) => cardHTML(engine.cards[id])).join("")}</div></section>`).join("")}</div>
+    <div class="collection__groups">${groups.map(({ name, ids }) => `<section class="stack" id="library-${name.toLowerCase()}"><div class="frame__head"><h2 class="heading">${name === "Shared" ? "Shared techniques" : name}</h2><span class="label">${ids.length} cards</span></div><div class="card-grid">${ids.map((id) => cardHTML(engine.cards[id])).join("")}</div></section>`).join("")}</div>
   </details>`;
 }
 
@@ -200,11 +200,33 @@ function groupSteps(events) {
   return steps;
 }
 
+// enterMode starts online play, a bot match or a two-player match.
+function enterMode(mode) {
+  if (mode === "online") handlers.online();
+  else handlers.start({ mode });
+}
+
 const handlers = {
   start: ({ mode }) => dispatch({ type: "start", mode, hp: engine.hp }),
   online: () => { flow = {...initial,screen:"lobby"}; lobby.enter(); },
   onlineBack: () => { if(onlineSending)return; stopPlaying(); playback=null; if(["plan","deck"].includes(flow.screen))lobby.model.draft={flow,deck,plan,legalPlans,onlineContext,choosingClan}; lobby.returnToBoard(); },
-  library: () => { flow = {...initial,screen:"library"}; render(); },
+  library: ({ clan }) => {
+    flow = {...initial,screen:"library"}; render();
+    if (clan) byId(`library-${clan.toLowerCase()}`)?.scrollIntoView({ block: "start" });
+  },
+  // playMode enters a mode from home, offering the guided match first to a browser that has
+  // neither played nor skipped it.
+  playMode: ({ mode }) => {
+    if (tutorialSeen(localStorage)) return enterMode(mode);
+    const offer = byId("tutorial-offer");
+    for (const button of offer.querySelectorAll("[data-action]")) button.dataset.mode = mode;
+    openDialog(offer);
+  },
+  tutorialSkip: ({ mode }) => {
+    closeBattleDialogs();
+    rememberTutorial(localStorage, "skipped");
+    enterMode(mode);
+  },
   tutorial: ({ mode }) => {
     closeBattleDialogs();
     onward = mode ?? null;
@@ -213,7 +235,6 @@ const handlers = {
     dispatch({ type: "startTutorial", hp: engine.hp, clans: guided.clans, decks: guided.decks });
   },
   home: () => { flow=initial; render(); },
-  homeClan: ({ name }) => { if(!clanNamed(name))return; handlers.start({mode:"bot"}); handlers.clan({name}); },
   changeClan: () => { choosingClan=true; render(); },
   clan: ({ name }) => {
     const clan=clanNamed(name); if(!clan)return;
@@ -294,9 +315,8 @@ const handlers = {
   tutorialOnward: () => {
     const mode = onward;
     guided = null; onward = null; flow = initial;
-    if (mode === "online") handlers.online();
-    else if (mode === "bot" || mode === "hotseat") handlers.start({ mode });
-    else render();
+    if (mode === null) render();
+    else enterMode(mode);
   },
   rematch: () => dispatch({ type: "rematch" }),
   newMatch: () => dispatch({ type: "newMatch" }),
@@ -612,10 +632,11 @@ const clanPresentation = [
 function clanChoicesHTML(home=false) {
   return `<div class="clan-choices">${clanPresentation.map(c=>{
     const available=Boolean(clanNamed(c.name));
-    const body=`<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="${home?'lazy':'eager'}"></div><div class="clan-choice__body"><span class="clan-choice__eyebrow">${c.tag}</span><h3>${emblem(c.name)}${c.name}</h3><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available?home?`Practice as ${c.name} →`:`Choose ${c.name} →`:home?'Explore Delvers · Coming soon →':'Coming soon'}</span></div>`;
+    const body=`<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="${home?'lazy':'eager'}"></div><div class="clan-choice__body"><span class="clan-choice__eyebrow">${c.tag}</span><h3>${emblem(c.name)}${c.name}</h3><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available?home?`See the ${c.name} cards →`:`Choose ${c.name} →`:home?'Explore Delvers · Coming soon →':'Coming soon'}</span></div>`;
     const cls=`clan-choice clan-choice--${c.name.toLowerCase()}`;
     if(home&&!available)return `<a class="${cls}" href="delvers-preview.html">${body}</a>`;
-    return `<button class="${cls}" type="button" data-action="${home?'homeClan':'clan'}" data-name="${c.name}" ${available?'':'disabled'}>${body}</button>`;
+    if(home)return `<button class="${cls}" type="button" data-action="library" data-clan="${c.name}">${body}</button>`;
+    return `<button class="${cls}" type="button" data-action="clan" data-name="${c.name}" ${available?'':'disabled'}>${body}</button>`;
   }).join('')}</div>`;
 }
 function title() {
@@ -624,17 +645,18 @@ function title() {
       <div class="intro__copy"><span class="eyebrow">A TACTICAL CARD DUEL</span>
         <h1>Small gnomes.<br>Big grudges.</h1>
         <p>Choose a clan. Plot three beats. Settle your grudge beneath the mountain.</p>
-        <div class="home-play"><button class="button" type="button" data-action="online">Play online <span aria-hidden="true">→</span></button><span>24 hours per move</span></div>
-        <div class="home-local"><button class="button button--secondary" type="button" data-action="start" data-mode="bot">Practice against bot</button><button class="button button--secondary" type="button" data-action="start" data-mode="hotseat">Two players</button></div>
+        <div class="home-play"><button class="button" type="button" data-action="playMode" data-mode="online">Play online <span aria-hidden="true">→</span></button><button class="button button--secondary" type="button" data-action="tutorial">How to play</button></div>
+        <p class="home-play__note">24 hours per move · needs the Adena wallet</p>
       </div>
       <div class="intro__art"><img src="art/hall-hero-v2.jpg" alt="Gnomes gather around a card table in the underground hall"><span class="intro__art-label">WELCOME TO GNOMEHALL<span>Different clans. Shared grudges.</span></span></div>
     </section>
     <section class="home-clans" aria-labelledby="home-clans-title"><div class="section-intro"><div><span class="eyebrow">FIND YOUR WAY TO FIGHT</span><h2 id="home-clans-title">Which clan calls to you?</h2></div><p>Three personalities. One table.</p></div>${clanChoicesHTML(true)}</section>
-    <section id="how-duels-work" class="how-duels-work" aria-labelledby="how-title"><div class="section-intro"><div><span class="eyebrow">A LITTLE FORESIGHT GOES A LONG WAY</span><h2 id="how-title">Your first duel</h2></div></div><ol class="duel-steps"><li><span aria-hidden="true">01</span><div><h3>Build your eight</h3><p>Your clan’s Rare stays in. Choose seven more cards to make the deck your own.</p></div></li><li><span aria-hidden="true">02</span><div><h3>Plot three beats</h3><p>Choose your cards and their order in secret. Anticipate what your rival will play.</p></div></li><li><span aria-hidden="true">03</span><div><h3>Watch the clash</h3><p>Both plans unfold beat by beat. HP carries across three rounds; a knockout ends it early.</p></div></li></ol></section>
-    <footer class="hall-footer"><span>Forged below. Settled at the table.</span><button type="button" class="text-button" data-action="library">Explore the card library →</button></footer>`;
+    <footer class="hall-footer"><span>Forged below. Settled at the table.</span><nav class="offline-row" aria-label="Play offline"><span>Play offline:</span><button type="button" class="text-button" data-action="playMode" data-mode="bot">Bot</button><button type="button" class="text-button" data-action="playMode" data-mode="hotseat">Two players</button><button type="button" class="text-button" data-action="library">Card library</button></nav></footer>
+    <dialog class="offer" id="tutorial-offer" aria-labelledby="offer-title"><h2 id="offer-title">${coach.offer.title}</h2><p>${coach.offer.body}</p>
+      <div class="button-row"><button class="button" type="button" data-action="tutorial">${coach.offer.start}</button><button class="button button--secondary" type="button" data-action="tutorialSkip">${coach.offer.skip}</button></div></dialog>`;
 }
 function libraryScreen() {
-  return `${masthead("Know your tools. Read your rival.")}<div class="section-intro"><div><span class="eyebrow">THE CLAN ARCHIVES</span><h1 class="heading">Card library</h1><p>Every card available in this build. Read the rules and find your favorites.</p></div><button class="button button--secondary" data-action="home">Back to the hall</button></div>${collectionHTML().replace('<details class="collection">','<details class="collection" open>')}<a class="library-study" href="delvers-preview.html">Explore the Delvers art study →</a>`;
+  return `${masthead("Know your tools. Read your rival.")}<div class="section-intro"><div><span class="eyebrow">THE CLAN ARCHIVES</span><h1 class="heading">Card library</h1><p>Every card available in this build. Read the rules and find your favorites.</p></div><button class="button button--secondary" data-action="home">Back to the hall</button></div>${collectionHTML().replace('<details class="collection">','<details class="collection" open>')}`;
 }
 function clanSelectionScreen() {
   const heading=flow.mode==='hotseat'?`Player ${flow.acting+1}, choose your clan`:'Choose your clan';
