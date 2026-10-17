@@ -8,6 +8,7 @@ client/web/art/*.jpg
 !client/web/art/duel-table.jpg
 client/*.png
 client/*.webm
+client/mockups/
 # Approved Delvers direction and individual illustration exports; keep PNG masters local.
 !client/web/art/delvers-study-v1.jpg
 !client/web/art/*-delvers-v1.jpg
