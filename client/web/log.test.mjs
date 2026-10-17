@@ -84,6 +84,29 @@ test("a move or a strip with nothing to take says so", () => {
   assert.deepEqual(sentences([moved, stripped], delversCtx), ["Blowback: Delvers has no Vulnerable to move.", "Cave-In: Ironhide has no Block to lose."]);
 });
 
+test("a sentence about You takes the verb You takes", () => {
+  const mirrorCtx = { cards, names: ["You", "Bot"], plans };
+  const ev = (kind, side, card, n) => e(1, "Damage", "Normal", 1, kind, side, card, n, 0, false, [B(15, 0, 0, 2), B(15, 0, 0, 2)]);
+  const events = [
+    ev("VulnerableApplied", 1, "Chalk Dust", 1),
+    ev("VulnerableGained", 0, "Overdig", 1),
+    ev("VulnerableMoved", 0, "Blowback", 0),
+    ev("VulnerableMoved", 0, "Blowback", 2),
+    ev("VulnerableMoved", 1, "Blowback", 2),
+    ev("BlockStripped", 1, "Cave-In", 0),
+    ev("BlockStripped", 1, "Cave-In", 3),
+  ];
+  assert.deepEqual(sentences(events, mirrorCtx), [
+    "Chalk Dust: You are Vulnerable 2.",
+    "Overdig: You are Vulnerable 2.",
+    "Blowback: You have no Vulnerable to move.",
+    "Blowback: You move 2 Vulnerable to Bot, who is Vulnerable 2.",
+    "Blowback: Bot moves 2 Vulnerable to You, who are Vulnerable 2.",
+    "Cave-In: You have no Block to lose.",
+    "Cave-In: You lose 3 Block.",
+  ]);
+});
+
 test("a single-hit card gets no hit number", () => {
   assert.equal(sentences(events, ctx)[1], "Hammer Blow: 4 damage. Pickers 11.");
 });

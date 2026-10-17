@@ -36,15 +36,15 @@ export function sentences(events, { cards, names, plans }) {
       case "CounterHit":
         return `Counter deals ${ev.n} to ${me}. ${me} ${ev.after[ev.side].hp}.`;
       case "VulnerableApplied":
-        return `${card}: ${other} is Vulnerable ${ev.after[1 - ev.side].vulnerable}.`;
+        return `${card}: ${other} ${verb(other, "is", "are")} Vulnerable ${ev.after[1 - ev.side].vulnerable}.`;
       case "VulnerableGained":
-        return `${card}: ${me} is Vulnerable ${ev.after[ev.side].vulnerable}.`;
+        return `${card}: ${me} ${verb(me, "is", "are")} Vulnerable ${ev.after[ev.side].vulnerable}.`;
       case "VulnerableMoved":
-        if (ev.n === 0) return `${card}: ${me} has no Vulnerable to move.`;
-        return `${card}: ${me} moves ${ev.n} Vulnerable to ${other}, who is Vulnerable ${ev.after[1 - ev.side].vulnerable}.`;
+        if (ev.n === 0) return `${card}: ${me} ${verb(me, "has", "have")} no Vulnerable to move.`;
+        return `${card}: ${me} ${verb(me, "moves", "move")} ${ev.n} Vulnerable to ${other}, who ${verb(other, "is", "are")} Vulnerable ${ev.after[1 - ev.side].vulnerable}.`;
       case "BlockStripped":
-        if (ev.n === 0) return `${card}: ${other} has no Block to lose.`;
-        return `${card}: ${other} loses ${ev.n} Block.`;
+        if (ev.n === 0) return `${card}: ${other} ${verb(other, "has", "have")} no Block to lose.`;
+        return `${card}: ${other} ${verb(other, "loses", "lose")} ${ev.n} Block.`;
       case "StrengthGained":
         return `${card}: ${me} +${ev.n} Strength.`;
       default:
@@ -56,6 +56,8 @@ export function sentences(events, { cards, names, plans }) {
 // A basic can be played by both sides and more than once in a plan, so hits are counted per
 // side, card and beat: a card's hits all land on one beat.
 const hitKey = (ev) => `${ev.side}:${ev.card}:${ev.beat}`;
+
+const verb = (name, form, youForm) => (name === "You" ? youForm : form);
 
 // sideNames names the sides by clan, or by player when both play the same clan.
 export function sideNames(clans, mode) {
