@@ -1,4 +1,4 @@
-// Test fixture mirroring client/web/cards.json: the card view and the two clans.
+// Test fixture mirroring client/web/cards.json: the card view and the three clans.
 
 const def = (id, name, cost, tier, extra = {}) => ({
   id, name, cost, tier, special: id > 1, rare: false, interrupt: false, parry: 0, text: "", ...extra,
@@ -27,9 +27,20 @@ export const cards = [
   def(19, "Avalanche", 1, "Slow", { rare: true }),
   def(20, "Shield Catch", 2, "Normal"),
   def(21, "Loose Timbers", 2, "Normal"),
+  def(22, "Kickback", 1, "Slow", { rare: true }),
+  def(23, "Overdig", 2, "Normal"),
+  def(24, "Ambush", 1, "Normal"),
+  def(25, "Open Guard", 1, "Normal"),
+  def(26, "Chisel Jab", 1, "Normal"),
+  def(27, "Rockfall", 2, "Slow"),
+  def(28, "Cribbing", 1, "Normal"),
+  def(29, "Deadfall", 2, "Normal", { parry: 1 }),
+  def(30, "Blowback", 2, "Normal"),
+  def(31, "Cave-In", 3, "Slow"),
 ];
 
 export const pickers = { name: "Pickers", cards: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11] };
 export const ironhide = { name: "Ironhide", cards: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21] };
+export const delvers = { name: "Delvers", cards: [22, 23, 24, 25, 26, 27, 28, 29, 30, 31] };
 
 export const id = (name) => cards.find((c) => c.name === name).id;

@@ -1,10 +1,14 @@
 package bridge
 
 import (
+	"cmp"
 	"encoding/json"
 	"os"
 	"slices"
 	"testing"
+
+	"gnomehall/cardfile"
+	"gnomehall/p/engine"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -89,10 +93,21 @@ func start(hp int) StateView {
 	return StateView{Round: 1, Gnomes: [2]GnomeView{{HP: hp}, {HP: hp}}}
 }
 
+// The page and the chain must resolve the same cards under the same ids.
+func TestShippedCardsAreTheEngineRuleset(t *testing.T) {
+	data, err := os.ReadFile("../web/cards.json")
+	require.NoError(t, err)
+	shipped, err := cardfile.Load(data)
+	require.NoError(t, err)
+	want := engine.ProofOfConcept()
+	slices.SortFunc(want.Clans, func(a, b engine.Clan) int { return cmp.Compare(a.Name, b.Name) })
+	assert.Equal(t, want, shipped)
+}
+
 func TestLoadView(t *testing.T) {
 	_, view := loaded(t)
 	assert.Equal(t, 15, view.HP)
-	assert.Len(t, view.Cards, 22)
+	assert.Len(t, view.Cards, 32)
 
 	undermine := card(t, view, "Undermine")
 	assert.True(t, undermine.Rare)
@@ -101,11 +116,16 @@ func TestLoadView(t *testing.T) {
 	assert.Equal(t, "Interrupt (cancels a card winding up). If this cancels a card, apply 2 Vulnerable.", undermine.Text)
 	assert.Equal(t, "Deal 1 damage 3 times.", card(t, view, "Double Tap").Text)
 
-	require.Len(t, view.Clans, 2)
-	assert.Equal(t, "Ironhide", view.Clans[0].Name)
-	assert.Equal(t, "Pickers", view.Clans[1].Name)
-	assert.Len(t, view.Clans[0].Cards, 10)
-	assert.Len(t, view.Clans[1].Cards, 10)
+	kickback := card(t, view, "Kickback")
+	assert.True(t, kickback.Rare)
+	assert.Equal(t, "Slow", kickback.Tier)
+	assert.Equal(t, "Deal damage equal to the hardest hit you took this round, up to 5.", kickback.Text)
+
+	require.Len(t, view.Clans, 3)
+	for i, name := range []string{"Delvers", "Ironhide", "Pickers"} {
+		assert.Equal(t, name, view.Clans[i].Name)
+		assert.Len(t, view.Clans[i].Cards, 10)
+	}
 }
 
 func TestShippedStarterDecksAreLegal(t *testing.T) {
@@ -117,6 +137,9 @@ func TestShippedStarterDecksAreLegal(t *testing.T) {
 	}
 	assert.True(t, legal("Pickers", decks[0]))
 	assert.True(t, legal("Ironhide", decks[1]))
+	packCards := ids(t, view, "Blowback", "Cave-In")
+	delvers := slices.DeleteFunc(slices.Clone(clan(t, view, "Delvers").Cards), func(id int) bool { return slices.Contains(packCards, id) })
+	assert.True(t, legal("Delvers", delvers))
 	undermine := card(t, view, "Undermine").ID
 	assert.False(t, legal("Pickers", slices.DeleteFunc(slices.Clone(decks[0]), func(id int) bool { return id == undermine })))
 }
@@ -174,7 +197,7 @@ func TestErrors(t *testing.T) {
 		"before load":     {New().LegalDeck(encode(t, LegalDeckRequest{Clan: "Pickers"})), "no card file loaded"},
 		"bad card file":   {New().Load("{"), "parse card file"},
 		"bad request":     {b.Resolve("{"), "parse request"},
-		"unknown clan":    {b.LegalDeck(encode(t, LegalDeckRequest{Clan: "Delvers"})), `clan "Delvers" unknown`},
+		"unknown clan":    {b.LegalDeck(encode(t, LegalDeckRequest{Clan: "Tinkers"})), `clan "Tinkers" unknown`},
 		"bad side":        {b.LegalPlans(encode(t, LegalPlansRequest{State: start(view.HP), Side: 2, Deck: decks[0]})), "side must be 0 or 1"},
 		"bad round":       {b.LegalPlans(encode(t, LegalPlansRequest{State: StateView{Round: 0}, Side: 0, Deck: decks[0]})), "round must be 1 to 3"},
 		"card id too big": {b.Resolve(encode(t, ResolveRequest{State: start(view.HP), Decks: decks, A: []int{99}, B: []int{pick, pick, pick}})), "card id 99 out of range"},

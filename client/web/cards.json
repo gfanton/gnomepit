@@ -389,6 +389,194 @@
           4
         ]
       ]
+    },
+    {
+      "Name": "Kickback",
+      "Cost": 1,
+      "Tier": "Slow",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "HitHardest",
+          5
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": [],
+      "Rare": true
+    },
+    {
+      "Name": "Overdig",
+      "Cost": 2,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "Hit",
+          6
+        ],
+        [
+          "GainVulnerable",
+          1
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Ambush",
+      "Cost": 1,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "GainVulnerable",
+          1
+        ],
+        [
+          "HitIfNotAttacked",
+          6
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Open Guard",
+      "Cost": 1,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [
+        [
+          "GainBlock",
+          4
+        ]
+      ],
+      "Damage": [
+        [
+          "GainVulnerable",
+          1
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Chisel Jab",
+      "Cost": 1,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "Hit",
+          2
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Rockfall",
+      "Cost": 2,
+      "Tier": "Slow",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "Hit",
+          5
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Cribbing",
+      "Cost": 1,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [
+        [
+          "BlockPerVulnerable",
+          1
+        ]
+      ],
+      "Damage": [],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Deadfall",
+      "Cost": 2,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 1,
+      "Block": [],
+      "Damage": [
+        [
+          "VulnerableIfCancelled",
+          1
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Blowback",
+      "Cost": 2,
+      "Tier": "Normal",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [
+        [
+          "MoveVulnerable",
+          0
+        ]
+      ],
+      "Damage": [],
+      "OnCancel": [],
+      "CancelDamage": []
+    },
+    {
+      "Name": "Cave-In",
+      "Cost": 3,
+      "Tier": "Slow",
+      "Special": true,
+      "Interrupt": false,
+      "Parry": 0,
+      "Block": [],
+      "Damage": [
+        [
+          "StripBlock",
+          0
+        ],
+        [
+          "Hit",
+          5
+        ]
+      ],
+      "OnCancel": [],
+      "CancelDamage": []
     }
   ],
   "Clans": {
@@ -415,6 +603,18 @@
       "Avalanche",
       "Shield Catch",
       "Loose Timbers"
+    ],
+    "Delvers": [
+      "Kickback",
+      "Overdig",
+      "Ambush",
+      "Open Guard",
+      "Chisel Jab",
+      "Rockfall",
+      "Cribbing",
+      "Deadfall",
+      "Blowback",
+      "Cave-In"
     ]
   },
   "Rules": {
