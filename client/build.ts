@@ -1,6 +1,7 @@
 // Builds the site for one network: a bundle per page, the pages' HTML and the files they fetch.
 // Run as a script, it builds dist/ for $GNOMEHALL_NETWORK, local by default.
 
+import { realpathSync } from "node:fs";
 import { copyFile, mkdir, readdir, rm } from "node:fs/promises";
 import { join, parse } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -65,7 +66,7 @@ export async function build(options: BuildOptions): Promise<void> {
   await Promise.all(files.map((file) => copyFile(join(web, file), join(options.outDir, file))));
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (realpathSync(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
   try {
     await build({
       network: process.env.GNOMEHALL_NETWORK ?? "local",
