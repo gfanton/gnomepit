@@ -294,6 +294,20 @@ func showStanding(s standing) string {
 	return out
 }
 
+func TestDecodeStandingSkipsIDs(cur realm, t *testing.T) {
+	uassert.True(t, decodeStanding("") == nil)
+	ids := make([]int, 3000)
+	for i := range ids {
+		ids[i] = i + 1
+	}
+	locks := []sessionLock{{session: bob, id: 7, expires: 1_790_000_000}}
+	uassert.True(t, decodeStanding(encodePlayer(playerRecord{ids: ids, locks: locks})) == nil)
+	want := standing{rating: 1016, wins: 2999, losses: 1, lastClan: 2, perClan: []int{0, 3000, 0}}
+	got := decodeStanding(encodePlayer(playerRecord{ids: ids, standing: &want, locks: locks}))
+	urequire.True(t, got != nil)
+	uassert.Equal(t, showStanding(want), showStanding(*got))
+}
+
 func TestStandingForFewerClans(cur realm, t *testing.T) {
 	p := decodePlayer(encodePlayer(playerRecord{standing: &standing{rating: 990, losses: 1, lastClan: 2, perClan: []int{0, 1}}}))
 	urequire.True(t, p.standing != nil)

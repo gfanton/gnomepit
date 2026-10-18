@@ -469,16 +469,7 @@ func decodePlayer(s string) playerRecord {
 	for n := r.u16(); n > 0; n-- {
 		p.ids = append(p.ids, int(r.u32()))
 	}
-	if n := int(r.u8()); n != 0 {
-		if n < standingFix || (n-standingFix)%2 != 0 {
-			panic("malformed player")
-		}
-		st := &standing{rating: int(r.u16()), wins: int(r.u16()), losses: int(r.u16()), draws: int(r.u16()), lastClan: int(r.u8())}
-		for i := standingFix; i < n; i += 2 {
-			st.perClan = append(st.perClan, int(r.u16()))
-		}
-		p.standing = st
-	}
+	p.standing = readStanding(r)
 	if r.left()%lockSize != 0 {
 		panic("malformed player")
 	}
@@ -486,6 +477,32 @@ func decodePlayer(s string) playerRecord {
 		p.locks = append(p.locks, sessionLock{session: r.addr(), id: int(r.u32()), expires: int64(r.u32())})
 	}
 	return p
+}
+
+// decodeStanding reads only the standing of a player's bytes, skipping their ids, so
+// its cost does not grow with the player's matches; nil when they have none.
+func decodeStanding(s string) *standing {
+	if s == "" {
+		return nil
+	}
+	r := &reader{s: s}
+	r.text(4 * int(r.u16()))
+	return readStanding(r)
+}
+
+func readStanding(r *reader) *standing {
+	n := int(r.u8())
+	if n == 0 {
+		return nil
+	}
+	if n < standingFix || (n-standingFix)%2 != 0 {
+		panic("malformed player")
+	}
+	st := &standing{rating: int(r.u16()), wins: int(r.u16()), losses: int(r.u16()), draws: int(r.u16()), lastClan: int(r.u8())}
+	for i := standingFix; i < n; i += 2 {
+		st.perClan = append(st.perClan, int(r.u16()))
+	}
+	return st
 }
 
 func encodePlayer(p playerRecord) string {

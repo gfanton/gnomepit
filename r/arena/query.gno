@@ -127,7 +127,7 @@ func ClanStandings() []ClanStanding {
 // standingOf is player's standing without its rank.
 func standingOf(rules *engine.Ruleset, player address) Standing {
 	s := Standing{Player: player.String(), Name: nameOf(player), Rating: startRating}
-	st := loadPlayer(player).standing
+	st := decodeStanding(stringAt(&players, string(player)))
 	if st == nil {
 		return s
 	}
