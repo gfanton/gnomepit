@@ -932,6 +932,15 @@ export function createArena({
       let stopped = false;
       let expiry: ReturnType<typeof setTimeout> | undefined;
       let reading = Promise.resolve();
+      // tell hands onChange its news. A listener that throws is reported the way the page
+      // reports a throwing event listener, so the reads after it still run.
+      const tell = async (view: MatchDetail | null, error?: ArenaError) => {
+        try {
+          await onChange(view, error);
+        } catch (e) {
+          reportError(e);
+        }
+      };
       const read = () => {
         reading = reading.then(async () => {
           if (stopped) return;
@@ -952,10 +961,10 @@ export function createArena({
             ]);
             if (seen !== last && !stopped) {
               last = seen;
-              void onChange(view);
+              void tell(view);
             }
           } catch (err) {
-            if (!stopped) void onChange(null, errorFrom(err));
+            if (!stopped) void tell(null, errorFrom(err));
           }
         });
       };

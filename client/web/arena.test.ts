@@ -1623,6 +1623,48 @@ test("watch reads a match again on a call to it, and not on a call to another ma
   stop();
 });
 
+test("watch reports a listener that throws on a failed read, and reads again", async (t) => {
+  const reported: unknown[] = [];
+  Object.defineProperty(globalThis, "reportError", { value: (e: unknown) => reported.push(e), configurable: true });
+  t.after(() => {
+    Reflect.deleteProperty(globalThis, "reportError");
+  });
+  let reads = 0;
+  const chain = {
+    ...arenaChain(),
+    evalJSON: async () => {
+      reads++;
+      if (reads === 1) throw new Error("the node is down");
+      return recorded("match-play").results;
+    },
+    typeJSON: async () => load("qtype-MatchView"),
+  };
+  const indexer = fakeIndexer();
+  const arena = createArena({
+    chain,
+    wallet: null,
+    engine,
+    signer,
+    realm,
+    chainId: "dev",
+    origin: "http://x",
+    storage: memory(),
+    indexer,
+  });
+  const thrown = new Error("the listener failed");
+  const views: MatchDetail[] = [];
+  const stop = arena.watch(matchId("1"), (view) => {
+    if (view === null) throw thrown;
+    views.push(view);
+  });
+  await sleep(10);
+  indexer.onCall({ height: 9, caller: bob, func: "Play", args: ["1", picks] });
+  await sleep(10);
+  stop();
+  assert.equal(views.length, 1);
+  assert.deepEqual(reported, [thrown]);
+});
+
 // While the indexer answers, nothing but a call to the match makes watch read it again, and
 // a session expires without one.
 test("watch reads a match again when the session for it expires", async () => {
