@@ -21,7 +21,7 @@ async function built(t: TestContext, network: string): Promise<string> {
   return out;
 }
 
-void test("an unknown network stops the build before it writes anything", async (t) => {
+test("an unknown network stops the build before it writes anything", async (t) => {
   const out = await tempDir(t);
   await writeFile(join(out, "keep.txt"), "kept");
   await assert.rejects(build({ network: "nowhere", outDir: out }), /unknown network "nowhere"/);
@@ -34,7 +34,7 @@ void test("an unknown network stops the build before it writes anything", async 
   assert.match(run.stderr, /unknown network "nowhere"/);
 });
 
-void test("an offline build ships the game and no dev page; a local build adds the dev pages", async (t) => {
+test("an offline build ships the game and no dev page; a local build adds the dev pages", async (t) => {
   const offline = await built(t, "offline");
   for (const file of [
     "index.html",
@@ -56,14 +56,14 @@ void test("an offline build ships the game and no dev page; a local build adds t
   for (const page of devPages) assert.ok(existsSync(join(local, page)), page);
 });
 
-void test("a build empties its output first, so nothing from an earlier build is published", async (t) => {
+test("a build empties its output first, so nothing from an earlier build is published", async (t) => {
   const out = await tempDir(t);
   await writeFile(join(out, "online-dev.html"), "stale");
   await build({ network: "offline", outDir: out });
   assert.ok(!existsSync(join(out, "online-dev.html")));
 });
 
-void test("the shipped pages use relative URLs, so they load under a Pages subpath", async (t) => {
+test("the shipped pages use relative URLs, so they load under a Pages subpath", async (t) => {
   const offline = await built(t, "offline");
   for (const page of ["index.html", "delvers-preview.html"]) {
     assert.doesNotMatch(await readFile(join(offline, page), "utf8"), /(src|href)="\//, page);
