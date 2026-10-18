@@ -11,7 +11,7 @@ const readJSON = (path: string): unknown => JSON.parse(readFileSync(new URL(path
 const CardFileSchema = v.object({ Clans: v.record(v.string(), v.unknown()) });
 
 const manifest = {
-  generation_tool: "built-in image_gen",
+  generation_tool: "AI image model",
   assets: [
     {
       name: "Bulwark",
