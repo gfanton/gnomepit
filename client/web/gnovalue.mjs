@@ -1,7 +1,7 @@
 // Turns vm/qeval_json answers into plain values. An answer is amino JSON of gno typed
 // values: struct fields come by index, and vm/qtype_json gives their names.
 
-import { fromBase64 } from "./encoding.mjs";
+import { fromBase64 } from "./encoding.ts";
 
 const stringKind = "16";
 const boolKind = "4";

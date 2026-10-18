@@ -4,7 +4,7 @@
 // only.
 
 import { payFor } from "./chain.mjs";
-import { toBase64 } from "./encoding.mjs";
+import { toBase64 } from "./encoding.ts";
 
 // Each key is the sha256 of "gnomehall dev <name>".
 export const devAccounts = {

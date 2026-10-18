@@ -1,7 +1,7 @@
 // A gno node over JSON-RPC: queries, accounts, simulation and broadcast. Transactions
 // arrive signed, as base64 amino binary; this module only carries them.
 
-import { fromBase64, toBase64 } from "./encoding.mjs";
+import { fromBase64, toBase64 } from "./encoding.ts";
 
 // ChainError's type says how far a request got: "network" when no usable answer came
 // back, "rejected" when the node refused a transaction before running it, "failed"

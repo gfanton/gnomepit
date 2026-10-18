@@ -3,7 +3,7 @@
 // let the page sign a match's moves; and the boxes that keep a challenger's sealed plans.
 
 import { feeFor, gasWantedFor } from "./chain.mjs";
-import { fromBase64, fromHex, toBase64, toHex } from "./encoding.mjs";
+import { fromBase64, fromHex, toBase64, toHex } from "./encoding.ts";
 
 // Each side's moves in the first match of client/ONLINE.md "Storage per move", which carries
 // the one-time costs, opening first: the gas each used and the ugnot it deposited.

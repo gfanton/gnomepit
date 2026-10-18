@@ -4,7 +4,7 @@
 
 import { Tx, Wallet } from "@gnolang/tm2-js-client";
 import { MsgCall, MsgCreateSession, MsgRevokeSession, decodeTxMessages } from "@gnolang/gno-js-client";
-import { fromBase64, fromHex, toBase64 } from "./encoding.mjs";
+import { fromBase64, fromHex, toBase64 } from "./encoding.ts";
 
 const codecs = {
   "/vm.m_call": MsgCall,

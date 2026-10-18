@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import * as esbuild from "esbuild";
 
 import { browserBundle } from "../build.ts";
-import { fromBase64 } from "./encoding.mjs";
+import { fromBase64 } from "./encoding.ts";
 import { keyInfo, signBytes, signTx } from "./signer.mjs";
 
 // Signed by client/golden with the chain's own Go types; make golden writes it.

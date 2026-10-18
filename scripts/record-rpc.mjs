@@ -7,7 +7,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 
-import { fromBase64, toBase64 } from "../client/web/encoding.mjs";
+import { fromBase64, toBase64 } from "../client/web/encoding.ts";
 import { networks } from "../client/web/network.ts";
 import * as signer from "../client/web/signer.mjs";
 
