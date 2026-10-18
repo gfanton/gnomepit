@@ -12,7 +12,7 @@ import { knownCards } from "./table.ts";
 import { stepFeedback, cardBehind } from "./battle-feedback.ts";
 import { artIndex } from "./art.ts";
 import { loadArena } from "./arena-provider.ts";
-import { createLobby } from "./lobby.mjs";
+import { createLobby } from "./lobby.ts";
 import { networkFor } from "./network.ts";
 import { replayView, viewOf } from "./online-model.ts";
 import { afterFiniteAnimations, coach, lessonsFor, railsNext, tutorialMatch, tutorialMemory } from "./tutorial.ts";

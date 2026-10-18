@@ -34,7 +34,7 @@ import { nodeEngine } from "./engine-node.ts";
 import { known } from "./fixture.ts";
 import { type Address, address, matchId } from "./ids.ts";
 import type { IndexedCall, Indexer } from "./indexer.ts";
-import { createLobby } from "./lobby.mjs";
+import { createLobby } from "./lobby.ts";
 import * as signer from "./signer.ts";
 import type { SignRequest } from "./signer.ts";
 import {
@@ -353,7 +353,13 @@ test("watch reports a match when it changes, and stops", async () => {
     storage: memory(),
   });
   const seen: (ArenaError | string)[] = [];
-  const stop = arena.watch(matchId("1"), (view, err) => seen.push(err ?? known(view).Phase), { interval: 5 });
+  const stop = arena.watch(
+    matchId("1"),
+    (view, err) => {
+      seen.push(err ?? known(view).Phase);
+    },
+    { interval: 5 },
+  );
   await new Promise((resolve) => setTimeout(resolve, 80));
   stop();
   const count = seen.length;
@@ -1241,7 +1247,15 @@ test("the lobby shows the per-move mode a wallet without sessions leaves, until 
   const storage = memory();
   // page loads the lobby with an arena on this device's storage, whose wallet creates no session.
   const page = () => {
-    const dialog = { innerHTML: "", showModal() {}, close() {}, addEventListener() {} };
+    const dialog = {
+      innerHTML: "",
+      value: "",
+      open: false,
+      showModal() {},
+      close() {},
+      addEventListener() {},
+      append() {},
+    };
     const app = { classList: { add() {}, remove() {} }, dataset: {}, innerHTML: "", querySelector: () => dialog };
     const { arena } = sessionPlayer(chain, {
       storage,
@@ -1631,7 +1645,13 @@ test("watch reports a match whose session expires", async () => {
   const reported = async (count: number) => {
     for (const start = Date.now(); seen.length < count && Date.now() - start < 2000;) await sleep(1);
   };
-  const stop = arena.watch(matchId("1"), (view, err) => seen.push(err ?? known(view).session), { interval: 5 });
+  const stop = arena.watch(
+    matchId("1"),
+    (view, err) => {
+      seen.push(err ?? known(view).session);
+    },
+    { interval: 5 },
+  );
   await reported(1);
   chain.sessionList = [];
   await reported(2);

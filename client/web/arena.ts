@@ -458,7 +458,7 @@ export type Arena = {
   // session that signs this player's next call there. It returns a function that stops it.
   watch(
     id: MatchId,
-    onChange: (view: MatchDetail | null, error?: ArenaError) => void,
+    onChange: (view: MatchDetail | null, error?: ArenaError) => void | Promise<void>,
     options?: { interval?: number },
   ): () => void;
   // notify asks the browser for permission and opts it in to the arena's Turn and
@@ -942,10 +942,10 @@ export function createArena({
             ]);
             if (seen !== last && !stopped) {
               last = seen;
-              onChange(view);
+              void onChange(view);
             }
           } catch (err) {
-            if (!stopped) onChange(null, errorFrom(err));
+            if (!stopped) void onChange(null, errorFrom(err));
           }
         });
       };
