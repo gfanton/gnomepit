@@ -1,12 +1,31 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import type { BattleEvent, GameState, Side, Vitals } from "./engine.ts";
 import { cards, id } from "./fixture.ts";
-import { sentences, matchLog, sideNames, possessive } from "./log.mjs";
+import { sentences, matchLog, sideNames, possessive, type LogContext } from "./log.ts";
 
-const A = (hp) => ({ hp, block: 0, counter: 0, vulnerable: 0, strength: 0 });
-const B = (hp, block, counter, vulnerable) => ({ hp, block, counter, vulnerable, strength: 0 });
-const e = (beat, phase, tier, step, kind, side, card, n, blocked, doubled, after) => ({
+const A = (hp: number): Vitals => ({ hp, block: 0, counter: 0, vulnerable: 0, strength: 0 });
+const B = (hp: number, block: number, counter: number, vulnerable: number): Vitals => ({
+  hp,
+  block,
+  counter,
+  vulnerable,
+  strength: 0,
+});
+const e = (
+  beat: number,
+  phase: BattleEvent["phase"],
+  tier: BattleEvent["tier"],
+  step: number,
+  kind: string,
+  side: Side,
+  card: string,
+  n: number,
+  blocked: number,
+  doubled: boolean,
+  after: [Vitals, Vitals],
+): BattleEvent => ({
   beat,
   phase,
   tier,
@@ -21,7 +40,7 @@ const e = (beat, phase, tier, step, kind, side, card, n, blocked, doubled, after
 });
 
 // The duel spec's worked example: Chalk Dust, Double Tap against Hammer Blow, Spiked Shield.
-const tap = (step, hpA, hpB) => [
+const tap = (step: number, hpA: number, hpB: number) => [
   e(3, "Damage", "Normal", step, "HitLanded", 0, "Double Tap", 1, 0, false, [A(hpA), B(hpB, 0, 1, 0)]),
   e(3, "Damage", "Normal", step, "CounterHit", 0, "Double Tap", 1, 0, false, [A(hpA), B(hpB, 0, 1, 0)]),
 ];
@@ -36,11 +55,11 @@ const events = [
   ...tap(3, 8, 12),
   ...tap(4, 7, 11),
 ];
-const plans = [
+const plans: [number[], number[]] = [
   [id("Chalk Dust"), id("Double Tap")],
   [id("Hammer Blow"), id("Spiked Shield")],
 ];
-const ctx = { cards, names: ["Pickers", "Ironhide"], plans };
+const ctx: LogContext = { cards, names: ["Pickers", "Ironhide"], plans };
 
 test("sentences narrate the worked example", () => {
   assert.deepEqual(sentences(events, ctx), [
@@ -61,7 +80,7 @@ test("sentences narrate the worked example", () => {
 
 test("a cancel names the opponent's card on that beat", () => {
   const cancelled = e(1, "Interrupt", "Quick", 1, "Cancelled", 1, "Hammer Blow", 0, 0, false, [A(15), B(15, 0, 0, 0)]);
-  const kneecapPlans = [
+  const kneecapPlans: [number[], number[]] = [
     [id("Kneecap"), id("Double Tap")],
     [id("Hammer Blow"), id("Spiked Shield")],
   ];
@@ -81,7 +100,7 @@ test("a gain of Strength names the gainer", () => {
   assert.deepEqual(sentences([gained], ctx), ["Momentum: Pickers +1 Strength."]);
 });
 
-const delversCtx = { cards, names: ["Delvers", "Ironhide"], plans };
+const delversCtx: LogContext = { cards, names: ["Delvers", "Ironhide"], plans };
 
 test("Vulnerable a gnome gives itself names the gnome and its tokens", () => {
   const gained = e(1, "Damage", "Normal", 2, "VulnerableGained", 0, "Overdig", 1, 0, false, [
@@ -113,8 +132,8 @@ test("a move or a strip with nothing to take says so", () => {
 });
 
 test("a sentence about You takes the verb You takes", () => {
-  const mirrorCtx = { cards, names: ["You", "Bot"], plans };
-  const ev = (kind, side, card, n) =>
+  const mirrorCtx: LogContext = { cards, names: ["You", "Bot"], plans };
+  const ev = (kind: string, side: Side, card: string, n: number) =>
     e(1, "Damage", "Normal", 1, kind, side, card, n, 0, false, [B(15, 0, 0, 2), B(15, 0, 0, 2)]);
   const events = [
     ev("VulnerableApplied", 1, "Chalk Dust", 1),
@@ -145,7 +164,7 @@ test("the same basic played twice in a round counts hits per beat", () => {
     e(1, "Damage", "Normal", 1, "HitLanded", 0, "Pick", 1, 0, false, [A(15), B(14, 0, 0, 0)]),
     e(2, "Damage", "Normal", 1, "HitLanded", 0, "Pick", 1, 0, false, [A(15), B(13, 0, 0, 0)]),
   ];
-  const pickPlans = [
+  const pickPlans: [number[], number[]] = [
     [id("Pick"), id("Pick"), id("Sling Stone")],
     [id("Brace"), id("Brace"), id("Brace")],
   ];
@@ -172,7 +191,7 @@ test("possessive reads naturally for every side name", () => {
 });
 
 test("matchLog prints each round's plans, sentences and HP, then the result", () => {
-  const state = {
+  const state: GameState = {
     round: 2,
     gnomes: [
       { hp: 7, vulnerable: 0, strength: 0, spent: [] },

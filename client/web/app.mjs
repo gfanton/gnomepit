@@ -6,7 +6,7 @@ import { initial, reduce, botTurn } from "./flow.ts";
 import { deckSize, newDeck, toggle, rareOf } from "./deck.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
 import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.ts";
-import { sentences, matchLog, resultLine, sideNames, possessive } from "./log.mjs";
+import { sentences, matchLog, resultLine, sideNames, possessive } from "./log.ts";
 import { glossary, markKeywords, escapeHTML } from "./keywords.ts";
 import { knownCards } from "./table.ts";
 import { stepFeedback, cardBehind } from "./battle-feedback.ts";
