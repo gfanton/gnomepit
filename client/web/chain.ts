@@ -52,9 +52,10 @@ const BroadcastSchema = v.object({
   height: v.string(),
 });
 
+const StorageKindSchema = v.object({ "@type": v.picklist(["/tm.StorageDepositEvent", "/tm.StorageUnlockEvent"]) });
 const StorageEventSchema = v.object({
-  "@type": v.picklist(["/tm.StorageDepositEvent", "/tm.StorageUnlockEvent"]),
-  bytes_delta: v.string(),
+  ...StorageKindSchema.entries,
+  bytes_delta: v.pipe(v.string(), v.regex(/^-?\d+$/)),
 });
 
 const EvalSchema = v.object({ results: v.array(v.unknown()) });
@@ -109,6 +110,7 @@ export type Fee = { gasWanted: number; gasFee: string };
 
 type AbciResponse = v.InferOutput<typeof AbciSchema>["response"];
 type ChainFailure = v.InferOutput<typeof ErrorSchema>;
+type SimulationResult = { error: ChainFailure | null; log: string; gasUsed: number };
 
 export type Chain = {
   // evalJSON returns the typed values of a read-only call such as `pkg.F("1")`.
@@ -148,7 +150,7 @@ export function createChain({ rpc, fetch = globalThis.fetch.bind(globalThis) }: 
       if (!response.ok) throw new Error(`the node answered ${response.status}`);
       answer = await response.json();
     } catch (err) {
-      throw new ChainError("network", err instanceof Error ? err.message : String(err));
+      throw new ChainError("network", messageOf(err));
     }
     const { result, error } = readAnswer(method, AnswerSchema, answer);
     if (error !== undefined) throw new ChainError("rejected", error.data ?? error.message);
@@ -166,12 +168,13 @@ export function createChain({ rpc, fetch = globalThis.fetch.bind(globalThis) }: 
     if (base.Error !== null) throw new ChainError("failed", reasonOf(base.Error, base.Log));
     return response;
   }
+  // query runs a query with text as its data and returns the base64 data it answers.
   const query = async (path: string, text = ""): Promise<string | null> =>
-    decodeText((await abci(path, toBase64(new TextEncoder().encode(text)))).ResponseBase.Data);
+    (await abci(path, toBase64(new TextEncoder().encode(text)))).ResponseBase.Data;
 
   return {
     evalJSON: async (expr) => readJSON("vm/qeval_json", EvalSchema, await query("vm/qeval_json", expr)).results,
-    typeJSON: async (id) => readJSON("vm/qtype_json", v.unknown(), await query("vm/qtype_json", id)),
+    typeJSON: async (id) => readJSON("vm/qtype_json", v.nonNullable(v.unknown()), await query("vm/qtype_json", id)),
 
     async account(a) {
       const path = `auth/accounts/${a}`;
@@ -186,14 +189,20 @@ export function createChain({ rpc, fetch = globalThis.fetch.bind(globalThis) }: 
     async sessionAccount(master, session) {
       const path = `auth/accounts/${master}/session/${session}`;
       const response = await abci(path, "", "/std.SessionNotFoundError");
-      return response === null ? null : readJSON(path, SessionSchema, decodeText(response.ResponseBase.Data));
+      return response === null ? null : readJSON(path, SessionSchema, response.ResponseBase.Data);
     },
 
     gasPrice: async () => readJSON("auth/gasprice", GasPriceSchema, await query("auth/gasprice")),
 
     async simulate(tx) {
       const { Value: value } = await abci(".app/simulate", tx);
-      const result = readResult(fromBase64(readAnswer(".app/simulate", v.string(), value)));
+      const encoded = readAnswer(".app/simulate", v.string(), value);
+      let result: SimulationResult;
+      try {
+        result = readResult(fromBase64(encoded));
+      } catch (err) {
+        throw unexpectedAnswer(".app/simulate", messageOf(err));
+      }
       if (result.error !== null) throw new ChainError("failed", reasonOf(result.error, result.log));
       return result.gasUsed;
     },
@@ -216,7 +225,8 @@ export function createChain({ rpc, fetch = globalThis.fetch.bind(globalThis) }: 
         if (base.Error !== null) throw new ChainError(type, reasonOf(base.Error, base.Log));
       }
       const storage = (result.deliver_tx.ResponseBase.Events ?? [])
-        .filter((e) => v.is(StorageEventSchema, e))
+        .filter((e) => v.is(StorageKindSchema, e))
+        .map((e) => readAnswer("broadcast_tx_commit", StorageEventSchema, e))
         .reduce((bytes, e) => bytes + Number(e.bytes_delta), 0);
       return { hash: result.hash, height: Number(result.height), gasUsed: Number(result.deliver_tx.GasUsed), storage };
     },
@@ -227,14 +237,27 @@ export function createChain({ rpc, fetch = globalThis.fetch.bind(globalThis) }: 
 // is a network error, since no usable answer came back.
 function readAnswer<T>(what: string, schema: v.GenericSchema<unknown, T>, answer: unknown): T {
   const parsed = v.safeParse(schema, answer);
-  if (!parsed.success) throw new ChainError("network", `unexpected answer to ${what}: ${v.summarize(parsed.issues)}`);
+  if (!parsed.success) throw unexpectedAnswer(what, v.summarize(parsed.issues));
   return parsed.output;
 }
 
-// readJSON is readAnswer for a query's JSON text; no text reads as JSON null.
-function readJSON<T>(what: string, schema: v.GenericSchema<unknown, T>, text: string | null): T {
-  const answer: unknown = text === null ? null : JSON.parse(text);
+// readJSON is readAnswer for a query's data, base64 of JSON text; no data reads as JSON null.
+function readJSON<T>(what: string, schema: v.GenericSchema<unknown, T>, data: string | null): T {
+  let answer: unknown = null;
+  try {
+    if (data !== null) answer = JSON.parse(new TextDecoder().decode(fromBase64(data)));
+  } catch (err) {
+    throw unexpectedAnswer(what, messageOf(err));
+  }
   return readAnswer(what, schema, answer);
+}
+
+function unexpectedAnswer(what: string, detail: string): ChainError {
+  return new ChainError("network", `unexpected answer to ${what}: ${detail}`);
+}
+
+function messageOf(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 // provisionalGas bounds the simulation itself.
@@ -282,8 +305,8 @@ function reasonOf(error: ChainFailure, log: string): string {
 
 // readResult reads the fields of an amino-encoded sdk.Result that simulate needs: its
 // ResponseBase (field 1) holds Error (1, an Any) and Log (4); GasUsed is field 3.
-function readResult(bytes: Uint8Array): { error: ChainFailure | null; log: string; gasUsed: number } {
-  const out: { error: ChainFailure | null; log: string; gasUsed: number } = { error: null, log: "", gasUsed: 0 };
+function readResult(bytes: Uint8Array): SimulationResult {
+  const out: SimulationResult = { error: null, log: "", gasUsed: 0 };
   for (const [field, value] of fields(bytes)) {
     if (field === 3) out.gasUsed = Number(varintOf(value) >> 1n); // amino writes int64 zigzag; gas is never negative
     if (field !== 1) continue;
@@ -355,8 +378,4 @@ function varintOf(value: bigint | Uint8Array): bigint {
 function bytesOf(value: bigint | Uint8Array): Uint8Array {
   if (value instanceof Uint8Array) return value;
   throw new Error("unexpected wire type in simulation result");
-}
-
-function decodeText(base64: string | null): string | null {
-  return base64 === null ? null : new TextDecoder().decode(fromBase64(base64));
 }

@@ -66,6 +66,34 @@ test("an account answer without its account is a network error", async () => {
   );
 });
 
+test("an answer whose data is not JSON is a network error", async () => {
+  const data = toBase64(new TextEncoder().encode("not json"));
+  const fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ result: { response: { ResponseBase: { Error: null, Data: data, Log: "" } } } }),
+  });
+  await assert.rejects(
+    createChain({ rpc: "http://node", fetch }).account(address("g1x")),
+    (err) => err instanceof ChainError && err.type === "network",
+  );
+});
+
+test("a simulation answer that is not a result is a network error", async () => {
+  const value = toBase64(Uint8Array.of(0xff));
+  const fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      result: { response: { ResponseBase: { Error: null, Data: null, Log: "" }, Value: value } },
+    }),
+  });
+  await assert.rejects(
+    createChain({ rpc: "http://node", fetch }).simulate("dHg="),
+    (err) => err instanceof ChainError && err.type === "network",
+  );
+});
+
 test("the gas price is a price per amount of gas", async () => {
   const { chain } = replay("gasprice");
   assert.deepEqual(await chain.gasPrice(), { gas: 1000, amount: 1, denom: "ugnot" });
