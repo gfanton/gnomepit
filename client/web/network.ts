@@ -20,15 +20,11 @@ export const networks = {
   offline: null,
 } as const satisfies Record<string, Network | null>;
 
+const isNetworkName = (name: string): name is keyof typeof networks => Object.hasOwn(networks, name);
+
 export function networkFor(name: string): Network | null {
-  switch (name) {
-    case "local":
-      return networks.local;
-    case "offline":
-      return networks.offline;
-    default:
-      throw new Error(`unknown network "${name}"; known: ${Object.keys(networks).join(", ")}`);
-  }
+  if (!isNetworkName(name)) throw new Error(`unknown network "${name}"; known: ${Object.keys(networks).join(", ")}`);
+  return networks[name];
 }
 
 // networkFrom is base with the link's ?chain=, ?rpc=, ?realm= and ?indexer= applied; an
