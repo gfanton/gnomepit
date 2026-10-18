@@ -29,7 +29,7 @@ import { elementById } from "./dom.ts";
 import type { Address } from "./ids.ts";
 import { type Lobby, createLobby } from "./lobby.ts";
 import { networkFor } from "./network.ts";
-import { type View, isSet, replayView } from "./online-model.ts";
+import { type View, matchBarText, replayView } from "./online-model.ts";
 import {
   type TutorialMatch,
   afterFiniteAnimations,
@@ -294,10 +294,9 @@ function battleNames(): Pair<string> {
     : sideNames(underway().clans, flow.mode);
 }
 function onlineBar(): string {
-  const deadline = onlineContext?.view?.deadline;
   return flow.mode !== "online"
     ? ""
-    : `<section class="online-match-bar"><button class="button button--secondary" data-action="onlineBack" ${onlineSending ? "disabled" : ""}>Back to board</button><span>${isSet(deadline) ? `Your move deadline: ${escapeHTML(new Date(deadline * 1000).toLocaleString())}` : onlineContext?.intent === "accept" ? "Accepting a challenge · Round 1" : "Posting a challenge · Round 1"}</span><p role="status">${escapeHTML(onlineError !== "" ? onlineError : onlineSending ? "Sending your move… Waiting for confirmation." : "")}</p></section>`;
+    : `<section class="online-match-bar"><button class="button button--secondary" data-action="onlineBack" ${onlineSending ? "disabled" : ""}>Back to board</button><span>${escapeHTML(matchBarText(onlineMatch().intent, onlineMatch().view?.deadline))}</span><p role="status">${escapeHTML(onlineError !== "" ? onlineError : onlineSending ? "Sending your move… Waiting for confirmation." : "")}</p></section>`;
 }
 async function sendOnlinePlan(): Promise<void> {
   if (onlineSending || !isSealable(plan, legalPlans)) return;

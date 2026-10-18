@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { GameState, Gnome, ResolveRequest, Resolution } from "./engine.ts";
 import { event } from "./fixture.ts";
 import { address, matchId } from "./ids.ts";
-import { type ArenaView, viewOf, timeLeft, cardIds, replayView } from "./online-model.ts";
+import { type ArenaView, viewOf, timeLeft, cardIds, replayView, matchBarText } from "./online-model.ts";
 const account = address("g1player");
 const other = address("g1other");
 const gnome = (hp: number): Gnome => ({ hp, vulnerable: 0, strength: 0, spent: [] });
@@ -95,6 +95,12 @@ test("the challenger replays their pending clash last, with the deck the arena o
   assert.deepEqual(r.rounds, [{ plans: [[0], [1]], events: clash, state: after, start }]);
   assert.deepEqual(r.state, after);
   assert.equal(r.result, "ongoing");
+});
+test("the match bar gives the deadline only for a move", () => {
+  assert.equal(matchBarText("accept", 200), "Accepting a challenge · Round 1");
+  assert.equal(matchBarText("challenge", 200), "Posting a challenge · Round 1");
+  assert.equal(matchBarText("move", 200), `Your move deadline: ${new Date(200_000).toLocaleString()}`);
+  assert.equal(matchBarText("move", 0), "Your move");
 });
 test("deadline labels never round a still-active deadline to expired", () => {
   assert.equal(timeLeft(100, 99), "0h 1m left");

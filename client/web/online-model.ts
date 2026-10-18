@@ -107,6 +107,14 @@ function sideOf(players: Pair<Address | "">, address: Address | ""): Side | -1 {
   return players[0] === address ? 0 : players[1] === address ? 1 : -1;
 }
 
+// matchBarText is what the bar over an online plan says: the player's deadline in a match
+// under way, or which first plan they are making.
+export function matchBarText(intent: "challenge" | "accept" | "move", deadline: number | undefined): string {
+  if (intent === "accept") return "Accepting a challenge · Round 1";
+  if (intent === "challenge") return "Posting a challenge · Round 1";
+  return isSet(deadline) ? `Your move deadline: ${new Date(deadline * 1000).toLocaleString()}` : "Your move";
+}
+
 export function shortAddress(address: string | undefined): string {
   if (address === undefined || address === "") return "Awaiting a rival";
   return address.length > 15 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address;
