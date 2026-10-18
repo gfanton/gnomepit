@@ -3,18 +3,21 @@
 // both accounts on gnodev. The keys are public, so the dev wallet is for local chains
 // only.
 
-import { payFor } from "./chain.ts";
+import { type Broadcast, type Chain, payFor } from "./chain.ts";
 import { toBase64 } from "./encoding.ts";
+import { type Address, address } from "./ids.ts";
+import type { Signer } from "./signer.ts";
+import type { TxRequest, Wallet } from "./wallet.ts";
 
 // Each key is the sha256 of "gnomehall dev <name>".
 export const devAccounts = {
   alice: {
     key: "a53530163a6b35ac3d1423d7c0292a4067eb63310aa80e9d14aaa3919a7f21e6",
-    address: "g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w",
+    address: address("g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w"),
   },
   bob: {
     key: "f597ba7dafa0e172e8ef9188d0ff39f0b6a2cb2006112bd9e2717544e99b5b8d",
-    address: "g1h3cka3ya6jw3yr64erpklnhvrgh5l4du6w0faw",
+    address: address("g1h3cka3ya6jw3yr64erpklnhvrgh5l4du6w0faw"),
   },
 };
 
@@ -24,15 +27,52 @@ const sessionAdmin = new Set(["/auth.m_create_session", "/auth.m_revoke_session"
 const adenaGasWanted = 2_000_000_000;
 const adenaGasFee = 100_000; // ugnot
 
-// devWallet is the dev account name's wallet; signer is signer.ts, chain a chain.ts
-// client of the chain chainId names.
-export function devWallet({ name, signer, chain, chainId }) {
-  const { key, address } = devAccounts[name];
-  const success = (data, type = "SUCCESS") => ({ status: "success", type, message: "", data });
-  const failure = (type, message) => ({ status: "failure", type, message, data: null });
+type Success<T> = { status: "success"; type: string; message: ""; data: T };
+type Failure = { status: "failure"; type: string; message: string; data: null };
 
-  async function sign({ messages: msgs, memo = "", gasWanted, gasFee }) {
+// The ADR-036 document SignArbitrary signs: one MsgSignData, with no account and no fee.
+type SignedDocument = {
+  chain_id: string;
+  account_number: string;
+  sequence: string;
+  fee: { amount: never[]; gas: string };
+  msgs: { type: string; value: { signer: Address; data: string } }[];
+  memo: string;
+};
+type SignedArbitrary = {
+  signed: SignedDocument;
+  signature: { pubKey: { typeUrl: string; value: string }; signature: string };
+};
+
+export type DevWallet = {
+  AddEstablish(name: string): Promise<Success<undefined>>;
+  GetNetwork(): Promise<Success<{ chainId: string }>>;
+  SwitchNetwork(id: string): Promise<Success<undefined> | Failure>;
+  GetAccount(): Promise<Success<{ address: Address; chainId: string; status: string }>>;
+  SignArbitrary(request: { signer: string; data: string }): Promise<Success<SignedArbitrary> | Failure>;
+  SignTx(request: TxRequest): Promise<Success<{ encodedTransaction: string }> | Failure>;
+  DoContract(request: TxRequest): Promise<Success<Broadcast> | Failure>;
+};
+
+// devWallet is the dev account name's wallet on chain, whose chain id is chainId.
+export function devWallet({
+  name,
+  signer,
+  chain,
+  chainId,
+}: {
+  name: keyof typeof devAccounts;
+  signer: Signer;
+  chain: Chain;
+  chainId: string;
+}): DevWallet {
+  const { key, address } = devAccounts[name];
+  const success = <T>(data: T, type = "SUCCESS"): Success<T> => ({ status: "success", type, message: "", data });
+  const failure = (type: string, message: string): Failure => ({ status: "failure", type, message, data: null });
+
+  async function sign({ messages: msgs, memo = "", gasWanted, gasFee }: TxRequest): Promise<string> {
     const account = await chain.account(address);
+    if (account === null) throw new Error(`${address} has no account on the chain`);
     const base = {
       chainId,
       accountNumber: account.accountNumber,
@@ -44,7 +84,7 @@ export function devWallet({ name, signer, chain, chainId }) {
     if (msgs.every((msg) => sessionAdmin.has(msg.type))) {
       return signer.signTx({
         ...base,
-        fee: { gasWanted: gasWanted || adenaGasWanted, gasFee: `${gasFee || adenaGasFee}ugnot` },
+        fee: { gasWanted: gasWanted ?? adenaGasWanted, gasFee: `${gasFee ?? adenaGasFee}ugnot` },
       });
     }
     return payFor(chain, (fee) => signer.signTx({ ...base, fee }));
@@ -60,7 +100,7 @@ export function devWallet({ name, signer, chain, chainId }) {
     // chain, the signer and the text, so the same text always gives the same signature.
     async SignArbitrary({ signer: who, data }) {
       if (who !== address) return failure("SIGNER_MISMATCH", "Signer does not match the signing key");
-      const signed = {
+      const signed: SignedDocument = {
         chain_id: chainId,
         account_number: "0",
         sequence: "0",
@@ -85,7 +125,7 @@ export function devWallet({ name, signer, chain, chainId }) {
       try {
         return success({ encodedTransaction: await sign(params) });
       } catch (err) {
-        return failure("SIGNING_FAILED", err.reason ?? err.message);
+        return failure("SIGNING_FAILED", err instanceof Error ? err.message : String(err));
       }
     },
 
@@ -93,19 +133,21 @@ export function devWallet({ name, signer, chain, chainId }) {
       try {
         return success(await chain.broadcast(await sign(params)), "TRANSACTION_SUCCESS");
       } catch (err) {
-        return failure("TRANSACTION_FAILED", err.reason ?? err.message);
+        return failure("TRANSACTION_FAILED", err instanceof Error ? err.message : String(err));
       }
     },
-  };
+  } satisfies Wallet;
 }
 
+type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+
 // sortedJSON is JSON with every object's keys in order, as Adena signs documents.
-function sortedJSON(value) {
+function sortedJSON(value: Json): string {
   if (Array.isArray(value)) return `[${value.map(sortedJSON).join(",")}]`;
   if (value !== null && typeof value === "object") {
-    return `{${Object.keys(value)
-      .sort()
-      .map((k) => `${JSON.stringify(k)}:${sortedJSON(value[k])}`)
+    return `{${Object.entries(value)
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([k, item]) => `${JSON.stringify(k)}:${sortedJSON(item)}`)
       .join(",")}}`;
   }
   return JSON.stringify(value);

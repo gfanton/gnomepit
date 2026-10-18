@@ -3,17 +3,21 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { createChain } from "./chain.ts";
-import { devAccounts, devWallet } from "./devwallet.mjs";
+import { devAccounts, devWallet } from "./devwallet.ts";
+import { known } from "./fixture.ts";
 import * as signer from "./signer.ts";
+import type { SignRequest } from "./signer.ts";
 import { deriveKeys, revokeMessage, sessionBudget, sessionMessage } from "./wallet.ts";
 
 const alice = devAccounts.alice.address;
 const spendLimit = sessionBudget("challenger", { gas: 1000, amount: 1, denom: "ugnot" });
 
 // replayChain answers each RPC request with the next recording.
-function replayChain(...names) {
+function replayChain(...names: string[]) {
   const fetch = async () => {
-    const answer = JSON.parse(readFileSync(new URL(`./testdata/rpc/${names.shift()}.json`, import.meta.url)));
+    const answer: unknown = JSON.parse(
+      readFileSync(new URL(`./testdata/rpc/${names.shift()}.json`, import.meta.url), "utf8"),
+    );
     return { ok: true, status: 200, json: async () => answer };
   };
   return createChain({ rpc: "http://node", fetch });
@@ -23,8 +27,9 @@ test("each dev account's key gives its listed address", async () => {
   for (const { key, address } of Object.values(devAccounts)) assert.equal((await signer.keyInfo(key)).address, address);
 });
 
+// These calls never reach the chain, so it has no recording to replay.
 test("the dev wallet answers connection calls like Adena", async () => {
-  const wallet = devWallet({ name: "alice", signer, chain: null, chainId: "dev" });
+  const wallet = devWallet({ name: "alice", signer, chain: replayChain(), chainId: "dev" });
   assert.equal((await wallet.AddEstablish("Gnomehall")).status, "success");
   assert.equal((await wallet.GetNetwork()).data.chainId, "dev");
   assert.equal((await wallet.GetAccount()).data.address, alice);
@@ -32,19 +37,19 @@ test("the dev wallet answers connection calls like Adena", async () => {
 });
 
 test("SignArbitrary signs Adena's document the same way every time", async () => {
-  const wallet = devWallet({ name: "alice", signer, chain: null, chainId: "dev" });
+  const wallet = devWallet({ name: "alice", signer, chain: replayChain(), chainId: "dev" });
   const first = await wallet.SignArbitrary({ signer: alice, data: "Gnomehall at http://x" });
   const again = await wallet.SignArbitrary({ signer: alice, data: "Gnomehall at http://x" });
   assert.equal(first.status, "success");
-  assert.equal(first.data.signature.signature, again.data.signature.signature);
+  assert.equal(first.data.signature.signature, again.data?.signature.signature);
   assert.equal(first.data.signature.pubKey.value, (await signer.keyInfo(devAccounts.alice.key)).pubKey);
-  const [msg] = first.data.signed.msgs;
+  const msg = known(first.data.signed.msgs[0]);
   assert.equal(msg.type, "sign/MsgSignData");
   assert.equal(atob(msg.value.data), "Gnomehall at http://x");
   assert.equal(first.data.signed.chain_id, "dev");
 
   const other = await wallet.SignArbitrary({ signer: alice, data: "Gnomehall at http://elsewhere" });
-  assert.notEqual(other.data.signature.signature, first.data.signature.signature);
+  assert.notEqual(other.data?.signature.signature, first.data.signature.signature);
   assert.equal((await wallet.SignArbitrary({ signer: devAccounts.bob.address, data: "x" })).status, "failure");
 });
 
@@ -52,8 +57,11 @@ const call = { type: "/vm.m_call", value: { caller: alice, send: "", pkg_path: "
 
 // recording passes every request on to signer.ts and keeps it.
 function recording() {
-  const requests = [];
-  return { requests, spy: { ...signer, signTx: (request) => (requests.push(request), signer.signTx(request)) } };
+  const requests: SignRequest[] = [];
+  return {
+    requests,
+    spy: { ...signer, signTx: (request: SignRequest) => (requests.push(request), signer.signTx(request)) },
+  };
 }
 
 test("the signer gets the page's messages in Adena's form, as Adena would", async () => {
@@ -95,8 +103,8 @@ test("a session creation is signed with the fee it names, as Adena signs it", as
 test("revokes signed with a creation, or alone, take the fee they name, as Adena signs them", async () => {
   const { requests, spy } = recording();
   const [dead, next] = await Promise.all([0, 1].map((g) => deriveKeys(btoa("root signature"), g, signer)));
-  const revoke = revokeMessage(alice, dead.sessionPubKey);
-  const create = sessionMessage(alice, next.sessionPubKey, 1_800_000_000, "gno.land/r/x", spendLimit, 86_400);
+  const revoke = revokeMessage(alice, known(dead).sessionPubKey);
+  const create = sessionMessage(alice, known(next).sessionPubKey, 1_800_000_000, "gno.land/r/x", spendLimit, 86_400);
   const wallet = devWallet({ name: "alice", signer: spy, chain: replayChain("account", "account"), chainId: "dev" });
   assert.equal(
     (await wallet.SignTx({ messages: [revoke, create], gasWanted: 6_000_000, gasFee: 6_000 })).status,
@@ -114,8 +122,8 @@ test("revokes signed with a creation, or alone, take the fee they name, as Adena
 
 // signer.ts signs no revoke-all, so the request is kept and not signed.
 test("a revoke of every session takes the fee it names too", async () => {
-  const requests = [];
-  const spy = { ...signer, signTx: async (request) => (requests.push(request), "dHg=") };
+  const requests: SignRequest[] = [];
+  const spy = { ...signer, signTx: async (request: SignRequest) => (requests.push(request), "dHg=") };
   const wallet = devWallet({ name: "alice", signer: spy, chain: replayChain("account"), chainId: "dev" });
   const revokeAll = { type: "/auth.m_revoke_all_sessions", value: { creator: alice } };
   assert.equal((await wallet.SignTx({ messages: [revokeAll], gasWanted: 3_000_000, gasFee: 3_000 })).status, "success");

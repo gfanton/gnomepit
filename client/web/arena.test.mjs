@@ -19,7 +19,7 @@ import {
   walletFailure,
 } from "./arena.mjs";
 import { ChainError } from "./chain.ts";
-import { devAccounts, devWallet } from "./devwallet.mjs";
+import { devAccounts, devWallet } from "./devwallet.ts";
 import { nodeEngine } from "./engine-node.ts";
 import { createLobby } from "./lobby.mjs";
 import * as signer from "./signer.ts";

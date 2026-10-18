@@ -6,7 +6,7 @@ GOLDEN := $(WEB)/testdata/golden-tx.json
 GNOTIF_DIR ?= $(HOME)/code/gfanton/gnotif
 REGISTRY := deps/gnotif/v0
 # The local chain: a chain ID and ports clear of a default gnodev, and the dev wallet's two
-# players (client/web/devwallet.mjs), each funded with 10,000 GNOT.
+# players (client/web/devwallet.ts), each funded with 10,000 GNOT.
 DEV_CHAIN := gnomehall-dev
 DEV_RPC := 127.0.0.1:36657
 DEV_WEB := 127.0.0.1:8890

@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 
 import { createArena } from "../web/arena.mjs";
 import { createChain, payFor } from "../web/chain.ts";
-import { devWallet } from "../web/devwallet.mjs";
+import { devWallet } from "../web/devwallet.ts";
 import { nodeEngine } from "../web/engine-node.ts";
 import { createReader } from "../web/gnovalue.ts";
 import { createIndexer } from "../web/indexer.ts";

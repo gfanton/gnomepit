@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 
 import { cardIDs, createArena } from "../client/web/arena.mjs";
 import { createChain, feeFor, gasWantedFor } from "../client/web/chain.ts";
-import { devWallet } from "../client/web/devwallet.mjs";
+import { devWallet } from "../client/web/devwallet.ts";
 import { nodeEngine } from "../client/web/engine-node.ts";
 import { networks } from "../client/web/network.ts";
 import * as signer from "../client/web/signer.ts";
