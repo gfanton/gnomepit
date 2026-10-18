@@ -1,7 +1,7 @@
 // Log sentences, one per event, and the plain-text match log for playtest notes.
 // ctx is {cards, names: [nameA, nameB], plans: [a, b]} for the round the events belong to.
 
-import { cardBehind } from "./battle-feedback.mjs";
+import { cardBehind } from "./battle-feedback.ts";
 
 export function sentences(events, { cards, names, plans }) {
   const hitsTotal = new Map();

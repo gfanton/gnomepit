@@ -96,6 +96,10 @@ export type Engine = {
   resolve(r: ResolveRequest): Resolution;
 };
 
+export function otherSide(side: Side): Side {
+  return side === 0 ? 1 : 0;
+}
+
 // cardOf looks a card up by its id; an id outside the card list throws.
 export function cardOf(cards: Card[], id: number): Card {
   const card = cards[id];

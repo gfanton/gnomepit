@@ -9,7 +9,7 @@ import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan
 import { sentences, matchLog, resultLine, sideNames, possessive } from "./log.mjs";
 import { glossary, markKeywords, escapeHTML } from "./keywords.ts";
 import { knownCards } from "./table.ts";
-import { stepFeedback, cardBehind } from "./battle-feedback.mjs";
+import { stepFeedback, cardBehind } from "./battle-feedback.ts";
 import { artIndex } from "./art.mjs";
 import { loadArena } from "./arena-provider.mjs";
 import { createLobby } from "./lobby.mjs";
