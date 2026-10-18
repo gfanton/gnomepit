@@ -1,14 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { initial, reduce, botTurn } from "./flow.mjs";
+import type { GameState, Gnome, Resolution } from "./engine.ts";
+import { event } from "./fixture.ts";
+import { initial, reduce, botTurn, type Action, type Flow } from "./flow.ts";
 
 const hp = 15;
 const deckA = [2, 3, 4, 5, 6, 7, 8, 9];
 const deckB = [12, 13, 14, 15, 16, 17, 18, 19];
-const gnome = { hp, vulnerable: 0, strength: 0, spent: [] };
-const startState = { round: 1, gnomes: [gnome, gnome] };
-const nextState = {
+const gnome: Gnome = { hp, vulnerable: 0, strength: 0, spent: [] };
+const startState: GameState = { round: 1, gnomes: [gnome, gnome] };
+const nextState: GameState = {
   round: 2,
   gnomes: [
     { ...gnome, hp: 7, spent: [6, 7] },
@@ -16,21 +18,26 @@ const nextState = {
   ],
 };
 
-const start = (mode) => ({ type: "start", mode, hp });
-const deckReady = (clan, deck) => ({ type: "deckReady", clan, deck });
-const handoffDone = { type: "handoffDone" };
-const planSealed = (plan) => ({ type: "planSealed", plan });
-const resolved = (result, state = nextState) => ({ type: "resolved", state, result, events: [{ kind: "HitLanded" }] });
-const playbackDone = { type: "playbackDone" };
+const start = (mode: "hotseat" | "bot"): Action => ({ type: "start", mode, hp });
+const deckReady = (clan: string, deck: number[]): Action => ({ type: "deckReady", clan, deck });
+const handoffDone: Action = { type: "handoffDone" };
+const planSealed = (plan: number[]): Action => ({ type: "planSealed", plan });
+const resolved = (result: Resolution["result"], state = nextState): Action => ({
+  type: "resolved",
+  state,
+  result,
+  events: [event({ kind: "HitLanded" })],
+});
+const playbackDone: Action = { type: "playbackDone" };
 
-const play = (actions, from = initial) => actions.reduce(reduce, from);
-const bothDecks = (mode) => {
+const play = (actions: Action[], from: Flow = initial) => actions.reduce(reduce, from);
+const bothDecks = (mode: "hotseat" | "bot") => {
   const base = [start(mode), deckReady("Pickers", deckA)];
   return mode === "hotseat"
     ? [...base, handoffDone, deckReady("Ironhide", deckB), handoffDone]
     : [...base, deckReady("Ironhide", deckB)];
 };
-const bothPlans = (mode) => {
+const bothPlans = (mode: "hotseat" | "bot") => {
   const first = planSealed([0, 0, 0]);
   return mode === "hotseat" ? [first, handoffDone, planSealed([1, 1, 1])] : [first, planSealed([1, 1, 1])];
 };
@@ -110,12 +117,12 @@ test("resolved records the round, replaces the state and clears the plans", () =
   const f = play([...bothDecks("hotseat"), ...bothPlans("hotseat"), resolved("ongoing")]);
   assert.equal(f.screen, "playback");
   assert.equal(f.rounds.length, 1);
-  assert.deepEqual(f.rounds[0].plans, [
+  assert.deepEqual(f.rounds[0]?.plans, [
     [0, 0, 0],
     [1, 1, 1],
   ]);
-  assert.deepEqual(f.rounds[0].events, [{ kind: "HitLanded" }]);
-  assert.deepEqual(f.rounds[0].state, nextState);
+  assert.deepEqual(f.rounds[0]?.events, [event({ kind: "HitLanded" })]);
+  assert.deepEqual(f.rounds[0]?.state, nextState);
   assert.deepEqual(f.state, nextState);
   assert.deepEqual(f.plans, [null, null]);
   assert.equal(f.result, "ongoing");
@@ -169,6 +176,7 @@ test("botTurn is false in hot-seat and for player 1", () => {
 test("an action that does not fit the screen leaves the flow unchanged", () => {
   const f = play([start("hotseat")]);
   assert.deepEqual(reduce(f, planSealed([0, 0, 0])), f);
+  // @ts-expect-error: no action has this type, and the reducer must still leave the flow alone.
   assert.deepEqual(reduce(f, { type: "nonsense" }), f);
 });
 
@@ -181,7 +189,7 @@ test("reduce returns a new object and never mutates its input", () => {
 });
 
 test("a hot-seat match with a knockout in round 2 reaches the result with two rounds", () => {
-  const round2 = {
+  const round2: GameState = {
     round: 3,
     gnomes: [
       { ...gnome, hp: 2, spent: [6, 7, 8] },
@@ -203,7 +211,7 @@ test("a hot-seat match with a knockout in round 2 reaches the result with two ro
   assert.deepEqual(f.state, round2);
 });
 
-const startTutorial = { type: "startTutorial", hp, clans: ["Pickers", "Ironhide"], decks: [deckA, deckB] };
+const startTutorial: Action = { type: "startTutorial", hp, clans: ["Pickers", "Ironhide"], decks: [deckA, deckB] };
 
 test("the guided match starts on your round 1 plan with both decks set", () => {
   const flow = reduce(initial, startTutorial);
@@ -224,6 +232,6 @@ test("in the guided match the script plays Ironhide's turn, with no hand-off", (
 });
 
 test("the guided match starts only from the title screen", () => {
-  const library = { ...initial, screen: "library" };
+  const library: Flow = { ...initial, screen: "library" };
   assert.equal(reduce(library, startTutorial), library);
 });

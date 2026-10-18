@@ -1,8 +1,9 @@
-// Test fixture mirroring client/web/cards.json: the card view and the three clans.
+// Test fixture mirroring client/web/cards.json: the card view and the three clans, and a
+// battle event builder.
 
 import assert from "node:assert/strict";
 
-import type { Card, Clan } from "./engine.ts";
+import type { BattleEvent, Card, Clan, Vitals } from "./engine.ts";
 
 const def = (id: number, name: string, cost: number, tier: Card["tier"], extra: Partial<Card> = {}): Card => ({
   id,
@@ -61,3 +62,23 @@ export const id = (name: string): number => {
   assert.ok(card, `no card named ${name}`);
   return card.id;
 };
+
+const untouched: Vitals = { hp: 15, block: 0, counter: 0, vulnerable: 0, strength: 0 };
+
+// event is a battle event with the fields a test names. The others are side 0's Pick on
+// beat 1, dealing nothing to gnomes at full health.
+export function event(fields: Pick<BattleEvent, "kind"> & Partial<BattleEvent>): BattleEvent {
+  return {
+    beat: 1,
+    phase: "Damage",
+    tier: "Normal",
+    step: 1,
+    side: 0,
+    card: 0,
+    n: 0,
+    blocked: 0,
+    doubled: false,
+    after: [untouched, untouched],
+    ...fields,
+  };
+}

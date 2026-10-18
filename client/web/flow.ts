@@ -1,9 +1,42 @@
 // The match flow: a pure reducer over the page's screens. It knows which screen shows,
 // who is acting and what has been chosen; rendering and the engine live elsewhere.
 
-export const initial = Object.freeze({
+import type { BattleEvent, GameState, Resolution, Side } from "./engine.ts";
+
+type Pair<T> = [T, T];
+
+export type Screen = "title" | "library" | "lobby" | "deck" | "handoff" | "plan" | "playback" | "result";
+export type Mode = "hotseat" | "bot" | "tutorial" | "online";
+export type Round = { plans: Pair<number[]>; events: BattleEvent[]; state: GameState };
+
+export type Flow = {
+  screen: Screen;
+  mode: Mode | null;
+  hp: number | null;
+  acting: Side;
+  clans: Pair<string | null>;
+  decks: Pair<number[] | null>;
+  state: GameState | null;
+  plans: Pair<number[] | null>;
+  rounds: Round[];
+  result: Resolution["result"];
+  after: { screen: Screen; acting: Side } | null;
+};
+
+export type Action =
+  | { type: "start"; mode: "hotseat" | "bot"; hp: number }
+  | { type: "startTutorial"; hp: number; clans: Pair<string>; decks: Pair<number[]> }
+  | { type: "deckReady"; clan: string; deck: number[] }
+  | { type: "handoffDone" }
+  | { type: "planSealed"; plan: number[] }
+  | ({ type: "resolved" } & Resolution)
+  | { type: "playbackDone" }
+  | { type: "rematch" }
+  | { type: "newMatch" };
+
+export const initial: Readonly<Flow> = Object.freeze<Flow>({
   screen: "title",
-  mode: null, // "hotseat", "bot" or "tutorial"
+  mode: null,
   hp: null,
   acting: 0, // the player choosing a deck or a plan
   clans: [null, null],
@@ -17,16 +50,30 @@ export const initial = Object.freeze({
 
 // botTurn is true when the bot has to choose a deck or a plan, or the guided match's script
 // has to play Ironhide's plan.
-export function botTurn(flow) {
+export function botTurn(flow: Flow): boolean {
   if (flow.mode === "tutorial") return flow.acting === 1 && flow.screen === "plan";
   return flow.mode === "bot" && flow.acting === 1 && (flow.screen === "deck" || flow.screen === "plan");
 }
 
-export function reduce(flow, action) {
-  switch (`${flow.screen}/${action.type}`) {
-    case "title/start":
+// The screen each action belongs to; on any other screen an action leaves the flow as it is.
+const screenOf = {
+  start: "title",
+  startTutorial: "title",
+  deckReady: "deck",
+  handoffDone: "handoff",
+  planSealed: "plan",
+  resolved: "playback",
+  playbackDone: "playback",
+  rematch: "result",
+  newMatch: "result",
+} as const satisfies Record<Action["type"], Screen>;
+
+export function reduce(flow: Flow, action: Action): Flow {
+  if (flow.screen !== screenOf[action.type]) return flow;
+  switch (action.type) {
+    case "start":
       return { ...initial, screen: "deck", mode: action.mode, hp: action.hp, state: freshState(action.hp) };
-    case "title/startTutorial":
+    case "startTutorial":
       return {
         ...initial,
         screen: "plan",
@@ -36,7 +83,7 @@ export function reduce(flow, action) {
         decks: action.decks,
         state: freshState(action.hp),
       };
-    case "deck/deckReady": {
+    case "deckReady": {
       const next = {
         ...flow,
         clans: withAt(flow.clans, flow.acting, action.clan),
@@ -44,49 +91,52 @@ export function reduce(flow, action) {
       };
       return flow.acting === 0 ? toward(next, "deck", 1) : toward(next, "plan", 0);
     }
-    case "handoff/handoffDone":
+    case "handoffDone":
+      if (flow.after === null) return flow;
       return { ...flow, screen: flow.after.screen, acting: flow.after.acting, after: null };
-    case "plan/planSealed": {
+    case "planSealed": {
       const next = { ...flow, plans: withAt(flow.plans, flow.acting, action.plan) };
       return flow.acting === 0 ? toward(next, "plan", 1) : { ...next, screen: "playback" };
     }
-    case "playback/resolved":
+    case "resolved": {
+      const [a, b] = flow.plans;
+      if (a === null || b === null) return flow;
       return {
         ...flow,
-        rounds: [...flow.rounds, { plans: flow.plans, events: action.events, state: action.state }],
+        rounds: [...flow.rounds, { plans: [a, b], events: action.events, state: action.state }],
         state: action.state,
         result: action.result,
         plans: [null, null],
       };
-    case "playback/playbackDone":
+    }
+    case "playbackDone":
       return flow.result === "ongoing" ? toward(flow, "plan", 0) : { ...flow, screen: "result" };
-    case "result/rematch":
+    case "rematch":
+      if (flow.hp === null) return flow;
       return toward(
         { ...flow, state: freshState(flow.hp), rounds: [], plans: [null, null], result: "ongoing" },
         "plan",
         0,
       );
-    case "result/newMatch":
+    case "newMatch":
       return initial;
-    default:
-      return flow;
   }
 }
 
-function freshState(hp) {
+function freshState(hp: number): GameState {
   const gnome = () => ({ hp, vulnerable: 0, strength: 0, spent: [] });
   return { round: 1, gnomes: [gnome(), gnome()] };
 }
 
 // toward moves to a screen for a player, through the hand-off curtain in hot-seat since the
 // next player must not see what the current one sees.
-function toward(flow, screen, acting) {
+function toward(flow: Flow, screen: Screen, acting: Side): Flow {
   if (flow.mode === "hotseat") return { ...flow, screen: "handoff", after: { screen, acting } };
   return { ...flow, screen, acting, after: null };
 }
 
-function withAt(list, index, value) {
-  const out = [...list];
+function withAt<T>(list: Pair<T>, index: Side, value: T): Pair<T> {
+  const out: Pair<T> = [...list];
   out[index] = value;
   return out;
 }

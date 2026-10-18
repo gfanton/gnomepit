@@ -2,7 +2,7 @@
 // rule comes from the engine; this module only draws and routes.
 
 import { loadEngine } from "./engine.ts";
-import { initial, reduce, botTurn } from "./flow.mjs";
+import { initial, reduce, botTurn } from "./flow.ts";
 import { deckSize, newDeck, toggle, rareOf } from "./deck.ts";
 import { randomDeck, randomPlan } from "./bot.mjs";
 import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.ts";
