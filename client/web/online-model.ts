@@ -10,7 +10,7 @@ type Pair<T> = [T, T];
 
 // A match, a summary or a board challenge as the arena gives it.
 export type ArenaView = Partial<MatchView & OpenChallenge> &
-  Partial<Pick<MatchDetail, "action" | "deadline" | "session" | "pending" | "planning">> & { ownDeck?: number[] };
+  Partial<Pick<MatchDetail, "action" | "deadline" | "session" | "pending" | "planning">>;
 
 // A view under the lobby's names. side is this player's: 0 for the challenger, 1 for the
 // acceptor, -1 for neither.
@@ -35,7 +35,6 @@ export type View = {
   plans: string[][] | undefined;
   hp: number[][] | undefined;
   deadlinePassed: boolean;
-  ownDeck: number[] | undefined;
   session: MatchDetail["session"] | undefined;
   players: Pair<Address | "">;
   clans: Pair<string>;
@@ -95,7 +94,6 @@ export function viewOf(raw: ArenaView, address: Address | "" = "", now = Date.no
     plans: raw.Plans,
     hp: raw.HP,
     deadlinePassed,
-    ownDeck: raw.ownDeck,
     session: raw.session,
     players,
     clans: [raw.ChallengerClan ?? raw.Clan ?? "", raw.AcceptorClan ?? ""],
@@ -150,22 +148,14 @@ export type Replay = {
   result: Resolution["result"];
 };
 
-export function replayView(
-  view: ArenaView,
-  engine: ReplayEngine,
-  address: Address | "",
-  ownDeck: number[] = [],
-): Replay {
+export function replayView(view: ArenaView, engine: ReplayEngine, address: Address | ""): Replay {
   const v = viewOf(view, address);
   const clans = engine.clans;
   if (clans !== undefined && v.clans.some((name) => name !== "" && !clans.some((c) => c.name === name)))
     throw new Error("This page’s card file does not match the chain’s engine. Reload before playing.");
   const decks: Pair<number[]> = [cardIds(v.challengerDeck, engine.cards), cardIds(v.acceptorDeck, engine.cards)];
-  const recovered = v.ownDeck ?? view.planning?.deck; // the arena opens the challenger's deck from their box
-  if (v.side !== -1 && decks[v.side].length === 0) {
-    const opened = cardIds(recovered, engine.cards);
-    decks[v.side] = opened.length > 0 ? opened : ownDeck;
-  }
+  // The arena opens the challenger's deck from their box.
+  if (v.side !== -1 && decks[v.side].length === 0) decks[v.side] = cardIds(view.planning?.deck, engine.cards);
   let state: GameState = startState(engine.hp);
   const rounds: ReplayedRound[] = [];
   let result: Resolution["result"] = "ongoing";
