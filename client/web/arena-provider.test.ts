@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { walletNetwork } from "./arena-provider.mjs";
+import { walletNetwork } from "./arena-provider.ts";
 import { networks } from "./network.ts";
 
 test("Adena is offered the page's own network, never one a link names", () => {

@@ -11,7 +11,7 @@ import { glossary, markKeywords, escapeHTML } from "./keywords.ts";
 import { knownCards } from "./table.ts";
 import { stepFeedback, cardBehind } from "./battle-feedback.ts";
 import { artIndex } from "./art.ts";
-import { loadArena } from "./arena-provider.mjs";
+import { loadArena } from "./arena-provider.ts";
 import { createLobby } from "./lobby.mjs";
 import { networkFor } from "./network.ts";
 import { replayView, viewOf } from "./online-model.mjs";
