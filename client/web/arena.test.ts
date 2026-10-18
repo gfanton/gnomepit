@@ -32,7 +32,7 @@ import { type Chain, ChainError, type Session } from "./chain.ts";
 import { devAccounts, devWallet } from "./devwallet.ts";
 import type { GameState, Gnome, LegalPlansRequest } from "./engine.ts";
 import { nodeEngine } from "./engine-node.ts";
-import { known } from "./fixture.ts";
+import { known, unexpectedAsync, unusedPage } from "./fixture.ts";
 import { type Address, address, matchId } from "./ids.ts";
 import type { IndexedCall, Indexer } from "./indexer.ts";
 import { createLobby } from "./lobby.ts";
@@ -377,11 +377,6 @@ const RecordedSchema = v.object({ results: v.array(v.unknown()) });
 type Recorded = v.InferOutput<typeof RecordedSchema>;
 const recorded = (name: string): Recorded => v.parse(RecordedSchema, load(name));
 
-// unexpected stands for a call the test does not expect, which fails.
-const unexpected = (call: string) => async (): Promise<never> => {
-  throw new Error(`${call} was not expected`);
-};
-
 type TestWallet = Pick<
   Wallet,
   "AddEstablish" | "GetNetwork" | "SwitchNetwork" | "GetAccount" | "SignArbitrary" | "DoContract"
@@ -391,10 +386,10 @@ type TestWallet = Pick<
 const walletFor = (account: Address, overrides: Partial<TestWallet> = {}): TestWallet => ({
   AddEstablish: async () => ({ status: "success" }),
   GetNetwork: async () => ({ status: "success", data: { chainId: "dev" } }),
-  SwitchNetwork: unexpected("SwitchNetwork"),
+  SwitchNetwork: unexpectedAsync("SwitchNetwork"),
   GetAccount: async () => ({ status: "success", data: { address: account } }),
-  SignArbitrary: unexpected("SignArbitrary"),
-  DoContract: unexpected("DoContract"),
+  SignArbitrary: unexpectedAsync("SignArbitrary"),
+  DoContract: unexpectedAsync("DoContract"),
   ...overrides,
 });
 
@@ -490,8 +485,8 @@ function arenaChain({
       return (typeof answer === "string" ? recorded(answer) : answer).results;
     },
     typeJSON: async (id) => (id === lockTypeID ? lockType : load(`qtype-${id.split(".").at(-1) ?? ""}`)),
-    account: unexpected("account"),
-    sessionAccount: unexpected("sessionAccount"),
+    account: unexpectedAsync("account"),
+    sessionAccount: unexpectedAsync("sessionAccount"),
     gasPrice: async () => floor,
     simulate: async () => 1_000_000,
     broadcast: async () => {
@@ -755,7 +750,7 @@ function sessionPlayer(
   return { arena, contracts, signed };
 }
 
-// accountOf is the account state connect gives for a connected wallet.
+// accountOf is a connection's account state; a connection with no wallet fails the test.
 function accountOf(connection: Connection) {
   assert.ok("mode" in connection, `no wallet connected: ${connection.state}`);
   return connection;
@@ -1288,37 +1283,20 @@ test("the lobby shows the per-move mode a wallet without sessions leaves, until 
 
   const first = page();
   await first.lobby.action("Authorize");
-  assert.equal(lobbyAccount(first.lobby).mode, "session");
+  assert.equal(accountOf(known(first.lobby.model.account)).mode, "session");
   await first.lobby.sendDraft({ intent: "challenge", opponent: "" }, opening.clan, opening.deck, opening.plan);
-  assert.equal(lobbyAccount(first.lobby).mode, "contract");
+  assert.equal(accountOf(known(first.lobby.model.account)).mode, "contract");
   await first.lobby.action("Account");
   assert.match(first.dialog.innerHTML, /Adena does not support the requested transaction type/);
   assert.match(first.dialog.innerHTML, /data-action="onlineResumeSessions"[^>]*>Use sessions again</);
 
   const reloaded = page();
   await reloaded.lobby.action("Authorize");
-  assert.equal(lobbyAccount(reloaded.lobby).mode, "contract", "connecting keeps the per-move mode");
+  assert.equal(accountOf(known(reloaded.lobby.model.account)).mode, "contract", "connecting keeps the per-move mode");
   await reloaded.lobby.action("ResumeSessions");
-  assert.equal(lobbyAccount(reloaded.lobby).mode, "session");
-  assert.equal(lobbyAccount(reloaded.lobby).fallback, null);
+  assert.equal(accountOf(known(reloaded.lobby.model.account)).mode, "session");
+  assert.equal(accountOf(known(reloaded.lobby.model.account)).fallback, null);
 });
-
-// unusedPage stands for the page callbacks a lobby test does not expect, which fail.
-const unusedPage = {
-  onCompose: unexpectedCall("onCompose"),
-  onPlay: unexpectedCall("onPlay"),
-  onResume: unexpectedCall("onResume"),
-  portrait: unexpectedCall("portrait"),
-  emblem: unexpectedCall("emblem"),
-};
-function unexpectedCall(call: string): () => never {
-  return () => {
-    throw new Error(`${call} was not expected`);
-  };
-}
-// lobbyAccount is the account a lobby shows, with its signing mode.
-const LobbyAccountSchema = v.object({ mode: v.string(), fallback: v.nullable(v.string()) });
-const lobbyAccount = (lobby: { model: { account: unknown } }) => v.parse(LobbyAccountSchema, lobby.model.account);
 
 // The per-move mode stops new sessions, not the ones the device already holds.
 test("in the per-move mode, a move signs with the live session locked to its match, and the wallet signs without one", async () => {

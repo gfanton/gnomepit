@@ -1,5 +1,5 @@
 // Test fixture mirroring client/web/cards.json: the card view and the three clans, with a
-// battle event builder and a guard for the values a test counts on.
+// battle event builder, a guard for the values a test counts on and stand-ins for unexpected calls.
 
 import assert from "node:assert/strict";
 
@@ -68,6 +68,27 @@ export function known<T>(value: T | null | undefined): T {
   assert.ok(value !== null && value !== undefined, "a value the test counts on is missing");
   return value;
 }
+
+// unexpected stands for a call the test does not expect, which fails.
+export function unexpected(call: string): () => never {
+  return () => {
+    throw new Error(`${call} was not expected`);
+  };
+}
+export function unexpectedAsync(call: string): () => Promise<never> {
+  return async () => {
+    throw new Error(`${call} was not expected`);
+  };
+}
+// unusedPage stands for the page callbacks a test does not expect.
+export const unusedPage = {
+  onCompose: unexpected("onCompose"),
+  onPlay: unexpected("onPlay"),
+  onResume: unexpected("onResume"),
+  onExit: unexpected("onExit"),
+  portrait: unexpected("portrait"),
+  emblem: unexpected("emblem"),
+};
 
 const untouched: Vitals = { hp: 15, block: 0, counter: 0, vulnerable: 0, strength: 0 };
 

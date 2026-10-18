@@ -9,7 +9,7 @@ import {
   type Mode,
   type OpenChallenge,
 } from "./arena.ts";
-import { known } from "./fixture.ts";
+import { known, unexpected, unexpectedAsync, unusedPage } from "./fixture.ts";
 import { type Address, type MatchId, address, matchId } from "./ids.ts";
 import { type Lobby, type LobbyArena, type LobbyOptions, createLobby, setupStep } from "./lobby.ts";
 import { type View, viewOf } from "./online-model.ts";
@@ -24,15 +24,6 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 const alice = address("g1alice");
 const bob = address("g1bob");
 
-// unexpected stands for a call the test does not expect, which fails.
-function unexpected(call: string): () => never {
-  return () => {
-    throw new Error(`${call} was not expected`);
-  };
-}
-const unexpectedAsync = (call: string) => async (): Promise<never> => {
-  throw new Error(`${call} was not expected`);
-};
 // unusedArena is an arena that expects no call, which a test gives the calls it expects.
 const unusedArena = (): LobbyArena => ({
   canNotify: false,
@@ -52,15 +43,6 @@ const unusedArena = (): LobbyArena => ({
   claimForfeit: unexpectedAsync("claimForfeit"),
   notify: unexpectedAsync("notify"),
 });
-// unusedPage stands for the page callbacks a test does not expect.
-const unusedPage = {
-  onCompose: unexpected("onCompose"),
-  onPlay: unexpected("onPlay"),
-  onResume: unexpected("onResume"),
-  onExit: unexpected("onExit"),
-  portrait: unexpected("portrait"),
-  emblem: unexpected("emblem"),
-};
 
 type Followed = LobbyArena & {
   board: Listed<OpenChallenge>[];
