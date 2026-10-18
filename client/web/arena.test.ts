@@ -1275,7 +1275,7 @@ test("the lobby shows the per-move mode a wallet without sessions leaves, until 
       created: async (request) =>
         request.messages[0]?.type === "/auth.m_create_session" ? unsupported : { status: "success" },
     });
-    const lobby = createLobby({ ...unusedPage, app, arena, storage, onRender() {}, onExit() {} });
+    const lobby = createLobby({ ...unusedPage, app, arena, onRender() {}, onExit() {} });
     const loaded = { lobby, dialog };
     pages.push(loaded);
     return loaded;

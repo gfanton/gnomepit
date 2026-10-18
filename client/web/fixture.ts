@@ -69,7 +69,8 @@ export function known<T>(value: T | null | undefined): T {
   return value;
 }
 
-// unexpected stands for a call the test does not expect, which fails.
+// unexpected and unexpectedAsync stand for a call the test does not expect: one throws, the other
+// rejects. Inside the lobby's run() or compose(), that lands in model.error and the test goes on.
 export function unexpected(call: string): () => never {
   return () => {
     throw new Error(`${call} was not expected`);

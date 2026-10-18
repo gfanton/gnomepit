@@ -544,7 +544,6 @@ test("after a move is sent, the match it was sent in is watched", async () => {
   });
   arena.match = async () => view;
   arena.move = async () => {};
-  arena.account = () => ({ address: alice, state: "active", mode: "session", fallback: null });
   arena.watch = (id) => {
     arena.watched = id;
     return () => {};
