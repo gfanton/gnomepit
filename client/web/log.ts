@@ -1,5 +1,4 @@
 // Log sentences, one per event, and the plain-text match log for playtest notes.
-// ctx is {cards, names: [nameA, nameB], plans: [a, b]} for the round the events belong to.
 
 import { cardBehind } from "./battle-feedback.ts";
 import { cardOf, otherSide, type BattleEvent, type Card, type Resolution } from "./engine.ts";

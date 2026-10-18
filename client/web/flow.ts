@@ -43,9 +43,9 @@ export const initial: Readonly<Flow> = Object.freeze<Flow>({
   decks: [null, null],
   state: null, // the engine state between rounds
   plans: [null, null], // the current round's sealed plans
-  rounds: [], // {plans, events, state} per resolved round
+  rounds: [],
   result: "ongoing",
-  after: null, // the screen a hand-off leads to: {screen, acting}
+  after: null, // the screen a hand-off leads to
 });
 
 // botTurn is true when the bot has to choose a deck or a plan, or the guided match's script

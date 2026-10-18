@@ -1,5 +1,4 @@
-// The deck picker: a deck is {clan, picks}, the ids picked from the clan's pool with the
-// Rare always in. `clan` is a clan view {name, cards}; `cards` the card list by id.
+// The deck picker: a deck's picks are ids from its clan's pool, with the Rare always in.
 
 import { cardOf, type Card, type Clan } from "./engine.ts";
 
