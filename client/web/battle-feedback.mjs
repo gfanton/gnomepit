@@ -1,4 +1,4 @@
-import { slots } from "./plan.mjs";
+import { slots } from "./plan.ts";
 
 // Presentation only: the engine's actual HP damage and absorbed damage stay separate.
 export function stepFeedback(events) {

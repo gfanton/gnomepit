@@ -5,7 +5,7 @@ import { loadEngine } from "./engine.ts";
 import { initial, reduce, botTurn } from "./flow.mjs";
 import { deckSize, newDeck, toggle, rareOf } from "./deck.ts";
 import { randomDeck, randomPlan } from "./bot.mjs";
-import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.mjs";
+import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.ts";
 import { sentences, matchLog, resultLine, sideNames, possessive } from "./log.mjs";
 import { glossary, markKeywords, escapeHTML } from "./keywords.ts";
 import { knownCards } from "./table.mjs";
