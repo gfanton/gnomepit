@@ -13,7 +13,7 @@ import { createChain, feeFor, gasWantedFor } from "../client/web/chain.ts";
 import { devWallet } from "../client/web/devwallet.mjs";
 import { nodeEngine } from "../client/web/engine-node.ts";
 import { networks } from "../client/web/network.ts";
-import * as signer from "../client/web/signer.mjs";
+import * as signer from "../client/web/signer.ts";
 
 const rpc = process.argv[2] ?? networks.local.rpc;
 const { realm } = networks.local;

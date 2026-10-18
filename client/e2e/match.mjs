@@ -13,7 +13,7 @@ import { nodeEngine } from "../web/engine-node.ts";
 import { createReader } from "../web/gnovalue.ts";
 import { createIndexer } from "../web/indexer.ts";
 import { networks } from "../web/network.ts";
-import * as signer from "../web/signer.mjs";
+import * as signer from "../web/signer.ts";
 import { deriveKeys, generations, rootSignature } from "../web/wallet.mjs";
 
 const rpc = process.argv[2] ?? networks.local.rpc;

@@ -10,7 +10,7 @@ import { devWallet } from "./devwallet.mjs";
 import { loadEngine } from "./engine.ts";
 import { createReader } from "./gnovalue.ts";
 import { networkFrom, networks } from "./network.ts";
-import * as signer from "./signer.mjs";
+import * as signer from "./signer.ts";
 import { answer, rootText, waitForAdena } from "./wallet.mjs";
 
 const params = new URLSearchParams(location.search);

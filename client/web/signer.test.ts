@@ -6,23 +6,60 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import * as esbuild from "esbuild";
+import * as v from "valibot";
 
 import { browserBundle } from "../build.ts";
 import { fromBase64 } from "./encoding.ts";
-import { keyInfo, signBytes, signTx } from "./signer.mjs";
+import { known } from "./fixture.ts";
+import { keyInfo, signBytes, signTx, type Signer } from "./signer.ts";
+
+const TxRequestSchema = v.object({
+  chainId: v.string(),
+  accountNumber: v.number(),
+  sequence: v.number(),
+  privKey: v.string(),
+  sessionAddr: v.string(),
+  fee: v.object({ gasWanted: v.number(), gasFee: v.string() }),
+  memo: v.string(),
+  msgs: v.array(v.object({ type: v.string(), value: v.record(v.string(), v.unknown()) })),
+});
+const BytesRequestSchema = v.object({ privKey: v.string(), bytes: v.string() });
+type TxRequest = v.InferOutput<typeof TxRequestSchema>;
 
 // Signed by client/golden with the chain's own Go types; make golden writes it.
-const golden = JSON.parse(readFileSync(new URL("./testdata/golden-tx.json", import.meta.url)));
-const goldenRequest = (name) => golden.find((c) => c.name === name).request;
+const golden = v.parse(
+  v.array(v.object({ name: v.string(), request: v.unknown(), tx: v.string() })),
+  JSON.parse(readFileSync(new URL("./testdata/golden-tx.json", import.meta.url), "utf8")),
+);
+const goldenRequest = (name: string) => v.parse(TxRequestSchema, known(golden.find((c) => c.name === name)).request);
 
-const signGolden = (signer, name, request) =>
-  name === "sign-bytes" ? signer.signBytes(request.privKey, request.bytes) : signer.signTx(request);
+type GoldenSigner = Pick<Signer, "signBytes" | "signTx">;
+const signGolden = (signer: GoldenSigner, name: string, request: unknown) => {
+  if (name !== "sign-bytes") return signer.signTx(v.parse(TxRequestSchema, request));
+  const { privKey, bytes } = v.parse(BytesRequestSchema, request);
+  return signer.signBytes(privKey, bytes);
+};
+
+// callerOf is the caller of a request's first message, a realm call.
+const callerOf = (request: TxRequest) => v.parse(v.object({ caller: v.string() }), known(request.msgs[0]).value).caller;
 
 for (const { name, request, tx } of golden) {
   test(`${name} signs to the chain's own bytes`, async () => {
     const signed = await signGolden({ signBytes, signTx }, name, request);
     assert.equal(signed, tx);
   });
+}
+
+// isSigner narrows the bundled module to the signer functions the golden cases call.
+function isSigner(value: unknown): value is GoldenSigner {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "signBytes" in value &&
+    typeof value.signBytes === "function" &&
+    "signTx" in value &&
+    typeof value.signTx === "function"
+  );
 }
 
 // The page runs the gno clients on the shims' Buffer and crypto, not Node's.
@@ -32,10 +69,11 @@ test("the page's bundle of the signer signs the golden transactions the same", a
   const outfile = join(dir, "signer.mjs");
   await esbuild.build({
     ...browserBundle(),
-    entryPoints: [fileURLToPath(new URL("./signer.mjs", import.meta.url))],
+    entryPoints: [fileURLToPath(new URL("./signer.ts", import.meta.url))],
     outfile,
   });
-  const bundle = await import(pathToFileURL(outfile).href);
+  const bundle: unknown = await import(pathToFileURL(outfile).href);
+  assert.ok(isSigner(bundle), "the bundle exports signBytes and signTx");
   for (const { name, request, tx } of golden) {
     assert.equal(await signGolden(bundle, name, request), tx, name);
   }
@@ -43,16 +81,14 @@ test("the page's bundle of the signer signs the golden transactions the same", a
 
 test("keyInfo gives the addresses and session key the golden requests carry", async () => {
   const wallet = goldenRequest("wallet-call");
-  assert.equal((await keyInfo(wallet.privKey)).address, wallet.msgs[0].value.caller);
+  assert.equal((await keyInfo(wallet.privKey)).address, callerOf(wallet));
 
   const session = goldenRequest("session-call");
   const sessionKey = await keyInfo(session.privKey);
   assert.equal(sessionKey.address, session.sessionAddr);
   const create = goldenRequest("create-and-revoke").msgs.find((m) => m.type === "/auth.m_create_session");
-  assert.deepEqual(
-    fromBase64(create.value.session_key.value),
-    Uint8Array.of(0x0a, 33, ...fromBase64(sessionKey.pubKey)),
-  );
+  const { session_key: key } = v.parse(v.object({ session_key: v.object({ value: v.string() }) }), create?.value);
+  assert.deepEqual(fromBase64(key.value), Uint8Array.of(0x0a, 33, ...fromBase64(sessionKey.pubKey)));
 });
 
 test("a private key that is not 32 bytes of hex is refused", async () => {
@@ -70,11 +106,15 @@ test("a message signer.mjs does not know is refused", async () => {
   // Names every object inherits must not pass for a message codec.
   for (const type of ["/bank.MsgSend", "constructor", "__proto__", "toString"]) {
     const request = { ...goldenRequest("wallet-call"), msgs: [{ type, value: {} }] };
-    await assert.rejects(signTx(request), (err) => err.message === `unsupported message ${type}`, type);
+    await assert.rejects(
+      signTx(request),
+      (err) => err instanceof Error && err.message === `unsupported message ${type}`,
+      type,
+    );
   }
 });
 
-const goldenTx = (name) => golden.find((c) => c.name === name).tx;
+const goldenTx = (name: string) => known(golden.find((c) => c.name === name)).tx;
 
 test("a request without sessionAddr signs as the account itself", async () => {
   const { sessionAddr, ...request } = goldenRequest("wallet-call");
@@ -84,20 +124,31 @@ test("a request without sessionAddr signs as the account itself", async () => {
 
 test("a call without the fields Adena leaves out signs as one with them empty", async () => {
   const request = goldenRequest("session-call");
-  const { send, max_deposit: maxDeposit, ...value } = request.msgs[0].value;
+  const call = known(request.msgs[0]);
+  const { send, max_deposit: maxDeposit, ...value } = call.value;
   assert.deepEqual([send, maxDeposit], ["", ""]);
-  assert.equal(await signTx({ ...request, msgs: [{ ...request.msgs[0], value }] }), goldenTx("session-call"));
+  assert.equal(await signTx({ ...request, msgs: [{ ...call, value }] }), goldenTx("session-call"));
 });
 
 test("a request without a chain id is refused", async () => {
   for (const chainId of ["", undefined]) {
-    await assert.rejects(signTx({ ...goldenRequest("wallet-call"), chainId }), /missing chain id/, String(chainId));
+    await assert.rejects(
+      // @ts-expect-error: a caller in JavaScript can leave the chain id out.
+      signTx({ ...goldenRequest("wallet-call"), chainId }),
+      /missing chain id/,
+      String(chainId),
+    );
   }
 });
 
 test("a request with no message is refused", async () => {
   for (const msgs of [[], undefined]) {
-    await assert.rejects(signTx({ ...goldenRequest("wallet-call"), msgs }), /no message to sign/, String(msgs));
+    await assert.rejects(
+      // @ts-expect-error: a caller in JavaScript can leave the messages out.
+      signTx({ ...goldenRequest("wallet-call"), msgs }),
+      /no message to sign/,
+      String(msgs),
+    );
   }
 });
 
@@ -105,12 +156,12 @@ test("an account number or sequence that is not a non-negative integer is refuse
   for (const [field, name] of [
     ["accountNumber", "account number"],
     ["sequence", "sequence"],
-  ]) {
+  ] as const) {
     for (const value of [-1, 1.5, "3", undefined, Number.NaN, 2 ** 53]) {
       const request = { ...goldenRequest("wallet-call"), [field]: value };
       await assert.rejects(
         signTx(request),
-        (err) => err.message === `${name} must be a non-negative integer`,
+        (err) => err instanceof Error && err.message === `${name} must be a non-negative integer`,
         `${field} ${value}`,
       );
     }
@@ -123,7 +174,7 @@ test("a session address that is not the signing key's own is refused", async () 
   // The master key signing as its session, the session key naming its master, and text that is no address.
   for (const request of [
     { ...wallet, sessionAddr: session.sessionAddr },
-    { ...session, sessionAddr: wallet.msgs[0].value.caller },
+    { ...session, sessionAddr: callerOf(wallet) },
     { ...session, sessionAddr: "g1nope" },
   ]) {
     await assert.rejects(signTx(request), /session address is not the signing key's address/, request.sessionAddr);

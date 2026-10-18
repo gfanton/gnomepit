@@ -22,7 +22,7 @@ import { ChainError } from "./chain.ts";
 import { devAccounts, devWallet } from "./devwallet.mjs";
 import { nodeEngine } from "./engine-node.ts";
 import { createLobby } from "./lobby.mjs";
-import * as signer from "./signer.mjs";
+import * as signer from "./signer.ts";
 import {
   WalletError,
   deriveKeys,

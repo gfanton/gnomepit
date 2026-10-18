@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 
 import { createChain } from "./chain.ts";
 import { devAccounts, devWallet } from "./devwallet.mjs";
-import * as signer from "./signer.mjs";
+import * as signer from "./signer.ts";
 import { deriveKeys, revokeMessage, sessionBudget, sessionMessage } from "./wallet.mjs";
 
 const alice = devAccounts.alice.address;
@@ -50,7 +50,7 @@ test("SignArbitrary signs Adena's document the same way every time", async () =>
 
 const call = { type: "/vm.m_call", value: { caller: alice, send: "", pkg_path: "gno.land/r/x", func: "F", args: [] } };
 
-// recording passes every request on to signer.mjs and keeps it.
+// recording passes every request on to signer.ts and keeps it.
 function recording() {
   const requests = [];
   return { requests, spy: { ...signer, signTx: (request) => (requests.push(request), signer.signTx(request)) } };
@@ -112,7 +112,7 @@ test("revokes signed with a creation, or alone, take the fee they name, as Adena
   );
 });
 
-// signer.mjs signs no revoke-all, so the request is kept and not signed.
+// signer.ts signs no revoke-all, so the request is kept and not signed.
 test("a revoke of every session takes the fee it names too", async () => {
   const requests = [];
   const spy = { ...signer, signTx: async (request) => (requests.push(request), "dHg=") };

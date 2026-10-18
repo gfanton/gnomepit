@@ -203,7 +203,7 @@ function resolve(engine, state, decks, [a, b]) {
 
 // createArena reads and plays the arena at realm on chainId. wallet answers Adena's
 // calls (Adena itself, or devWallet); engine is the loaded engine and signer is
-// signer.mjs; storage keeps the root signature and the signing mode per wallet, like
+// signer.ts; storage keeps the root signature and the signing mode per wallet, like
 // localStorage; notifier is a gnotif client. origin names the site in the root
 // signature's text. signEachMove skips sessions: the wallet signs every move.
 // sessionLifetime is how long each new session lasts, in seconds. network, {chainName,

@@ -24,7 +24,7 @@ const sessionAdmin = new Set(["/auth.m_create_session", "/auth.m_revoke_session"
 const adenaGasWanted = 2_000_000_000;
 const adenaGasFee = 100_000; // ugnot
 
-// devWallet is the dev account name's wallet; signer is signer.mjs, chain a chain.mjs
+// devWallet is the dev account name's wallet; signer is signer.ts, chain a chain.ts
 // client of the chain chainId names.
 export function devWallet({ name, signer, chain, chainId }) {
   const { key, address } = devAccounts[name];

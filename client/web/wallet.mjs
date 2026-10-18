@@ -118,7 +118,7 @@ export async function rootSignature(wallet, address, origin) {
 }
 
 // deriveKeys derives, from the root signature, the session key of a generation and the
-// box key, with HKDF-SHA256. signer is signer.mjs, which turns a private key into its
+// box key, with HKDF-SHA256. signer is signer.ts, which turns a private key into its
 // address and public key.
 export async function deriveKeys(signature, generation, signer) {
   const material = await crypto.subtle.importKey("raw", fromBase64(signature), "HKDF", false, [

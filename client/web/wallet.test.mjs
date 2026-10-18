@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import { nodeEngine } from "./engine-node.ts";
-import * as signer from "./signer.mjs";
+import * as signer from "./signer.ts";
 import {
   WalletError,
   classifySessions,
