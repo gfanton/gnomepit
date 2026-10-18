@@ -1,4 +1,4 @@
-// The spec's Adena checks, one button each, against a local gnodev: the root signature
+// Adena checks, one button each, against a local gnodev: the root signature
 // is stable, Adena creates a session the page then signs with, Adena revokes a dead
 // session, and Adena signs a move itself. ?dev=alice runs the page with the dev wallet
 // instead, to test the page.

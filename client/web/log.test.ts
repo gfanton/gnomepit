@@ -39,7 +39,7 @@ const e = (
   after,
 });
 
-// The duel spec's worked example: Chalk Dust, Double Tap against Hammer Blow, Spiked Shield.
+// A worked example: Chalk Dust, Double Tap against Hammer Blow, Spiked Shield.
 const tap = (step: number, hpA: number, hpB: number) => [
   e(3, "Damage", "Normal", step, "HitLanded", 0, "Double Tap", 1, 0, false, [A(hpA), B(hpB, 0, 1, 0)]),
   e(3, "Damage", "Normal", step, "CounterHit", 0, "Double Tap", 1, 0, false, [A(hpA), B(hpB, 0, 1, 0)]),
