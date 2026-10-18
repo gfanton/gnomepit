@@ -557,6 +557,28 @@ test("a match view the page cannot read fails as failed", async () => {
   await assert.rejects(arena.match(matchId("1")), (err) => err instanceof ArenaError && err.type === "failed");
 });
 
+test("a match answer whose typed values the page cannot decode fails, naming its query", async () => {
+  const answerText = readFileSync(new URL("./testdata/qeval/match-reveal.json", import.meta.url), "utf8");
+  const withMap = v.parse(RecordedSchema, JSON.parse(answerText.replace('"/gno.SliceType"', '"/gno.MapType"')));
+  const arena = createArena({
+    chain: arenaChain({ matches: { "1": withMap } }),
+    wallet: walletFor(alice),
+    engine,
+    signer,
+    realm,
+    chainId: "dev",
+    origin: "http://x",
+    storage: memory(),
+  });
+  await assert.rejects(
+    arena.match(matchId("1")),
+    (err) =>
+      err instanceof ArenaError &&
+      err.type === "failed" &&
+      err.reason === `unexpected answer to ${realm}.Match("1"): unsupported value of type /gno.MapType`,
+  );
+});
+
 test("a player's session locks read as typed locks, and an answer of another shape fails as failed", async () => {
   const asked: string[] = [];
   const read = async (expr: string): Promise<unknown> => {

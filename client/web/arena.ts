@@ -370,7 +370,7 @@ function messageOf(err: unknown): string {
 }
 
 // readParsed evaluates expr with readValue, a gnovalue reader, and parses its value; a value
-// its schema refuses fails.
+// the reader cannot decode or its schema refuses fails, naming expr.
 async function readParsed<T>(
   readValue: (expr: string) => Promise<unknown>,
   expr: string,
@@ -380,7 +380,8 @@ async function readParsed<T>(
   try {
     value = await readValue(expr);
   } catch (err) {
-    throw errorFrom(err);
+    if (err instanceof ChainError) throw errorFrom(err);
+    throw new ArenaError("failed", `unexpected answer to ${expr}: ${messageOf(err)}`);
   }
   const parsed = v.safeParse(schema, value);
   if (!parsed.success) throw new ArenaError("failed", `unexpected answer to ${expr}: ${v.summarize(parsed.issues)}`);
