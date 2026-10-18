@@ -1,5 +1,8 @@
 // Review prototype only: all account, match and challenge data is fictional.
-const app = document.querySelector("#app");
+
+import { elementById } from "./dom.ts";
+
+const app = elementById("app", HTMLElement);
 const states = [
   "Lobby",
   "Empty hall",
@@ -25,7 +28,7 @@ const states = [
   "Notifications refused",
   "Card file mismatch",
 ];
-let state = new URLSearchParams(location.search).get("state") || "Lobby";
+let state = new URLSearchParams(location.search).get("state") ?? "Lobby";
 if (!states.includes(state)) state = "Lobby";
 const address = "g1…7m4q";
 const fullAddress = "g1demoaddress7m4q";
@@ -33,16 +36,17 @@ const portrait = (iron = false) =>
   `<img class="portrait ${iron ? "portrait--iron" : ""}" src="art/${iron ? "ironhide" : "pickers"}-portrait-v2.jpg" alt="${iron ? "Ironhide" : "Pickers"} champion">`;
 const copy = () =>
   `<span class="address">${address}</span> <button class="copy-address" data-action="copy" aria-label="Copy opponent address">Copy</button>`;
-const button = (label, action, secondary = false) =>
+const button = (label: string, action: string, secondary = false) =>
   `<button class="${secondary ? "quiet" : "button"}" data-action="${action}">${label}</button>`;
-function match(status, round, time, action, turn = false) {
+function match(status: string, round: number, time: string, action: string, turn = false): string {
   return `<article class="match ${turn ? "match--turn" : ""}"><div class="match-top"><span class="status">${status}</span><small>Round ${round} / 3</small></div><div class="fighters">${portrait()}<span class="versus">vs</span>${portrait(true)}<div class="opponent"><strong>Ironhide</strong><div>${copy()}</div></div></div><div class="match-bottom"><div><strong>${time}</strong><br><small>${turn ? "Your deadline" : "Opponent’s deadline"}</small></div>${button(turn ? "Take your turn" : "View match", action, !turn)}</div></article>`;
 }
-function challenge(iron, reserved = false) {
+function challenge(iron: boolean, reserved = false): string {
   return `<article class="challenge ${iron ? "challenge--iron" : ""}"><div class="match-top"><div><div class="eyebrow">${reserved ? "Reserved for you" : "Open challenge"}</div><div class="clan-name">${iron ? "Ironhide" : "Pickers"}</div></div><span class="notice-mark" aria-hidden="true">${iron ? "⛨" : "⚒"}</span></div><p>Posted by ${copy()}</p><div class="match-bottom"><small>Expires in ${reserved ? "2" : "6"} days</small>${button("Accept challenge", iron ? "acceptIron" : "acceptPick", true)}</div></article>`;
 }
-function notice() {
-  const messages = {
+function notice(): string {
+  // Each state's title and text, and the label and action of its button when it has one.
+  const messages: Record<string, [string, string, string?, string?]> = {
     "Session expiring": [
       "Session expires tomorrow",
       "Renew to keep sending moves without wallet pop-ups.",
@@ -97,11 +101,11 @@ function notice() {
     ],
   };
   const n = messages[state];
-  return n
-    ? `<section class="notice ${["Move failed", "Card file mismatch", "Lost"].includes(state) ? "notice--danger" : ""}" role="status"><div><strong>${n[0]}</strong><p>${n[1]}</p></div>${n[2] ? button(n[2], n[3], true) : ""}</section>`
+  return n !== undefined
+    ? `<section class="notice ${["Move failed", "Card file mismatch", "Lost"].includes(state) ? "notice--danger" : ""}" role="status"><div><strong>${n[0]}</strong><p>${n[1]}</p></div>${n[2] !== undefined && n[3] !== undefined ? button(n[2], n[3], true) : ""}</section>`
     : "";
 }
-function render() {
+function render(): void {
   const needsSetup = ["No wallet", "Wrong network", "Not connected", "Signature needed", "Session needed"].includes(
     state,
   );
@@ -121,34 +125,40 @@ function render() {
  <dialog id="detail" aria-labelledby="dialog-title"></dialog><div id="announcement" role="status" aria-live="polite"></div>`;
   if (state === "Card file mismatch")
     app.querySelectorAll("[data-action]").forEach((b) => {
-      if (["post", "acceptIron", "acceptPick", "turn"].includes(b.dataset.action)) b.disabled = true;
+      if (
+        b instanceof HTMLButtonElement &&
+        ["post", "acceptIron", "acceptPick", "turn"].includes(b.dataset.action ?? "")
+      )
+        b.disabled = true;
     });
-  document.querySelector("#state").addEventListener("change", (e) => {
+  elementById("state", HTMLSelectElement).addEventListener("change", (e) => {
+    if (!(e.target instanceof HTMLSelectElement)) return;
     state = e.target.value;
     history.replaceState(null, "", `?state=${encodeURIComponent(state)}`);
     render();
-    document.querySelector("#state").focus();
+    elementById("state", HTMLSelectElement).focus();
   });
 }
-function dialog(title, body, actions = "") {
-  const d = document.querySelector("#detail");
+function dialog(title: string, body: string, actions = ""): void {
+  const d = elementById("detail", HTMLDialogElement);
   d.innerHTML = `<div class="dialog-head"><h2 id="dialog-title">${title}</h2>${button("Close", "close", true)}</div>${body}<div class="dialog-actions">${actions}</div>`;
   d.showModal();
 }
-function toast(message) {
-  document.querySelector("#announcement").innerHTML = "";
+function toast(message: string): void {
+  elementById("announcement", HTMLDivElement).innerHTML = "";
   const t = document.createElement("div");
   t.className = "toast";
   t.textContent = message;
-  document.querySelector("#announcement").append(t);
+  elementById("announcement", HTMLDivElement).append(t);
   setTimeout(() => t.remove(), 4000);
 }
-app.addEventListener("click", async (e) => {
-  const b = e.target.closest("[data-action]");
-  if (!b) return;
+// onClick runs a preview button's action; only a copy waits, for the clipboard.
+async function onClick(e: MouseEvent): Promise<void> {
+  const b = e.target instanceof Element ? e.target.closest("[data-action]") : null;
+  if (!(b instanceof HTMLElement)) return;
   const a = b.dataset.action;
   if (a === "close") {
-    document.querySelector("#detail").close();
+    elementById("detail", HTMLDialogElement).close();
     return;
   }
   if (a === "setup" && !needsConnection() && state !== "Session expiring") {
@@ -161,7 +171,7 @@ app.addEventListener("click", async (e) => {
   }
   if (a === "renew") {
     state = "Session expired";
-    document.querySelector("#detail").close();
+    elementById("detail", HTMLDialogElement).close();
     render();
     return;
   }
@@ -189,7 +199,7 @@ app.addEventListener("click", async (e) => {
       ),
     );
   } else if (a === "setupNext") {
-    document.querySelector("#detail").close();
+    elementById("detail", HTMLDialogElement).close();
     state = ["Session needed", "Session expired"].includes(state)
       ? "Lobby"
       : state === "Signature needed"
@@ -210,7 +220,7 @@ app.addEventListener("click", async (e) => {
       button(needsConnection() ? "Connect wallet" : "Choose your clan", needsConnection() ? "setup" : "handoff"),
     );
   } else if (a === "handoff") {
-    document.querySelector("#detail").close();
+    elementById("detail", HTMLDialogElement).close();
     toast("Prototype handoff: continue into the existing clan, deck and planning screens.");
   } else if (a === "turn")
     dialog(
@@ -231,10 +241,12 @@ app.addEventListener("click", async (e) => {
       button("Keep playing", "close", true) + button("Resign", "resignConfirm"),
     );
   else if (a === "resignConfirm") {
-    document.querySelector("#detail").close();
+    elementById("detail", HTMLDialogElement).close();
     state = "Lost";
     render();
-    document.querySelector(".notice p").textContent = "You resigned. Your opponent wins.";
+    const note = document.querySelector(".notice p");
+    if (note === null) throw new Error("The Lost notice has no text");
+    note.textContent = "You resigned. Your opponent wins.";
   } else if (a === "manage")
     dialog(
       "Your challenge",
@@ -242,7 +254,7 @@ app.addEventListener("click", async (e) => {
       button("Copy invite link", "invite") + button("Withdraw challenge", "withdraw", true),
     );
   else if (a === "withdraw") {
-    document.querySelector("#detail").close();
+    elementById("detail", HTMLDialogElement).close();
     state = "Challenge withdrawn";
     render();
   } else if (a === "notify")
@@ -252,7 +264,7 @@ app.addEventListener("click", async (e) => {
       button("Preview allowed", "notifyAllowed") + button("Preview blocked", "notifyBlocked", true),
     );
   else if (a === "notifyAllowed" || a === "notifyBlocked") {
-    document.querySelector("#detail").close();
+    elementById("detail", HTMLDialogElement).close();
     state = a === "notifyAllowed" ? "Notifications on" : "Notifications refused";
     render();
   } else if (a === "claim" || a === "retry") {
@@ -269,8 +281,9 @@ app.addEventListener("click", async (e) => {
       toast("Clipboard unavailable. Copy from the preview address or browser URL.");
     }
   }
-});
-function needsConnection() {
+}
+app.addEventListener("click", (e) => void onClick(e));
+function needsConnection(): boolean {
   return [
     "No wallet",
     "Wrong network",
