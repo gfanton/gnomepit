@@ -1,6 +1,10 @@
 // Test fixture mirroring client/web/cards.json: the card view and the three clans.
 
-const def = (id, name, cost, tier, extra = {}) => ({
+import assert from "node:assert/strict";
+
+import type { Card, Clan } from "./engine.ts";
+
+const def = (id: number, name: string, cost: number, tier: Card["tier"], extra: Partial<Card> = {}): Card => ({
   id,
   name,
   cost,
@@ -48,8 +52,12 @@ export const cards = [
   def(31, "Cave-In", 3, "Slow"),
 ];
 
-export const pickers = { name: "Pickers", cards: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11] };
-export const ironhide = { name: "Ironhide", cards: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21] };
-export const delvers = { name: "Delvers", cards: [22, 23, 24, 25, 26, 27, 28, 29, 30, 31] };
+export const pickers: Clan = { name: "Pickers", cards: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11] };
+export const ironhide: Clan = { name: "Ironhide", cards: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21] };
+export const delvers: Clan = { name: "Delvers", cards: [22, 23, 24, 25, 26, 27, 28, 29, 30, 31] };
 
-export const id = (name) => cards.find((c) => c.name === name).id;
+export const id = (name: string): number => {
+  const card = cards.find((c) => c.name === name);
+  assert.ok(card, `no card named ${name}`);
+  return card.id;
+};

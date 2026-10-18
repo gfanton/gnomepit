@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { cards, pickers } from "./fixture.mjs";
+import { cards, pickers } from "./fixture.ts";
 import { newDeck, toggle } from "./deck.mjs";
 
 const others = [2, 3, 4, 5, 6, 7, 8];

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { cards, ironhide, id } from "./fixture.mjs";
+import { cards, ironhide, id } from "./fixture.ts";
 import { knownCards, spentIn } from "./table.mjs";
 
 const deck = [

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cards, id } from "./fixture.mjs";
+import { cards, id } from "./fixture.ts";
 import { stepFeedback, cardBehind } from "./battle-feedback.mjs";
 
 test("a fully blocked hit has shield feedback without HP damage", () => {

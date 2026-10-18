@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { cards, pickers } from "./fixture.mjs";
+import { cards, pickers } from "./fixture.ts";
 import { randomDeck, randomPlan } from "./bot.mjs";
 
 const isLegal = (deck) =>

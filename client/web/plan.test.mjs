@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { cards, pickers } from "./fixture.mjs";
+import { cards, pickers } from "./fixture.ts";
 import { beatsUsed, canAdd, addCard, clearFrom, slots, isSealable } from "./plan.mjs";
 
 const available = [0, 1, ...pickers.cards.filter((c) => c !== 10 && c !== 11)];

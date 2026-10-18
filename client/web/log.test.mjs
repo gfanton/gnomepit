@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { cards, id } from "./fixture.mjs";
+import { cards, id } from "./fixture.ts";
 import { sentences, matchLog, sideNames, possessive } from "./log.mjs";
 
 const A = (hp) => ({ hp, block: 0, counter: 0, vulnerable: 0, strength: 0 });
