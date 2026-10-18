@@ -36,3 +36,5 @@ result-*
 !/.claude/
 /.claude/*
 !/.claude/settings.json
+# The superpowers skills' plan workspaces and brainstorm mockups.
+.superpowers/
