@@ -3,7 +3,7 @@
 // ?indexer= polls the node instead. ?dev=alice or ?dev=bob plays with a dev wallet on a
 // local chain instead of Adena.
 
-import { type Arena, createArena } from "./arena.ts";
+import { type Arena, type ArenaOptions, createArena } from "./arena.ts";
 import { type Chain, createChain } from "./chain.ts";
 import { devAccounts, devWallet } from "./devwallet.ts";
 import type { Engine } from "./engine.ts";
@@ -46,10 +46,7 @@ export async function pageWallet(
 
 // walletNetwork is the network the page may ask Adena to add: the build's own, and none
 // when params name another, so an RPC address from a link never enters the wallet.
-export function walletNetwork(
-  params: URLSearchParams,
-  built: Network,
-): { chainName: string; rpcUrl: string } | undefined {
+export function walletNetwork(params: URLSearchParams, built: Network): ArenaOptions["network"] {
   if (params.has("chain") || params.has("rpc")) return undefined;
   return { chainName: built.chainId, rpcUrl: built.rpc };
 }
