@@ -28,7 +28,7 @@ golden: ## Sign the signer tests' golden transactions with the chain's own Go ty
 	go -C client/golden run . > $(GOLDEN).tmp
 	mv -f $(GOLDEN).tmp $(GOLDEN)
 
-build: wasm $(PNPM_STAMP) ## Bundle each page with esbuild into dist/ with its files, for GNOMEHALL_NETWORK (local by default)
+build: wasm $(PNPM_STAMP) ## Build engine.wasm and bundle the pages into dist/ for GNOMEHALL_NETWORK: local (the default) or offline
 	pnpm run build
 
 $(PNPM_STAMP): package.json pnpm-lock.yaml pnpm-workspace.yaml
@@ -65,7 +65,7 @@ record: $(PNPM_STAMP) ## Record the RPC answers the script tests replay, from a 
 e2e: wasm $(PNPM_STAMP) ## Play two arena matches on a running make dev and make indexer, one through per-match sessions and one the wallet signs
 	CHAIN=$(DEV_CHAIN) node client/e2e/match.ts http://$(DEV_RPC) http://$(DEV_INDEXER)/graphql/query
 
-test: realm-test build check ## Run the Gno, Go and script tests; script tests run engine.wasm
+test: realm-test build check ## Run the Gno tests, build the page, check the TypeScript, then run go vet, the Go tests and the TypeScript tests
 	go vet ./...
 	go test ./...
 	pnpm test

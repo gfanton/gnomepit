@@ -2,16 +2,18 @@
 
 Gnomehall is a two-player card duel between gnome clans beneath a mountain. Each player builds a deck of eight special cards from a clan's pool, plans three beats per round in secret, and both plans resolve together. Play against a bot, share one screen, or play online, where the Gno realm `r/arena` holds the match and checks every move with the same engine the page runs.
 
-The page at <https://gfanton.github.io/gnomehall/> plays offline: against the bot, two players on one device, or the guided match. Online play needs the arena on a chain the page is built for; `make serve` builds it for the local chain of `make dev`.
+The page at <https://gfanton.github.io/gnomehall/> plays offline: against the bot, two players on one device, or the guided match. Online play needs the arena on a chain the page is built for; `make serve` builds the page for the local chain `make dev` runs.
 
 ## Develop
 
-Enter the dev shell with `direnv allow` or `nix develop`. It carries Go, TinyGo, Node 24 and pnpm.
+Enter the Nix dev shell with `direnv allow` or `nix develop`. It carries Go, TinyGo, Node 24, pnpm, and gno, gnokey and gnodev built from gno's `chain/onyx` tag.
 
 - `make dev` runs a local chain with the engine, the arena and the dev accounts.
 - `make indexer` indexes the running chain for the page's live updates.
 - `make serve` builds the page into `dist/` and serves it on <http://127.0.0.1:8080/>.
 - `make test` runs the realm's Gno tests, builds the page, type-checks, lints and format-checks the TypeScript, then runs `go vet`, the Go tests and the TypeScript tests.
+
+To play online locally, run `make dev`, then `make serve`, which builds for `make dev`'s chain by default. Open <http://127.0.0.1:8080/?dev=alice> in one browser and `?dev=bob` in another, then choose **Play online**. Without `?dev=`, the lobby uses Adena. With `make indexer` running, each page follows the other's moves through the indexer; without it, the page polls the node every 4 seconds.
 
 `make help` lists every target.
 
@@ -41,4 +43,4 @@ Enter the dev shell with `direnv allow` or `nix develop`. It carries Go, TinyGo,
 
 ## License
 
-Apache-2.0, covering the code, the docs and the art. See [`LICENSE`](LICENSE).
+[Apache-2.0](LICENSE), covering the code, the docs and the art.
