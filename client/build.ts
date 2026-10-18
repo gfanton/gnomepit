@@ -2,7 +2,7 @@
 // Run as a script, it builds dist/ for $GNOMEHALL_NETWORK, local by default.
 
 import { copyFile, mkdir, readdir, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { join, parse } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as esbuild from "esbuild";
 
@@ -13,13 +13,13 @@ export type BuildOptions = { network: string; outDir: string };
 const web = fileURLToPath(new URL("./web/", import.meta.url));
 
 const pages = [
-  { html: "index.html", entry: "app" },
-  { html: "delvers-preview.html", entry: "delvers-preview" },
+  { html: "index.html", entry: "app.mjs" },
+  { html: "delvers-preview.html", entry: "delvers-preview.ts" },
 ];
 const devPages = [
-  { html: "adena-check.html", entry: "adena-check" },
-  { html: "online-dev.html", entry: "online-dev" },
-  { html: "lobby-preview.html", entry: "lobby-preview" },
+  { html: "adena-check.html", entry: "adena-check.mjs" },
+  { html: "online-dev.html", entry: "online-dev.mjs" },
+  { html: "lobby-preview.html", entry: "lobby-preview.mjs" },
 ];
 const staticFiles = [
   "cards.json",
@@ -52,7 +52,7 @@ export async function build(options: BuildOptions): Promise<void> {
   await mkdir(join(options.outDir, "art"), { recursive: true });
   await esbuild.build({
     ...browserBundle(),
-    entryPoints: shipped.map(({ entry }) => ({ in: join(web, `${entry}.mjs`), out: entry })),
+    entryPoints: shipped.map(({ entry }) => ({ in: join(web, entry), out: parse(entry).name })),
     outdir: options.outDir,
     minify: true,
     define: { GNOMEHALL_NETWORK: JSON.stringify(options.network) },

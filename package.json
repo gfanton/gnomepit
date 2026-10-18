@@ -8,7 +8,7 @@
     "lint": "oxlint --type-aware client scripts",
     "fmt": "prettier --write \"{client,scripts}/**/*.ts\"",
     "fmt:check": "prettier --check \"{client,scripts}/**/*.ts\"",
-    "test": "node --test \"client/web/*.test.mjs\" \"client/web/*.test.ts\" \"client/*.test.ts\""
+    "test": "node --test \"client/web/*.test.ts\" \"client/*.test.ts\""
   },
   "dependencies": {
     "@gnolang/gno-js-client": "3.1.0",
