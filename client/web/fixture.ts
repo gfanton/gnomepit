@@ -59,7 +59,7 @@ export const delvers: Clan = { name: "Delvers", cards: [22, 23, 24, 25, 26, 27, 
 
 export const id = (name: string): number => {
   const card = cards.find((c) => c.name === name);
-  assert.ok(card, `no card named ${name}`);
+  assert.ok(card !== undefined, `no card named ${name}`);
   return card.id;
 };
 
