@@ -57,7 +57,7 @@ type Draft = {
   plan: number[];
   legalPlans: number[][];
   onlineContext: OnlineContext | null;
-  choosingClan?: boolean;
+  choosingClan: boolean;
 };
 type Step = Pick<BattleEvent, "beat" | "phase" | "tier" | "step"> & { from: number; to: number };
 type Playback = {
@@ -177,7 +177,7 @@ const lobby: Lobby<Draft> | null =
           const draft = onlineLobby().model.draft;
           if (draft === null) return;
           ({ flow, deck, plan, legalPlans, onlineContext } = draft);
-          choosingClan = draft.choosingClan ?? false;
+          choosingClan = draft.choosingClan;
           onlineLobby().model.inGame = true;
           app.classList.remove("lobby");
           render();
