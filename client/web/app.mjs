@@ -10,7 +10,7 @@ import { sentences, matchLog, resultLine, sideNames, possessive } from "./log.ts
 import { glossary, markKeywords, escapeHTML } from "./keywords.ts";
 import { knownCards } from "./table.ts";
 import { stepFeedback, cardBehind } from "./battle-feedback.ts";
-import { artIndex } from "./art.mjs";
+import { artIndex } from "./art.ts";
 import { loadArena } from "./arena-provider.mjs";
 import { createLobby } from "./lobby.mjs";
 import { networkFor } from "./network.ts";
