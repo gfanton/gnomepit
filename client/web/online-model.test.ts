@@ -1,19 +1,31 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { viewOf, timeLeft, cardIds, replayView } from "./online-model.mjs";
-const account = "g1player";
+import type { GameState, Gnome, ResolveRequest, Resolution } from "./engine.ts";
+import { event } from "./fixture.ts";
+import { address, matchId } from "./ids.ts";
+import { type ArenaView, viewOf, timeLeft, cardIds, replayView } from "./online-model.ts";
+const account = address("g1player");
+const other = address("g1other");
+const gnome = (hp: number): Gnome => ({ hp, vulnerable: 0, strength: 0, spent: [] });
 test("reserved and expired challenges cannot be accepted by another account", () => {
-  assert.equal(viewOf({ ID: "1", Phase: "open", Opponent: "g1friend", Expires: 200 }, account, 100).action, "wait");
-  assert.equal(viewOf({ ID: "1", Phase: "open", Opponent: account, Expires: 200 }, account, 100).action, "accept");
-  assert.equal(viewOf({ ID: "1", Phase: "open", Expires: 99 }, account, 100).phase, "expired");
+  const friend = address("g1friend");
+  assert.equal(
+    viewOf({ ID: matchId("1"), Phase: "open", Opponent: friend, Expires: 200 }, account, 100).action,
+    "wait",
+  );
+  assert.equal(
+    viewOf({ ID: matchId("1"), Phase: "open", Opponent: account, Expires: 200 }, account, 100).action,
+    "accept",
+  );
+  assert.equal(viewOf({ ID: matchId("1"), Phase: "open", Expires: 99 }, account, 100).phase, "expired");
 });
 test("uses arena move/finish distinction and exposes forfeits only to the other player", () => {
-  const v = { Phase: "reveal", Challenger: account, Acceptor: "g1other", ToMove: account, Deadline: 200 };
+  const v: ArenaView = { Phase: "reveal", Challenger: account, Acceptor: other, ToMove: account, Deadline: 200 };
   assert.equal(viewOf({ ...v, action: "finish" }, account, 100).action, "finish");
   assert.equal(viewOf(v, account, 100).action, "wait");
   assert.equal(viewOf(v, account, 201).action, "wait");
   assert.equal(viewOf({ ...v, action: "move" }, account, 201).action, "wait");
-  assert.equal(viewOf(v, "g1other", 201).action, "claimForfeit");
+  assert.equal(viewOf(v, other, 201).action, "claimForfeit");
 });
 test("deck and plan names reject unknown cards instead of mapping to a wrong id", () => {
   assert.deepEqual(
@@ -30,14 +42,14 @@ test("replay verifies every round against chain HP and never resolves a sealed p
   const engine = {
     hp: 20,
     cards: [{ id: 0, name: "Pick" }],
-    resolve: ({ state }) => {
+    resolve: ({ state }: ResolveRequest): Resolution => {
       calls++;
-      return { state: { round: state.round + 1, gnomes: [{ hp: 18 }, { hp: 17 }] }, result: "ongoing", events: [] };
+      return { state: { round: state.round + 1, gnomes: [gnome(18), gnome(17)] }, result: "ongoing", events: [] };
     },
   };
-  const view = {
+  const view: ArenaView = {
     Challenger: account,
-    Acceptor: "g1other",
+    Acceptor: other,
     ChallengerDeck: "Pick",
     AcceptorDeck: "Pick",
     Plans: [
@@ -63,23 +75,24 @@ test("the challenger replays their pending clash last, with the deck the arena o
     },
   };
   const start = { round: 1, gnomes: [0, 1].map(() => ({ hp: 20, vulnerable: 0, strength: 0, spent: [] })) };
-  const after = { round: 2, gnomes: [{ hp: 18 }, { hp: 17 }] };
-  const view = {
+  const after: GameState = { round: 2, gnomes: [gnome(18), gnome(17)] };
+  const clash = [event({ kind: "clash" })];
+  const view: ArenaView = {
     Phase: "reveal",
     Round: 1,
     Challenger: account,
-    Acceptor: "g1other",
+    Acceptor: other,
     ToMove: account,
     ChallengerDeck: "",
     AcceptorDeck: "Brace",
     Plans: [["", "Brace"]],
     HP: [],
-    pending: { round: 1, plans: [[0], [1]], events: ["clash"], state: after, result: "ongoing" },
+    pending: { round: 1, plans: [[0], [1]], events: clash, state: after, result: "ongoing" },
     planning: { state: after, side: 0, deck: [0] },
   };
   const r = replayView(view, engine, account);
   assert.deepEqual(r.decks, [[0], [1]]);
-  assert.deepEqual(r.rounds, [{ plans: [[0], [1]], events: ["clash"], state: after, start }]);
+  assert.deepEqual(r.rounds, [{ plans: [[0], [1]], events: clash, state: after, start }]);
   assert.deepEqual(r.state, after);
   assert.equal(r.result, "ongoing");
 });

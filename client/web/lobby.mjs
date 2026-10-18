@@ -1,5 +1,5 @@
 import { escapeHTML } from "./keywords.ts";
-import { viewOf, shortAddress, timeLeft, field } from "./online-model.mjs";
+import { viewOf, shortAddress, timeLeft } from "./online-model.ts";
 const esc = (value) => escapeHTML(String(value ?? "")).replaceAll('"', "&quot;");
 const btn = (text, action, disabled = false, secondary = false, extra = "") =>
   `<button type="button" class="${secondary ? "quiet" : "button"}" data-action="online${action}" ${disabled ? "disabled" : ""} ${extra}>${esc(text)}</button>`;
@@ -37,11 +37,11 @@ export function createLobby({ app, arena, storage, onRender, onCompose, onPlay, 
     unwatch = null,
     unfollow = null,
     focusReturn = null;
-  const address = () => field(model.account, "address") ?? "";
-  const accountState = () => field(model.account, "state") ?? field(model.account, "status") ?? "disconnected";
+  const address = () => model.account?.address ?? "";
+  const accountState = () => model.account?.state ?? "disconnected";
   // ready holds once this device has the root signature.
   const ready = () => Boolean(address() && accountState() === "active");
-  const signsEachMove = () => field(model.account, "mode") === "contract";
+  const signsEachMove = () => model.account?.mode === "contract";
   const link = (id) => `${location.origin}${location.pathname}#match=${encodeURIComponent(id)}`;
   const copyButton = (addr) =>
     `<span class="address" title="${esc(addr)}">${esc(shortAddress(addr))}</span> ${btn("Copy", "Copy", false, true, `data-address="${esc(addr)}" aria-label="Copy full address"`)}`;
@@ -104,7 +104,7 @@ export function createLobby({ app, arena, storage, onRender, onCompose, onPlay, 
       arena.openChallenges(model.page),
       address() ? arena.myMatches(model.matchPage) : Promise.resolve([]),
     ]);
-    model.challenges = collection(challenges).map((v) => viewOf({ ...v, phase: "open" }, address()));
+    model.challenges = collection(challenges).map((v) => viewOf({ ...v, Phase: "open" }, address()));
     model.matches = collection(matches).map((v) => viewOf(v, address()));
   }
   async function refreshView(id) {
@@ -179,7 +179,7 @@ export function createLobby({ app, arena, storage, onRender, onCompose, onPlay, 
   // stepsHTML: done steps say Done; only the current step shows its action.
   function stepsHTML() {
     const current = step();
-    const reason = field(model.account, "reason");
+    const reason = model.account?.reason;
     const steps = [
       [
         "Install Adena",
@@ -212,7 +212,7 @@ export function createLobby({ app, arena, storage, onRender, onCompose, onPlay, 
     dialog("Get ready to play online", stepsHTML());
   }
   function accountDialog() {
-    const reason = field(model.account, "fallback");
+    const reason = model.account?.fallback;
     dialog(
       "Your account",
       `<p>${copyButton(address())}</p><p>This device can play online. ${perMatch}</p>${signsEachMove() ? `<p>Sessions are off, so your wallet approves each move.${reason ? ` Reason: ${esc(reason)}` : ""}</p>` : ""}`,
@@ -500,7 +500,7 @@ export function createLobby({ app, arena, storage, onRender, onCompose, onPlay, 
           if (context.intent === "accept") await arena.accept(context.view.id, { clan, deck, plan });
           else {
             const result = await arena.challenge({ clan, deck, plan, opponent: context.opponent });
-            const id = typeof result === "string" ? result : field(result, "id");
+            const id = typeof result === "string" ? result : result?.id;
             if (id) model.view = { id };
           }
         } finally {
