@@ -6,9 +6,14 @@
 
 import assert from "node:assert/strict";
 
-import * as v from "valibot";
-
-import { type Arena, type ArenaChange, type ArenaOptions, type Opening, createArena } from "../web/arena.ts";
+import {
+  type Arena,
+  type ArenaChange,
+  type ArenaOptions,
+  type Opening,
+  createArena,
+  sessionLocks,
+} from "../web/arena.ts";
 import { ChainError, type Session, createChain, payFor } from "../web/chain.ts";
 import { type devAccounts, devWallet } from "../web/devwallet.ts";
 import { type GameState, type Side, cardOf } from "../web/engine.ts";
@@ -46,10 +51,8 @@ function player(
 }
 
 const read = createReader(chain);
-// The part of the realm's session locks the script reads.
-const LocksSchema = v.array(v.object({ Session: v.string(), Match: v.string(), Expires: v.number() }));
 const locksOn = async (address: Address, id: MatchId) =>
-  v.parse(LocksSchema, await read(`${realm}.Locks("${address}")`)).filter((l) => l.Match === id);
+  (await sessionLocks(read, realm, address)).filter((l) => l.Match === id);
 
 const deckOf = (clan: string): number[] => {
   const pool = engine.clans.find((c) => c.name === clan);

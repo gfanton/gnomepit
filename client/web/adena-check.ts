@@ -5,7 +5,15 @@
 
 import * as v from "valibot";
 
-import { type AccountState, type Arena, ArenaError, type Listed, type OpenChallenge, createArena } from "./arena.ts";
+import {
+  type AccountState,
+  type Arena,
+  ArenaError,
+  type Listed,
+  type OpenChallenge,
+  createArena,
+  sessionLocks,
+} from "./arena.ts";
 import { pageWallet } from "./arena-provider.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
 import { ChainError, createChain } from "./chain.ts";
@@ -21,8 +29,6 @@ const params = new URLSearchParams(location.search);
 const { chainId, rpc, realm } = networkFrom(params, networks.local);
 // The part of SignArbitrary's answer the check reads.
 const SignatureSchema = v.object({ signature: v.object({ signature: v.string() }) });
-// The part of the realm's session locks the revoke check reads.
-const LocksSchema = v.array(v.object({ Session: v.string(), Match: v.string(), Expires: v.number() }));
 
 const engine = await loadEngine("engine.wasm", "cards.json");
 const chain = createChain({ rpc });
@@ -127,9 +133,7 @@ check("check-revoke", "revoke", async () => {
   await bySession.authorize();
   bySession.resumeSessions();
   const withdrawn = await post(bySession);
-  const [lock] = v
-    .parse(LocksSchema, await read(`${realm}.Locks("${address}")`))
-    .filter((l) => l.Match === withdrawn?.ID);
+  const [lock] = (await sessionLocks(read, realm, address)).filter((l) => l.Match === withdrawn?.ID);
   if (lock === undefined || withdrawn === undefined)
     return [false, `no session locked to match ${withdrawn?.ID}: mode ${bySession.account().mode}`];
   await bySession.resign(withdrawn.ID);

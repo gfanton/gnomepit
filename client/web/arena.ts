@@ -373,6 +373,34 @@ function startState(hp: number): GameState {
   return { round: 1, gnomes: [gnome(), gnome()] };
 }
 
+// readParsed evaluates expr with readValue, a gnovalue reader, and parses its value; a value
+// its schema refuses fails.
+async function readParsed<T>(
+  readValue: (expr: string) => Promise<unknown>,
+  expr: string,
+  schema: v.GenericSchema<unknown, T>,
+): Promise<T> {
+  let value: unknown;
+  try {
+    value = await readValue(expr);
+  } catch (err) {
+    throw errorFrom(err);
+  }
+  const parsed = v.safeParse(schema, value);
+  if (!parsed.success) throw new ArenaError("failed", `unexpected answer to ${expr}: ${v.summarize(parsed.issues)}`);
+  return parsed.output;
+}
+
+// sessionLocks reads, with a gnovalue reader, the realm's locks on player's sessions: each
+// names the one match its session may sign in.
+export function sessionLocks(
+  readValue: (expr: string) => Promise<unknown>,
+  realm: string,
+  player: Address,
+): Promise<SessionLock[]> {
+  return readParsed(readValue, `${realm}.Locks("${player}")`, v.array(SessionLockSchema));
+}
+
 function resolve(engine: Engine, state: GameState, decks: Pair<string>, [a, b]: Pair<number[]>): Resolution {
   try {
     return engine.resolve({ state, decks: [cardIDs(decks[0], engine.cards), cardIDs(decks[1], engine.cards)], a, b });
@@ -527,18 +555,7 @@ export function createArena({
   }
   const boxKey = async () => (await keysFor(0)).boxKey;
 
-  // read evaluates expr and parses its value; a value its schema refuses fails.
-  async function read<T>(expr: string, schema: v.GenericSchema<unknown, T>): Promise<T> {
-    let value: unknown;
-    try {
-      value = await readValue(expr);
-    } catch (err) {
-      throw errorFrom(err);
-    }
-    const parsed = v.safeParse(schema, value);
-    if (!parsed.success) throw new ArenaError("failed", `unexpected answer to ${expr}: ${v.summarize(parsed.issues)}`);
-    return parsed.output;
-  }
+  const read = <T>(expr: string, schema: v.GenericSchema<unknown, T>) => readParsed(readValue, expr, schema);
 
   const readMatch = (id: MatchId) => read(`${realm}.Match("${id}")`, MatchViewSchema);
   const roleOf = (view: MatchSummary): Role | undefined =>
@@ -569,7 +586,7 @@ export function createArena({
     return {
       onChain: await chain.sessions(me),
       keys,
-      locks: await read(`${realm}.Locks("${me}")`, v.array(SessionLockSchema)),
+      locks: await sessionLocks(readValue, realm, me),
       price: await chain.gasPrice(),
     };
   }

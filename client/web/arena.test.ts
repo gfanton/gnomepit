@@ -25,6 +25,7 @@ import {
   pendingClash,
   planFrom,
   replay,
+  sessionLocks,
   walletFailure,
 } from "./arena.ts";
 import { type Chain, ChainError, type Session } from "./chain.ts";
@@ -559,6 +560,23 @@ test("a match view the page cannot read fails as failed", async () => {
   });
   await arena.connect();
   await assert.rejects(arena.match(matchId("1")), (err) => err instanceof ArenaError && err.type === "failed");
+});
+
+test("a player's session locks read as typed locks, and an answer of another shape fails as failed", async () => {
+  const asked: string[] = [];
+  const read = async (expr: string): Promise<unknown> => {
+    asked.push(expr);
+    return [{ Session: "g1session", Match: "4", Expires: 1792748377 }];
+  };
+  assert.deepEqual(await sessionLocks(read, realm, alice), [
+    { Session: address("g1session"), Match: matchId("4"), Expires: 1792748377 },
+  ]);
+  assert.deepEqual(asked, [`${realm}.Locks("g1alice")`]);
+  const unreadable = async (): Promise<unknown> => [{ Session: "g1session", Match: 4 }];
+  await assert.rejects(
+    sessionLocks(unreadable, realm, alice),
+    (err) => err instanceof ArenaError && err.type === "failed",
+  );
 });
 
 test("a stored mode the page does not know reads as session", async () => {
