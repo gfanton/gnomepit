@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import * as v from "valibot";
 
 import type { SessionLock } from "./arena.ts";
-import type { Session } from "./chain.ts";
+import { type Session, feeFor, gasWantedFor } from "./chain.ts";
 import type { GameState, Gnome } from "./engine.ts";
 import { nodeEngine } from "./engine-node.ts";
 import { known } from "./fixture.ts";
@@ -226,21 +226,30 @@ const reserve = sessionReserve(floor);
 const budget = sessionBudget("challenger", floor);
 
 test("at the floor price, the budgets and reserves are client/ONLINE.md's", () => {
-  assert.equal(sessionBudget("challenger", floor), 654_056);
-  assert.equal(sessionBudget("acceptor", floor), 535_923);
+  assert.equal(sessionBudget("challenger", floor), 1_062_811);
+  assert.equal(sessionBudget("acceptor", floor), 951_192);
   assert.deepEqual(reserve, {
-    opening: { challenger: 262_607, acceptor: 245_023 },
-    later: { challenger: 59_036, acceptor: 25_555 },
+    opening: { challenger: 264_069, acceptor: 248_170 },
+    later: { challenger: 383_546, acceptor: 359_130 },
   });
+});
+
+test("either side's session keeps enough for the move that ends a first rated match", () => {
+  // client/ONLINE.md's Storage per move: the first match's round-3 Reveal deposits for the
+  // first rated match; the acceptor ends a match with a Resign, measured in the third.
+  const challenger = 303_400 + feeFor(gasWantedFor(37_647_912), floor);
+  const acceptor = 303_400 + feeFor(gasWantedFor(19_150_553), floor);
+  assert.ok(reserve.later.challenger >= challenger, `challenger reserve ${reserve.later.challenger} < ${challenger}`);
+  assert.ok(reserve.later.acceptor >= acceptor, `acceptor reserve ${reserve.later.acceptor} < ${acceptor}`);
 });
 
 // Deposits are priced per byte and stay; only the fees follow the gas price.
 test("at five times the floor price, budgets and reserves pay five times the fees and the same deposits", () => {
-  assert.equal(sessionBudget("challenger", busy), 1_315_067);
-  assert.equal(sessionBudget("acceptor", busy), 957_202);
+  assert.equal(sessionBudget("challenger", busy), 1_906_843);
+  assert.equal(sessionBudget("acceptor", busy), 1_465_552);
   assert.deepEqual(sessionReserve(busy), {
-    opening: { challenger: 335_431, acceptor: 363_911 },
-    later: { challenger: 295_177, acceptor: 127_767 },
+    opening: { challenger: 340_341, acceptor: 377_647 },
+    later: { challenger: 582_767, acceptor: 460_685 },
   });
 });
 
@@ -305,16 +314,18 @@ test("a locked session is used up below the reserve of its side in the match", (
   assert.deepEqual([...out.byMatch.keys()], ["5"]);
 });
 
-// A locked session never pays an opening again, while an unlocked one may still pay either side's.
-test("a locked session needs only its side's later moves left, an unlocked one an opening", () => {
-  const left = { spendUsed: budget - reserve.later.challenger };
+// A locked session must still pay its side's later moves, an ending's deposit among them, while
+// an unlocked one needs only the cheaper opening.
+test("a locked session needs its side's later moves left, an unlocked one an opening", () => {
+  const left = { spendUsed: budget - Math.min(reserve.opening.challenger, reserve.opening.acceptor) };
   const out = classify(
     [sessionAt(0, left), sessionAt(1, left)],
     [lockOf(0, "4")],
     new Map([[matchId("4"), { phase: "reveal", role: "challenger" }]]),
   );
-  assert.equal(out.byMatch.get(matchId("4"))?.generation, 0);
-  assert.deepEqual(generationsOf(out.dead), [1]);
+  assert.equal(out.byMatch.size, 0);
+  assert.deepEqual(generationsOf(out.dead), [0]);
+  assert.deepEqual(generationsOf(out.unlocked), [1]);
 });
 
 // Only a live session's lock can make it a match's; the realm keeps a revoked session's lock

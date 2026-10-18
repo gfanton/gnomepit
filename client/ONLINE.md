@@ -105,7 +105,7 @@ An action is `accept`, `move`, `finish`, `claimForfeit`, `wait` or `done`. A fai
 
 ## Storage per move
 
-`scripts/measure-storage.ts` has alice and bob play the realm test's worked match twice on a fresh `make dev`, built from gno `c97fd36`, with gas at 1 ugnot per 1,000 and storage at 100 ugnot per byte. Each player signs through a session for the match, as the page does.
+`scripts/measure-storage.ts` has alice and bob play the realm test's worked match twice on a fresh `make dev`, built from gno `5cdbc25` (the `chain/onyx` tag), with gas at 1 ugnot per 1,000 and storage at 100 ugnot per byte, then a third match that bob resigns after round 1. Each player signs through a session for the match, as the page does.
 
 - **Storage** is the bytes the move adds to the arena's storage, negative when it frees more than it adds.
 - **Gas used** is the gas the transaction used.
@@ -116,33 +116,43 @@ The first match is the chain's first, so it carries the one-time costs:
 
 | Move | Storage | Gas used | Fee | Deposit |
 |---|---|---|---|---|
-| Challenge | 2,444 B | 15,088,465 | 18,207 ugnot | 244,400 ugnot |
-| Accept | 2,153 B | 24,685,128 | 29,723 ugnot | 215,300 ugnot |
-| Reveal, round 1 | -71 B | 44,508,182 | 53,510 ugnot | 0 ugnot |
-| Play, round 2 | 0 B | 18,985,591 | 22,883 ugnot | 0 ugnot |
-| Reveal, round 2 | 0 B | 31,861,997 | 38,335 ugnot | 0 ugnot |
-| Play, round 3 | 0 B | 19,077,664 | 22,994 ugnot | 0 ugnot |
-| Reveal, round 3 | -100 B | 30,747,144 | 36,997 ugnot | 0 ugnot |
-| Total | 4,426 B | 184,954,171 | 222,649 ugnot | 459,700 ugnot |
+| Challenge | 2,450 B | 15,806,706 | 19,069 ugnot | 245,000 ugnot |
+| Accept | 2,158 B | 26,891,107 | 32,370 ugnot | 215,800 ugnot |
+| Reveal, round 1 | -71 B | 48,863,646 | 58,737 ugnot | 0 ugnot |
+| Play, round 2 | 0 B | 20,730,708 | 24,977 ugnot | 0 ugnot |
+| Reveal, round 2 | 0 B | 35,457,225 | 42,649 ugnot | 0 ugnot |
+| Play, round 3 | 0 B | 20,818,573 | 25,083 ugnot | 0 ugnot |
+| Reveal, round 3 | 3,034 B | 37,647,912 | 45,278 ugnot | 303,400 ugnot |
+| Total | 7,571 B | 206,215,877 | 248,163 ugnot | 764,200 ugnot |
 
-The second match is between players who already have a record, inside the chunk the first match opened:
+The second match is between players who already have a record and a rating, inside the chunk the first match opened:
 
 | Move | Storage | Gas used | Fee | Deposit |
 |---|---|---|---|---|
-| Challenge | 317 B | 16,188,431 | 19,527 ugnot | 31,700 ugnot |
-| Accept | 86 B | 25,376,747 | 30,553 ugnot | 8,600 ugnot |
-| Reveal, round 1 | -71 B | 44,640,225 | 53,669 ugnot | 0 ugnot |
-| Play, round 2 | 0 B | 19,178,839 | 23,115 ugnot | 0 ugnot |
-| Reveal, round 2 | 0 B | 32,074,904 | 38,590 ugnot | 0 ugnot |
-| Play, round 3 | 0 B | 19,275,120 | 23,231 ugnot | 0 ugnot |
-| Reveal, round 3 | -98 B | 30,963,941 | 37,257 ugnot | 0 ugnot |
-| Total | 234 B | 187,698,207 | 225,942 ugnot | 40,300 ugnot |
+| Challenge | 320 B | 17,158,374 | 20,691 ugnot | 32,000 ugnot |
+| Accept | 81 B | 27,846,397 | 33,516 ugnot | 8,100 ugnot |
+| Reveal, round 1 | -71 B | 49,208,507 | 59,151 ugnot | 0 ugnot |
+| Play, round 2 | 0 B | 21,089,567 | 25,408 ugnot | 0 ugnot |
+| Reveal, round 2 | 0 B | 35,813,653 | 43,077 ugnot | 0 ugnot |
+| Play, round 3 | 0 B | 21,177,432 | 25,513 ugnot | 0 ugnot |
+| Reveal, round 3 | -104 B | 39,397,891 | 47,378 ugnot | 0 ugnot |
+| Total | 226 B | 211,691,821 | 254,734 ugnot | 40,100 ugnot |
+
+The third match ends with bob's resignation after round 1:
+
+| Move | Storage | Gas used | Fee | Deposit |
+|---|---|---|---|---|
+| Challenge | 269 B | 17,394,837 | 20,974 ugnot | 26,900 ugnot |
+| Accept | 33 B | 28,089,499 | 33,808 ugnot | 3,300 ugnot |
+| Reveal, round 1 | -71 B | 49,367,248 | 59,341 ugnot | 0 ugnot |
+| Resign | -104 B | 19,150,553 | 23,081 ugnot | 0 ugnot |
+| Total | 127 B | 114,002,137 | 137,204 ugnot | 30,200 ugnot |
 
 From one run to the next, a move's gas used differs by up to about 50,000, while its storage stays the same.
 
-A finished match between known players keeps 234 bytes locked, the players' two 48-byte session locks included. Each record keeps its lock until that session expires, and the player's next session-signed call then drops it. The match's moves lock 40,300 ugnot, and its reveals give back 16,900 as they drop the deck seal, shrink the box and finally clear the seal and the box.
+A finished match between known players keeps 226 bytes locked, the players' two 48-byte session locks included. Each record keeps its lock until that session expires, and the player's next session-signed call then drops it. The match's moves lock 40,100 ugnot, and its reveals give back 17,500 as they drop the deck seal, shrink the box and finally clear the seal and the box.
 
-The one-time costs, the first match minus the second, are 4,192 bytes and a 419,400 ugnot deposit. The challenge carries 2,127 bytes of them: alice's new player record and the arena's first chunk. The acceptance carries 2,067 bytes: bob's new player record. The first match's last reveal frees 2 bytes more than the second's, 100 against 98, which brings the sum to 4,192.
+The one-time costs, the first match minus the second, are 7,345 bytes and a 724,100 ugnot deposit. The challenge carries 2,130 bytes of them: alice's new player record and the arena's first chunk. The acceptance carries 2,077 bytes: bob's new player record. The last reveal carries 3,138 bytes: the move that ends both players' first rated match stores their standings, their two ladder entries and the clan records. Any move that ends a match makes those writes, so a Resign or a ClaimForfeit that ends a first rated match deposits the same; gnodev cannot pass a 24-hour deadline, so the script measures no ClaimForfeit.
 
 ## Session budgets
 
@@ -151,7 +161,7 @@ Each match gets its own session, and its spend limit is the budget of the player
 - **The deposit**, in ugnot: 100 per byte the move adds, whatever the gas price. The opening's deposit holds the 48-byte session lock its call adds.
 - **The fee**, for the gas the page asks for: the gas used, plus a fifth and 100,000 (`gasWantedFor` in `chain.ts`), at the chain's gas price.
 
-`wallet.ts` keeps each measured move's gas used and deposit. When the page creates a session, it reads the gas price and sets the budget of the player's side:
+`wallet.ts` keeps each measured move's gas used and deposit. Each side's moves end with the move that ends a first rated match: the challenger's round-3 Reveal of the first match, and for the acceptor, who ends a match only by resigning or claiming a forfeit, the third match's Resign, both with the first rated deposit. When the page creates a session, it reads the gas price and sets the budget of the player's side:
 
 - the cost of each of the side's moves;
 - its costliest move once more, for one failed attempt.
@@ -160,17 +170,18 @@ At gnodev's 1 ugnot per 1,000 gas, the budgets come to:
 
 | | Challenger | Acceptor |
 |---|---|---|
-| Opening move | Challenge: 18,207 + 244,400 = 262,607 | Accept: 29,723 + 215,300 = 245,023 |
-| Later moves | Reveals: 53,510 + 38,335 + 36,997 | Plays: 22,883 + 22,994 |
-| The side's moves | 391,449 | 290,900 |
-| The costliest move again | 262,607 | 245,023 |
-| Budget | 654,056 ugnot | 535,923 ugnot |
+| Opening move | Challenge: 19,069 + 245,000 = 264,069 | Accept: 32,370 + 215,800 = 248,170 |
+| Later moves | Reveals: 58,737 + 42,649 | Plays: 24,977 + 25,083 |
+| Ending | Reveal, round 3: 45,278 + 303,400 = 348,678 | Resign: 23,081 + 303,400 = 326,481 |
+| The side's moves | 714,133 | 624,711 |
+| The costliest move again | 348,678 | 326,481 |
+| Budget | 1,062,811 ugnot | 951,192 ugnot |
 
-At five times that gas price, the fees cost five times as much and the deposits stay: the budgets come to 1,315,067 and 957,202 ugnot.
+At five times that gas price, the fees cost five times as much and the deposits stay: the budgets come to 1,906,843 and 1,465,552 ugnot.
 
 A session with less left than the costliest move it may still pay counts as used up (`sessionReserve`). The page prices that move at the chain's gas price each time it reads the session. The chain refuses a move its session cannot pay before running it, and charges nothing, so the session's spending never shows the shortfall. Once a rising price leaves a session short, its match's `session` reads `expired` and the lobby offers a renewal. At the floor price:
-- **An unlocked session** may still pay an opening: 262,607 ugnot for the challenger and 245,023 for the acceptor.
-- **A session locked to a match** pays only its side's later moves. Their reserve is the costliest such move in either measured match plus a tenth, rounded up to the ugnot, since moves cost more as a chunk fills: 59,036 ugnot for the challenger, from a 53,669 Reveal, and 25,555 for the acceptor, from a 23,231 Play.
+- **An unlocked session** may still pay an opening: 264,069 ugnot for the challenger and 248,170 for the acceptor.
+- **A session locked to a match** pays only its side's later moves and its ending. Their reserve is the costlier of the side's ending and its costliest later move in any measured match, plus a tenth, rounded up to the ugnot, since moves cost more as a chunk fills: 383,546 ugnot for the challenger, from the 348,678 ending, and 359,130 for the acceptor, from the 326,481 ending.
 
 ## Before onyx
 

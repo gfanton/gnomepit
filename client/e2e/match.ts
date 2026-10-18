@@ -23,6 +23,7 @@ import type { Address, MatchId } from "../web/ids.ts";
 import { createIndexer } from "../web/indexer.ts";
 import { networks } from "../web/network.ts";
 import * as signer from "../web/signer.ts";
+import { type ClanStanding, type Standing, createStandings } from "../web/standings.ts";
 import { type SessionKeys, deriveKeys, generations, rootSignature } from "../web/wallet.ts";
 
 const rpc = process.argv[2] ?? networks.local.rpc;
@@ -212,6 +213,13 @@ const bob = player("bob");
 const aliceAddress = await ready("alice", alice);
 const bobAddress = await ready("bob", bob);
 
+const standings = createStandings({ chain, realm });
+const standingsBefore = {
+  alice: await standings.standing(aliceAddress),
+  bob: await standings.standing(bobAddress),
+  clans: await standings.clanStandings(),
+};
+
 const id = await post(alice);
 assert.equal(alice.account().mode, "session", "alice's challenge got a session");
 const [first] = await locksOn(aliceAddress, id);
@@ -297,6 +305,62 @@ await accept(bobByWallet, third);
 await play(third, aliceByWallet, bobByWallet);
 for (const address of [aliceAddress, bobAddress])
   assert.deepEqual(await locksOn(address, third), [], "a wallet-signed call locks nothing");
+
+// ---- Standings: matches id and third ended on HP, Pickers against Ironhide
+
+const played = (s: Standing) => s.Wins + s.Losses + s.Draws;
+const clanIn = (list: ClanStanding[], clan: string): ClanStanding => {
+  const found = list.find((c) => c.Clan === clan);
+  assert.ok(found !== undefined, `ClanStandings lists ${clan}`);
+  return found;
+};
+const record = (s: Standing | ClanStanding) => [s.Wins, s.Losses, s.Draws];
+const moved = (after: Standing | ClanStanding, before: Standing | ClanStanding) =>
+  record(after).map((n, i) => n - (record(before)[i] ?? 0));
+const standingsAfter = {
+  alice: await standings.standing(aliceAddress),
+  bob: await standings.standing(bobAddress),
+  clans: await standings.clanStandings(),
+};
+assert.equal(
+  played(standingsAfter.alice) - played(standingsBefore.alice),
+  2,
+  "alice's two finished matches were rated",
+);
+assert.equal(played(standingsAfter.bob) - played(standingsBefore.bob), 2, "bob's two finished matches were rated");
+const [aliceWon, aliceLost, aliceDrew] = moved(standingsAfter.alice, standingsBefore.alice);
+assert.deepEqual(
+  moved(standingsAfter.bob, standingsBefore.bob),
+  [aliceLost, aliceWon, aliceDrew],
+  "bob's record mirrors alice's",
+);
+if (standingsAfter.alice.Rating > 0 && standingsAfter.bob.Rating > 0)
+  assert.equal(
+    standingsAfter.alice.Rating - standingsBefore.alice.Rating + standingsAfter.bob.Rating - standingsBefore.bob.Rating,
+    0,
+    "the two ratings moved by opposite amounts",
+  );
+if ((await standings.ratedPlayers()) === 2) {
+  assert.equal(standingsAfter.alice.MainClan, "Pickers");
+  assert.equal(standingsAfter.bob.MainClan, "Ironhide");
+}
+for (const [clan, player] of [
+  ["Pickers", "alice"],
+  ["Ironhide", "bob"],
+] as const)
+  assert.deepEqual(
+    moved(clanIn(standingsAfter.clans, clan), clanIn(standingsBefore.clans, clan)),
+    moved(standingsAfter[player], standingsBefore[player]),
+    `${clan}'s record moved with ${player}'s`,
+  );
+assert.deepEqual(
+  record(clanIn(standingsAfter.clans, "Delvers")),
+  record(clanIn(standingsBefore.clans, "Delvers")),
+  "Delvers played no match",
+);
+log(
+  `standings: alice ${standingsAfter.alice.Rating} (#${standingsAfter.alice.Rank}), bob ${standingsAfter.bob.Rating} (#${standingsAfter.bob.Rank})`,
+);
 
 if (indexerURL !== undefined) {
   const calls = () => feed.map((c) => [c.func, c.match]);
