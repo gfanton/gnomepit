@@ -96,6 +96,13 @@ export type Engine = {
   resolve(r: ResolveRequest): Resolution;
 };
 
+// cardOf looks a card up by its id; an id outside the card list throws.
+export function cardOf(cards: Card[], id: number): Card {
+  const card = cards[id];
+  if (card === undefined) throw new RangeError(`no card has id ${id}`);
+  return card;
+}
+
 export async function loadEngine(wasmUrl: string, cardsUrl: string): Promise<Engine> {
   const go = new globalThis.Go();
   const { instance } = await WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject);

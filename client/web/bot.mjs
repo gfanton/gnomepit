@@ -1,7 +1,7 @@
 // The bot: a random legal deck and a uniformly random plan. `rand` returns a number in
 // [0, 1), Math.random in the page and a fixed function in tests.
 
-import { deckSize, rareOf } from "./deck.mjs";
+import { deckSize, rareOf } from "./deck.ts";
 
 export function randomDeck(clan, cards, rand) {
   const rare = rareOf(clan, cards);
