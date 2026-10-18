@@ -59,7 +59,7 @@ fund: ## Send 1,000 GNOT on a running make dev to ADDRESS, such as an Adena acco
 	RPC=$(DEV_RPC) CHAIN=$(DEV_CHAIN) scripts/fund.sh $(ADDRESS)
 
 record: ## Record the RPC answers the script tests replay, from a running make dev
-	CHAIN=$(DEV_CHAIN) node scripts/record-rpc.mjs http://$(DEV_RPC)
+	CHAIN=$(DEV_CHAIN) node scripts/record-rpc.ts http://$(DEV_RPC)
 
 e2e: wasm ## Play two arena matches on a running make dev and make indexer, one through per-match sessions and one the wallet signs
 	CHAIN=$(DEV_CHAIN) node client/e2e/match.ts http://$(DEV_RPC) http://$(DEV_INDEXER)/graphql/query

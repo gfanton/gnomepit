@@ -2,10 +2,12 @@
 // every answer chain.ts's tests and the dev wallet's tests replay. It signs as the dev
 // wallet's alice, and creates one more session for her on each run.
 //
-//   [CHAIN=<chain id>] node scripts/record-rpc.mjs [rpc url]
+//   [CHAIN=<chain id>] node scripts/record-rpc.ts [rpc url]
 
 import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
+
+import * as v from "valibot";
 
 import { fromBase64, toBase64 } from "../client/web/encoding.ts";
 import { networks } from "../client/web/network.ts";
@@ -15,21 +17,35 @@ const rpc = process.argv[2] ?? networks.local.rpc;
 const chainId = process.env.CHAIN ?? networks.local.chainId;
 const out = new URL("../client/web/testdata/rpc/", import.meta.url);
 const arena = networks.local.realm;
-const devKey = (name) => createHash("sha256").update(`gnomehall dev ${name}`).digest("hex");
+const devKey = (name: string) => createHash("sha256").update(`gnomehall dev ${name}`).digest("hex");
 const seal = "0101010101010101010101010101010101010101010101010101010101010101";
 const box = btoa("box");
 
 const alice = { key: devKey("alice"), ...(await signer.keyInfo(devKey("alice"))) };
 const nobody = await signer.keyInfo(devKey("nobody"));
 
-async function rpcCall(method, params) {
+// The parts of the node's answers the script reads back: a query's data, which holds an
+// account or a session account as JSON, and a committed transaction's result.
+const QuerySchema = v.object({
+  result: v.object({ response: v.object({ ResponseBase: v.object({ Data: v.string() }) }) }),
+});
+const AccountSchema = v.object({ BaseAccount: v.object({ account_number: v.string(), sequence: v.string() }) });
+const SessionAccountSchema = v.object({ BaseSessionAccount: AccountSchema });
+const CommitSchema = v.object({
+  result: v.object({ deliver_tx: v.object({ ResponseBase: v.object({ Data: v.string() }) }) }),
+});
+
+async function rpcCall(method: string, params: Record<string, unknown>): Promise<unknown> {
   const res = await fetch(rpc, { method: "POST", body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
   return res.json();
 }
-const query = (path, data = "") => rpcCall("abci_query", { path, data: btoa(data) });
-const record = (name, answer) => writeFile(new URL(`${name}.json`, out), `${JSON.stringify(answer, null, 2)}\n`);
+const query = (path: string, data = "") => rpcCall("abci_query", { path, data: btoa(data) });
+const record = (name: string, answer: unknown) =>
+  writeFile(new URL(`${name}.json`, out), `${JSON.stringify(answer, null, 2)}\n`);
+const queryData = (answer: unknown): unknown =>
+  JSON.parse(atob(v.parse(QuerySchema, answer).result.response.ResponseBase.Data));
 
-function call(func, args, sequence, accountNumber) {
+function call(func: string, args: string[], sequence: number, accountNumber: number): Promise<string> {
   return signer.signTx({
     chainId,
     accountNumber,
@@ -51,9 +67,7 @@ await record("qeval-ok", await query("vm/qeval_json", `${arena}.Open(0, 50)`));
 await record("qeval-error", await query("vm/qeval_json", `${arena}.Match("99")`));
 await record("qtype", await query("vm/qtype_json", `${arena}.OpenChallenge`));
 
-const { account_number: accountNumber, sequence } = JSON.parse(
-  atob(account.result.response.ResponseBase.Data),
-).BaseAccount;
+const { account_number: accountNumber, sequence } = v.parse(AccountSchema, queryData(account)).BaseAccount;
 const challenge = await call("Challenge", ["Pickers", seal, seal, box, ""], Number(sequence), Number(accountNumber));
 await record("simulate", await rpcCall("abci_query", { path: ".app/simulate", data: challenge }));
 await record(
@@ -117,7 +131,7 @@ await record("sessions", await query(`auth/accounts/${alice.address}/sessions`))
 const sessionAccount = await query(`auth/accounts/${alice.address}/session/${session.address}`);
 await record("session", sessionAccount);
 await record("session-missing", await query(`auth/accounts/${alice.address}/session/${nobody.address}`));
-const { BaseAccount: s } = JSON.parse(atob(sessionAccount.result.response.ResponseBase.Data)).BaseSessionAccount;
+const { BaseAccount: s } = v.parse(SessionAccountSchema, queryData(sessionAccount)).BaseSessionAccount;
 await record(
   "broadcast-session-call",
   await rpcCall("broadcast_tx_commit", {
@@ -147,7 +161,8 @@ await record(
 
 // Withdrawing the challenge broadcast-ok posted frees its storage. deliver_tx's data holds
 // Challenge's result, the new id, as `("<id>" string)`.
-const [, id] = /"(\d+)"/.exec(atob(posted.result.deliver_tx.ResponseBase.Data));
+const [, id] = /"(\d+)"/.exec(atob(v.parse(CommitSchema, posted).result.deliver_tx.ResponseBase.Data)) ?? [];
+if (id === undefined) throw new Error("broadcast-ok's result names no match id");
 await record(
   "broadcast-unlock",
   await rpcCall("broadcast_tx_commit", {
