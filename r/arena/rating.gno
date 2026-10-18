@@ -1,5 +1,7 @@
 package arena
 
+import "gno.land/p/gfanton/gnomehall/engine"
+
 const (
 	startRating = 1000
 	maxRating   = 0xFFFF // a ladder key holds the rating in 2 bytes
@@ -47,4 +49,99 @@ func clampRating(r int) int {
 		return maxRating
 	}
 	return r
+}
+
+// rate counts match m, which has just ended, in both players' standings and on the
+// ladder, and in the clan records when two clans met and nobody forfeited. A match its
+// challenger accepted is not rated.
+func rate(rules *engine.Ruleset, m record) {
+	if m.challenger == m.acceptor {
+		return
+	}
+	score := scoreOf(m.result)
+	pa, pb := loadPlayer(m.challenger), loadPlayer(m.acceptor)
+	a, b := ratedStanding(rules, &pa, m.challenger), ratedStanding(rules, &pb, m.acceptor)
+	a.rating, b.rating = applyChange(a.rating, b.rating, eloChange(a.rating, b.rating, score, playerK))
+	a.count(score, m.clans[0])
+	b.count(1000-score, m.clans[1])
+	ladder, _ = ladder.Set(ladderKey(a.rating, m.challenger), nil)
+	ladder, _ = ladder.Set(ladderKey(b.rating, m.acceptor), nil)
+	savePlayer(m.challenger, pa)
+	savePlayer(m.acceptor, pb)
+
+	if m.clans[0] == m.clans[1] || m.reason == "forfeit" {
+		return
+	}
+	c := decodeClans(clanRecords, len(rules.Clans))
+	ca, cb := &c[m.clans[0]-1], &c[m.clans[1]-1]
+	ca.rating, cb.rating = applyChange(ca.rating, cb.rating, eloChange(ca.rating, cb.rating, score, clanK))
+	tally(score, &ca.wins, &ca.losses, &ca.draws)
+	tally(1000-score, &cb.wins, &cb.losses, &cb.draws)
+	clanRecords = encodeClans(c)
+}
+
+// ratedStanding returns p's standing, created at startRating for a first rated match, with
+// a count for every clan of rules, and takes its key off the ladder until it is counted.
+func ratedStanding(rules *engine.Ruleset, p *playerRecord, a address) *standing {
+	if p.standing == nil {
+		p.standing = &standing{rating: startRating}
+	} else {
+		ladder, _, _, _ = ladder.Remove(ladderKey(p.standing.rating, a))
+	}
+	for len(p.standing.perClan) < len(rules.Clans) {
+		p.standing.perClan = append(p.standing.perClan, 0)
+	}
+	return p.standing
+}
+
+// scoreOf is the challenger's score, in thousandths, in a match that ended with result.
+func scoreOf(result string) int {
+	switch result {
+	case "a":
+		return 1000
+	case "b":
+		return 0
+	case "draw":
+		return 500
+	}
+	panic("unknown result")
+}
+
+// count adds a match scored score thousandths and played as clan number clan.
+func (s *standing) count(score, clan int) {
+	tally(score, &s.wins, &s.losses, &s.draws)
+	s.lastClan = clan
+	s.perClan[clan-1]++
+}
+
+func tally(score int, wins, losses, draws *int) {
+	switch score {
+	case 1000:
+		*wins++
+	case 0:
+		*losses++
+	default:
+		*draws++
+	}
+}
+
+// mainClan is the clan number s has finished the most rated matches with, 0 for none. A
+// tie goes to the last match's clan when it is one of the tied, else to ruleset order.
+func (s standing) mainClan() int {
+	best := 0
+	for i, n := range s.perClan {
+		if n > 0 && (best == 0 || n > s.perClan[best-1]) {
+			best = i + 1
+		}
+	}
+	if best != 0 && s.lastClan >= 1 && s.lastClan <= len(s.perClan) && s.perClan[s.lastClan-1] == s.perClan[best-1] {
+		return s.lastClan
+	}
+	return best
+}
+
+// rankOf is the rank a rating holds: 1 plus the number of players rated above it.
+func rankOf(rating int) int {
+	i, _, _ := ladder.Get(ladderKey(rating, ""))
+	return i + 1
 }

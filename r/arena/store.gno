@@ -8,9 +8,11 @@ import (
 )
 
 var (
-	chunks   avl.Tree // 4-byte chunk number → chunk string
-	players  avl.Tree // address → player string
-	openList string
+	chunks      avl.Tree  // 4-byte chunk number → chunk string
+	players     avl.Tree  // address → player string
+	ladder      *avl.Node // ladderKey of every rated player → nil
+	clanRecords string
+	openList    string
 )
 
 func chunkKey(id int) string {

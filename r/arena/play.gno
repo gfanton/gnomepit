@@ -104,6 +104,7 @@ func Reveal(cur realm, id, deck, deckSalt, plan, planSalt, nextSeal, nextBox str
 	if o.Result != engine.Ongoing {
 		m.end(resultName(o.Result), reasonOf(o.State))
 		saveMatch(rules, n, m)
+		rate(rules, m)
 		tellEnded(m, n, caller)
 		return
 	}
@@ -159,6 +160,7 @@ func Resign(cur realm, id string) {
 			panic("not a player")
 		}
 		saveMatch(rules, n, m)
+		rate(rules, m)
 		tellEnded(m, n, caller)
 	default:
 		panic("wrong phase")
@@ -186,6 +188,7 @@ func ClaimForfeit(cur realm, id string) {
 	}
 	m.end(result, "forfeit")
 	saveMatch(rules, n, m)
+	rate(rules, m)
 	tellEnded(m, n, caller)
 }
 
