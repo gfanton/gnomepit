@@ -1,7 +1,7 @@
 // The match flow: a pure reducer over the page's screens. It knows which screen shows,
 // who is acting and what has been chosen; rendering and the engine live elsewhere.
 
-import type { BattleEvent, GameState, Resolution, Side } from "./engine.ts";
+import { type BattleEvent, type GameState, type Resolution, type Side, startState } from "./engine.ts";
 
 type Pair<T> = [T, T];
 
@@ -72,7 +72,7 @@ export function reduce(flow: Flow, action: Action): Flow {
   if (flow.screen !== screenOf[action.type]) return flow;
   switch (action.type) {
     case "start":
-      return { ...initial, screen: "deck", mode: action.mode, hp: action.hp, state: freshState(action.hp) };
+      return { ...initial, screen: "deck", mode: action.mode, hp: action.hp, state: startState(action.hp) };
     case "startTutorial":
       return {
         ...initial,
@@ -81,7 +81,7 @@ export function reduce(flow: Flow, action: Action): Flow {
         hp: action.hp,
         clans: action.clans,
         decks: action.decks,
-        state: freshState(action.hp),
+        state: startState(action.hp),
       };
     case "deckReady": {
       const next = {
@@ -114,18 +114,13 @@ export function reduce(flow: Flow, action: Action): Flow {
     case "rematch":
       if (flow.hp === null) return flow;
       return toward(
-        { ...flow, state: freshState(flow.hp), rounds: [], plans: [null, null], result: "ongoing" },
+        { ...flow, state: startState(flow.hp), rounds: [], plans: [null, null], result: "ongoing" },
         "plan",
         0,
       );
     case "newMatch":
       return initial;
   }
-}
-
-function freshState(hp: number): GameState {
-  const gnome = () => ({ hp, vulnerable: 0, strength: 0, spent: [] });
-  return { round: 1, gnomes: [gnome(), gnome()] };
 }
 
 // toward moves to a screen for a player, through the hand-off curtain in hot-seat since the

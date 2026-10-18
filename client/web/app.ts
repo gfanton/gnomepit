@@ -12,6 +12,7 @@ import {
   cardOf,
   loadEngine,
   otherSide,
+  startState,
 } from "./engine.ts";
 import { type Action, type Flow, type Round, initial, reduce, botTurn } from "./flow.ts";
 import { type Deck, deckSize, newDeck, toggle, rareOf } from "./deck.ts";
@@ -197,7 +198,6 @@ const lobby: Lobby<Draft> | null =
           const opponent = context.view?.clans[0] ?? "";
           if (opponent !== "" && clanNamed(opponent) === undefined)
             throw new Error("The arena returned an unknown clan. Reload before playing.");
-          const gnome = (): Gnome => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] });
           flow = {
             ...initial,
             screen: "deck",
@@ -206,7 +206,7 @@ const lobby: Lobby<Draft> | null =
             acting: context.intent === "accept" ? 1 : 0,
             clans: context.intent === "accept" ? [opponent, null] : [null, ""],
             decks: [[], []],
-            state: { round: 1, gnomes: [gnome(), gnome()] },
+            state: startState(engine.hp),
           };
           choosingClan = true;
           deck = newDeck(firstClan(), engine.cards);

@@ -16,7 +16,7 @@ import {
 } from "../web/arena.ts";
 import { ChainError, type Session, createChain, payFor } from "../web/chain.ts";
 import { type devAccounts, devWallet } from "../web/devwallet.ts";
-import { type GameState, type Side, cardOf } from "../web/engine.ts";
+import { type GameState, type Side, cardOf, startState } from "../web/engine.ts";
 import { nodeEngine } from "../web/engine-node.ts";
 import { createReader } from "../web/gnovalue.ts";
 import type { Address, MatchId } from "../web/ids.ts";
@@ -77,8 +77,7 @@ function planFor(state: GameState, side: Side, deck: number[]): number[] {
   assert.ok(plan !== undefined, "the engine lists no legal plan");
   return plan;
 }
-const gnome = () => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] });
-const start: GameState = { round: 1, gnomes: [gnome(), gnome()] };
+const start = startState(engine.hp);
 const openings: [Opening, Opening] = [
   { clan: "Pickers", deck: decks.a, plan: planFor(start, 0, decks.a) },
   { clan: "Ironhide", deck: decks.b, plan: planFor(start, 1, decks.b) },

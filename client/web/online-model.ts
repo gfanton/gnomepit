@@ -2,7 +2,7 @@
 // them absent, and what the arena adds. Times in the arena are Unix seconds.
 
 import type { Action, MatchDetail, MatchView, OpenChallenge, Phase } from "./arena.ts";
-import type { Card, Clan, Engine, GameState, Resolution, Side } from "./engine.ts";
+import { type Card, type Clan, type Engine, type GameState, type Resolution, type Side, startState } from "./engine.ts";
 import type { Round } from "./flow.ts";
 import { type Address, type MatchId, matchId } from "./ids.ts";
 
@@ -166,8 +166,7 @@ export function replayView(
     const opened = cardIds(recovered, engine.cards);
     decks[v.side] = opened.length > 0 ? opened : ownDeck;
   }
-  const fresh = () => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] });
-  let state: GameState = { round: 1, gnomes: [fresh(), fresh()] };
+  let state: GameState = startState(engine.hp);
   const rounds: ReplayedRound[] = [];
   let result: Resolution["result"] = "ongoing";
   for (const [i, pair] of (v.plans ?? []).entries()) {

@@ -100,6 +100,12 @@ export function otherSide(side: Side): Side {
   return side === 0 ? 1 : 0;
 }
 
+// startState is the state round 1 starts from, each gnome at hp.
+export function startState(hp: number): GameState {
+  const gnome = () => ({ hp, vulnerable: 0, strength: 0, spent: [] });
+  return { round: 1, gnomes: [gnome(), gnome()] };
+}
+
 // cardOf looks a card up by its id; an id outside the card list throws.
 export function cardOf(cards: Card[], id: number): Card {
   const card = cards[id];

@@ -18,7 +18,7 @@ import { pageWallet } from "./arena-provider.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
 import { ChainError, createChain } from "./chain.ts";
 import { elementById } from "./dom.ts";
-import { type GameState, loadEngine } from "./engine.ts";
+import { loadEngine, startState } from "./engine.ts";
 import { createReader } from "./gnovalue.ts";
 import type { Address } from "./ids.ts";
 import { networkFrom, networks } from "./network.ts";
@@ -79,8 +79,7 @@ async function post(arena: Arena): Promise<Listed<OpenChallenge> | undefined> {
   const clan = engine.clans[0];
   if (clan === undefined) throw new Error("The card file names no clan");
   const deck = randomDeck(clan, engine.cards, Math.random);
-  const gnome = () => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] });
-  const start: GameState = { round: 1, gnomes: [gnome(), gnome()] };
+  const start = startState(engine.hp);
   const plan = randomPlan(engine.legalPlans({ state: start, side: 0, deck }), Math.random);
   const id = await arena.challenge({ clan: clan.name, deck, plan });
   return (await arena.openChallenges()).find((c) => c.ID === id);

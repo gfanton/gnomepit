@@ -8,7 +8,7 @@ import { pageWallet } from "./arena-provider.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
 import { ChainError, createChain } from "./chain.ts";
 import { elementById } from "./dom.ts";
-import { type GameState, type Side, loadEngine } from "./engine.ts";
+import { type Side, loadEngine, startState } from "./engine.ts";
 import type { MatchId } from "./ids.ts";
 import { createIndexer } from "./indexer.ts";
 import { networkFrom, networks } from "./network.ts";
@@ -73,10 +73,6 @@ function showStatus(account: Connection): string {
   return account.state;
 }
 
-const startState = (): GameState => {
-  const gnome = () => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] });
-  return { round: 1, gnomes: [gnome(), gnome()] };
-};
 const clanOf = (name: string) => engine.clans.find((c) => c.name === name);
 const short = (address: string) => (address === "" ? "" : `${address.slice(0, 8)}…${address.slice(-4)}`);
 
@@ -84,7 +80,7 @@ function opening(side: Side): Opening {
   const clan = clanOf(elementById("clan", HTMLSelectElement).value);
   if (clan === undefined) throw new Error("No clan is picked");
   const deck = randomDeck(clan, engine.cards, Math.random);
-  const plan = randomPlan(engine.legalPlans({ state: startState(), side, deck }), Math.random);
+  const plan = randomPlan(engine.legalPlans({ state: startState(engine.hp), side, deck }), Math.random);
   return { clan: clan.name, deck, plan };
 }
 

@@ -15,6 +15,7 @@ import {
   type LegalPlansRequest,
   type Resolution,
   type Side,
+  startState,
 } from "./engine.ts";
 import { createReader } from "./gnovalue.ts";
 import { type Address, type MatchId, address, matchId } from "./ids.ts";
@@ -366,11 +367,6 @@ export function errorFrom(err: unknown): ArenaError {
 
 function messageOf(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
-}
-
-function startState(hp: number): GameState {
-  const gnome = () => ({ hp, vulnerable: 0, strength: 0, spent: [] });
-  return { round: 1, gnomes: [gnome(), gnome()] };
 }
 
 // readParsed evaluates expr with readValue, a gnovalue reader, and parses its value; a value
