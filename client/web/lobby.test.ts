@@ -440,6 +440,18 @@ test("resigning a running match shows its result", async (t) => {
   assert.match(shown(), /<h1>You lost<\/h1>/);
 });
 
+test("only the poster of a reserved challenge is told to share it", async (t) => {
+  stubPage(t);
+  const arena = endingArena(detail({ Opponent: bob }));
+  const poster = lobbyOf(arena, alice);
+  await poster.lobby.action("Open", { id: "4" });
+  assert.match(poster.shown(), /Reserved for .*Share the link to invite them/s);
+  const reserved = lobbyOf(arena, bob);
+  await reserved.lobby.action("Open", { id: "4" });
+  assert.match(reserved.shown(), /Reserved for you\./);
+  assert.doesNotMatch(reserved.shown(), /Share the link/);
+});
+
 test("an unsent plan stays while its match waits for it, and goes when the player resigns", async (t) => {
   stubPage(t);
   const arena = endingArena(bobsMove);
