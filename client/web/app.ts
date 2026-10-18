@@ -407,7 +407,7 @@ function groupSteps(events: BattleEvent[]): Step[] {
   return steps;
 }
 
-// atRest is each gnome's vitals before a round's first step: no block and no counter yet.
+// atRest is each gnome's vitals before a round's first step.
 function atRest({ gnomes }: GameState): Pair<Vitals> {
   const vitals = ({ hp, vulnerable, strength }: Gnome): Vitals => ({ hp, block: 0, counter: 0, vulnerable, strength });
   return [vitals(gnomes[0]), vitals(gnomes[1])];
@@ -648,7 +648,6 @@ app.addEventListener("pointerout", (event) => {
 document.addEventListener("keydown", () =>
   app.querySelectorAll(".hand-entry--resting").forEach((el) => el.classList.remove("hand-entry--resting")),
 );
-// isHandled is true for an action name the page has a handler for.
 const isHandled = (action: string): action is keyof typeof handlers => Object.hasOwn(handlers, action);
 
 app.addEventListener("click", (event) => {
@@ -673,7 +672,6 @@ const tipTitles: Record<string, string> = { cancel: "Cancelled" };
 const tipRules: Record<string, string> = glossary;
 let tipAnchor: HTMLElement | null = null;
 
-// anchorAt is the tip anchor an event's target sits in, if any.
 function anchorAt(target: EventTarget | null): HTMLElement | null {
   const anchor = target instanceof Element ? target.closest(tipAnchors) : null;
   return anchor instanceof HTMLElement ? anchor : null;

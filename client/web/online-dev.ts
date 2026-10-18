@@ -63,7 +63,6 @@ async function run(label: string, action: () => Promise<unknown>): Promise<void>
   await refresh();
 }
 
-// failure names an arena, chain or wallet error by its type and reason, another by its message.
 function failure(err: unknown): string {
   if (err instanceof ArenaError || err instanceof ChainError || err instanceof WalletError)
     return `${err.type}: ${err.reason}`;

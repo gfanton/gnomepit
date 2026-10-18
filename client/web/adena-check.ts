@@ -58,8 +58,6 @@ function check(buttonId: string, outputId: string, run: () => Promise<[boolean, 
   };
 }
 
-// failure names an arena, chain or wallet error by its type and reason, another by its name
-// and message.
 function failure(err: unknown): string {
   if (err instanceof ArenaError || err instanceof ChainError || err instanceof WalletError)
     return `${err.type}: ${err.reason}`;
