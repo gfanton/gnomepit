@@ -59,7 +59,7 @@ capture: ## Record the arena's query answers from a running make dev
 fund: ## Send 1,000 GNOT on a running make dev to ADDRESS, such as an Adena account
 	RPC=$(DEV_RPC) CHAIN=$(DEV_CHAIN) scripts/fund.sh $(ADDRESS)
 
-record: $(PNPM_STAMP) ## Record the RPC answers the script tests replay, from a running make dev
+record: $(PNPM_STAMP) ## Record the RPC answers the TypeScript tests replay, from a running make dev
 	CHAIN=$(DEV_CHAIN) node scripts/record-rpc.ts http://$(DEV_RPC)
 
 e2e: wasm $(PNPM_STAMP) ## Play two arena matches on a running make dev and make indexer, one through per-match sessions and one the wallet signs
