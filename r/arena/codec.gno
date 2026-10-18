@@ -16,6 +16,8 @@ const (
 	sealSize    = 32 // bytes in a raw sha256 seal
 	lockSize    = addressSize + 4 + 4
 	openSize    = 4 + 4
+	standingFix = 2 + 2 + 2 + 2 + 1 // a standing's bytes before its per-clan counts
+	clanSize    = 2 + 4 + 4 + 4
 
 	planBits   = 20 // bits per round in a side's plans: 2 for the length, 6 per card
 	cardBits   = 6
@@ -431,10 +433,20 @@ func withChunkRecord(chunk string, slot int, rec string) string {
 // ---- Players
 
 // playerRecord is what the arena keeps per player: the ids of their matches, oldest
-// first, and the session locks that bind a session key to one match.
+// first, their standing, nil until their first rated match, and the session locks that
+// bind a session key to one match.
 type playerRecord struct {
-	ids   []int
-	locks []sessionLock
+	ids      []int
+	standing *standing
+	locks    []sessionLock
+}
+
+// standing is a player's rated record. lastClan is the clan number, index plus one, of
+// their last rated match; perClan[i] counts their rated matches with clan number i + 1.
+type standing struct {
+	rating, wins, losses, draws int
+	lastClan                    int
+	perClan                     []int
 }
 
 type sessionLock struct {
@@ -443,7 +455,9 @@ type sessionLock struct {
 	expires int64
 }
 
-// A player's bytes are a 2-byte id count, the ids at 4 bytes each, then the locks.
+// A player's bytes are a 2-byte id count, the ids at 4 bytes each, a 1-byte standing
+// length, 0 for none, the standing, then the locks. A standing is the rating, wins, losses
+// and draws at 2 bytes each, the last clan at 1, then a 2-byte count per clan.
 // ceiling: every write decodes and rewrites all of a player's ids, up to 65,535, so its gas
 // grows with their matches; an avl index of ids per player if some play thousands.
 func decodePlayer(s string) playerRecord {
@@ -454,6 +468,16 @@ func decodePlayer(s string) playerRecord {
 	r := &reader{s: s}
 	for n := r.u16(); n > 0; n-- {
 		p.ids = append(p.ids, int(r.u32()))
+	}
+	if n := int(r.u8()); n != 0 {
+		if n < standingFix || (n-standingFix)%2 != 0 {
+			panic("malformed player")
+		}
+		st := &standing{rating: int(r.u16()), wins: int(r.u16()), losses: int(r.u16()), draws: int(r.u16()), lastClan: int(r.u8())}
+		for i := standingFix; i < n; i += 2 {
+			st.perClan = append(st.perClan, int(r.u16()))
+		}
+		p.standing = st
 	}
 	if r.left()%lockSize != 0 {
 		panic("malformed player")
@@ -473,10 +497,68 @@ func encodePlayer(p playerRecord) string {
 	for _, id := range p.ids {
 		w.u32(uint64(id))
 	}
+	if st := p.standing; st == nil {
+		w.u8(0)
+	} else {
+		w.u8(uint64(standingFix + 2*len(st.perClan)))
+		w.u16(uint64(st.rating))
+		w.u16(uint64(st.wins))
+		w.u16(uint64(st.losses))
+		w.u16(uint64(st.draws))
+		w.u8(uint64(st.lastClan))
+		for _, n := range st.perClan {
+			w.u16(uint64(n))
+		}
+	}
 	for _, l := range p.locks {
 		w.addr(l.session)
 		w.u32(uint64(l.id))
 		w.u32(uint64(l.expires))
+	}
+	return w.String()
+}
+
+// ladderKey orders the ladder: highest rating first, then address order.
+func ladderKey(rating int, player address) string {
+	w := &writer{}
+	w.u16(uint64(maxRating - rating))
+	w.text(string(player))
+	return w.String()
+}
+
+// ---- Clan records
+
+// clanRecord is a clan's rating and its record in rated matches against other clans.
+type clanRecord struct {
+	rating, wins, losses, draws int
+}
+
+// The clan records are one string holding, per clan in ruleset order, the rating at 2
+// bytes and the wins, losses and draws at 4 each. decodeClans returns n clans; a clan
+// past the end of s has no rated match yet.
+func decodeClans(s string, n int) []clanRecord {
+	if len(s)%clanSize != 0 {
+		panic("malformed clans")
+	}
+	r := &reader{s: s}
+	c := make([]clanRecord, n)
+	for i := range c {
+		if r.left() == 0 {
+			c[i] = clanRecord{rating: startRating}
+			continue
+		}
+		c[i] = clanRecord{rating: int(r.u16()), wins: int(r.u32()), losses: int(r.u32()), draws: int(r.u32())}
+	}
+	return c
+}
+
+func encodeClans(c []clanRecord) string {
+	w := &writer{}
+	for _, x := range c {
+		w.u16(uint64(x.rating))
+		w.u32(uint64(x.wins))
+		w.u32(uint64(x.losses))
+		w.u32(uint64(x.draws))
 	}
 	return w.String()
 }
