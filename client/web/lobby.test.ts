@@ -640,6 +640,29 @@ test("posting needs no session beforehand", async (t) => {
   );
 });
 
+test("a rematch posts a challenge reserved for the same opponent", async (t) => {
+  const composed: Parameters<LobbyOptions["onCompose"]>[0][] = [];
+  const reserved: (string | undefined)[] = [];
+  const ended = detail({ ID: matchId("5"), Phase: "ended", Challenger: alice, Acceptor: bob, Result: "challenger" });
+  const arena = followedArena();
+  arena.match = async (id) => (id === ended.ID ? ended : detail({ ID: id, Opponent: bob }));
+  arena.challenge = async ({ opponent }) => {
+    reserved.push(opponent);
+    return matchId("6");
+  };
+  arena.account = () => ({ address: alice, state: "active", mode: "session", fallback: null });
+  const { lobby, dialog } = dialogLobby(t, arena, { onCompose: (context) => composed.push(context) });
+  lobby.model.account = arena.account();
+  lobby.model.view = viewOf(ended, alice);
+  await lobby.action("Rematch");
+  assert.ok(dialog.innerHTML.includes(`value="${bob}"`));
+  dialog.value = bob;
+  await lobby.action("Compose");
+  await lobby.sendDraft(known(composed[0]), "Ironhide", [0], [0, 0, 0]);
+  assert.deepEqual(reserved, [bob]);
+  assert.equal(lobby.model.view?.id, "6");
+});
+
 test("leaving online play stops following the arena", async (t) => {
   Object.defineProperty(globalThis, "history", { value: { replaceState() {} }, configurable: true });
   Object.defineProperty(globalThis, "location", { value: { pathname: "/", search: "" }, configurable: true });

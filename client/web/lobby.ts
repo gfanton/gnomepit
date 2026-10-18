@@ -432,7 +432,8 @@ export function createLobby<Draft = unknown>({
     model.inGame = true;
     cancelWatch();
     try {
-      onCompose({ intent, view: model.view, opponent, account: address() });
+      // A challenge starts a new match, so only an acceptance carries the open one.
+      onCompose({ intent, view: intent === "accept" ? model.view : null, opponent, account: address() });
     } catch (e) {
       model.inGame = false;
       fail(e);
