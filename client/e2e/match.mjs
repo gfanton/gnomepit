@@ -6,7 +6,7 @@
 
 import assert from "node:assert/strict";
 
-import { createArena } from "../web/arena.mjs";
+import { createArena } from "../web/arena.ts";
 import { createChain, payFor } from "../web/chain.ts";
 import { devWallet } from "../web/devwallet.ts";
 import { nodeEngine } from "../web/engine-node.ts";

@@ -3,7 +3,7 @@
 // end to end. Without dev it uses Adena; &contract=1 has the wallet sign every move;
 // &rpc=, &chain=, &realm= and &indexer= point it elsewhere, and an empty &indexer= polls.
 
-import { ArenaError, createArena } from "./arena.mjs";
+import { ArenaError, createArena } from "./arena.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
 import { createChain } from "./chain.ts";
 import { devWallet } from "./devwallet.ts";

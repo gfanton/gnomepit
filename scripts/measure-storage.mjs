@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 
-import { cardIDs, createArena } from "../client/web/arena.mjs";
+import { cardIDs, createArena } from "../client/web/arena.ts";
 import { createChain, feeFor, gasWantedFor } from "../client/web/chain.ts";
 import { devWallet } from "../client/web/devwallet.ts";
 import { nodeEngine } from "../client/web/engine-node.ts";

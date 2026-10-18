@@ -174,12 +174,15 @@ export function answer<T>(response: unknown, data: v.GenericSchema<unknown, T>, 
   throw new WalletError("refused", nonEmpty(reply?.message) ?? nonEmpty(reply?.type) ?? "The wallet did not answer");
 }
 
-function replyOf(response: unknown): v.InferOutput<typeof ReplySchema> | undefined {
+export type WalletReply = v.InferOutput<typeof ReplySchema>;
+
+// replyOf reads a wallet's response, or gives undefined for one that is no reply.
+export function replyOf(response: unknown): WalletReply | undefined {
   const parsed = v.safeParse(ReplySchema, response);
   return parsed.success ? parsed.output : undefined;
 }
 
-const nonEmpty = (text: string | null | undefined): string | undefined =>
+export const nonEmpty = (text: string | null | undefined): string | undefined =>
   text === null || text === "" ? undefined : text;
 
 // rootText is what the player signs once per device; it names the site, which Adena
@@ -189,7 +192,11 @@ export function rootText(origin: string): string {
 }
 
 // rootSignature asks the wallet to sign rootText and returns the signature in base64.
-export async function rootSignature(wallet: Wallet, account: Address, origin: string): Promise<string> {
+export async function rootSignature(
+  wallet: Pick<Wallet, "SignArbitrary">,
+  account: Address,
+  origin: string,
+): Promise<string> {
   return answer(await wallet.SignArbitrary({ signer: account, data: rootText(origin) }), SignatureSchema).signature
     .signature;
 }

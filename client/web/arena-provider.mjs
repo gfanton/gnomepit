@@ -3,7 +3,7 @@
 // ?indexer= polls the node instead. ?dev=alice or ?dev=bob plays with a dev wallet on a
 // local chain instead of Adena.
 
-import { createArena } from "./arena.mjs";
+import { createArena } from "./arena.ts";
 import { createChain } from "./chain.ts";
 import { devWallet } from "./devwallet.ts";
 import { createIndexer } from "./indexer.ts";

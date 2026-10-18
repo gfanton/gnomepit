@@ -3,8 +3,17 @@ import assert from "node:assert/strict";
 
 import { readFileSync } from "node:fs";
 
+import * as v from "valibot";
+
 import {
+  type Arena,
+  type ArenaChange,
   ArenaError,
+  type ArenaOptions,
+  type Connection,
+  type MatchDetail,
+  type MatchView,
+  type Notifier,
   actionFor,
   cardIDs,
   cardNames,
@@ -17,13 +26,20 @@ import {
   planFrom,
   replay,
   walletFailure,
-} from "./arena.mjs";
-import { ChainError } from "./chain.ts";
+} from "./arena.ts";
+import { type Chain, ChainError, type Session } from "./chain.ts";
 import { devAccounts, devWallet } from "./devwallet.ts";
+import type { GameState, Gnome, LegalPlansRequest } from "./engine.ts";
 import { nodeEngine } from "./engine-node.ts";
+import { known } from "./fixture.ts";
+import { type Address, address, matchId } from "./ids.ts";
+import type { IndexedCall, Indexer } from "./indexer.ts";
 import { createLobby } from "./lobby.mjs";
 import * as signer from "./signer.ts";
+import type { SignRequest } from "./signer.ts";
 import {
+  type TxRequest,
+  type Wallet,
   WalletError,
   deriveKeys,
   newSalt,
@@ -37,17 +53,17 @@ import {
 } from "./wallet.ts";
 
 const engine = await nodeEngine();
-const alice = "g1alice";
-const bob = "g1bob";
-const carol = "g1carol";
+const alice = address("g1alice");
+const bob = address("g1bob");
+const carol = address("g1carol");
 const deckA = "Pickaxe Flurry,Kneecap,Sling Stone,Dodge Roll,Chalk Dust,Double Tap,Momentum,Undermine";
 const deckB = "Stone Guard,Bulwark,Hammer Blow,Cobble Throw,Spiked Shield,Anvil Stomp,Feint,Avalanche";
 const picks = "Pick,Pick,Pick";
 const braces = "Brace,Brace,Brace";
 
 // view builds a decoded MatchView, as gnovalue gives it.
-const view = (fields) => ({
-  ID: "1",
+const view = (fields: Partial<MatchView>): MatchView => ({
+  ID: matchId("1"),
   Phase: "open",
   Round: 1,
   Challenger: alice,
@@ -67,8 +83,10 @@ const view = (fields) => ({
   DeadlinePassed: false,
   ...fields,
 });
-const accepted = { Acceptor: bob, AcceptorClan: "Ironhide", AcceptorDeck: deckB };
+const accepted: Partial<MatchView> = { Acceptor: bob, AcceptorClan: "Ironhide", AcceptorDeck: deckB };
 const now = 1_900_000_000;
+// fullHP is a gnome as a match starts.
+const fullHP = (): Gnome => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] });
 
 test("card names and ids convert both ways through the engine's cards", () => {
   const ids = cardIDs(deckA, engine.cards);
@@ -76,7 +94,7 @@ test("card names and ids convert both ways through the engine's cards", () => {
   assert.equal(cardNames(ids, engine.cards), deckA);
   assert.throws(
     () => cardIDs("Pick,Bulwerk", engine.cards),
-    (err) => err.type === "outOfStep",
+    (err) => err instanceof ArenaError && err.type === "outOfStep",
   );
 });
 
@@ -117,12 +135,12 @@ test("after a missed deadline the waiting player claims the forfeit", () => {
 
 test("replay plays every resolved round with the page's engine", () => {
   const round1 = engine.resolve({
-    state: { round: 1, gnomes: [0, 1].map(() => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] })) },
+    state: { round: 1, gnomes: [fullHP(), fullHP()] },
     decks: [cardIDs(deckA, engine.cards), cardIDs(deckB, engine.cards)],
     a: cardIDs("Chalk Dust,Double Tap", engine.cards),
     b: cardIDs("Hammer Blow,Spiked Shield", engine.cards),
   });
-  const hp = round1.state.gnomes.map((g) => g.hp);
+  const hp: [number, number] = [round1.state.gnomes[0].hp, round1.state.gnomes[1].hp];
   const played = view({
     ...accepted,
     Phase: "play",
@@ -137,7 +155,7 @@ test("replay plays every resolved round with the page's engine", () => {
 
   const { rounds, state } = replay(played, engine);
   assert.equal(rounds.length, 1);
-  assert.deepEqual(rounds[0].events, round1.events);
+  assert.deepEqual(rounds[0]?.events, round1.events);
   assert.equal(state.round, 2);
 
   const wrong = { ...played, HP: [[hp[0] + 1, hp[1]]] };
@@ -164,7 +182,7 @@ test("the pending clash resolves the challenger's sealed plan against the accept
 
 test("the player to move plans from their side, deck and the state their round starts in", () => {
   const play = view({ ...accepted, Phase: "play", Round: 2, ToMove: bob });
-  const state = { round: 2, gnomes: [] };
+  const state: GameState = { round: 2, gnomes: [fullHP(), fullHP()] };
   assert.deepEqual(planFrom(play, state, undefined, "", engine.cards), {
     state,
     side: 1,
@@ -172,7 +190,7 @@ test("the player to move plans from their side, deck and the state their round s
   });
 
   const reveal = view({ ...accepted, Phase: "reveal", ToMove: alice, Plans: [["", braces]] });
-  const pending = { state: { round: 2, gnomes: [] } };
+  const pending: { state: GameState } = { state: { round: 2, gnomes: [fullHP(), fullHP()] } };
   assert.deepEqual(planFrom(reveal, state, pending, deckA, engine.cards), {
     state: pending.state,
     side: 0,
@@ -182,11 +200,11 @@ test("the player to move plans from their side, deck and the state their round s
   assert.equal(planFrom(reveal, state, undefined, "", engine.cards), undefined);
 });
 
-const start = { round: 1, gnomes: [0, 1].map(() => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] })) };
-const illegal = (err) => err instanceof ArenaError && err.type === "illegalPlan";
+const start: GameState = { round: 1, gnomes: [fullHP(), fullHP()] };
+const illegal = (err: unknown) => err instanceof ArenaError && err.type === "illegalPlan";
 
 test("a plan the engine refuses is never sealed or sent", () => {
-  const planning = { state: start, side: 0, deck: cardIDs(deckA, engine.cards) };
+  const planning: LegalPlansRequest = { state: start, side: 0, deck: cardIDs(deckA, engine.cards) };
   assert.doesNotThrow(() => checkPlan(engine, planning, cardIDs(picks, engine.cards)));
   assert.throws(() => checkPlan(engine, planning, cardIDs("Stone Guard", engine.cards)), illegal);
   assert.throws(() => checkPlan(engine, planning, cardIDs("Pick,Pick", engine.cards)), illegal);
@@ -195,7 +213,7 @@ test("a plan the engine refuses is never sealed or sent", () => {
 test("a challenge or acceptance with a deck or plan the engine refuses is never sent", () => {
   const deck = cardIDs(deckA, engine.cards);
   assert.doesNotThrow(() => checkOpening(engine, "Pickers", deck, cardIDs(picks, engine.cards), 0));
-  const foreign = [...deck.slice(1), cardIDs("Stone Guard", engine.cards)[0]];
+  const foreign = [...deck.slice(1), known(cardIDs("Stone Guard", engine.cards)[0])];
   assert.throws(() => checkOpening(engine, "Pickers", foreign, cardIDs(picks, engine.cards), 0), illegal);
   assert.throws(() => checkOpening(engine, "Pickers", deck, cardIDs("Bulwark,Pick", engine.cards), 0), illegal);
   assert.throws(
@@ -205,7 +223,7 @@ test("a challenge or acceptance with a deck or plan the engine refuses is never 
 });
 
 test("a move the wallet sent but the chain refused keeps the chain's reason", () => {
-  const failed = (message) => walletFailure({ status: "failure", type: "TRANSACTION_FAILED", message });
+  const failed = (message: string) => walletFailure({ status: "failure", type: "TRANSACTION_FAILED", message });
   assert.equal(failed("wrong phase").type, "wrongPhase");
   assert.equal(failed("deadline not passed").type, "failed");
   assert.equal(failed("deadline not passed").reason, "deadline not passed");
@@ -247,14 +265,14 @@ test("the acceptor's move plays face up", () => {
   assert.deepEqual(moveCall(play, null, { plan: picks }, engine.cards), { func: "Play", args: ["1", picks] });
 });
 
-function memory() {
-  const items = new Map();
-  return { getItem: (k) => items.get(k) ?? null, setItem: (k, v) => items.set(k, String(v)) };
+function memory(): Pick<Storage, "getItem" | "setItem"> {
+  const items = new Map<string, string>();
+  return { getItem: (k) => items.get(k) ?? null, setItem: (k, value) => items.set(k, String(value)) };
 }
 
 test("notify opts the wallet's address in to the arena's two triggers", async () => {
-  const sent = [];
-  const notifier = {
+  const sent: { trigger: string; value: Address }[][] = [];
+  const notifier: Notifier = {
     enable: async () => ({}),
     triggers: async (target) => {
       assert.equal(target, "gno.land/r/gfanton/gnomehall/arena");
@@ -266,9 +284,9 @@ test("notify opts the wallet's address in to the arena's two triggers", async ()
     },
     setOptins: async (optins) => sent.push(optins),
   };
-  const wallet = devWallet({ name: "alice", signer, chain: null, chainId: "dev" });
+  const wallet = devWallet({ name: "alice", signer, chain: arenaChain(), chainId: "dev" });
   const arena = createArena({
-    chain: null,
+    chain: arenaChain(),
     wallet,
     engine,
     signer,
@@ -291,7 +309,7 @@ test("notify opts the wallet's address in to the arena's two triggers", async ()
 test("the arena says whether it found a wallet and can send notifications", () => {
   const realm = "gno.land/r/gfanton/gnomehall/arena";
   const bare = createArena({
-    chain: null,
+    chain: arenaChain(),
     wallet: null,
     engine,
     signer,
@@ -303,25 +321,25 @@ test("the arena says whether it found a wallet and can send notifications", () =
   assert.equal(bare.hasWallet, false);
   assert.equal(bare.canNotify, false);
   const full = createArena({
-    chain: null,
-    wallet: walletFor("g1alice"),
+    chain: arenaChain(),
+    wallet: walletFor(address("g1alice")),
     engine,
     signer,
     realm,
     chainId: "dev",
     origin: "http://x",
     storage: memory(),
-    notifier: {},
+    notifier: { enable: async () => ({}), triggers: async () => [], setOptins: async () => ({}) },
   });
   assert.equal(full.hasWallet, true);
   assert.equal(full.canNotify, true);
 });
 
 test("watch reports a match when it changes, and stops", async () => {
-  const load = (name) => JSON.parse(readFileSync(new URL(`./testdata/qeval/${name}.json`, import.meta.url)));
   const answers = ["match-play", "match-play", "match-ended"];
   const chain = {
-    evalJSON: async () => load(answers.shift() ?? "match-ended").results,
+    ...arenaChain(),
+    evalJSON: async () => recorded(answers.shift() ?? "match-ended").results,
     typeJSON: async () => load("qtype-MatchView"),
   };
   const arena = createArena({
@@ -334,8 +352,8 @@ test("watch reports a match when it changes, and stops", async () => {
     origin: "http://x",
     storage: memory(),
   });
-  const seen = [];
-  const stop = arena.watch("1", (view, err) => seen.push(err ?? view.Phase), { interval: 5 });
+  const seen: (ArenaError | string)[] = [];
+  const stop = arena.watch(matchId("1"), (view, err) => seen.push(err ?? known(view).Phase), { interval: 5 });
   await new Promise((resolve) => setTimeout(resolve, 80));
   stop();
   const count = seen.length;
@@ -345,29 +363,49 @@ test("watch reports a match when it changes, and stops", async () => {
 });
 
 const realm = "gno.land/r/gfanton/gnomehall/arena";
-const load = (name) => JSON.parse(readFileSync(new URL(`./testdata/qeval/${name}.json`, import.meta.url)));
+const load = (name: string): unknown =>
+  JSON.parse(readFileSync(new URL(`./testdata/qeval/${name}.json`, import.meta.url), "utf8"));
+// A recorded vm/qeval_json answer.
+const RecordedSchema = v.object({ results: v.array(v.unknown()) });
+type Recorded = v.InferOutput<typeof RecordedSchema>;
+const recorded = (name: string): Recorded => v.parse(RecordedSchema, load(name));
 
-// walletFor answers Adena's connection calls for address, with the given overrides.
-const walletFor = (address, overrides = {}) => ({
+// unexpected stands for a call the test does not expect, which fails.
+const unexpected = (call: string) => async (): Promise<never> => {
+  throw new Error(`${call} was not expected`);
+};
+
+type TestWallet = Pick<
+  Wallet,
+  "AddEstablish" | "GetNetwork" | "SwitchNetwork" | "GetAccount" | "SignArbitrary" | "DoContract"
+>;
+
+// walletFor answers Adena's connection calls for account, with the given overrides.
+const walletFor = (account: Address, overrides: Partial<TestWallet> = {}): TestWallet => ({
   AddEstablish: async () => ({ status: "success" }),
   GetNetwork: async () => ({ status: "success", data: { chainId: "dev" } }),
-  GetAccount: async () => ({ status: "success", data: { address } }),
+  SwitchNetwork: unexpected("SwitchNetwork"),
+  GetAccount: async () => ({ status: "success", data: { address: account } }),
+  SignArbitrary: unexpected("SignArbitrary"),
+  DoContract: unexpected("DoContract"),
   ...overrides,
 });
+
+type TestLock = { Session: Address; Match: string; Expires: number };
 
 // lockAnswer is the realm's Locks answer for locks in vm/qeval_json's form, and lockType
 // the vm/qtype_json answer for SessionLock.
 const lockTypeID = `${realm}.SessionLock`;
-const typedText = (value) => ({
+const typedText = (value: string) => ({
   T: { "@type": "/gno.PrimitiveType", value: "16" },
   V: { "@type": "/gno.StringValue", value },
 });
-function typedInt64(n) {
+function typedInt64(n: number) {
   const bytes = new Uint8Array(8);
   new DataView(bytes.buffer).setBigInt64(0, BigInt(n), true);
   return { T: { "@type": "/gno.PrimitiveType", value: "1024" }, N: btoa(String.fromCharCode(...bytes)) };
 }
-const lockAnswer = (locks) => [
+const lockAnswer = (locks: TestLock[]) => [
   {
     T: { "@type": "/gno.SliceType", Elt: { "@type": "/gno.RefType", ID: lockTypeID }, Vrd: false },
     V: {
@@ -400,13 +438,28 @@ const lockType = {
 const floor = { gas: 1000, amount: 1, denom: "ugnot" };
 const budget = { challenger: sessionBudget("challenger", floor), acceptor: sessionBudget("acceptor", floor) };
 
+type ArenaChain = Chain & {
+  sessionList: Session[];
+  locks: TestLock[];
+  sequence: number;
+  broadcasts: number;
+  reads: number[];
+  matchReads: string[];
+};
+// What Match(id) answers: a recorded answer by file name or as parsed JSON, or an error it throws.
+type MatchAnswer = string | Recorded | ChainError;
+
 // arenaChain holds master's session accounts in sessions, answers Locks with locks, and
 // answers Match(id) with the recorded answer matches names for id, by file name or as
 // parsed JSON, or throws it when it is an error, or fails with "unknown match". A
 // broadcast lands after a short wait and moves the sequence of every session on; reads
 // lists the sequence each sessions() read, and matchReads each id Match read.
-function arenaChain({ sessions = [], locks = [], matches = {} } = {}) {
-  const chain = {
+function arenaChain({
+  sessions = [],
+  locks = [],
+  matches = {},
+}: { sessions?: Session[]; locks?: TestLock[]; matches?: Record<string, MatchAnswer> } = {}): ArenaChain {
+  const chain: ArenaChain = {
     sessionList: sessions,
     locks,
     sequence: 0,
@@ -419,38 +472,45 @@ function arenaChain({ sessions = [], locks = [], matches = {} } = {}) {
     },
     evalJSON: async (expr) => {
       if (expr.startsWith(`${realm}.Locks(`)) return lockAnswer(chain.locks);
-      if (expr.startsWith(`${realm}.Matches(`)) return load("matches").results;
-      if (expr.startsWith(`${realm}.Open(`)) return load("open").results;
-      const [, id] = /\.Match\("(\d+)"\)$/.exec(expr);
+      if (expr.startsWith(`${realm}.Matches(`)) return recorded("matches").results;
+      if (expr.startsWith(`${realm}.Open(`)) return recorded("open").results;
+      const id = /\.Match\("(\d+)"\)$/.exec(expr)?.[1];
+      if (id === undefined) throw new Error(`the test chain does not answer ${expr}`);
       chain.matchReads.push(id);
       const answer = matches[id];
       if (answer === undefined) throw new ChainError("failed", "unknown match");
       if (answer instanceof Error) throw answer;
-      return (typeof answer === "string" ? load(answer) : answer).results;
+      return (typeof answer === "string" ? recorded(answer) : answer).results;
     },
-    typeJSON: async (id) => (id === lockTypeID ? lockType : load(`qtype-${id.split(".").pop()}`)),
+    typeJSON: async (id) => (id === lockTypeID ? lockType : load(`qtype-${id.split(".").at(-1) ?? ""}`)),
+    account: unexpected("account"),
+    sessionAccount: unexpected("sessionAccount"),
     gasPrice: async () => floor,
     simulate: async () => 1_000_000,
     broadcast: async () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
       chain.sequence++;
       chain.broadcasts++;
-      return { hash: "h", height: 1, gasUsed: 1 };
+      return { hash: "h", height: 1, gasUsed: 1, storage: 0 };
     },
   };
   return chain;
 }
 
 // revealWith is the recorded match in its reveal phase, holding box as the challenger's.
-function revealWith(box) {
+function revealWith(box: string): Recorded {
   const recordedText = readFileSync(new URL("./testdata/qeval/match-reveal.json", import.meta.url), "utf8");
-  return JSON.parse(recordedText.replace('"box1"', JSON.stringify(box)));
+  return v.parse(RecordedSchema, JSON.parse(recordedText.replace('"box1"', JSON.stringify(box))));
 }
 
 test("a challenger on a device that has not authorized sees the match, and a box it cannot open is unauthorized", async () => {
   // In the recorded match, gnodev's test1 account challenged and must reveal.
-  const player = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5";
-  const chain = { evalJSON: async () => load("match-reveal").results, typeJSON: async () => load("qtype-MatchView") };
+  const player = address("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5");
+  const chain = {
+    ...arenaChain(),
+    evalJSON: async () => recorded("match-reveal").results,
+    typeJSON: async () => load("qtype-MatchView"),
+  };
   const storage = memory();
   const arena = createArena({
     chain,
@@ -464,16 +524,80 @@ test("a challenger on a device that has not authorized sees the match, and a box
   });
   assert.equal((await arena.connect()).state, "missing");
 
-  const unopened = await arena.match("1");
+  const unopened = await arena.match(matchId("1"));
   assert.equal(unopened.action, "move");
   assert.equal(unopened.planning, undefined);
 
   storage.setItem(`gnomehall:dev:${player}:root`, btoa("a signature from another site"));
-  await assert.rejects(arena.match("1"), (err) => err instanceof ArenaError && err.type === "unauthorized");
+  await assert.rejects(arena.match(matchId("1")), (err) => err instanceof ArenaError && err.type === "unauthorized");
+});
+
+test("a match view the page cannot read fails as failed", async () => {
+  const player = address("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5");
+  const typeText = readFileSync(new URL("./testdata/qeval/qtype-MatchView.json", import.meta.url), "utf8");
+  const renamed: unknown = JSON.parse(typeText.replace('"Name": "Phase"', '"Name": "Stage"'));
+  const chain = {
+    ...arenaChain(),
+    evalJSON: async () => recorded("match-reveal").results,
+    typeJSON: async () => renamed,
+  };
+  const arena = createArena({
+    chain,
+    wallet: walletFor(player),
+    engine,
+    signer,
+    realm,
+    chainId: "dev",
+    origin: "http://x",
+    storage: memory(),
+  });
+  await arena.connect();
+  await assert.rejects(arena.match(matchId("1")), (err) => err instanceof ArenaError && err.type === "failed");
+});
+
+test("a stored mode the page does not know reads as session", async () => {
+  const player = address("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5");
+  const storage = memory();
+  storage.setItem(`gnomehall:dev:${player}:mode`, "sometimes");
+  const arena = createArena({
+    chain: arenaChain(),
+    wallet: walletFor(player),
+    engine,
+    signer,
+    realm,
+    chainId: "dev",
+    origin: "http://x",
+    storage,
+  });
+  assert.equal(accountOf(await arena.connect()).mode, "session");
+});
+
+test("values the page stored before this change still read", async () => {
+  const player = address("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5");
+  const storage = memory();
+  storage.setItem(`gnomehall:dev:${player}:root`, btoa("sig"));
+  storage.setItem(`gnomehall:dev:${player}:mode`, "contract");
+  storage.setItem(`gnomehall:dev:${player}:fallback`, "Adena cannot create sessions");
+  const arena = createArena({
+    chain: arenaChain(),
+    wallet: walletFor(player),
+    engine,
+    signer,
+    realm,
+    chainId: "dev",
+    origin: "http://x",
+    storage,
+  });
+  assert.deepEqual(await arena.connect(), {
+    address: player,
+    state: "active",
+    mode: "contract",
+    fallback: "Adena cannot create sessions",
+  });
 });
 
 test("a challenger's opened box gives the pending clash and the deck to plan from, as card ids", async () => {
-  const player = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5";
+  const player = address("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5");
   const signature = btoa("a root signature");
   const deck = cardIDs(deckA, engine.cards);
   const box = await sealBox((await deriveKeys(signature, 0, signer)).boxKey, {
@@ -497,11 +621,11 @@ test("a challenger's opened box gives the pending clash and the deck to plan fro
   await arena.connect();
   storage.setItem(`gnomehall:dev:${player}:root`, signature);
 
-  const opened = await arena.match("1");
+  const opened = await arena.match(matchId("1"));
   assert.equal(opened.action, "move");
-  assert.deepEqual(opened.pending.plans, [cardIDs(picks, engine.cards), cardIDs(braces, engine.cards)]);
+  assert.deepEqual(opened.pending?.plans, [cardIDs(picks, engine.cards), cardIDs(braces, engine.cards)]);
   assert.deepEqual(
-    opened.planning.deck,
+    opened.planning?.deck,
     [...deck].sort((a, b) => a - b),
   );
 });
@@ -510,15 +634,19 @@ test("a challenger's opened box gives the pending clash and the deck to plan fro
 // be revealed: the reveal names the box's deck in card id order.
 test("a challenge seals its deck and plan as their reveal will name them", async () => {
   const signature = btoa("a root signature");
-  let args;
+  let args: string[] = [];
   const wallet = walletFor(alice, {
     SignArbitrary: async () => ({ status: "success", data: { signature: { signature } } }),
     DoContract: async ({ messages: [msg] }) => {
-      args = msg.value.args;
+      args = v.parse(v.array(v.string()), msg?.value.args);
       return { status: "success" };
     },
   });
-  const chain = { evalJSON: async () => load("matches").results, typeJSON: async () => load("qtype-MatchSummary") };
+  const chain = {
+    ...arenaChain(),
+    evalJSON: async () => recorded("matches").results,
+    typeJSON: async () => load("qtype-MatchSummary"),
+  };
   const arena = createArena({
     chain,
     wallet,
@@ -537,21 +665,21 @@ test("a challenge seals its deck and plan as their reveal will name them", async
   await arena.challenge({ clan: "Pickers", deck, plan: cardIDs("Chalk Dust,Double Tap", engine.cards) });
   const [clan, deckSeal, planSeal, box] = args;
   assert.equal(clan, "Pickers");
-  const opened = await openBox((await deriveKeys(signature, 0, signer)).boxKey, box);
+  const opened = await openBox((await deriveKeys(signature, 0, signer)).boxKey, known(box));
   const round1 = view({ ...accepted, Phase: "reveal", ToMove: alice, Plans: [["", "Hammer Blow,Spiked Shield"]] });
   const [, deckText, deckSalt, planText, planSalt] = moveCall(round1, opened, null, engine.cards).args;
-  assert.equal(await sealOf(deckSalt, deckText), deckSeal);
-  assert.equal(await sealOf(planSalt, planText), planSeal);
+  assert.equal(await sealOf(known(deckSalt), known(deckText)), deckSeal);
+  assert.equal(await sealOf(known(planSalt), known(planText)), planSeal);
   assert.equal(planText, "Chalk Dust,Double Tap");
 });
 
 // gnodev's test1 plays both sides of the recorded match, as its challenger first.
-const test1 = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5";
+const test1 = address("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5");
 const rootSigned = btoa("a root signature");
-const keysOf = (generation) => deriveKeys(rootSigned, generation, signer);
+const keysOf = (generation: number) => deriveKeys(rootSigned, generation, signer);
 const day = 24 * 60 * 60;
 // A session lasts a day from now unless fields say otherwise, as one the page creates does.
-const sessionOf = async (generation, fields = {}) => ({
+const sessionOf = async (generation: number, fields: Partial<Session> = {}): Promise<Session> => ({
   address: (await keysOf(generation)).sessionAddress,
   accountNumber: 20 + generation,
   sequence: 0,
@@ -561,18 +689,25 @@ const sessionOf = async (generation, fields = {}) => ({
   allowPaths: [`vm/exec:${realm}`],
   ...fields,
 });
-const lockOn = async (generation, match, expires = now + day) => ({
+const lockOn = async (generation: number, match: string, expires = now + day): Promise<TestLock> => ({
   Session: (await keysOf(generation)).sessionAddress,
   Match: match,
   Expires: expires,
 });
-const sessionExpired = (err) => err instanceof ArenaError && err.type === "sessionExpired";
+const sessionExpired = (err: unknown) => err instanceof ArenaError && err.type === "sessionExpired";
+
+type PlayerOptions = Partial<Omit<ArenaOptions, "chain" | "wallet" | "signer">> & {
+  created?: (request: TxRequest) => Promise<unknown>;
+};
 
 // sessionPlayer is test1's arena on chain, with a wallet that signs the root text and
 // answers each DoContract with created(request), and a signer that keeps every request.
-function sessionPlayer(chain, { created = async () => ({ status: "success" }), ...options } = {}) {
-  const contracts = [];
-  const signed = [];
+function sessionPlayer(
+  chain: ArenaOptions["chain"],
+  { created = async () => ({ status: "success" }), ...options }: PlayerOptions = {},
+) {
+  const contracts: TxRequest[] = [];
+  const signed: SignRequest[] = [];
   const wallet = walletFor(test1, {
     SignArbitrary: async () => ({ status: "success", data: { signature: { signature: rootSigned } } }),
     DoContract: async (request) => {
@@ -580,7 +715,7 @@ function sessionPlayer(chain, { created = async () => ({ status: "success" }), .
       return created(request);
     },
   });
-  const recording = { ...signer, signTx: (request) => (signed.push(request), signer.signTx(request)) };
+  const recording = { ...signer, signTx: (request: SignRequest) => (signed.push(request), signer.signTx(request)) };
   const arena = createArena({
     chain,
     wallet,
@@ -595,6 +730,15 @@ function sessionPlayer(chain, { created = async () => ({ status: "success" }), .
   });
   return { arena, contracts, signed };
 }
+
+// accountOf is the account state connect gives for a connected wallet.
+function accountOf(connection: Connection) {
+  assert.ok("mode" in connection, `no wallet connected: ${connection.state}`);
+  return connection;
+}
+
+// firstLegal is the first plan the engine allows the player who moves in view.
+const firstLegal = (view: MatchDetail): number[] => known(engine.legalPlans(known(view.planning))[0]);
 
 const opening = { clan: "Pickers", deck: cardIDs(deckA, engine.cards), plan: cardIDs(picks, engine.cards) };
 
@@ -617,20 +761,20 @@ test("a challenge revokes the dead sessions and creates one in one approval, the
   await arena.challenge(opening);
   const [k0, k1, k2, k3] = await Promise.all([0, 1, 2, 3].map(keysOf));
   assert.equal(contracts.length, 1);
-  assert.deepEqual(contracts[0].messages, [
-    revokeMessage(test1, k0.sessionPubKey),
-    revokeMessage(test1, k1.sessionPubKey),
-    revokeMessage(test1, k2.sessionPubKey),
-    sessionMessage(test1, k3.sessionPubKey, now, realm, budget.challenger, day),
+  assert.deepEqual(contracts[0]?.messages, [
+    revokeMessage(test1, known(k0).sessionPubKey),
+    revokeMessage(test1, known(k1).sessionPubKey),
+    revokeMessage(test1, known(k2).sessionPubKey),
+    sessionMessage(test1, known(k3).sessionPubKey, now, realm, budget.challenger, day),
   ]);
   assert.equal(chain.broadcasts, 1);
-  const call = signed.at(-1);
-  assert.equal(call.msgs[0].value.func, "Challenge");
+  const call = known(signed.at(-1));
+  assert.equal(call.msgs[0]?.value.func, "Challenge");
   assert.deepEqual(
     [call.privKey, call.sessionAddr, call.accountNumber, call.sequence],
-    [k3.sessionKey, k3.sessionAddress, 41, 0],
+    [known(k3).sessionKey, known(k3).sessionAddress, 41, 0],
   );
-  assert.equal((await arena.connect()).mode, "session");
+  assert.equal(accountOf(await arena.connect()).mode, "session");
 });
 
 // Adena signs session messages with the fee the page gives, or else with 2,000,000,000 gas
@@ -647,9 +791,9 @@ test("the session request names its gas per message and a fee at the chain's gas
   await arena.connect();
   await arena.authorize();
   await arena.challenge(opening);
-  assert.equal(contracts[0].messages.length, 2);
-  assert.equal(contracts[0].gasWanted, 6_000_000);
-  assert.equal(contracts[0].gasFee, 150_000);
+  assert.equal(contracts[0]?.messages.length, 2);
+  assert.equal(contracts[0]?.gasWanted, 6_000_000);
+  assert.equal(contracts[0]?.gasFee, 150_000);
 });
 
 test("an unlocked session with the role's budget left signs the opening without asking the wallet", async () => {
@@ -661,15 +805,15 @@ test("an unlocked session with the role's budget left signs the opening without 
   await arena.authorize();
   await arena.challenge(opening);
   assert.equal(contracts.length, 0);
-  assert.equal(signed.at(-1).sessionAddr, (await keysOf(1)).sessionAddress);
+  assert.equal(signed.at(-1)?.sessionAddr, (await keysOf(1)).sessionAddress);
 
-  await arena.accept("1", {
+  await arena.accept(matchId("1"), {
     clan: "Ironhide",
     deck: cardIDs(deckB, engine.cards),
     plan: cardIDs(braces, engine.cards),
   });
   assert.equal(contracts.length, 0);
-  assert.equal(signed.at(-1).sessionAddr, (await keysOf(0)).sessionAddress);
+  assert.equal(signed.at(-1)?.sessionAddr, (await keysOf(0)).sessionAddress);
 });
 
 test("with no generation free, the first one revoked takes the new session", async () => {
@@ -689,15 +833,15 @@ test("with no generation free, the first one revoked takes the new session", asy
   await arena.authorize();
   await arena.challenge(opening);
   const [k5, k9] = await Promise.all([5, 9].map(keysOf));
-  assert.deepEqual(contracts[0].messages, [
-    revokeMessage(test1, k5.sessionPubKey),
-    revokeMessage(test1, k9.sessionPubKey),
-    sessionMessage(test1, k5.sessionPubKey, now, realm, budget.challenger, day),
+  assert.deepEqual(contracts[0]?.messages, [
+    revokeMessage(test1, known(k5).sessionPubKey),
+    revokeMessage(test1, known(k9).sessionPubKey),
+    sessionMessage(test1, known(k5).sessionPubKey, now, realm, budget.challenger, day),
   ]);
   // The revoked session's account was 25; the chain gives the new one another.
   assert.deepEqual(
-    [signed.at(-1).sessionAddr, signed.at(-1).accountNumber, signed.at(-1).sequence],
-    [k5.sessionAddress, 77, 0],
+    [signed.at(-1)?.sessionAddr, signed.at(-1)?.accountNumber, signed.at(-1)?.sequence],
+    [known(k5).sessionAddress, 77, 0],
   );
 });
 
@@ -705,11 +849,12 @@ test("with no generation free, the first one revoked takes the new session", asy
 test("a new session the chain does not show yet signs nothing", async () => {
   const expiredAt5 = await sessionOf(5, { expiresAt: now - 1 });
   const short = { spendUsed: budget.challenger - 300_000 };
-  const full = await Promise.all([...Array(16).keys()].map((g) => (g === 5 ? expiredAt5 : sessionOf(g, short))));
-  for (const [name, sessions] of [
+  const full = await Promise.all([...Array(16).keys()].map(async (g) => (g === 5 ? expiredAt5 : sessionOf(g, short))));
+  const cases: [string, Session[]][] = [
     ["none", []],
     ["the revoked one", full],
-  ]) {
+  ];
+  for (const [name, sessions] of cases) {
     const chain = arenaChain({ sessions });
     const { arena, contracts } = sessionPlayer(chain);
     await arena.connect();
@@ -744,7 +889,7 @@ test("an opening neither reuses nor revokes a session locked to a running match"
     contracts.map((c) => c.messages),
     [[sessionMessage(test1, k1.sessionPubKey, now, realm, budget.challenger, day)]],
   );
-  assert.equal(signed.at(-1).sessionAddr, k1.sessionAddress);
+  assert.equal(signed.at(-1)?.sessionAddr, k1.sessionAddress);
 });
 
 test("an opening reads only the matches its live sessions are locked to", async () => {
@@ -766,7 +911,7 @@ test("an opening reads only the matches its live sessions are locked to", async 
   await arena.challenge(opening);
   assert.deepEqual(chain.matchReads, ["1"]);
   assert.equal(contracts.length, 0);
-  assert.equal(signed.at(-1).sessionAddr, (await keysOf(1)).sessionAddress);
+  assert.equal(signed.at(-1)?.sessionAddr, (await keysOf(1)).sessionAddress);
 });
 
 test("an opening that cannot read a locked match sends nothing", async () => {
@@ -794,7 +939,7 @@ test("with every generation holding a session it may not revoke, the wallet sign
     contracts.map((c) => c.messages.map((m) => m.value.func)),
     [["Challenge"]],
   );
-  const account = await arena.connect();
+  const account = accountOf(await arena.connect());
   assert.equal(account.mode, "contract");
   assert.equal(account.fallback, "Every session this account can hold is used");
 });
@@ -811,31 +956,32 @@ const unsupported = {
   type: "UNSUPPORTED_TYPE",
   message: "Adena does not support the requested transaction type.",
 };
-const refusedCall = (err) => err instanceof ArenaError && err.type === "refused" && err.reason === rejected.message;
+const refusedCall = (err: unknown) =>
+  err instanceof ArenaError && err.type === "refused" && err.reason === rejected.message;
 
 test("a rejected session approval cancels its call, keeps the session mode and opens no second prompt", async () => {
   const chain = await expiredReveal();
   const { arena, contracts } = sessionPlayer(chain, { created: async () => rejected });
   await arena.connect();
   await arena.authorize();
-  const calls = [
+  const calls: [string, () => Promise<unknown>][] = [
     ["challenge", () => arena.challenge(opening)],
     [
       "acceptance",
       () =>
-        arena.accept("1", {
+        arena.accept(matchId("1"), {
           clan: "Ironhide",
           deck: cardIDs(deckB, engine.cards),
           plan: cardIDs(braces, engine.cards),
         }),
     ],
-    ["renewal", () => arena.renew("1")],
+    ["renewal", () => arena.renew(matchId("1"))],
   ];
   for (const [name, call] of calls) {
     const prompts = contracts.length;
     await assert.rejects(call(), refusedCall, name);
     assert.deepEqual(
-      contracts.slice(prompts).map((c) => c.messages.at(-1).type),
+      contracts.slice(prompts).map((c) => c.messages.at(-1)?.type),
       ["/auth.m_create_session"],
       name,
     );
@@ -850,7 +996,7 @@ test("a wallet that cannot create sessions signs each move until sessions resume
   let attempts = 0;
   const { arena, contracts } = sessionPlayer(chain, {
     created: async (request) => {
-      if (request.messages[0].type !== "/auth.m_create_session") return { status: "success" };
+      if (request.messages[0]?.type !== "/auth.m_create_session") return { status: "success" };
       attempts++;
       if (attempts === 1) return unsupported;
       chain.sessionList = [await sessionOf(0)];
@@ -862,10 +1008,10 @@ test("a wallet that cannot create sessions signs each move until sessions resume
 
   await arena.challenge(opening);
   assert.deepEqual(
-    contracts.map((c) => c.messages[0].type),
+    contracts.map((c) => c.messages[0]?.type),
     ["/auth.m_create_session", "/vm.m_call"],
   );
-  const refused = await arena.connect();
+  const refused = accountOf(await arena.connect());
   assert.equal(refused.mode, "contract");
   assert.equal(refused.fallback, unsupported.message);
   assert.deepEqual(arena.account(), refused);
@@ -890,12 +1036,12 @@ test("an acceptance asks for a session with the acceptor's budget", async () => 
   });
   await arena.connect();
   await arena.authorize();
-  await arena.accept("1", {
+  await arena.accept(matchId("1"), {
     clan: "Ironhide",
     deck: cardIDs(deckB, engine.cards),
     plan: cardIDs(braces, engine.cards),
   });
-  assert.equal(contracts[0].messages[0].value.spend_limit, `${budget.acceptor}ugnot`);
+  assert.equal(contracts[0]?.messages[0]?.value.spend_limit, `${budget.acceptor}ugnot`);
 });
 
 test("the arena's session lifetime sets the new session's expiry", async () => {
@@ -910,11 +1056,11 @@ test("the arena's session lifetime sets the new session's expiry", async () => {
   await arena.connect();
   await arena.authorize();
   await arena.challenge(opening);
-  assert.equal(contracts[0].messages[0].value.expires_at, String(now + 30));
+  assert.equal(contracts[0]?.messages[0]?.value.expires_at, String(now + 30));
 });
 
 // expiredReveal is a chain where test1 must reveal in match 1, whose session has expired.
-async function expiredReveal() {
+async function expiredReveal(): Promise<ArenaChain> {
   const deck = cardIDs(deckA, engine.cards);
   const box = await sealBox((await keysOf(0)).boxKey, {
     deck,
@@ -934,17 +1080,17 @@ test("a move whose session has expired throws sessionExpired and sends nothing",
   const { arena, contracts } = sessionPlayer(chain);
   await arena.connect();
   await arena.authorize();
-  const view = await arena.match("1");
+  const view = await arena.match(matchId("1"));
   assert.equal(view.action, "move");
   assert.equal(view.session, "expired");
-  await assert.rejects(arena.move("1", engine.legalPlans(view.planning)[0]), sessionExpired);
+  await assert.rejects(arena.move(matchId("1"), firstLegal(view)), sessionExpired);
   assert.equal(chain.broadcasts, 0);
   assert.equal(contracts.length, 0);
 
   const { arena: byWallet } = sessionPlayer(chain, { signEachMove: true });
   await byWallet.connect();
   await byWallet.authorize();
-  assert.equal((await byWallet.match("1")).session, "active");
+  assert.equal((await byWallet.match(matchId("1"))).session, "active");
 });
 
 test("renew creates a session for the player's side without sending a move, and the next move signs with it", async () => {
@@ -957,24 +1103,24 @@ test("renew creates a session for the player's side without sending a move, and 
   });
   await arena.connect();
   await arena.authorize();
-  await arena.renew("1");
+  await arena.renew(matchId("1"));
   const [k0, k1] = await Promise.all([0, 1].map(keysOf));
   assert.deepEqual(
     contracts.map((c) => c.messages),
     [
       [
-        revokeMessage(test1, k0.sessionPubKey),
-        sessionMessage(test1, k1.sessionPubKey, now, realm, budget.challenger, day),
+        revokeMessage(test1, known(k0).sessionPubKey),
+        sessionMessage(test1, known(k1).sessionPubKey, now, realm, budget.challenger, day),
       ],
     ],
   );
   assert.equal(chain.broadcasts, 0);
 
-  const view = await arena.match("1");
+  const view = await arena.match(matchId("1"));
   assert.equal(view.session, "active");
-  await arena.move("1", engine.legalPlans(view.planning)[0]);
+  await arena.move(matchId("1"), firstLegal(view));
   assert.equal(chain.broadcasts, 1);
-  assert.deepEqual([signed.at(-1).sessionAddr, signed.at(-1).accountNumber], [k1.sessionAddress, 52]);
+  assert.deepEqual([signed.at(-1)?.sessionAddr, signed.at(-1)?.accountNumber], [known(k1).sessionAddress, 52]);
 });
 
 // The chain refuses a move its session cannot pay at the block's gas price and charges
@@ -1001,35 +1147,35 @@ test("a match whose session cannot pay the next move at the chain's gas price is
   });
   await arena.connect();
   await arena.authorize();
-  assert.equal((await arena.match("1")).session, "active");
+  assert.equal((await arena.match(matchId("1"))).session, "active");
 
   chain.gasPrice = async () => busy;
-  const view = await arena.match("1");
+  const view = await arena.match(matchId("1"));
   assert.equal(view.session, "expired");
-  await assert.rejects(arena.move("1", engine.legalPlans(view.planning)[0]), sessionExpired);
+  await assert.rejects(arena.move(matchId("1"), firstLegal(view)), sessionExpired);
   assert.equal(chain.broadcasts, 0);
 
-  await arena.renew("1");
+  await arena.renew(matchId("1"));
   const [k0, k1] = await Promise.all([0, 1].map(keysOf));
   assert.deepEqual(
     contracts.map((c) => c.messages),
     [
       [
-        revokeMessage(test1, k0.sessionPubKey),
-        sessionMessage(test1, k1.sessionPubKey, now, realm, sessionBudget("challenger", busy), day),
+        revokeMessage(test1, known(k0).sessionPubKey),
+        sessionMessage(test1, known(k1).sessionPubKey, now, realm, sessionBudget("challenger", busy), day),
       ],
     ],
   );
-  assert.equal((await arena.match("1")).session, "active");
+  assert.equal((await arena.match(matchId("1"))).session, "active");
 });
 
 // A session lasts a day from before the claimer's last move, so it has always expired by the
 // time the opponent's deadline passes.
 test("a claim, a withdrawal or a resignation with no live session has the wallet sign it", async () => {
-  const cases = [
-    ["claim", "match-play", (arena) => arena.claimForfeit("1"), "ClaimForfeit"],
-    ["withdrawal", "match-open", (arena) => arena.resign("1"), "Resign"],
-    ["resignation", "match-play", (arena) => arena.resign("1"), "Resign"],
+  const cases: [string, string, (arena: Arena) => Promise<void>, string][] = [
+    ["claim", "match-play", (arena) => arena.claimForfeit(matchId("1")), "ClaimForfeit"],
+    ["withdrawal", "match-open", (arena) => arena.resign(matchId("1")), "Resign"],
+    ["resignation", "match-play", (arena) => arena.resign(matchId("1")), "Resign"],
   ];
   for (const [name, answer, call, func] of cases) {
     const chain = arenaChain({
@@ -1052,9 +1198,9 @@ test("a claim, a withdrawal or a resignation with no live session has the wallet
 
 // Without the root signature the device derives no session key, so it holds no session.
 test("a claim or a resignation on a device without the root signature has the wallet sign it", async () => {
-  const cases = [
-    ["claim", (arena) => arena.claimForfeit("1"), "ClaimForfeit"],
-    ["resignation", (arena) => arena.resign("1"), "Resign"],
+  const cases: [string, (arena: Arena) => Promise<void>, string][] = [
+    ["claim", (arena) => arena.claimForfeit(matchId("1")), "ClaimForfeit"],
+    ["resignation", (arena) => arena.resign(matchId("1")), "Resign"],
   ];
   for (const [name, call, func] of cases) {
     const chain = arenaChain({
@@ -1077,16 +1223,19 @@ test("a claim or a resignation on a device without the root signature has the wa
 // The lobby's account state comes from the arena, so the per-move mode a wallet without
 // sessions leaves shows on the page that met it, and on the next one.
 test("the lobby shows the per-move mode a wallet without sessions leaves, until sessions resume", async (t) => {
-  globalThis.document = { activeElement: null };
-  globalThis.history = { replaceState() {} };
-  globalThis.location = { pathname: "/", search: "", origin: "http://x" };
-  const pages = [];
+  Object.defineProperty(globalThis, "document", { value: { activeElement: null }, configurable: true });
+  Object.defineProperty(globalThis, "history", { value: { replaceState() {} }, configurable: true });
+  Object.defineProperty(globalThis, "location", {
+    value: { pathname: "/", search: "", origin: "http://x" },
+    configurable: true,
+  });
+  const pages: { lobby: ReturnType<typeof createLobby>; dialog: { innerHTML: string } }[] = [];
   // Leaving each lobby stops the watch on the posted match, whose polling would outlive the test.
   t.after(() => {
-    for (const { lobby } of pages) lobby.action("Exit");
-    delete globalThis.document;
-    delete globalThis.history;
-    delete globalThis.location;
+    for (const { lobby } of pages) void lobby.action("Exit");
+    Reflect.deleteProperty(globalThis, "document");
+    Reflect.deleteProperty(globalThis, "history");
+    Reflect.deleteProperty(globalThis, "location");
   });
   const chain = arenaChain({ matches: { 1: "match-open" } });
   const storage = memory();
@@ -1097,28 +1246,47 @@ test("the lobby shows the per-move mode a wallet without sessions leaves, until 
     const { arena } = sessionPlayer(chain, {
       storage,
       created: async (request) =>
-        request.messages[0].type === "/auth.m_create_session" ? unsupported : { status: "success" },
+        request.messages[0]?.type === "/auth.m_create_session" ? unsupported : { status: "success" },
     });
-    pages.push({ lobby: createLobby({ app, arena, onRender() {}, onExit() {} }), dialog });
-    return pages.at(-1);
+    const lobby = createLobby({ ...unusedPage, app, arena, storage, onRender() {}, onExit() {} });
+    const loaded = { lobby, dialog };
+    pages.push(loaded);
+    return loaded;
   };
 
   const first = page();
   await first.lobby.action("Authorize");
-  assert.equal(first.lobby.model.account.mode, "session");
+  assert.equal(lobbyAccount(first.lobby).mode, "session");
   await first.lobby.sendDraft({ intent: "challenge", opponent: "" }, opening.clan, opening.deck, opening.plan);
-  assert.equal(first.lobby.model.account.mode, "contract");
+  assert.equal(lobbyAccount(first.lobby).mode, "contract");
   await first.lobby.action("Account");
   assert.match(first.dialog.innerHTML, /Adena does not support the requested transaction type/);
   assert.match(first.dialog.innerHTML, /data-action="onlineResumeSessions"[^>]*>Use sessions again</);
 
   const reloaded = page();
   await reloaded.lobby.action("Authorize");
-  assert.equal(reloaded.lobby.model.account.mode, "contract", "connecting keeps the per-move mode");
+  assert.equal(lobbyAccount(reloaded.lobby).mode, "contract", "connecting keeps the per-move mode");
   await reloaded.lobby.action("ResumeSessions");
-  assert.equal(reloaded.lobby.model.account.mode, "session");
-  assert.equal(reloaded.lobby.model.account.fallback, null);
+  assert.equal(lobbyAccount(reloaded.lobby).mode, "session");
+  assert.equal(lobbyAccount(reloaded.lobby).fallback, null);
 });
+
+// unusedPage stands for the page callbacks a lobby test does not expect, which fail.
+const unusedPage = {
+  onCompose: unexpectedCall("onCompose"),
+  onPlay: unexpectedCall("onPlay"),
+  onResume: unexpectedCall("onResume"),
+  portrait: unexpectedCall("portrait"),
+  emblem: unexpectedCall("emblem"),
+};
+function unexpectedCall(call: string): () => never {
+  return () => {
+    throw new Error(`${call} was not expected`);
+  };
+}
+// lobbyAccount is the account a lobby shows, with its signing mode.
+const LobbyAccountSchema = v.object({ mode: v.string(), fallback: v.nullable(v.string()) });
+const lobbyAccount = (lobby: { model: { account: unknown } }) => v.parse(LobbyAccountSchema, lobby.model.account);
 
 // The per-move mode stops new sessions, not the ones the device already holds.
 test("in the per-move mode, a move signs with the live session locked to its match, and the wallet signs without one", async () => {
@@ -1140,14 +1308,14 @@ test("in the per-move mode, a move signs with the live session locked to its mat
   await arena.authorize();
   assert.equal(arena.account().mode, "contract");
 
-  const locked = await arena.match("1");
-  await arena.move("1", engine.legalPlans(locked.planning)[0]);
+  const locked = await arena.match(matchId("1"));
+  await arena.move(matchId("1"), firstLegal(locked));
   assert.equal(contracts.length, 0);
   assert.equal(chain.broadcasts, 1);
-  assert.equal(signed.at(-1).sessionAddr, (await keysOf(0)).sessionAddress);
+  assert.equal(signed.at(-1)?.sessionAddr, (await keysOf(0)).sessionAddress);
 
-  const unlocked = await arena.match("2");
-  await arena.move("2", engine.legalPlans(unlocked.planning)[0]);
+  const unlocked = await arena.match(matchId("2"));
+  await arena.move(matchId("2"), firstLegal(unlocked));
   assert.deepEqual(
     contracts.map((c) => c.messages.map((m) => m.value.func)),
     [["Play"]],
@@ -1170,9 +1338,9 @@ test("a move signs with the session locked to its match before an unlocked one",
   const { arena, signed } = sessionPlayer(chain);
   await arena.connect();
   await arena.authorize();
-  const view = await arena.match("1");
-  await arena.move("1", engine.legalPlans(view.planning)[0]);
-  assert.equal(signed.at(-1).sessionAddr, (await keysOf(1)).sessionAddress);
+  const view = await arena.match(matchId("1"));
+  await arena.move(matchId("1"), firstLegal(view));
+  assert.equal(signed.at(-1)?.sessionAddr, (await keysOf(1)).sessionAddress);
 });
 
 test("session moves go out one at a time, each with the sequence the last one left", async () => {
@@ -1186,7 +1354,7 @@ test("session moves go out one at a time, each with the sequence the last one le
   await arena.authorize();
   chain.reads.length = 0;
 
-  await Promise.all([arena.resign("1"), arena.resign("1")]);
+  await Promise.all([arena.resign(matchId("1")), arena.resign(matchId("1"))]);
   assert.deepEqual(chain.reads, [0, 1]);
   // Each move is signed twice, for its simulation and for its fee.
   assert.deepEqual(
@@ -1196,7 +1364,7 @@ test("session moves go out one at a time, each with the sequence the last one le
 });
 
 test("chain and wallet errors become the arena's typed errors", () => {
-  const failed = (reason) => errorFrom(new ChainError("failed", reason)).type;
+  const failed = (reason: string) => errorFrom(new ChainError("failed", reason)).type;
   assert.equal(failed("wrong phase"), "wrongPhase");
   assert.equal(failed("not your move"), "wrongPhase");
   assert.equal(failed("seal mismatch"), "sealMismatch");
@@ -1229,7 +1397,7 @@ test("chain and wallet errors become the arena's typed errors", () => {
 
 test("notifications without a gnotif client fail with a readable reason", async () => {
   const arena = createArena({
-    chain: null,
+    chain: arenaChain(),
     wallet: walletFor(alice),
     engine,
     signer,
@@ -1250,13 +1418,14 @@ test("notifications without a gnotif client fail with a readable reason", async 
 
 // The lobby's pager offers a next page after a full one.
 test("the board and a player's matches come 50 a page, the most the realm returns", async () => {
-  const asked = [];
+  const asked: string[] = [];
   const chain = {
-    evalJSON: async (expr) => {
+    ...arenaChain(),
+    evalJSON: async (expr: string) => {
       asked.push(expr);
-      return load(expr.includes(".Open(") ? "open" : "matches").results;
+      return recorded(expr.includes(".Open(") ? "open" : "matches").results;
     },
-    typeJSON: async (id) => load(id.endsWith("OpenChallenge") ? "qtype-OpenChallenge" : "qtype-MatchSummary"),
+    typeJSON: async (id: string) => load(id.endsWith("OpenChallenge") ? "qtype-OpenChallenge" : "qtype-MatchSummary"),
   };
   const arena = createArena({
     chain,
@@ -1274,16 +1443,28 @@ test("the board and a player's matches come 50 a page, the most the realm return
   assert.deepEqual(asked, [`${realm}.Open(50, 50)`, `${realm}.Matches("${alice}", 50, 50)`]);
 });
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // fakeIndexer hands the test the handlers the arena gives the indexer.
 function fakeIndexer() {
-  const feed = { stopped: false };
-  feed.watchCalls = (watched, onCall, onState) => {
-    Object.assign(feed, { watched, onCall, onState });
-    return () => {
-      feed.stopped = true;
-    };
+  const unwatched = () => {
+    throw new Error("the arena watches no calls");
+  };
+  const feed: Indexer & {
+    stopped: boolean;
+    watched?: string;
+    onCall: (call: IndexedCall) => void;
+    onState: (state: "up" | "down") => void;
+  } = {
+    stopped: false,
+    onCall: unwatched,
+    onState: unwatched,
+    watchCalls(watched, onCall, onState = unwatched) {
+      Object.assign(feed, { watched, onCall, onState });
+      return () => {
+        feed.stopped = true;
+      };
+    },
   };
   return feed;
 }
@@ -1291,7 +1472,7 @@ function fakeIndexer() {
 test("subscribe reports each arena call with the match it touches; a new challenge touches none", () => {
   const indexer = fakeIndexer();
   const arena = createArena({
-    chain: null,
+    chain: arenaChain(),
     wallet: null,
     engine,
     signer,
@@ -1301,7 +1482,7 @@ test("subscribe reports each arena call with the match it touches; a new challen
     storage: memory(),
     indexer,
   });
-  const changes = [];
+  const changes: ArenaChange[] = [];
   const stop = arena.subscribe((c) => changes.push(c));
   assert.equal(indexer.watched, realm);
 
@@ -1321,7 +1502,7 @@ test("subscribe reports each arena call with the match it touches; a new challen
 test("each time the indexer starts answering a change is reported, and polling runs only while it does not", async () => {
   const indexer = fakeIndexer();
   const arena = createArena({
-    chain: null,
+    chain: arenaChain(),
     wallet: null,
     engine,
     signer,
@@ -1331,10 +1512,10 @@ test("each time the indexer starts answering a change is reported, and polling r
     storage: memory(),
     indexer,
   });
-  const changes = [];
+  const changes: ArenaChange[] = [];
   const stop = arena.subscribe((c) => changes.push(c), { interval: 5 });
   await sleep(30);
-  assert.deepEqual(changes, []);
+  assert.deepEqual<ArenaChange[]>(changes, []);
 
   indexer.onState("up");
   assert.deepEqual(changes, [{}]);
@@ -1355,7 +1536,7 @@ test("each time the indexer starts answering a change is reported, and polling r
 
 test("without an indexer, subscribe polls every interval until stopped", async () => {
   const arena = createArena({
-    chain: null,
+    chain: arenaChain(),
     wallet: null,
     engine,
     signer,
@@ -1364,7 +1545,7 @@ test("without an indexer, subscribe polls every interval until stopped", async (
     origin: "http://x",
     storage: memory(),
   });
-  const changes = [];
+  const changes: ArenaChange[] = [];
   const stop = arena.subscribe((c) => changes.push(c), { interval: 5 });
   await sleep(40);
   stop();
@@ -1378,9 +1559,10 @@ test("without an indexer, subscribe polls every interval until stopped", async (
 test("watch reads a match again on a call to it, and not on a call to another match", async () => {
   let reads = 0;
   const chain = {
+    ...arenaChain(),
     evalJSON: async () => {
       reads++;
-      return load("match-play").results;
+      return recorded("match-play").results;
     },
     typeJSON: async () => load("qtype-MatchView"),
   };
@@ -1396,7 +1578,7 @@ test("watch reads a match again on a call to it, and not on a call to another ma
     storage: memory(),
     indexer,
   });
-  const stop = arena.watch("1", () => {});
+  const stop = arena.watch(matchId("1"), () => {});
   await sleep(10);
   assert.equal(reads, 1);
 
@@ -1425,9 +1607,9 @@ test("watch reads a match again when the session for it expires", async () => {
   const { arena } = sessionPlayer(chain, { indexer: fakeIndexer(), now: () => clock });
   await arena.connect();
   await arena.authorize();
-  const seen = [];
-  const stop = arena.watch("1", (view, err) => {
-    seen.push(err ?? view.session);
+  const seen: (ArenaError | string)[] = [];
+  const stop = arena.watch(matchId("1"), (view, err) => {
+    seen.push(err ?? known(view).session);
     clock = expires + 1;
   });
   for (const start = Date.now(); seen.length < 2 && Date.now() - start < 3000;) await sleep(10);
@@ -1444,12 +1626,12 @@ test("watch reports a match whose session expires", async () => {
   const { arena } = sessionPlayer(chain);
   await arena.connect();
   await arena.authorize();
-  const seen = [];
+  const seen: (ArenaError | string)[] = [];
   // reported waits, at most 2 s, until watch has reported count times.
-  const reported = async (count) => {
+  const reported = async (count: number) => {
     for (const start = Date.now(); seen.length < count && Date.now() - start < 2000;) await sleep(1);
   };
-  const stop = arena.watch("1", (view, err) => seen.push(err ?? view.session), { interval: 5 });
+  const stop = arena.watch(matchId("1"), (view, err) => seen.push(err ?? known(view).session), { interval: 5 });
   await reported(1);
   chain.sessionList = [];
   await reported(2);

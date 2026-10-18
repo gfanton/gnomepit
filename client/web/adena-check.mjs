@@ -5,7 +5,7 @@
 
 import * as v from "valibot";
 
-import { createArena } from "./arena.mjs";
+import { createArena } from "./arena.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
 import { createChain } from "./chain.ts";
 import { devWallet } from "./devwallet.ts";

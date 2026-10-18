@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ArenaError } from "./arena.mjs";
+import { ArenaError } from "./arena.ts";
 import { createLobby, setupStep } from "./lobby.mjs";
 
 const app = () => ({
