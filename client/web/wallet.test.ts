@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 
 import * as v from "valibot";
 
+import type { SessionLock } from "./arena.ts";
 import type { Session } from "./chain.ts";
 import type { GameState, Gnome } from "./engine.ts";
 import { nodeEngine } from "./engine-node.ts";
@@ -28,7 +29,6 @@ import {
   sessionMessage,
   sessionReserve,
   waitForAdena,
-  type Lock,
   type LockedMatch,
   type SessionKeys,
 } from "./wallet.ts";
@@ -210,13 +210,17 @@ const sessionAt = (generation: number, fields: Partial<Session> = {}): Session =
   allowPaths: [`vm/exec:${realm}`],
   ...fields,
 });
-const lockOf = (generation: number, match: string, expires = now + 3600): Lock => ({
+const lockOf = (generation: number, match: string, expires = now + 3600): SessionLock => ({
   Session: addressOf(generation),
   Match: matchId(match),
   Expires: expires,
 });
-const classify = (onChain: Session[], locks: Lock[] = [], matches = new Map<MatchId, LockedMatch>(), price = floor) =>
-  classifySessions({ onChain, keys, locks, matches, now, realm, reserve: sessionReserve(price) });
+const classify = (
+  onChain: Session[],
+  locks: SessionLock[] = [],
+  matches = new Map<MatchId, LockedMatch>(),
+  price = floor,
+) => classifySessions({ onChain, keys, locks, matches, now, realm, reserve: sessionReserve(price) });
 const reserve = sessionReserve(floor);
 const budget = sessionBudget("challenger", floor);
 

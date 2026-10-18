@@ -4,6 +4,7 @@
 
 import * as v from "valibot";
 
+import type { SessionLock } from "./arena.ts";
 import { feeFor, gasWantedFor, type GasPrice, type Session } from "./chain.ts";
 import { fromBase64, fromHex, toBase64, toHex } from "./encoding.ts";
 import { type Address, type MatchId, address } from "./ids.ts";
@@ -309,8 +310,6 @@ function cardIDsOf(set: Uint8Array): number[] {
   return ids;
 }
 
-// The realm's lock of a session to a match, as r/arena's SessionLock holds it.
-export type Lock = { Session: Address; Match: MatchId; Expires: number };
 // A match a session is locked to: its phase, and this player's side in it.
 export type LockedMatch = { phase: string; role: Role };
 export type SessionEntry = { generation: number; keys: SessionKeys; session: Session };
@@ -323,12 +322,20 @@ export type SortedSessions = {
 
 const hasExpired = (session: Session, now: number): boolean => session.expiresAt !== 0 && session.expiresAt <= now;
 // A lock under another expiry is an earlier session's, on the same key.
-const lockOf = (session: Session, locks: Lock[]): Lock | undefined =>
+const lockOf = (session: Session, locks: SessionLock[]): SessionLock | undefined =>
   locks.find((l) => l.Session === session.address && l.Expires === session.expiresAt);
 
 // lockedMatches lists the ids of the matches master's live sessions, onChain, are locked to:
 // the matches whose phase classifySessions needs.
-export function lockedMatches({ onChain, locks, now }: { onChain: Session[]; locks: Lock[]; now: number }): MatchId[] {
+export function lockedMatches({
+  onChain,
+  locks,
+  now,
+}: {
+  onChain: Session[];
+  locks: SessionLock[];
+  now: number;
+}): MatchId[] {
   return [
     ...new Set(
       onChain
@@ -352,7 +359,7 @@ export function classifySessions({
 }: {
   onChain: Session[];
   keys: Map<number, SessionKeys>;
-  locks: Lock[];
+  locks: SessionLock[];
   matches: Map<MatchId, LockedMatch>;
   now: number;
   realm: string;

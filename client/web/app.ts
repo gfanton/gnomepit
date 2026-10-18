@@ -24,6 +24,7 @@ import { type KnownCards, knownCards } from "./table.ts";
 import { stepFeedback, cardBehind } from "./battle-feedback.ts";
 import { artIndex } from "./art.ts";
 import { loadArena } from "./arena-provider.ts";
+import { messageOf } from "./chain.ts";
 import { elementById } from "./dom.ts";
 import type { Address } from "./ids.ts";
 import { type Lobby, createLobby } from "./lobby.ts";
@@ -312,7 +313,7 @@ async function sendOnlinePlan(): Promise<void> {
     playback = null;
     flow = { ...initial, screen: "lobby" };
   } catch (error) {
-    onlineError = error instanceof Error ? error.message : String(error);
+    onlineError = messageOf(error);
   } finally {
     onlineSending = false;
     render();

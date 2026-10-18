@@ -5,7 +5,7 @@
 
 import * as v from "valibot";
 
-import { type Chain, ChainError, feeFor, type GasPrice, payFor, type Session } from "./chain.ts";
+import { type Chain, ChainError, feeFor, type GasPrice, messageOf, payFor, type Session } from "./chain.ts";
 import {
   type BattleEvent,
   type Card,
@@ -363,10 +363,6 @@ export function errorFrom(err: unknown): ArenaError {
     return new ArenaError(known === undefined ? "failed" : known[1], err.reason);
   }
   return new ArenaError("failed", messageOf(err));
-}
-
-function messageOf(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }
 
 // readParsed evaluates expr with readValue, a gnovalue reader, and parses its value; a value

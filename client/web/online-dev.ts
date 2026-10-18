@@ -6,7 +6,7 @@
 import { ArenaError, type Connection, type Listed, type MatchSummary, type Opening, createArena } from "./arena.ts";
 import { pageWallet } from "./arena-provider.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
-import { ChainError, createChain } from "./chain.ts";
+import { ChainError, createChain, messageOf } from "./chain.ts";
 import { elementById } from "./dom.ts";
 import { type Side, loadEngine, startState } from "./engine.ts";
 import type { MatchId } from "./ids.ts";
@@ -60,7 +60,7 @@ async function run(label: string, action: () => Promise<unknown>): Promise<void>
 function failure(err: unknown): string {
   if (err instanceof ArenaError || err instanceof ChainError || err instanceof WalletError)
     return `${err.type}: ${err.reason}`;
-  return `error: ${err instanceof Error ? err.message : String(err)}`;
+  return `error: ${messageOf(err)}`;
 }
 
 function showStatus(account: Connection): string {

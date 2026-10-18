@@ -3,7 +3,7 @@
 // both accounts on gnodev. The keys are public, so the dev wallet is for local chains
 // only.
 
-import { type Broadcast, type Chain, payFor } from "./chain.ts";
+import { type Broadcast, type Chain, messageOf, payFor } from "./chain.ts";
 import { toBase64 } from "./encoding.ts";
 import { type Address, address } from "./ids.ts";
 import type { Signer } from "./signer.ts";
@@ -128,7 +128,7 @@ export function devWallet({
       try {
         return success({ encodedTransaction: await sign(params) });
       } catch (err) {
-        return failure("SIGNING_FAILED", err instanceof Error ? err.message : String(err));
+        return failure("SIGNING_FAILED", messageOf(err));
       }
     },
 
@@ -136,7 +136,7 @@ export function devWallet({
       try {
         return success(await chain.broadcast(await sign(params)), "TRANSACTION_SUCCESS");
       } catch (err) {
-        return failure("TRANSACTION_FAILED", err instanceof Error ? err.message : String(err));
+        return failure("TRANSACTION_FAILED", messageOf(err));
       }
     },
   } satisfies Wallet;
