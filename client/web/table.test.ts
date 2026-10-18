@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { cards, ironhide, id } from "./fixture.ts";
-import { knownCards, spentIn } from "./table.mjs";
+import type { Round } from "./flow.ts";
+import { knownCards, spentIn } from "./table.ts";
 
 const deck = [
   id("Stone Guard"),
@@ -19,7 +20,7 @@ test("before the first reveal, a side knows the other's clan pool, not its deck"
   const known = knownCards([], 1, ironhide.cards, deck, cards);
   assert.equal(known.open, false);
   assert.deepEqual(
-    known.cards.map((c) => [cards[c.id].name, c.spentRound]),
+    known.cards.map((c) => [cards[c.id]?.name, c.spentRound]),
     [
       ["Cobble Throw", 0],
       ["Spiked Shield", 0],
@@ -36,7 +37,7 @@ test("before the first reveal, a side knows the other's clan pool, not its deck"
 });
 
 test("after a reveal, the deck is open with each spent card marked by its round", () => {
-  const rounds = [
+  const rounds: Pick<Round, "plans">[] = [
     {
       plans: [
         [id("Pick"), id("Pick"), id("Pick")],
@@ -47,7 +48,7 @@ test("after a reveal, the deck is open with each spent card marked by its round"
   const known = knownCards(rounds, 1, ironhide.cards, deck, cards);
   assert.equal(known.open, true);
   assert.deepEqual(
-    known.cards.map((c) => [cards[c.id].name, c.spentRound]),
+    known.cards.map((c) => [cards[c.id]?.name, c.spentRound]),
     [
       ["Cobble Throw", 0],
       ["Spiked Shield", 1],
@@ -61,7 +62,7 @@ test("after a reveal, the deck is open with each spent card marked by its round"
   );
 });
 
-const rounds = [
+const rounds: Pick<Round, "plans">[] = [
   {
     plans: [
       [id("Chalk Dust"), id("Double Tap")],

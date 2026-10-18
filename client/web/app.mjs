@@ -8,7 +8,7 @@ import { randomDeck, randomPlan } from "./bot.mjs";
 import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.ts";
 import { sentences, matchLog, resultLine, sideNames, possessive } from "./log.mjs";
 import { glossary, markKeywords, escapeHTML } from "./keywords.ts";
-import { knownCards } from "./table.mjs";
+import { knownCards } from "./table.ts";
 import { stepFeedback, cardBehind } from "./battle-feedback.mjs";
 import { artIndex } from "./art.mjs";
 import { loadArena } from "./arena-provider.mjs";
