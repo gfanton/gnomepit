@@ -440,6 +440,36 @@ test("resigning a running match shows its result", async (t) => {
   assert.match(shown(), /<h1>You lost<\/h1>/);
 });
 
+test("an unsent plan stays while its match waits for it, and goes when the player resigns", async (t) => {
+  stubPage(t);
+  const arena = endingArena(bobsMove);
+  arena.resign = async () => {
+    arena.view = { ...bobsMove, Phase: "ended", Result: "a", Reason: "resign", action: "done" };
+  };
+  const { lobby, shown } = lobbyOf(arena, bob);
+  const draft = { onlineContext: { intent: "move" as const, view: { id: matchId("4") } } };
+  lobby.model.draft = draft;
+  await lobby.enter();
+  await lobby.action("Open", { id: "4" });
+  assert.equal(lobby.model.draft, draft);
+  await lobby.action("ResignConfirm");
+  await lobby.action("Board");
+  assert.equal(lobby.model.draft, null);
+  assert.doesNotMatch(shown(), /Resume draft/);
+});
+
+test("the board drops an unsent plan whose match ended while the player was away", async (t) => {
+  stubPage(t);
+  const arena = endingArena(ended);
+  const { Plans: _plans, HP: _hp, ...summary } = ended;
+  arena.myMatches = async () => [summary];
+  const { lobby, shown } = lobbyOf(arena, bob);
+  lobby.model.draft = { onlineContext: { intent: "move" as const, view: { id: matchId("4") } } };
+  await lobby.enter();
+  assert.equal(lobby.model.draft, null);
+  assert.doesNotMatch(shown(), /Resume draft/);
+});
+
 test("the board hides an ended match's result until its last clash has played", async (t) => {
   stubPage(t);
   const arena = endingArena(ended);

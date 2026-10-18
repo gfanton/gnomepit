@@ -10,6 +10,8 @@ const filled = (text: string | null | undefined): text is string => text !== nul
 const textOr = (text: string, fallback: string) => (text === "" ? fallback : text);
 // dueOf is the time a view's deadline or, without one, its expiry falls on.
 const dueOf = (v: View) => (isSet(v.deadline) ? v.deadline : v.expires);
+// waitsFor says whether v's match still waits for a plan sent as context.
+const waitsFor = (context: DraftContext, v: View) => v.action === (context.intent === "move" ? "move" : "accept");
 const perMatch =
   "Each match you post or accept asks your wallet once, for a one-day session that only plays that match.";
 const unreachable = "Can't reach the hall right now. Check your connection and try again.";
@@ -81,7 +83,7 @@ export type LobbyModel<Draft> = {
   matchPage: number;
   notifications: "off" | "on" | "blocked";
   blocked: boolean;
-  // The page's unsent plan, which the lobby only holds.
+  // The page's unsent plan, which the lobby holds until its match no longer waits for it.
   draft: Draft | null;
 };
 // An action's data: the clicked button's dataset.
@@ -97,7 +99,9 @@ export type Lobby<Draft> = {
   returnToBoard(): Promise<void>;
   report(error: unknown): void;
 };
-export function createLobby<Draft = unknown>({
+// What the lobby reads of a draft: what it would be sent as.
+type Drafted = { onlineContext: DraftContext | null };
+export function createLobby<Draft extends Drafted = Drafted>({
   app,
   arena,
   storage,
@@ -216,11 +220,19 @@ export function createLobby<Draft = unknown>({
     ]);
     model.challenges = challenges.map((v) => viewOf({ ...v, Phase: "open" }, address()));
     model.matches = matches.map((v) => viewOf(v, address()));
+    model.matches.forEach(dropStaleDraft);
   }
   async function refreshView(id: MatchId) {
     const raw = await online().match(id);
     model.view = viewOf(raw, address());
+    dropStaleDraft(model.view);
     return raw;
+  }
+  // dropStaleDraft forgets the unsent plan once v, its match, no longer waits for it.
+  function dropStaleDraft(v: View) {
+    const context = model.draft?.onlineContext;
+    if (context !== undefined && context !== null && context.view?.id === v.id && !waitsFor(context, v))
+      model.draft = null;
   }
   // The realm deletes a withdrawn challenge, and a later challenge clears an expired one.
   const removed = (e: unknown) => e instanceof Error && e.message.startsWith("unknown match");
@@ -255,6 +267,7 @@ export function createLobby<Draft = unknown>({
         try {
           const raw = value ?? (await online().match(id));
           model.view = viewOf(raw, address());
+          dropStaleDraft(model.view);
           if (model.inGame) return;
           await showEnding(raw);
           if (!model.inGame) changed();
@@ -618,8 +631,7 @@ export function createLobby<Draft = unknown>({
         throw new Error("This device needs approval. Return to the board and approve it; your plan is preserved.");
       const id = context.view?.id ?? matchId("");
       if (id !== "") {
-        const current = viewOf(await arena.match(id), address());
-        if (current.action !== (context.intent === "move" ? "move" : "accept"))
+        if (!waitsFor(context, viewOf(await arena.match(id), address())))
           throw new Error("This match moved on. Refresh it before sending.");
       }
       if (context.intent === "move") await arena.move(id, plan);
