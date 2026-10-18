@@ -13,7 +13,7 @@ export type BuildOptions = { network: string; outDir: string };
 const web = fileURLToPath(new URL("./web/", import.meta.url));
 
 const pages = [
-  { html: "index.html", entry: "app.mjs" },
+  { html: "index.html", entry: "app.ts" },
   { html: "delvers-preview.html", entry: "delvers-preview.ts" },
 ];
 const devPages = [

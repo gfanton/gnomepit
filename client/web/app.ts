@@ -1,46 +1,118 @@
 // The page: renders the flow's screens into #app and turns clicks into flow actions. Every
 // rule comes from the engine; this module only draws and routes.
 
-import { loadEngine } from "./engine.ts";
-import { initial, reduce, botTurn } from "./flow.ts";
-import { deckSize, newDeck, toggle, rareOf } from "./deck.ts";
+import {
+  type BattleEvent,
+  type Card,
+  type Clan,
+  type GameState,
+  type Gnome,
+  type Side,
+  type Vitals,
+  cardOf,
+  loadEngine,
+  otherSide,
+} from "./engine.ts";
+import { type Action, type Flow, type Round, initial, reduce, botTurn } from "./flow.ts";
+import { type Deck, deckSize, newDeck, toggle, rareOf } from "./deck.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
 import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.ts";
 import { sentences, matchLog, resultLine, sideNames, possessive } from "./log.ts";
 import { glossary, markKeywords, escapeHTML } from "./keywords.ts";
-import { knownCards } from "./table.ts";
+import { type KnownCards, knownCards } from "./table.ts";
 import { stepFeedback, cardBehind } from "./battle-feedback.ts";
 import { artIndex } from "./art.ts";
 import { loadArena } from "./arena-provider.ts";
-import { createLobby } from "./lobby.ts";
+import { elementById } from "./dom.ts";
+import type { Address } from "./ids.ts";
+import { type Lobby, createLobby } from "./lobby.ts";
 import { networkFor } from "./network.ts";
-import { replayView, viewOf } from "./online-model.ts";
-import { afterFiniteAnimations, coach, lessonsFor, railsNext, tutorialMatch, tutorialMemory } from "./tutorial.ts";
+import { type View, isSet, replayView } from "./online-model.ts";
+import {
+  type TutorialMatch,
+  afterFiniteAnimations,
+  coach,
+  lessonsFor,
+  railsNext,
+  tutorialMatch,
+  tutorialMemory,
+} from "./tutorial.ts";
+
+// The build's network name, which esbuild's define writes in.
+declare const GNOMEHALL_NETWORK: string;
+
+type Pair<T> = [T, T];
+// Where a player heads from home, or after the guided match.
+type PlayMode = "online" | "bot" | "hotseat";
+// What an online plan is sent as: a challenge or an acceptance, or a move in a match the
+// player may only be reviewing.
+type OnlineContext =
+  | { intent: "challenge" | "accept"; view: View | null; opponent: string; account: Address | "" }
+  | { intent: "move"; view: View; account: Address | ""; review: boolean };
+// The unsent online plan the lobby holds while the player is back on the board.
+type Draft = {
+  flow: Flow;
+  deck: Deck | null;
+  plan: number[];
+  legalPlans: number[][];
+  onlineContext: OnlineContext | null;
+  choosingClan?: boolean;
+};
+type Step = Pick<BattleEvent, "beat" | "phase" | "tier" | "step"> & { from: number; to: number };
+type Playback = {
+  start: Pair<Vitals>;
+  steps: Step[];
+  lines: string[];
+  shown: number;
+  speed: number;
+  timer: number | null;
+  revealTimer: number | null;
+  // performance.now() milliseconds at which revealTimer fires.
+  revealAt: number;
+  viewer: Side;
+  lessons: { at: number; text: string; shown: boolean }[];
+  lesson: { text: string; ready: boolean } | null;
+};
+// A gnome between rounds, which has no block or counter, or its vitals during one.
+type ShownVitals = Pick<Vitals, "hp"> & Partial<Vitals>;
+type CardOptions = {
+  selected?: boolean;
+  dimmed?: boolean;
+  small?: boolean;
+  locked?: boolean;
+  pressed?: boolean | null;
+  action?: string | null;
+  data?: string;
+  spentRound?: number;
+  hand?: boolean;
+  track?: boolean;
+  coached?: boolean;
+};
 
 const engine = await loadEngine("engine.wasm", "cards.json");
 const art = artIndex(await (await fetch("art/assets.json")).json());
-const app = document.getElementById("app");
-const tip = document.getElementById("tip");
+const app = elementById("app", HTMLElement);
+const tip = elementById("tip", HTMLDivElement);
 const basics = engine.cards.filter((c) => !c.special).map((c) => c.id);
 const stepMs = 1050;
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 let handScroll = 0;
-const flights = new Set();
+const flights = new Set<HTMLElement>();
 
-let flow = initial;
+let flow: Flow = initial;
 let choosingClan = true;
-let deck = null; // the deck being picked on the deck screen
-let plan = []; // the plan being built on the plan screen
-let legalPlans = []; // the acting player's legal plans this round
-let onlineContext = null;
+let deck: Deck | null = null; // the deck being picked on the deck screen
+let plan: number[] = []; // the plan being built on the plan screen
+let legalPlans: number[][] = []; // the acting player's legal plans this round
+let onlineContext: OnlineContext | null = null;
 let onlineError = "";
 let onlineSending = false;
-let playback = null; // {start, steps, lines, shown, speed, timer, revealTimer, revealAt, viewer, lessons, lesson} for the round being played back
-let guided = null; // the guided match's decks and plans, from tutorialMatch, while one runs
-let onward = null; // where the player was heading before the guided match: "online", "bot", "hotseat" or null
+let playback: Playback | null = null; // the round being played back
+let guided: TutorialMatch | null = null; // the guided match's decks and plans, from tutorialMatch, while one runs
+let onward: PlayMode | null = null; // where the player was heading before the guided match
 
 // Shared cards, and any clan missing here, get no emblem and no blurb.
-const clanLook = {
+const clanLook: Record<string, { emblem: string; blurb: string }> = {
   Delvers: {
     emblem:
       '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M12 3h8M12 3 8 15M20 3l5 13M8 15l8-5 9 6-2 10-10 3-8-6ZM16 10l-3 8 6 2-6 9"/></svg>',
@@ -57,43 +129,43 @@ const clanLook = {
     blurb: "Stand firm. Strike hard. Iron shields and the weight of the mountain.",
   },
 };
-function cardClan(c) {
+function cardClan(c: Card): string {
   return engine.clans.find((clan) => clan.cards.includes(c.id))?.name ?? "Shared";
 }
-function emblem(clan) {
+function emblem(clan: string): string {
   return clanLook[clan]?.emblem ?? "";
 }
-function portraitHTML(clan, attributes) {
+function portraitHTML(clan: string, attributes: string): string {
   const file = art.portrait(clan);
   return file === undefined ? "" : `<img ${attributes} src="art/${file}" alt="${clan} clan champion">`;
 }
-function artHTML(c) {
+function artHTML(c: Card): string {
   const file = art.card(c.name);
   return file !== undefined
     ? `<div class="card__art"><img src="art/${file}" alt="" loading="lazy"></div>`
     : `<div class="card__art card__art--pending">${emblem(cardClan(c))}<span>Clan study · art to come</span></div>`;
 }
-function collectionHTML() {
+function collectionHTML(): string {
   const groups = [
     ...engine.clans.map((clan) => ({ name: clan.name, ids: clan.cards })),
     { name: "Shared", ids: basics },
   ];
   return `<details class="collection"><summary>Browse all ${engine.cards.length} cards<span>${engine.clans.map((clan) => clan.name).join(", ")} & shared techniques</span></summary>
-    <div class="collection__groups">${groups.map(({ name, ids }) => `<section class="stack" id="library-${name.toLowerCase()}"><div class="frame__head"><h2 class="heading">${name === "Shared" ? "Shared techniques" : name}</h2><span class="label">${ids.length} cards</span></div><div class="card-grid">${ids.map((id) => cardHTML(engine.cards[id])).join("")}</div></section>`).join("")}</div>
+    <div class="collection__groups">${groups.map(({ name, ids }) => `<section class="stack" id="library-${name.toLowerCase()}"><div class="frame__head"><h2 class="heading">${name === "Shared" ? "Shared techniques" : name}</h2><span class="label">${ids.length} cards</span></div><div class="card-grid">${ids.map((id) => cardHTML(cardOf(engine.cards, id))).join("")}</div></section>`).join("")}</div>
   </details>`;
 }
 
-function masthead(note = "A duel beneath the mountain") {
+function masthead(note = "A duel beneath the mountain"): string {
   return `<header class="masthead"><a class="wordmark" href="./">Gnomehall<span>UNDER THE MOUNTAIN</span></a><span class="masthead__note">${note}</span></header>`;
 }
 
 const tutorialFlag = tutorialMemory(localStorage);
 const built = networkFor(GNOMEHALL_NETWORK);
 const arena = built === null ? null : await loadArena(engine, built);
-const lobby =
+const lobby: Lobby<Draft> | null =
   arena === null
     ? null
-    : createLobby({
+    : createLobby<Draft>({
         app,
         arena,
         storage: localStorage,
@@ -101,11 +173,11 @@ const lobby =
         portrait: portraitHTML,
         emblem,
         onResume: () => {
-          const draft = lobby.model.draft;
-          if (!draft) return;
+          const draft = onlineLobby().model.draft;
+          if (draft === null) return;
           ({ flow, deck, plan, legalPlans, onlineContext } = draft);
           choosingClan = draft.choosingClan ?? false;
-          lobby.model.inGame = true;
+          onlineLobby().model.inGame = true;
           app.classList.remove("lobby");
           render();
         },
@@ -120,11 +192,12 @@ const lobby =
         onCompose: (context) => {
           onlineContext = context;
           onlineError = "";
-          lobby.model.draft = null;
+          onlineLobby().model.draft = null;
           app.classList.remove("lobby");
-          const opponent = context.view?.clans[0] || "";
-          if (opponent && !clanNamed(opponent))
+          const opponent = context.view?.clans[0] ?? "";
+          if (opponent !== "" && clanNamed(opponent) === undefined)
             throw new Error("The arena returned an unknown clan. Reload before playing.");
+          const gnome = (): Gnome => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] });
           flow = {
             ...initial,
             screen: "deck",
@@ -133,24 +206,24 @@ const lobby =
             acting: context.intent === "accept" ? 1 : 0,
             clans: context.intent === "accept" ? [opponent, null] : [null, ""],
             decks: [[], []],
-            state: { round: 1, gnomes: [0, 1].map(() => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] })) },
+            state: { round: 1, gnomes: [gnome(), gnome()] },
           };
           choosingClan = true;
-          deck = newDeck(engine.clans[0], engine.cards);
+          deck = newDeck(firstClan(), engine.cards);
           render();
         },
         onPlay: (raw, address, review) => {
           const restored = replayView(raw, engine, address);
           const { view, decks, state, rounds, result } = restored;
-          if (!review && view.side === 0 && view.phase === "reveal" && !raw.pending)
+          if (!review && view.side === 0 && view.phase === "reveal" && raw.pending === undefined)
             throw new Error(
               "This device cannot open your sealed plan yet. Approve the session on this device, then open the match again.",
             );
-          if (!review && (view.side < 0 || !decks[view.side]?.length))
+          if (!review && (view.side === -1 || decks[view.side].length === 0))
             throw new Error(
               "Your private deck is needed to resume this turn. The arena adapter must recover it before play.",
             );
-          if (!review && rounds.length === 0 && view.round > 1)
+          if (!review && rounds.length === 0 && (view.round ?? 0) > 1)
             throw new Error("The arena has not supplied the resolved round yet. Refresh this match.");
           onlineContext = { intent: "move", view, account: address, review };
           onlineError = "";
@@ -158,23 +231,24 @@ const lobby =
             ...initial,
             mode: "online",
             hp: engine.hp,
-            acting: view.side >= 0 ? view.side : 0,
+            acting: view.side === -1 ? 0 : view.side,
             clans: view.clans,
             decks,
             state,
             rounds,
             result,
-            screen: rounds.length ? "playback" : "plan",
+            screen: rounds.length > 0 ? "playback" : "plan",
           };
-          if (rounds.length) {
-            const round = rounds.at(-1);
+          const round = rounds.at(-1);
+          if (round !== undefined) {
             playback = {
-              start: round.start.gnomes.map((g) => ({ ...g, block: 0, counter: 0 })),
+              start: atRest(round.start),
               steps: groupSteps(round.events),
               lines: sentences(round.events, { cards: engine.cards, names: battleNames(), plans: round.plans }),
               shown: 0,
               timer: null,
               revealTimer: null,
+              revealAt: 0,
               speed: 1,
               viewer: flow.acting,
               lessons: [],
@@ -184,22 +258,47 @@ const lobby =
             legalPlans = engine.legalPlans({ state, side: flow.acting, deck: decks[flow.acting] });
             plan = [];
           }
-          lobby.model.inGame = true;
+          onlineLobby().model.inGame = true;
           app.classList.remove("lobby");
           render();
         },
       });
-function battleNames() {
-  return flow.mode === "online"
-    ? flow.clans.map((clan, side) => (side === flow.acting ? "You" : clan || "Rival to come"))
-    : sideNames(flow.clans, flow.mode);
+// onlineLobby is the lobby; an offline build has none and draws no online action.
+function onlineLobby(): Lobby<Draft> {
+  if (lobby === null) throw new Error("This build plays offline only.");
+  return lobby;
 }
-function onlineBar() {
+// onlineMatch is the online match being planned or played back, which online mode always has.
+function onlineMatch(): OnlineContext {
+  if (onlineContext === null) throw new Error("No online match is open.");
+  return onlineContext;
+}
+// underway is the match the flow plays: every screen from the first plan on has one.
+function underway(): { hp: number; state: GameState; decks: Pair<number[]>; clans: Pair<string> } {
+  const {
+    hp,
+    state,
+    decks: [deckA, deckB],
+    clans: [clanA, clanB],
+  } = flow;
+  if (hp === null || state === null || deckA === null || deckB === null || clanA === null || clanB === null)
+    throw new Error("No match is under way.");
+  return { hp, state, decks: [deckA, deckB], clans: [clanA, clanB] };
+}
+function battleNames(): Pair<string> {
+  const name = (clan: string | null, side: Side) =>
+    side === flow.acting ? "You" : clan === null || clan === "" ? "Rival to come" : clan;
+  return flow.mode === "online"
+    ? [name(flow.clans[0], 0), name(flow.clans[1], 1)]
+    : sideNames(underway().clans, flow.mode);
+}
+function onlineBar(): string {
+  const deadline = onlineContext?.view?.deadline;
   return flow.mode !== "online"
     ? ""
-    : `<section class="online-match-bar"><button class="button button--secondary" data-action="onlineBack" ${onlineSending ? "disabled" : ""}>Back to board</button><span>${onlineContext?.view?.deadline ? `Your move deadline: ${escapeHTML(new Date(onlineContext.view.deadline * 1000).toLocaleString())}` : onlineContext?.intent === "accept" ? "Accepting a challenge · Round 1" : "Posting a challenge · Round 1"}</span><p role="status">${escapeHTML(onlineError || (onlineSending ? "Sending your move… Waiting for confirmation." : ""))}</p></section>`;
+    : `<section class="online-match-bar"><button class="button button--secondary" data-action="onlineBack" ${onlineSending ? "disabled" : ""}>Back to board</button><span>${isSet(deadline) ? `Your move deadline: ${escapeHTML(new Date(deadline * 1000).toLocaleString())}` : onlineContext?.intent === "accept" ? "Accepting a challenge · Round 1" : "Posting a challenge · Round 1"}</span><p role="status">${escapeHTML(onlineError !== "" ? onlineError : onlineSending ? "Sending your move… Waiting for confirmation." : "")}</p></section>`;
 }
-async function sendOnlinePlan() {
+async function sendOnlinePlan(): Promise<void> {
   if (onlineSending || !isSealable(plan, legalPlans)) return;
   onlineSending = true;
   onlineError = "";
@@ -207,12 +306,13 @@ async function sendOnlinePlan() {
   const saved = [...plan];
   try {
     const me = flow.acting;
-    await lobby.sendDraft(onlineContext, flow.clans[me], flow.decks[me], saved);
+    const { clans, decks } = underway();
+    await onlineLobby().sendDraft(onlineMatch(), clans[me], decks[me], saved);
     stopPlaying();
     playback = null;
     flow = { ...initial, screen: "lobby" };
   } catch (error) {
-    onlineError = error.message;
+    onlineError = error instanceof Error ? error.message : String(error);
   } finally {
     onlineSending = false;
     render();
@@ -221,7 +321,7 @@ async function sendOnlinePlan() {
 
 // ---- Actions
 
-function dispatch(action) {
+function dispatch(action: Action): void {
   const before = flow;
   flow = reduce(flow, action);
   enter(before);
@@ -230,7 +330,7 @@ function dispatch(action) {
 
 // enter runs what a screen needs on arrival: a fresh deck or plan to build, the legal
 // plans from the engine, the bot's move, or the round's resolution.
-function enter(before) {
+function enter(before: Flow): void {
   const arrived = flow.screen !== before.screen || flow.acting !== before.acting;
   if (!arrived) return;
   if (before.screen === "playback") {
@@ -240,18 +340,20 @@ function enter(before) {
   if (flow.screen === "deck") {
     if (botTurn(flow)) {
       const clan = engine.clans[Math.floor(Math.random() * engine.clans.length)];
+      if (clan === undefined) throw new Error("The card file names no clan.");
       dispatch({ type: "deckReady", clan: clan.name, deck: randomDeck(clan, engine.cards, Math.random) });
       return;
     }
     choosingClan = true;
-    deck = newDeck(engine.clans[0], engine.cards);
+    deck = newDeck(firstClan(), engine.cards);
   }
   if (flow.screen === "plan") {
-    const plans = engine.legalPlans({ state: flow.state, side: flow.acting, deck: flow.decks[flow.acting] });
+    const { state, decks } = underway();
+    const plans = engine.legalPlans({ state, side: flow.acting, deck: decks[flow.acting] });
     if (botTurn(flow)) {
       dispatch({
         type: "planSealed",
-        plan: flow.mode === "tutorial" ? guided.opponent[flow.state.round - 1] : randomPlan(plans, Math.random),
+        plan: flow.mode === "tutorial" ? guidedRound().opponent : randomPlan(plans, Math.random),
       });
       return;
     }
@@ -259,34 +361,32 @@ function enter(before) {
     plan = [];
   }
   if (flow.screen === "playback") {
-    const start = flow.state.gnomes.map((g) => ({
-      hp: g.hp,
-      block: 0,
-      counter: 0,
-      vulnerable: g.vulnerable,
-      strength: g.strength,
-    }));
+    const { state: current, decks } = underway();
+    const [a, b] = flow.plans;
+    if (a === null || b === null) throw new Error("A plan is not sealed yet.");
+    const start = atRest(current);
     const { state, result, events } = engine.resolve({
-      state: flow.state,
-      decks: flow.decks,
-      a: flow.plans[0],
-      b: flow.plans[1],
+      state: current,
+      decks,
+      a,
+      b,
     });
     const names = battleNames();
     playback = {
       start,
       steps: groupSteps(events),
-      lines: sentences(events, { cards: engine.cards, names, plans: flow.plans }),
+      lines: sentences(events, { cards: engine.cards, names, plans: [a, b] }),
       shown: 0,
       timer: null,
       speed: 1,
       revealTimer: null,
-      viewer: ["bot", "tutorial"].includes(flow.mode) ? 0 : flow.acting,
+      revealAt: 0,
+      viewer: flow.mode === "bot" || flow.mode === "tutorial" ? 0 : flow.acting,
       // The guided match's lessons for this round, each {at, text, shown}, and the one on show
       // as {text, ready}, ready once the step's motion has ended.
       lessons:
         flow.mode === "tutorial"
-          ? lessonsFor(flow.state.round, events, engine.cards).map((l) => ({ ...l, shown: false }))
+          ? lessonsFor(current.round, events, engine.cards).map((l) => ({ ...l, shown: false }))
           : [],
       lesson: null,
     };
@@ -296,57 +396,87 @@ function enter(before) {
 }
 
 // groupSteps turns the event list into [from, to) ranges of events that resolve together.
-function groupSteps(events) {
-  const steps = [];
+function groupSteps(events: BattleEvent[]): Step[] {
+  const steps: Step[] = [];
   events.forEach((ev, i) => {
     const last = steps.at(-1);
-    const same = last && ["beat", "phase", "tier", "step"].every((k) => ev[k] === last[k]);
+    const same = last !== undefined && (["beat", "phase", "tier", "step"] as const).every((k) => ev[k] === last[k]);
     if (same) last.to = i + 1;
     else steps.push({ beat: ev.beat, phase: ev.phase, tier: ev.tier, step: ev.step, from: i, to: i + 1 });
   });
   return steps;
 }
 
-function enterMode(mode) {
+// atRest is each gnome's vitals before a round's first step: no block and no counter yet.
+function atRest({ gnomes }: GameState): Pair<Vitals> {
+  const vitals = ({ hp, vulnerable, strength }: Gnome): Vitals => ({ hp, block: 0, counter: 0, vulnerable, strength });
+  return [vitals(gnomes[0]), vitals(gnomes[1])];
+}
+
+// firstClan is the clan a deck starts from until the player picks one.
+function firstClan(): Clan {
+  const [clan] = engine.clans;
+  if (clan === undefined) throw new Error("The card file names no clan.");
+  return clan;
+}
+
+// picking is the deck the deck screen builds.
+function picking(): Deck {
+  if (deck === null) throw new Error("No deck is being picked.");
+  return deck;
+}
+
+// playModeOf reads a data-mode the page wrote; anything else is no mode.
+function playModeOf(mode: string | undefined): PlayMode | null {
+  return mode === "online" || mode === "bot" || mode === "hotseat" ? mode : null;
+}
+
+function enterMode(mode: string | undefined): void {
   if (mode === "online") handlers.online();
   else handlers.start({ mode });
 }
 
 const handlers = {
-  start: ({ mode }) => dispatch({ type: "start", mode, hp: engine.hp }),
+  start: ({ mode }: DOMStringMap) => {
+    if (mode !== "bot" && mode !== "hotseat") throw new Error(`No offline mode ${mode}`);
+    dispatch({ type: "start", mode, hp: engine.hp });
+  },
   online: () => {
     flow = { ...initial, screen: "lobby" };
-    lobby.enter();
+    void onlineLobby().enter();
   },
   onlineBack: () => {
     if (onlineSending) return;
     stopPlaying();
     playback = null;
     if (["plan", "deck"].includes(flow.screen))
-      lobby.model.draft = { flow, deck, plan, legalPlans, onlineContext, choosingClan };
-    lobby.returnToBoard();
+      onlineLobby().model.draft = { flow, deck, plan, legalPlans, onlineContext, choosingClan };
+    void onlineLobby().returnToBoard();
   },
-  library: ({ clan }) => {
+  library: ({ clan }: DOMStringMap) => {
     flow = { ...initial, screen: "library" };
     render();
-    if (clan) byId(`library-${clan.toLowerCase()}`)?.scrollIntoView({ block: "start" });
+    if (clan !== undefined && clan !== "")
+      elementById(`library-${clan.toLowerCase()}`, HTMLElement).scrollIntoView({ block: "start" });
   },
   // playMode enters a mode from home, offering the guided match first to a browser that has
   // neither played nor skipped it.
-  playMode: ({ mode }) => {
+  playMode: ({ mode }: DOMStringMap): void => {
     if (tutorialFlag.seen()) return enterMode(mode);
-    const offer = byId("tutorial-offer");
-    for (const button of offer.querySelectorAll("[data-action]")) button.dataset.mode = mode;
+    const offer = elementById("tutorial-offer", HTMLDialogElement);
+    for (const button of offer.querySelectorAll("[data-action]")) {
+      if (button instanceof HTMLElement) button.dataset.mode = mode;
+    }
     openDialog(offer);
   },
-  tutorialSkip: ({ mode }) => {
+  tutorialSkip: ({ mode }: DOMStringMap) => {
     closeBattleDialogs();
     tutorialFlag.remember("skipped");
     enterMode(mode);
   },
-  tutorial: ({ mode }) => {
+  tutorial: ({ mode }: DOMStringMap) => {
     closeBattleDialogs();
-    onward = mode ?? null;
+    onward = playModeOf(mode);
     guided = tutorialMatch(engine);
     flow = initial;
     dispatch({ type: "startTutorial", hp: engine.hp, clans: guided.clans, decks: guided.decks });
@@ -359,30 +489,35 @@ const handlers = {
     choosingClan = true;
     render();
   },
-  clan: ({ name }) => {
+  clan: ({ name }: DOMStringMap) => {
     const clan = clanNamed(name);
-    if (!clan) return;
+    if (clan === undefined) return;
     if (deck?.clan !== name) deck = newDeck(clan, engine.cards);
     choosingClan = false;
     render();
   },
-  toggle: ({ id }) => {
-    deck = toggle(deck, Number(id), clanNamed(deck.clan), engine.cards);
+  toggle: ({ id }: DOMStringMap) => {
+    const picked = picking();
+    const clan = clanNamed(picked.clan);
+    if (clan === undefined) throw new Error(`No clan ${picked.clan}`);
+    deck = toggle(picked, Number(id), clan, engine.cards);
     render();
   },
-  deckReady: () => {
+  deckReady: (): void => {
+    const picked = picking();
     if (flow.mode !== "online")
-      return dispatch({ type: "deckReady", clan: deck.clan, deck: [...deck.picks].sort((a, b) => a - b) });
+      return dispatch({ type: "deckReady", clan: picked.clan, deck: [...picked.picks].sort((a, b) => a - b) });
     const me = flow.acting;
-    flow.clans[me] = deck.clan;
-    flow.decks[me] = [...deck.picks].sort((a, b) => a - b);
+    flow.clans[me] = picked.clan;
+    flow.decks[me] = [...picked.picks].sort((a, b) => a - b);
     flow = { ...flow, screen: "plan" };
-    legalPlans = engine.legalPlans({ state: flow.state, side: me, deck: flow.decks[me] });
+    const { state, decks } = underway();
+    legalPlans = engine.legalPlans({ state, side: me, deck: decks[me] });
     plan = [];
     render();
   },
   handoffDone: () => dispatch({ type: "handoffDone" }),
-  addCard: ({ id }) => {
+  addCard: ({ id }: DOMStringMap) => {
     const cardId = Number(id);
     const source = app.querySelector(`.battle-hand [data-action="addCard"][data-id="${cardId}"]`);
     const from = source?.getBoundingClientRect();
@@ -394,10 +529,10 @@ const handlers = {
     render();
     app.querySelectorAll(".hand-entry").forEach((el) => el.classList.add("hand-entry--resting"));
     flyCard(source, from, app.querySelector(`[data-plan-index="${index}"]`));
-    byId("plan-status").textContent =
-      `${engine.cards[cardId].name} added. ${beatsUsed(plan, engine.cards)} of 3 beats filled.`;
+    elementById("plan-status", HTMLSpanElement).textContent =
+      `${cardOf(engine.cards, cardId).name} added. ${beatsUsed(plan, engine.cards)} of 3 beats filled.`;
   },
-  clearFrom: ({ beat }) => {
+  clearFrom: ({ beat }: DOMStringMap) => {
     plan = clearFrom(plan, Number(beat), engine.cards);
     render();
   },
@@ -405,65 +540,78 @@ const handlers = {
     plan = [];
     render();
   },
-  inspectCard: ({ id }) => {
+  inspectCard: ({ id }: DOMStringMap) => {
     if (flow.screen === "playback") stopPlaying();
-    const c = engine.cards[Number(id)];
+    const c = cardOf(engine.cards, Number(id));
     const legal = flow.screen === "plan" && canAdd(plan, c.id, engine.cards, available());
-    const reader = byId("card-reader");
-    byId("reader-content").innerHTML =
+    const reader = elementById("card-reader", HTMLDialogElement);
+    elementById("reader-content", HTMLDivElement).innerHTML =
       `${cardHTML(c)}<p class="muted">${c.cost} ${c.cost === 1 ? "beat" : "beats"}${c.special ? " · Once per match" : " · Reusable basic"}</p>
-      ${legal ? `<button class="button" type="button" data-action="addCard" data-id="${c.id}">Play ${c.name}</button>` : `<p class="muted">${flow.screen === "playback" ? "Committed this round." : flow.state.gnomes[flow.acting].spent.includes(c.id) ? "Already spent this match." : coachedCard() !== undefined ? `The guided match asks for ${engine.cards[coachedCard()].name} now.` : "This card does not fit your current plan."}</p>`}`;
+      ${legal ? `<button class="button" type="button" data-action="addCard" data-id="${c.id}">Play ${c.name}</button>` : `<p class="muted">${unplayable(c)}</p>`}`;
     openDialog(reader);
   },
   playedCards: () => {
     if (flow.screen === "playback") stopPlaying();
-    openDialog(byId("played-cards"));
+    openDialog(elementById("played-cards", HTMLDialogElement));
   },
   intel: () => {
     if (flow.screen === "playback") stopPlaying();
-    openDialog(byId("battle-info"));
+    openDialog(elementById("battle-info", HTMLDialogElement));
   },
   roundLog: () => {
     stopPlaying();
-    openDialog(byId("round-log"));
+    openDialog(elementById("round-log", HTMLDialogElement));
   },
   closeDialog: () => closeBattleDialogs(),
   seal: () => {
     closeBattleDialogs();
-    if (flow.mode === "online") return sendOnlinePlan();
+    if (flow.mode === "online") {
+      void sendOnlinePlan();
+      return;
+    }
     dispatch({ type: "planSealed", plan });
   },
   next: () => {
     stopPlaying();
-    showStep(playback.shown + 1);
+    showStep(playing().shown + 1);
   },
-  play: () => (playback.timer || playback.revealTimer ? stopPlaying() : startPlaying()),
+  play: () => {
+    const { timer, revealTimer } = playing();
+    if (timer !== null || revealTimer !== null) stopPlaying();
+    else startPlaying();
+  },
   skip: () => {
     stopPlaying();
     for (const card of app.querySelectorAll(".card-reveal")) card.classList.remove("card-reveal");
-    const lesson = playback.lessons.find((l) => !l.shown);
-    if (lesson === undefined) return showStep(playback.steps.length, false);
+    const session = playing();
+    const lesson = session.lessons.find((l) => !l.shown);
+    if (lesson === undefined) return showStep(session.steps.length, false);
     // In the guided match, skipping runs only as far as the next lesson.
-    const target = playback.steps.findIndex((s) => lesson.at >= s.from && lesson.at < s.to) + 1;
-    showStep(Math.max(target, playback.shown), false);
+    const target = session.steps.findIndex((s) => lesson.at >= s.from && lesson.at < s.to) + 1;
+    showStep(Math.max(target, session.shown), false);
     lesson.shown = true;
-    playback.lesson = { text: lesson.text, ready: true };
+    session.lesson = { text: lesson.text, ready: true };
     patchPlayback();
-    byId("lesson-continue")?.focus({ preventScroll: true });
+    elementById("lesson-continue", HTMLButtonElement).focus({ preventScroll: true });
   },
   lessonDone: () => {
-    if (playback?.lesson == null) return;
+    if (playback === null || playback.lesson === null) return;
     playback.lesson = null;
     patchPlayback();
     startPlaying();
   },
-  playbackDone: () => {
+  playbackDone: (): void => {
     if (flow.mode !== "online") return dispatch({ type: "playbackDone" });
     stopPlaying();
     playback = null;
-    if (onlineContext.review || onlineContext.view.action !== "move") return lobby.returnToBoard();
+    const context = onlineMatch();
+    if (context.intent !== "move" || context.review || context.view.action !== "move") {
+      void onlineLobby().returnToBoard();
+      return;
+    }
     flow = { ...flow, screen: "plan" };
-    legalPlans = engine.legalPlans({ state: flow.state, side: flow.acting, deck: flow.decks[flow.acting] });
+    const { state, decks } = underway();
+    legalPlans = engine.legalPlans({ state, side: flow.acting, deck: decks[flow.acting] });
     plan = [];
     render();
   },
@@ -493,63 +641,76 @@ document.addEventListener("pointermove", (event) => {
   }
 });
 app.addEventListener("pointerout", (event) => {
-  const entry = event.target.closest?.(".hand-entry--resting");
-  if (entry && !entry.contains(event.relatedTarget)) entry.classList.remove("hand-entry--resting");
+  const entry = event.target instanceof Element ? event.target.closest(".hand-entry--resting") : null;
+  const related = event.relatedTarget instanceof Node ? event.relatedTarget : null;
+  if (entry !== null && !entry.contains(related)) entry.classList.remove("hand-entry--resting");
 });
 document.addEventListener("keydown", () =>
   app.querySelectorAll(".hand-entry--resting").forEach((el) => el.classList.remove("hand-entry--resting")),
 );
+// isHandled is true for an action name the page has a handler for.
+const isHandled = (action: string): action is keyof typeof handlers => Object.hasOwn(handlers, action);
+
 app.addEventListener("click", (event) => {
-  const target = event.target.closest("[data-action]");
-  if (!target || target.disabled) return;
-  if (target.dataset.action.startsWith("online") && target.dataset.action !== "onlineBack") {
+  const target = event.target instanceof Element ? event.target.closest("[data-action]") : null;
+  if (!(target instanceof HTMLElement) || (target instanceof HTMLButtonElement && target.disabled)) return;
+  const action = target.dataset.action ?? "";
+  if (action.startsWith("online") && action !== "onlineBack") {
     if (target.tagName === "A") event.preventDefault();
-    if (target.dataset.action === "online") handlers.online();
-    else lobby.action(target.dataset.action.slice(6), target.dataset);
+    if (action === "online") handlers.online();
+    else void onlineLobby().action(action.slice(6), target.dataset);
     return;
   }
   if (onlineSending) return;
   if (event.detail > 0) target.blur();
-  handlers[target.dataset.action]?.(target.dataset);
+  if (isHandled(action)) handlers[action](target.dataset);
 });
 
 // ---- Tips: the full card behind a small one, and the rule behind a keyword or badge
 
 const tipAnchors = "[data-peek], [data-kw]";
-const tipTitles = { cancel: "Cancelled" };
-let tipAnchor = null;
+const tipTitles: Record<string, string> = { cancel: "Cancelled" };
+const tipRules: Record<string, string> = glossary;
+let tipAnchor: HTMLElement | null = null;
 
-app.addEventListener("mouseover", (event) => showTip(event.target.closest(tipAnchors)));
+// anchorAt is the tip anchor an event's target sits in, if any.
+function anchorAt(target: EventTarget | null): HTMLElement | null {
+  const anchor = target instanceof Element ? target.closest(tipAnchors) : null;
+  return anchor instanceof HTMLElement ? anchor : null;
+}
+
+app.addEventListener("mouseover", (event) => showTip(anchorAt(event.target)));
 app.addEventListener("mouseout", (event) => {
-  if (tipAnchor && !tipAnchor.contains(event.relatedTarget)) showTip(null);
+  if (tipAnchor !== null && !tipAnchor.contains(event.relatedTarget instanceof Node ? event.relatedTarget : null))
+    showTip(null);
 });
-app.addEventListener("focusin", (event) => showTip(event.target.closest(tipAnchors)));
+app.addEventListener("focusin", (event) => showTip(anchorAt(event.target)));
 app.addEventListener("focusout", () => showTip(null));
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") showTip(null);
 });
 
-function showTip(anchor) {
+function showTip(anchor: HTMLElement | null): void {
   if (anchor === tipAnchor) return;
   tipAnchor = anchor;
   tip.hidden = anchor === null;
   if (anchor === null) return;
   const peek = anchor.dataset.peek;
   tip.classList.toggle("tip--card", peek !== undefined);
-  if (peek !== undefined) tip.innerHTML = cardHTML(engine.cards[Number(peek)]);
+  if (peek !== undefined) tip.innerHTML = cardHTML(cardOf(engine.cards, Number(peek)));
   else {
-    const key = anchor.dataset.kw;
-    tip.innerHTML = `<span class="tip__title">${tipTitles[key] ?? key}</span>${glossary[key]}`;
+    const key = anchor.dataset.kw ?? "";
+    tip.innerHTML = `<span class="tip__title">${tipTitles[key] ?? key}</span>${tipRules[key]}`;
   }
   placeTip(anchor);
 }
 
 // placeTip puts the tip under the anchor, or above it when the viewport ends first, and keeps
 // it inside the viewport sideways.
-function placeTip(anchor) {
+function placeTip(anchor: HTMLElement): void {
   const gap = 8;
   const at = anchor.getBoundingClientRect();
-  let top = anchor.closest(".battle-hand") ? at.top - gap - tip.offsetHeight : at.bottom + gap;
+  let top = anchor.closest(".battle-hand") !== null ? at.top - gap - tip.offsetHeight : at.bottom + gap;
   if (top + tip.offsetHeight > window.innerHeight && at.top - gap - tip.offsetHeight >= 0)
     top = at.top - gap - tip.offsetHeight;
   top = Math.max(gap, Math.min(top, window.innerHeight - tip.offsetHeight - gap));
@@ -560,64 +721,97 @@ function placeTip(anchor) {
 
 // available lists the ids the acting player may play: the basics and the deck's unspent specials,
 // or only the card a guided round's rails ask for next.
-function available() {
-  if (flow.mode === "tutorial" && guided.rails[flow.state.round - 1] !== null) {
+function available(): number[] {
+  if (flow.mode === "tutorial" && guidedRound().rails !== null) {
     const next = coachedCard();
     return next === undefined ? [] : [next];
   }
-  const spent = flow.state.gnomes[flow.acting].spent;
-  return [...basics, ...flow.decks[flow.acting].filter((id) => !spent.includes(id))];
+  const { state, decks } = underway();
+  const spent = state.gnomes[flow.acting].spent;
+  return [...basics, ...decks[flow.acting].filter((id) => !spent.includes(id))];
 }
 
 // coachedCard is the card the guided match's rails ask for next, if any.
-function coachedCard() {
+function coachedCard(): number | undefined {
   if (flow.mode !== "tutorial") return undefined;
-  const rails = guided.rails[flow.state.round - 1];
+  const { rails } = guidedRound();
   return rails === null ? undefined : railsNext(rails, plan);
+}
+
+// guidedRound is the guided match's script for the round being planned: the cards its rails
+// ask for, null in a free round, and the opponent's plan.
+function guidedRound(): { rails: number[] | null; opponent: number[] } {
+  const round = underway().state.round - 1;
+  const rails = guided?.rails[round];
+  const opponent = guided?.opponent[round];
+  if (rails === undefined || opponent === undefined) throw new Error(`The guided match has no round ${round + 1}.`);
+  return { rails, opponent };
+}
+
+// unplayable says why the card reader offers no Play button for c.
+function unplayable(c: Card): string {
+  if (flow.screen === "playback") return "Committed this round.";
+  if (underway().state.gnomes[flow.acting].spent.includes(c.id)) return "Already spent this match.";
+  const coached = coachedCard();
+  return coached === undefined
+    ? "This card does not fit your current plan."
+    : `The guided match asks for ${cardOf(engine.cards, coached).name} now.`;
 }
 
 // ---- Playback
 
 // Timers belong to their playback session; exiting, skipping or pausing cancels them.
-function showStep(n, animate = true) {
-  if (!playback || flow.screen !== "playback") return;
-  if (playback.revealTimer) clearTimeout(playback.revealTimer);
+function showStep(n: number, animate = true): void {
+  if (playback === null || flow.screen !== "playback") return;
+  if (playback.revealTimer !== null) clearTimeout(playback.revealTimer);
   playback.revealTimer = null;
-  const round = flow.rounds.at(-1);
   const target = Math.min(n, playback.steps.length);
   const sequential = target === playback.shown + 1;
   playback.shown = target;
-  if (target === playback.steps.length && playback.timer) {
+  if (target === playback.steps.length && playback.timer !== null) {
     clearInterval(playback.timer);
     playback.timer = null;
   }
   patchPlayback();
-  if (animate && sequential && target > 0) {
-    const step = playback.steps[target - 1];
-    animateStep(round.events.slice(step.from, step.to));
+  const step = playback.steps[target - 1];
+  if (animate && sequential && step !== undefined) {
+    animateStep(shownRound().events.slice(step.from, step.to));
     pauseForLesson(step);
-  } else for (const side of [0, 1]) byId(`float-${side}`).replaceChildren();
+  } else for (const side of [0, 1]) elementById(`float-${side}`, HTMLDivElement).replaceChildren();
+}
+
+// shownRound is the round the playback screen shows: the flow's last.
+function shownRound(): Round {
+  const round = flow.rounds.at(-1);
+  if (round === undefined) throw new Error("No round has been played.");
+  return round;
+}
+
+// playing is the round being played back, which every playback control acts on.
+function playing(): Playback {
+  if (playback === null) throw new Error("No round is being played back.");
+  return playback;
 }
 
 // pauseForLesson stops the clash on a step that holds a guided lesson, and shows the lesson
 // once the step's own motion has ended.
-function pauseForLesson(step) {
-  const lesson = playback.lessons.find((l) => !l.shown && l.at >= step.from && l.at < step.to);
+function pauseForLesson(step: Step): void {
+  const session = playing();
+  const lesson = session.lessons.find((l) => !l.shown && l.at >= step.from && l.at < step.to);
   if (lesson === undefined) return;
   lesson.shown = true;
   stopPlaying();
-  const session = playback;
   session.lesson = { text: lesson.text, ready: false };
   patchPlayback();
   void afterFiniteAnimations(document.getAnimations()).then(() => {
     if (playback !== session || flow.screen !== "playback" || session.lesson === null) return;
     session.lesson.ready = true;
     patchPlayback();
-    byId("lesson-continue")?.focus({ preventScroll: true });
+    elementById("lesson-continue", HTMLButtonElement).focus({ preventScroll: true });
   });
 }
 
-function queueReveal(session, delay) {
+function queueReveal(session: Playback, delay: number): void {
   session.revealAt = performance.now() + delay;
   session.revealTimer = setTimeout(() => {
     if (playback === session && flow.screen === "playback") {
@@ -628,9 +822,15 @@ function queueReveal(session, delay) {
   patchPlayback();
 }
 
-function startPlaying(immediate = true) {
-  if (!playback || flow.screen !== "playback" || playback.shown >= playback.steps.length || playback.timer) return;
-  if (playback.revealTimer) clearTimeout(playback.revealTimer);
+function startPlaying(immediate = true): void {
+  if (
+    playback === null ||
+    flow.screen !== "playback" ||
+    playback.shown >= playback.steps.length ||
+    playback.timer !== null
+  )
+    return;
+  if (playback.revealTimer !== null) clearTimeout(playback.revealTimer);
   playback.revealTimer = null;
   const session = playback;
   session.timer = setInterval(() => {
@@ -640,24 +840,29 @@ function startPlaying(immediate = true) {
   else patchPlayback();
 }
 
-function stopPlaying() {
-  if (!playback) return;
-  if (playback.timer) clearInterval(playback.timer);
-  if (playback.revealTimer) clearTimeout(playback.revealTimer);
+function stopPlaying(): void {
+  if (playback === null) return;
+  if (playback.timer !== null) clearInterval(playback.timer);
+  if (playback.revealTimer !== null) clearTimeout(playback.revealTimer);
   playback.timer = null;
   playback.revealTimer = null;
   if (flow.screen === "playback" && app.dataset.screen === "playback") patchPlayback();
 }
 
-function animateElement(element, frames, options = {}) {
-  if (!element || reducedMotion.matches) return null;
+function animateElement(
+  element: Element | null,
+  frames: Keyframe[],
+  options: KeyframeAnimationOptions = {},
+): Animation | null {
+  if (element === null || reducedMotion.matches) return null;
   return element.animate(frames, { duration: 440, easing: "cubic-bezier(.2,.8,.2,1)", ...options });
 }
 
-function flyCard(source, from, destination) {
-  if (!source || !from || !destination || reducedMotion.matches) return;
+function flyCard(source: Element | null, from: DOMRect | undefined, destination: Element | null): void {
+  if (source === null || from === undefined || destination === null || reducedMotion.matches) return;
   const to = destination.getBoundingClientRect();
   const ghost = source.cloneNode(true);
+  if (!(ghost instanceof HTMLElement)) return;
   ghost.removeAttribute("data-action");
   ghost.removeAttribute("data-peek");
   ghost.setAttribute("aria-hidden", "true");
@@ -701,11 +906,11 @@ function flyCard(source, from, destination) {
   );
 }
 
-function animateStep(events) {
+function animateStep(events: BattleEvent[]): void {
   const feedback = stepFeedback(events);
-  const round = flow.rounds.at(-1);
+  const round = shownRound();
   const laid = round.plans.map((p) => slots(p, engine.cards));
-  for (const side of [0, 1]) {
+  for (const side of [0, 1] as const) {
     const f = feedback.sides[side];
     const labels = [
       f.damage > 0 ? `<span class="combat-float combat-float--damage">−${f.damage} HP</span>` : "",
@@ -717,8 +922,8 @@ function animateStep(events) {
       f.vulnerable > 0 ? `<span class="combat-float combat-float--debuff">Vulnerable +${f.vulnerable}</span>` : "",
       f.vulnerable < 0 ? `<span class="combat-float combat-float--buff">Vulnerable −${-f.vulnerable}</span>` : "",
     ].join("");
-    byId(`float-${side}`).innerHTML = labels;
-    const portrait = byId(`sprite-${side}`);
+    elementById(`float-${side}`, HTMLDivElement).innerHTML = labels;
+    const portrait = elementById(`sprite-${side}`, HTMLImageElement);
     if (f.damage > 0)
       animateElement(
         portrait,
@@ -732,7 +937,7 @@ function animateStep(events) {
       );
     if (f.blocked > 0 || f.block > 0)
       animateElement(
-        byId(`portrait-frame-${side}`),
+        elementById(`portrait-frame-${side}`, HTMLDivElement),
         [
           { boxShadow: "0 0 0 0 transparent" },
           { boxShadow: "0 0 0 9px color-mix(in srgb, var(--gh-color-block) 53%, transparent)" },
@@ -740,13 +945,13 @@ function animateStep(events) {
         ],
         { duration: 600 },
       );
-    if (f.strength || f.counter || f.vulnerable)
-      animateElement(byId(`chips-${side}`), [
+    if (f.strength !== 0 || f.counter !== 0 || f.vulnerable !== 0)
+      animateElement(elementById(`chips-${side}`, HTMLDivElement), [
         { opacity: 0.3, transform: "translateY(4px)" },
         { opacity: 1, transform: "translateY(0)" },
       ]);
   }
-  const active = new Set();
+  const active = new Set<string>();
   for (const event of events) {
     const { side, index } = cardBehind(event, round.plans, engine.cards);
     const key = `${side}:${index}`;
@@ -759,7 +964,7 @@ function animateStep(events) {
     active.add(key);
   }
   for (const cancelled of feedback.cancelled) {
-    const index = laid[cancelled.side][cancelled.beat - 1]?.index;
+    const index = laid[cancelled.side]?.[cancelled.beat - 1]?.index;
     const card = app.querySelector(`.card--track[data-side="${cancelled.side}"][data-index="${index}"]`);
     animateElement(
       card,
@@ -774,15 +979,15 @@ function animateStep(events) {
   }
 }
 
-function openDialog(dialog) {
+function openDialog(dialog: HTMLDialogElement): void {
   showTip(null);
-  if (dialog && !dialog.open) {
+  if (!dialog.open) {
     dialog.showModal();
     dialog.append(tip);
   }
 }
-function closeBattleDialogs() {
-  for (const dialog of app.querySelectorAll("dialog[open]")) dialog.close();
+function closeBattleDialogs(): void {
+  for (const dialog of app.querySelectorAll("dialog[open]")) if (dialog instanceof HTMLDialogElement) dialog.close();
   document.body.append(tip);
   showTip(null);
 }
@@ -795,9 +1000,9 @@ app.addEventListener(
   true,
 );
 app.addEventListener("change", (event) => {
-  if (event.target.id !== "playback-speed" || !playback) return;
-  const running = Boolean(playback.timer);
-  const revealing = Boolean(playback.revealTimer);
+  if (!(event.target instanceof HTMLSelectElement) || event.target.id !== "playback-speed" || playback === null) return;
+  const running = playback.timer !== null;
+  const revealing = playback.revealTimer !== null;
   const remaining = revealing ? Math.max(0, playback.revealAt - performance.now()) : 0;
   stopPlaying();
   playback.speed = Number(event.target.value);
@@ -817,21 +1022,25 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // copyMatchLog copies the log shown on the result screen; the text stays visible either way.
-function copyMatchLog() {
-  const area = byId("match-log");
+function copyMatchLog(): void {
+  const area = elementById("match-log", HTMLTextAreaElement);
   area.select();
   const done = () => {
-    byId("copied").textContent = "Copied.";
+    elementById("copied", HTMLSpanElement).textContent = "Copied.";
   };
-  if (navigator.clipboard?.writeText)
-    navigator.clipboard.writeText(area.value).then(done, () => done(document.execCommand("copy")));
-  else done(document.execCommand("copy"));
+  const copyBySelection = () => {
+    document.execCommand("copy");
+    done();
+  };
+  if (navigator.clipboard?.writeText !== undefined)
+    navigator.clipboard.writeText(area.value).then(done, copyBySelection);
+  else copyBySelection();
 }
 
 // ---- Rendering
 
-function render() {
-  if (lobby?.model.active && !lobby.model.inGame) {
+function render(): void {
+  if (lobby !== null && lobby.model.active && !lobby.model.inGame) {
     if (app.contains(tip)) document.body.append(tip);
     tip.hidden = true;
     return lobby.render();
@@ -847,11 +1056,12 @@ function render() {
     result: resultScreen,
   };
   if (flow.screen === "playback" && app.dataset.screen === "playback") return;
+  if (flow.screen === "lobby") throw new Error("The lobby draws the lobby screen.");
   const previousScreen = app.dataset.screen;
   const previousStage = app.dataset.stage;
   const focus = document.activeElement;
   const key =
-    focus?.matches(":focus-visible") && focus?.dataset.action
+    focus instanceof HTMLElement && focus.matches(":focus-visible") && (focus.dataset.action ?? "") !== ""
       ? { action: focus.dataset.action, id: focus.dataset.id, beat: focus.dataset.beat }
       : null;
   handScroll = app.querySelector(".battle-hand")?.scrollLeft ?? 0;
@@ -866,35 +1076,41 @@ function render() {
     flow.screen === "library"
   ) {
     const heading = app.querySelector("h1,h2");
-    heading?.setAttribute("tabindex", "-1");
-    heading?.focus({ preventScroll: true });
+    if (heading instanceof HTMLElement) {
+      heading.setAttribute("tabindex", "-1");
+      heading.focus({ preventScroll: true });
+    }
     app.scrollIntoView({ block: "start" });
   }
   app.classList.toggle("board--battle", ["plan", "playback"].includes(flow.screen));
   if (flow.screen === "plan") {
     const hand = app.querySelector(".battle-hand");
+    if (hand === null) throw new Error("The plan screen has no hand.");
     hand.scrollLeft = previousScreen === "plan" ? handScroll : 0;
     // A phone's hand scrolls sideways; bring the card the guided match asks for into view.
     const coached = hand.querySelector(".card--coached")?.closest(".hand-entry");
-    if (coached)
+    if (coached instanceof HTMLElement)
       hand.scrollLeft +=
         coached.getBoundingClientRect().left -
         hand.getBoundingClientRect().left -
         (hand.clientWidth - coached.offsetWidth) / 2;
-    if (previousScreen === "plan" && key) {
-      let target = [...app.querySelectorAll("[data-action]")].find(
+    if (previousScreen === "plan" && key !== null) {
+      let target: Element | null | undefined = [...app.querySelectorAll("[data-action]")].find(
         (el) =>
-          el.dataset.action === key.action && el.dataset.id === key.id && el.dataset.beat === key.beat && !el.disabled,
+          el instanceof HTMLButtonElement &&
+          el.dataset.action === key.action &&
+          el.dataset.id === key.id &&
+          el.dataset.beat === key.beat &&
+          !el.disabled,
       );
-      target ??= byId("seal")?.disabled
-        ? app.querySelector('.battle-hand [data-action="addCard"]:not(:disabled)')
-        : byId("seal");
-      target?.focus({ preventScroll: true });
+      const seal = elementById("seal", HTMLButtonElement);
+      target ??= seal.disabled ? app.querySelector('.battle-hand [data-action="addCard"]:not(:disabled)') : seal;
+      if (target instanceof HTMLElement) target.focus({ preventScroll: true });
     }
   }
   if (flow.screen === "playback") {
     patchPlayback();
-    const session = playback;
+    const session = playing();
     queueReveal(session, reducedMotion.matches ? 450 : 1050);
   }
   if (previousScreen !== flow.screen)
@@ -910,8 +1126,8 @@ function render() {
 }
 
 // dropStaleTip hides the tip once its anchor has been rendered away.
-function dropStaleTip() {
-  if (tipAnchor && !tipAnchor.isConnected) showTip(null);
+function dropStaleTip(): void {
+  if (tipAnchor !== null && !tipAnchor.isConnected) showTip(null);
 }
 
 const clanPresentation = [
@@ -937,7 +1153,7 @@ const clanPresentation = [
     style: "Risk · Big payoffs · Retaliation",
   },
 ];
-function clanChoicesHTML(home = false) {
+function clanChoicesHTML(home = false): string {
   return `<div class="clan-choices">${clanPresentation
     .map((c) => {
       const available = Boolean(clanNamed(c.name));
@@ -950,14 +1166,14 @@ function clanChoicesHTML(home = false) {
     })
     .join("")}</div>`;
 }
-function title() {
+function title(): string {
   return `<header class="masthead"><a class="wordmark" href="./">Gnomehall<span>UNDER THE MOUNTAIN</span></a><nav class="home-nav" aria-label="Explore the game"><button type="button" data-action="tutorial">How to play</button><button type="button" data-action="library">Card library</button></nav></header>
     <section class="intro intro--home">
       <div class="intro__copy"><span class="eyebrow">A TACTICAL CARD DUEL</span>
         <h1>Small gnomes.<br>Big grudges.</h1>
         <p>Choose a clan. Plot three beats. Settle your grudge beneath the mountain.</p>
-        <div class="home-play">${lobby ? `<button class="button" type="button" data-action="playMode" data-mode="online">Play online <span aria-hidden="true">→</span></button>` : ""}<button class="button button--secondary" type="button" data-action="tutorial">How to play</button></div>
-        ${lobby ? `<p class="home-play__note">24 hours per move · needs the Adena wallet</p>` : ""}
+        <div class="home-play">${lobby !== null ? `<button class="button" type="button" data-action="playMode" data-mode="online">Play online <span aria-hidden="true">→</span></button>` : ""}<button class="button button--secondary" type="button" data-action="tutorial">How to play</button></div>
+        ${lobby !== null ? `<p class="home-play__note">24 hours per move · needs the Adena wallet</p>` : ""}
       </div>
       <div class="intro__art"><img src="art/hall-hero-v2.jpg" alt="Gnomes gather around a card table in the underground hall"><span class="intro__art-label">WELCOME TO GNOMEHALL<span>Different clans. Shared grudges.</span></span></div>
     </section>
@@ -966,26 +1182,29 @@ function title() {
     <dialog class="offer" id="tutorial-offer" aria-labelledby="offer-title"><h2 id="offer-title">${coach.offer.title}</h2><p>${coach.offer.body}</p>
       <div class="button-row"><button class="button" type="button" data-action="tutorial">${coach.offer.start}</button><button class="button button--secondary" type="button" data-action="tutorialSkip">${coach.offer.skip}</button></div></dialog>`;
 }
-function libraryScreen() {
+function libraryScreen(): string {
   return `${masthead("Know your tools. Read your rival.")}<div class="section-intro"><div><span class="eyebrow">THE CLAN ARCHIVES</span><h1 class="heading">Card library</h1><p>Every card available in this build. Read the rules and find your favorites.</p></div><button class="button button--secondary" data-action="home">Back to the hall</button></div>${collectionHTML().replace('<details class="collection">', '<details class="collection" open>')}`;
 }
-function clanSelectionScreen() {
+function clanSelectionScreen(): string {
   const heading = flow.mode === "hotseat" ? `Player ${flow.acting + 1}, choose your clan` : "Choose your clan";
   return `${masthead("Different clans. Shared grudges.")}<section class="clan-selection" aria-labelledby="clan-select-title"><nav class="setup-steps" aria-label="Match setup"><span aria-current="step">1 · Choose clan</span><span>2 · Build deck</span><span>3 · Plan your round</span></nav><div class="section-intro"><div><span class="eyebrow">CHOOSE YOUR ALLEGIANCE</span><h1 id="clan-select-title">${heading}</h1><p>Find your fighting style. You’ll choose your cards next.</p></div>${flow.mode === "online" ? "" : '<button class="button button--secondary" data-action="home">Back to the hall</button>'}</div>${clanChoicesHTML()}<p class="clan-selection__note">${engine.clans.some((c) => c.name === "Delvers") ? "Every clan brings its own tools. Your timing makes the difference." : "The Delvers are preparing their tools. Choose Pickers or Ironhide to play now."}</p></section>`;
 }
 
-function deckScreen() {
+function deckScreen(): string {
   if (choosingClan) return clanSelectionScreen();
+  const deck = picking();
   const clan = clanNamed(deck.clan);
+  if (clan === undefined) throw new Error(`No clan ${deck.clan}`);
   const rare = rareOf(clan, engine.cards);
   const picked = deck.picks.length - 1;
   const legal = engine.legalDeck({ clan: deck.clan, deck: deck.picks });
-  const heading = ["bot", "online"].includes(flow.mode) ? "Pick your deck" : `Player ${flow.acting + 1} picks a deck`;
+  const heading =
+    flow.mode === "bot" || flow.mode === "online" ? "Pick your deck" : `Player ${flow.acting + 1} picks a deck`;
   const full = deck.picks.length >= deckSize;
   const pool = clan.cards
     .map((id) => {
       const picked = deck.picks.includes(id);
-      return cardHTML(engine.cards[id], {
+      return cardHTML(cardOf(engine.cards, id), {
         selected: picked,
         pressed: picked,
         locked: id === rare,
@@ -1005,7 +1224,8 @@ function deckScreen() {
     </section>`;
 }
 
-function handoff() {
+function handoff(): string {
+  if (flow.after === null) throw new Error("The hand-off leads nowhere.");
   const next = flow.after.acting + 1;
   return `
     <div class="curtain">
@@ -1017,75 +1237,68 @@ function handoff() {
     </div>`;
 }
 
-function battleHeaderHTML(round, phase) {
+function battleHeaderHTML(round: number, phase: string): string {
   return `<header class="battle-header"><span class="battle-header__brand"><a class="wordmark" href="./">Gnomehall</a><span class="battle-header__note">A quarrel in three rounds</span></span>${roundHTML(round, phase)}
     <button class="button button--secondary battle-intel-button" type="button" data-action="intel">Opponent & history</button></header>`;
 }
 
-function roundHTML(round, phase) {
+function roundHTML(round: number, phase: string): string {
   return `<div class="round-medallion"><span class="eyebrow">${phase}</span><span class="round-medallion__number">${round}<small> / 3</small></span>
     <div class="round-pips" aria-label="Round ${round} of 3">${[1, 2, 3].map((n) => `<span class="${n === round ? "round-pip--current" : n < round ? "round-pip--done" : ""}"></span>`).join("")}</div></div>`;
 }
 
-function beatMarkersHTML() {
+function beatMarkersHTML(): string {
   return `<div class="beat-markers">${[1, 2, 3].map((n) => `<span class="timeline__beat" id="beat-${n}"><span class="beat-marker__gem" aria-hidden="true"></span>Beat ${n}</span>`).join("")}</div>`;
 }
 
-function battleDialogsHTML(viewer) {
-  const opponent = 1 - viewer;
+function battleDialogsHTML(viewer: Side): string {
+  const opponent = otherSide(viewer);
   const names = battleNames();
+  const { decks, clans } = underway();
   const past = flow.screen === "playback" ? flow.rounds.slice(0, -1) : flow.rounds;
-  const known = knownCards(
-    past,
-    opponent,
-    clanNamed(flow.clans[opponent])?.cards ?? [],
-    flow.decks[opponent],
-    engine.cards,
-  );
+  const known = knownCards(past, opponent, clanNamed(clans[opponent])?.cards ?? [], decks[opponent], engine.cards);
   const knownHead = known.open
     ? `<h3 class="heading">${possessive(names[opponent])} deck</h3><p class="muted">Decks are open from round 2. Spent cards show the round they were played in; the current plan stays hidden until the reveal.</p>`
     : `<h3 class="heading">${possessive(names[opponent])} clan pool</h3><p class="muted">${deckSize} of these ${known.cards.length} cards are in their deck. The Rare always is. Decks open from round 2; the current plan stays hidden until the reveal.</p>`;
-  const knownGrid = (list) =>
-    `<div class="card-grid">${list.map(({ id, spentRound }) => cardHTML(engine.cards[id], { spentRound })).join("")}</div>`;
+  const knownGrid = (list: KnownCards["cards"]) =>
+    `<div class="card-grid">${list.map(({ id, spentRound }) => cardHTML(cardOf(engine.cards, id), { spentRound })).join("")}</div>`;
   const left = known.cards.filter((c) => c.spentRound === 0);
   const spent = known.cards.filter((c) => c.spentRound > 0);
   const knownCardsHTML = known.open
-    ? `<span class="label">Still to play · ${left.length}</span>${knownGrid(left)}${spent.length ? `<span class="label">Already played · ${spent.length}</span>${knownGrid(spent)}` : ""}`
+    ? `<span class="label">Still to play · ${left.length}</span>${knownGrid(left)}${spent.length > 0 ? `<span class="label">Already played · ${spent.length}</span>${knownGrid(spent)}` : ""}`
     : knownGrid(known.cards);
   const history = past
     .map(
       (round, i) =>
-        `<section class="stack"><h3 class="heading">Round ${i + 1}</h3>${[0, 1].map((side) => `<div><span class="label">${names[side]}</span><div class="row">${smallCards(round.plans[side])}</div></div>`).join("")}</section>`,
+        `<section class="stack"><h3 class="heading">Round ${i + 1}</h3>${([0, 1] as const).map((side) => `<div><span class="label">${names[side]}</span><div class="row">${smallCards(round.plans[side])}</div></div>`).join("")}</section>`,
     )
     .join("");
   const played = past
     .map(
       (round, i) =>
-        `<section class="stack"><h3 class="heading">Round ${i + 1}</h3><div class="card-grid">${round.plans[viewer].map((id) => cardHTML(engine.cards[id])).join("")}</div></section>`,
+        `<section class="stack"><h3 class="heading">Round ${i + 1}</h3><div class="card-grid">${round.plans[viewer].map((id) => cardHTML(cardOf(engine.cards, id))).join("")}</div></section>`,
     )
     .join("");
-  return `<dialog class="battle-drawer" id="played-cards" aria-labelledby="played-title"><div class="dialog-heading"><h2 class="heading" id="played-title">Your played cards</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close played cards">×</button></div>${played || `<p class="muted">No cards played yet.</p>`}</dialog><dialog class="battle-drawer" id="battle-info" aria-labelledby="intel-title"><div class="dialog-heading"><h2 class="heading" id="intel-title">Across the table</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close opponent information">×</button></div>
+  return `<dialog class="battle-drawer" id="played-cards" aria-labelledby="played-title"><div class="dialog-heading"><h2 class="heading" id="played-title">Your played cards</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close played cards">×</button></div>${played !== "" ? played : `<p class="muted">No cards played yet.</p>`}</dialog><dialog class="battle-drawer" id="battle-info" aria-labelledby="intel-title"><div class="dialog-heading"><h2 class="heading" id="intel-title">Across the table</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close opponent information">×</button></div>
     <section class="stack">${knownHead}
       ${knownCardsHTML}</section>
-    <section class="stack intel-history"><h3 class="heading">Earlier rounds</h3>${history || `<p class="muted">No rounds played yet.</p>`}</section></dialog>
+    <section class="stack intel-history"><h3 class="heading">Earlier rounds</h3>${history !== "" ? history : `<p class="muted">No rounds played yet.</p>`}</section></dialog>
     <dialog class="card-reader" id="card-reader" aria-label="Card details"><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close card details">×</button><div id="reader-content" class="stack"></div></dialog>`;
 }
 
-function planScreen() {
+function planScreen(): string {
   const me = flow.acting,
-    opponent = 1 - me;
+    opponent = otherSide(me);
+  const { state, decks, clans } = underway();
   const names = battleNames();
   const used = beatsUsed(plan, engine.cards);
   const sealable = isSealable(plan, legalPlans);
-  const handIds = [
-    ...basics,
-    ...flow.decks[me].filter((id) => !flow.state.gnomes[me].spent.includes(id) && !plan.includes(id)),
-  ];
+  const handIds = [...basics, ...decks[me].filter((id) => !state.gnomes[me].spent.includes(id) && !plan.includes(id))];
   const playedCount = flow.rounds.reduce((n, round) => n + round.plans[me].length, 0);
   const coached = coachedCard();
   const hand = handIds
     .map((id, index) => {
-      const c = engine.cards[id];
+      const c = cardOf(engine.cards, id);
       return `<div class="hand-entry" style="--hand-order:${index};--hand-tilt:${(index - (handIds.length - 1) / 2) * 4}deg;--hand-rise:${Math.pow(index - (handIds.length - 1) / 2, 2) * 2}px">
       ${cardHTML(c, { action: matchMedia("(hover: none)").matches ? "inspectCard" : "addCard", hand: true, dimmed: !canAdd(plan, id, engine.cards, available()), coached: id === coached })}
       <button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Details: ${c.name}">Details</button></div>`;
@@ -1094,13 +1307,10 @@ function planScreen() {
   const backs = [1, 2, 3]
     .map(
       () =>
-        `<div class="card-back card-back--${(flow.clans[opponent] || "shared").toLowerCase()}" aria-hidden="true"><span>${emblem(flow.clans[opponent])}</span></div>`,
+        `<div class="card-back card-back--${(clans[opponent] === "" ? "shared" : clans[opponent]).toLowerCase()}" aria-hidden="true"><span>${emblem(clans[opponent])}</span></div>`,
     )
     .join("");
-  const practice =
-    flow.mode === "tutorial" && guided.rails[flow.state.round - 1] !== null
-      ? guided.opponent[flow.state.round - 1]
-      : null;
+  const practice = flow.mode === "tutorial" && guidedRound().rails !== null ? guidedRound().opponent : null;
   const opponentTrack =
     practice === null
       ? `<div class="plan-track plan-track--hidden" aria-label="Opponent plan hidden">${backs}</div>`
@@ -1109,9 +1319,9 @@ function planScreen() {
     flow.mode === "tutorial"
       ? coachHTML(sealable)
       : `<div class="hand-zone__title"><h2 class="heading">Plot your next move</h2><span class="muted" id="plan-status" role="status">${sealable ? "Your plan is ready. Confirm it when you're sure." : "Play cards to fill all three beats."}</span></div>`;
-  return `${battleHeaderHTML(flow.state.round, "Planning")}
-    <section class="duel-table" aria-label="Round ${flow.state.round} battle table">
-      <div class="duel-fighters">${gnomeHTML(me, flow.state.gnomes[me], names[me])}${gnomeHTML(opponent, flow.state.gnomes[opponent], names[opponent])}</div>
+  return `${battleHeaderHTML(state.round, "Planning")}
+    <section class="duel-table" aria-label="Round ${state.round} battle table">
+      <div class="duel-fighters">${gnomeHTML(me, state.gnomes[me], names[me])}${gnomeHTML(opponent, state.gnomes[opponent], names[opponent])}</div>
       <div class="duel-center">
         <div class="track-row track-row--opponent"><div class="track-row__label"><span class="label">${possessive(names[opponent])} plan</span><span class="track-hint">${practice === null ? "Sealed in secret" : "Shown for practice"}</span></div>${opponentTrack}</div>
         ${beatMarkersHTML()}
@@ -1122,16 +1332,16 @@ function planScreen() {
     <section class="hand-zone" aria-label="Your hand"><div class="hand-zone__heading">
       ${title}
       <div class="hand-zone__hint"><span class="label">Your hand <span>${handIds.length} cards</span></span><span class="muted">Lift a card to read · click to play · tap to inspect</span></div>
-      <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}>${flow.mode === "online" ? (onlineContext.intent === "challenge" ? "Post challenge" : onlineContext.intent === "accept" ? "Accept challenge" : "Send plan") : "Seal plan"}</button></div></div>
-      <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount ? "" : "disabled"} aria-label="Open played cards, ${playedCount} cards"><span class="pile-back card-back card-back--${(flow.clans[me] || "shared").toLowerCase()}"><span>${emblem(flow.clans[me])}</span></span><span class="label">Played cards</span><span class="muted">${playedCount} cards · inspect</span></button></div></section>
+      <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length > 0 ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}>${flow.mode === "online" ? (onlineMatch().intent === "challenge" ? "Post challenge" : onlineMatch().intent === "accept" ? "Accept challenge" : "Send plan") : "Seal plan"}</button></div></div>
+      <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount > 0 ? "" : "disabled"} aria-label="Open played cards, ${playedCount} cards"><span class="pile-back card-back card-back--${(clans[me] === "" ? "shared" : clans[me]).toLowerCase()}"><span>${emblem(clans[me])}</span></span><span class="label">Played cards</span><span class="muted">${playedCount} cards · inspect</span></button></div></section>
     ${battleDialogsHTML(me)}`;
 }
 
 // Cards retain playing-card proportions; their brackets span the occupied beats.
-function slotsHTML() {
+function slotsHTML(): string {
   let beat = 0;
   const filled = plan.map((id, index) => {
-    const c = engine.cards[id];
+    const c = cardOf(engine.cards, id);
     const from = beat;
     beat += c.cost;
     return `<div class="slot" data-plan-index="${index}" style="grid-column:span ${c.cost}">${cardHTML(c, { track: true, action: "clearFrom", data: `data-beat="${from}"` })}<span class="track-note">${c.parry > 0 ? `Guards ${c.cost === 1 ? `beat ${beat}` : `beats ${from + 1}–${beat}`}` : c.cost > 1 ? `Lands on beat ${beat}` : "Click to remove"}</span></div>`;
@@ -1140,23 +1350,23 @@ function slotsHTML() {
   const empty = Array.from(
     { length: 3 - beat },
     (_, index) =>
-      `<div class="slot"><div class="slot__well"><span class="slot__number">${beat + index + 1}</span>${index === 0 && coached !== undefined ? `<span class="slot__coach">${engine.cards[coached].name} goes here</span>` : "<span>Choose a card</span>"}</div><span class="track-note">Empty beat</span></div>`,
+      `<div class="slot"><div class="slot__well"><span class="slot__number">${beat + index + 1}</span>${index === 0 && coached !== undefined ? `<span class="slot__coach">${cardOf(engine.cards, coached).name} goes here</span>` : "<span>Choose a card</span>"}</div><span class="track-note">Empty beat</span></div>`,
   );
   return `<div class="plan-track plan-track--yours">${filled.join("")}${empty.join("")}</div>`;
 }
 
 // trackNote names the beats a revealed card guards or lands on; from and to are 1-based.
-function trackNote(c, from, to) {
+function trackNote(c: Card, from: number, to: number): string {
   if (c.parry > 0) return `Guards ${from === to ? `beat ${to}` : `beats ${from}–${to}`}`;
   return c.cost > 1 ? `Lands on beat ${to}` : `Beat ${to}`;
 }
 
 // practiceTrackHTML lays out the guided match opponent's plan face up.
-function practiceTrackHTML(ids) {
+function practiceTrackHTML(ids: number[]): string {
   let beat = 0;
   return ids
     .map((id) => {
-      const c = engine.cards[id];
+      const c = cardOf(engine.cards, id);
       const from = beat + 1;
       beat += c.cost;
       return `<div class="slot" style="grid-column:span ${c.cost}">${cardHTML(c, { track: true })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
@@ -1166,31 +1376,33 @@ function practiceTrackHTML(ids) {
 
 // coachHTML is the guided match's coach strip: the round's lesson title, what to do now, and
 // the step count while the rails lead.
-function coachHTML(sealable) {
-  const round = flow.state.round;
+function coachHTML(sealable: boolean): string {
+  const round = underway().state.round;
   const words = coach.rounds[round - 1];
-  const rails = guided.rails[round - 1];
-  const line = rails === null ? words.hint : coachedCard() !== undefined ? words.steps[plan.length] : words.seal;
+  if (words === undefined) throw new Error(`The coach has no words for round ${round}.`);
+  const { rails } = guidedRound();
+  const line = rails === null ? words.hint : coachedCard() !== undefined ? words.steps?.[plan.length] : words.seal;
   const step =
     rails === null
       ? `<button class="button button--secondary" type="button" data-action="intel">${words.look}</button>`
-      : `<span class="coach__step">Round ${round} · step ${plan.length + 1} of ${words.steps.length + 1}</span>`;
+      : `<span class="coach__step">Round ${round} · step ${plan.length + 1} of ${(words.steps?.length ?? 0) + 1}</span>`;
   return `<div class="coach">${portraitHTML("Pickers", 'class="coach__portrait"')}<p class="coach__words"><strong>${words.title}</strong> ${line}</p>${step}
     <span class="coach__status" id="plan-status" role="status">${sealable ? "Your plan is ready. Confirm it when you're sure." : "Play cards to fill all three beats."}</span></div>`;
 }
 
-function playbackScreen() {
-  const round = flow.rounds.at(-1);
+function playbackScreen(): string {
+  const round = shownRound();
   const names = battleNames();
-  const me = playback.viewer,
-    opponent = 1 - me;
-  const row = (side) => {
+  const session = playing();
+  const me = session.viewer,
+    opponent = otherSide(me);
+  const row = (side: Side) => {
     let beat = 0;
     return `<div class="track-row ${side === me ? "track-row--yours" : "track-row--opponent"}"><div class="track-row__label"><span class="label">${possessive(names[side])} plan</span><span class="track-hint">Revealed</span></div><div class="plan-track">${round.plans[
       side
     ]
       .map((id, index) => {
-        const c = engine.cards[id];
+        const c = cardOf(engine.cards, id);
         const from = beat + 1;
         beat += c.cost;
         return `<div class="slot card-reveal" style="grid-column:span ${c.cost};--reveal-delay:${index * 120}ms">${cardHTML(c, { track: true, action: "inspectCard", data: `data-side="${side}" data-index="${index}"` })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
@@ -1199,7 +1411,7 @@ function playbackScreen() {
   };
   return `${battleHeaderHTML(round.state.round - 1, "The clash")}
     <section class="duel-table duel-table--playback" aria-label="Round ${round.state.round - 1} battle table">
-      <div class="duel-fighters">${gnomeHTML(me, playback.start[me], names[me])}${gnomeHTML(opponent, playback.start[opponent], names[opponent])}</div>
+      <div class="duel-fighters">${gnomeHTML(me, session.start[me], names[me])}${gnomeHTML(opponent, session.start[opponent], names[opponent])}</div>
       <div class="duel-center">
         ${row(opponent)}${beatMarkersHTML()}${row(me)}
         <p class="battle-event" id="battle-event" role="status" aria-live="polite">Both plans revealed. The clash begins.</p>
@@ -1211,86 +1423,98 @@ function playbackScreen() {
     ${battleDialogsHTML(me)}`;
 }
 
-function patchPlayback() {
-  if (!playback || flow.screen !== "playback" || app.dataset.screen !== "playback") return;
-  const round = flow.rounds.at(-1);
-  const { steps, shown, lines } = playback;
-  const vitalsAt = (n) => (n === 0 ? playback.start : round.events[steps[n - 1].to - 1].after);
-  const vitals = vitalsAt(shown);
-  const current = shown > 0 ? steps[shown - 1] : null;
-  for (const side of [0, 1]) {
-    byId(`hp-fill-${side}`).style.width = hpWidth(vitals[side].hp);
-    byId(`hp-ghost-${side}`).style.width = hpWidth(vitals[side].hp);
-    byId(`hp-num-${side}`).textContent = `${vitals[side].hp} / ${flow.hp}`;
-    byId(`chips-${side}`).innerHTML = chipsHTML(vitals[side]);
-    byId(`fighter-${side}`).classList.toggle("fighter--defeated", vitals[side].hp <= 0);
+function patchPlayback(): void {
+  if (playback === null || flow.screen !== "playback" || app.dataset.screen !== "playback") return;
+  const round = shownRound();
+  const { steps, shown, lines, start } = playback;
+  const current = shown > 0 ? steps[shown - 1] : undefined;
+  const vitals = current === undefined ? start : eventAt(round, current.to - 1).after;
+  for (const side of [0, 1] as const) {
+    elementById(`hp-fill-${side}`, HTMLDivElement).style.width = hpWidth(vitals[side].hp);
+    elementById(`hp-ghost-${side}`, HTMLDivElement).style.width = hpWidth(vitals[side].hp);
+    elementById(`hp-num-${side}`, HTMLSpanElement).textContent = `${vitals[side].hp} / ${flow.hp}`;
+    elementById(`chips-${side}`, HTMLDivElement).innerHTML = chipsHTML(vitals[side]);
+    elementById(`fighter-${side}`, HTMLDivElement).classList.toggle("fighter--defeated", vitals[side].hp <= 0);
   }
   const laid = round.plans.map((p) => slots(p, engine.cards));
   const acting = new Set(
-    current
+    current !== undefined
       ? round.events.slice(current.from, current.to).map((ev) => {
           const { side, index } = cardBehind(ev, round.plans, engine.cards);
           return `${side}:${index}`;
         })
       : [],
   );
-  const until = shown > 0 ? steps[shown - 1].to : 0;
+  const until = current?.to ?? 0;
   const cancelled = new Set(
     round.events
       .slice(0, until)
       .filter((ev) => ev.kind === "Cancelled")
-      .map((ev) => `${ev.side}:${laid[ev.side][ev.beat - 1]?.index}`),
+      .map((ev) => `${ev.side}:${laid[ev.side]?.[ev.beat - 1]?.index}`),
   );
   for (const b of [1, 2, 3]) {
-    byId(`beat-${b}`).classList.toggle("timeline__beat--current", current?.beat === b);
-    byId(`beat-${b}`).classList.toggle("timeline__beat--past", current?.beat > b);
+    elementById(`beat-${b}`, HTMLSpanElement).classList.toggle("timeline__beat--current", current?.beat === b);
+    elementById(`beat-${b}`, HTMLSpanElement).classList.toggle("timeline__beat--past", (current?.beat ?? 0) > b);
   }
   for (const el of app.querySelectorAll(".card--track[data-side][data-index]")) {
+    if (!(el instanceof HTMLElement)) continue;
     const key = `${el.dataset.side}:${el.dataset.index}`;
     el.classList.toggle("card--acting", acting.has(key));
     el.classList.toggle("card--cancelled", cancelled.has(key));
     el.setAttribute(
       "aria-label",
-      `${engine.cards[Number(el.dataset.id)].name}${cancelled.has(key) ? ", cancelled" : ""}. Inspect card.`,
+      `${cardOf(engine.cards, Number(el.dataset.id)).name}${cancelled.has(key) ? ", cancelled" : ""}. Inspect card.`,
     );
   }
-  byId("log").innerHTML = logHTML(round, steps, shown, lines);
+  elementById("log", HTMLDivElement).innerHTML = logHTML(round, steps, shown, lines);
   const done = shown >= steps.length;
   const names = battleNames();
   const caption = done
-    ? `Round complete. ${names[playback.viewer]}: ${vitals[playback.viewer].hp} HP · ${names[1 - playback.viewer]}: ${vitals[1 - playback.viewer].hp} HP.`
-    : current
+    ? `Round complete. ${names[playback.viewer]}: ${vitals[playback.viewer].hp} HP · ${names[otherSide(playback.viewer)]}: ${vitals[otherSide(playback.viewer)].hp} HP.`
+    : current !== undefined
       ? lines.slice(current.from, current.to).join(" · ")
       : "Both plans revealed. The clash begins.";
-  if (byId("battle-event").textContent !== caption) byId("battle-event").textContent = caption;
+  const battleEvent = elementById("battle-event", HTMLParagraphElement);
+  if (battleEvent.textContent !== caption) battleEvent.textContent = caption;
   const held = playback.lesson !== null;
-  byId("next").disabled = done || held;
-  byId("skip").disabled = done || held;
-  byId("play").disabled = done || held;
-  const lesson = byId("lesson");
-  if (lesson) {
-    lesson.hidden = !playback.lesson?.ready;
-    byId("lesson-text").textContent = playback.lesson?.ready ? playback.lesson.text : "";
+  elementById("next", HTMLButtonElement).disabled = done || held;
+  elementById("skip", HTMLButtonElement).disabled = done || held;
+  elementById("play", HTMLButtonElement).disabled = done || held;
+  // Only the guided match's playback draws the lesson strip.
+  if (flow.mode === "tutorial") {
+    const lesson = elementById("lesson", HTMLDivElement);
+    lesson.hidden = playback.lesson?.ready !== true;
+    elementById("lesson-text", HTMLParagraphElement).textContent =
+      playback.lesson?.ready === true ? playback.lesson.text : "";
   }
-  byId("play").textContent = playback.timer || playback.revealTimer ? "Pause" : "Play";
-  byId("progress").textContent = done
+  elementById("play", HTMLButtonElement).textContent =
+    playback.timer !== null || playback.revealTimer !== null ? "Pause" : "Play";
+  elementById("progress", HTMLSpanElement).textContent = done
     ? "Round resolved"
-    : current
+    : current !== undefined
       ? `Beat ${current.beat} · ${current.phase}`
       : "Plans revealed";
-  byId("finish").innerHTML = done && !held ? finishHTML() : "";
+  elementById("finish", HTMLDivElement).innerHTML = done && !held ? finishHTML() : "";
   dropStaleTip();
 }
 
-function logHTML(round, steps, shown, lines) {
-  const until = shown > 0 ? steps[shown - 1].to : 0;
-  const fresh = shown > 0 ? steps[shown - 1].from : 0;
-  const groups = [];
+// eventAt is the round's event at index i, which every step's range holds.
+function eventAt(round: Round, i: number): BattleEvent {
+  const event = round.events[i];
+  if (event === undefined) throw new RangeError(`the round has no event ${i}`);
+  return event;
+}
+
+function logHTML(round: Round, steps: Step[], shown: number, lines: string[]): string {
+  const step = shown > 0 ? steps[shown - 1] : undefined;
+  const until = step?.to ?? 0;
+  const fresh = step?.from ?? 0;
+  const groups: { beat: number; lines: string[] }[] = [];
   for (let i = 0; i < until; i++) {
-    const beat = round.events[i].beat;
+    const beat = eventAt(round, i).beat;
     const last = groups.at(-1);
     const line = `<span class="log__line ${i >= fresh ? "log__line--new" : ""}">${lines[i]}</span>`;
-    if (last && last.beat === beat) last.lines.push(line);
+    if (last !== undefined && last.beat === beat) last.lines.push(line);
     else groups.push({ beat, lines: [line] });
   }
   if (until === 0) return `<span class="muted">Press Next to resolve the first step.</span>`;
@@ -1302,34 +1526,38 @@ function logHTML(round, steps, shown, lines) {
     .join("");
 }
 
-function finishHTML() {
-  if (flow.mode === "online")
-    return `<div class="button-row"><button class="button" data-action="playbackDone">${onlineContext.review ? "Back to match" : "Plan your next round"}</button></div>`;
-  const names = battleNames();
-  if (flow.result === "ongoing") {
-    return `<div class="button-row"><button class="button" type="button" data-action="playbackDone">Round ${flow.state.round}</button></div>`;
+function finishHTML(): string {
+  if (flow.mode === "online") {
+    const context = onlineMatch();
+    return `<div class="button-row"><button class="button" data-action="playbackDone">${context.intent === "move" && context.review ? "Back to match" : "Plan your next round"}</button></div>`;
   }
-  const knockout = flow.state.gnomes.some((g) => g.hp <= 0);
+  const names = battleNames();
+  const { state } = underway();
+  if (flow.result === "ongoing") {
+    return `<div class="button-row"><button class="button" type="button" data-action="playbackDone">Round ${state.round}</button></div>`;
+  }
+  const knockout = state.gnomes.some((g) => g.hp <= 0);
   return `
     <p class="banner">${knockout ? "Knockout!" : "Three rounds played."} ${resultLine(flow.result, names)}</p>
     <div class="button-row"><button class="button" type="button" data-action="playbackDone">Continue</button></div>`;
 }
 
-function resultScreen() {
+function resultScreen(): string {
   if (flow.mode === "tutorial") return guidedResultHTML();
   const names = battleNames();
-  const sides = [0, 1]
+  const { state, decks } = underway();
+  const sides = ([0, 1] as const)
     .map((side) => {
-      const g = flow.state.gnomes[side];
-      const unplayed = flow.decks[side]
+      const g = state.gnomes[side];
+      const unplayed = decks[side]
         .filter((id) => !g.spent.includes(id))
-        .map((id) => cardHTML(engine.cards[id], { small: true }))
+        .map((id) => cardHTML(cardOf(engine.cards, id), { small: true }))
         .join("");
       return `
         <div class="stack">
           <div class="frame__head"><span class="heading">${names[side]}</span><span class="number">HP ${g.hp}</span></div>
           <span class="label">Never played</span>
-          <div class="row">${unplayed || `<span class="muted">Every card.</span>`}</div>
+          <div class="row">${unplayed !== "" ? unplayed : `<span class="muted">Every card.</span>`}</div>
         </div>`;
     })
     .join("");
@@ -1351,8 +1579,8 @@ function resultScreen() {
 
 // guidedResultHTML closes the guided match on its health score and leads where the player was
 // heading before it.
-function guidedResultHTML() {
-  const [mine, theirs] = flow.state.gnomes.map((g) => g.hp);
+function guidedResultHTML(): string {
+  const [mine, theirs] = underway().state.gnomes.map((g) => g.hp);
   const outcome =
     flow.result === "a"
       ? `You won on health, ${mine} to ${theirs}.`
@@ -1372,30 +1600,33 @@ function guidedResultHTML() {
 }
 
 // gnomeHTML draws a side's portrait, HP bar and status chips from a gnome or vitals object.
-function gnomeHTML(side, vitals, name) {
-  const clan = flow.clans[side] || "Shared";
+function gnomeHTML(side: Side, vitals: ShownVitals, name: string): string {
+  const named = flow.clans[side];
+  const clan = named === null || named === "" ? "Shared" : named;
   return `<div class="fighter fighter--${clan.toLowerCase()}" id="fighter-${side}">
     <div class="fighter__portrait" id="portrait-frame-${side}">${portraitHTML(clan, `class="sprite" id="sprite-${side}"`)}<span class="fighter__crest">${emblem(clan)}</span><div class="combat-floats" id="float-${side}" aria-hidden="true"></div></div>
     <div class="fighter__vitals"><div class="fighter__name"><h2>${name}</h2><span class="label">${clan}</span></div><div class="hp__row"><span class="fighter__health-label">Health</span><span class="number" id="hp-num-${side}">${vitals.hp} / ${flow.hp}</span></div>
     <div class="hp__bar"><div class="hp__ghost" id="hp-ghost-${side}" style="width:${hpWidth(vitals.hp)}"></div><div class="hp__fill" id="hp-fill-${side}" style="width:${hpWidth(vitals.hp)}"></div></div><div class="chips" id="chips-${side}">${chipsHTML(vitals)}</div></div></div>`;
 }
 
-function chipsHTML(vitals) {
-  return [
-    ["block", "Block"],
-    ["counter", "Counter"],
-    ["vulnerable", "Vulnerable"],
-    ["strength", "Strength"],
-  ]
-    .filter(([key]) => vitals[key] > 0)
+function chipsHTML(vitals: ShownVitals): string {
+  return (
+    [
+      ["block", "Block"],
+      ["counter", "Counter"],
+      ["vulnerable", "Vulnerable"],
+      ["strength", "Strength"],
+    ] as const
+  )
+    .filter(([key]) => (vitals[key] ?? 0) > 0)
     .map(
       ([key, label]) => `<span class="chip chip--${key}" data-kw="${key}" tabindex="0">${label} ${vitals[key]}</span>`,
     )
     .join("");
 }
 
-function hpWidth(hp) {
-  return `${Math.max(0, Math.min(100, (hp / flow.hp) * 100))}%`;
+function hpWidth(hp: number): string {
+  return `${Math.max(0, Math.min(100, (hp / underway().hp) * 100))}%`;
 }
 
 // cardHTML draws a playing card; with an action it is a button, otherwise a plain card.
@@ -1403,7 +1634,7 @@ function hpWidth(hp) {
 // guided match asks for next. A small card shows cost, name and badges and peeks the full
 // card on hover or focus. spentRound, when above 0, marks the round the card was played in.
 function cardHTML(
-  c,
+  c: Card,
   {
     selected = false,
     dimmed = false,
@@ -1416,8 +1647,8 @@ function cardHTML(
     hand = false,
     track = false,
     coached = false,
-  } = {},
-) {
+  }: CardOptions = {},
+): string {
   const clan = cardClan(c);
   const classes = [
     "card",
@@ -1457,20 +1688,16 @@ function cardHTML(
   return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${hand ? `aria-label="${escapeHTML(`${c.name}, ${c.cost} beats. ${c.text}`).replaceAll('"', "&quot;")}"` : ""} ${state} ${data} ${dimmed ? "disabled" : ""}>${body}</button>`;
 }
 
-function smallCards(ids) {
-  return ids.map((id) => cardHTML(engine.cards[id], { small: true })).join("");
+function smallCards(ids: number[]): string {
+  return ids.map((id) => cardHTML(cardOf(engine.cards, id), { small: true })).join("");
 }
 
-function clanNamed(name) {
+function clanNamed(name: string | undefined): Clan | undefined {
   return engine.clans.find((c) => c.name === name);
 }
 
-function byId(id) {
-  return document.getElementById(id);
-}
-
-const matchLink = lobby && location.hash.match(/^#match=(.+)$/);
-if (matchLink) {
+const matchLink = lobby === null ? undefined : location.hash.match(/^#match=(.+)$/)?.[1];
+if (lobby !== null && matchLink !== undefined) {
   flow = { ...initial, screen: "lobby" };
-  await lobby.enter(decodeURIComponent(matchLink[1]));
+  await lobby.enter(decodeURIComponent(matchLink));
 } else render();
