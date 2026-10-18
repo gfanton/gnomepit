@@ -4,7 +4,7 @@
 // &rpc=, &chain=, &realm= and &indexer= point it elsewhere, and an empty &indexer= polls.
 
 import { ArenaError, createArena } from "./arena.mjs";
-import { randomDeck, randomPlan } from "./bot.mjs";
+import { randomDeck, randomPlan } from "./bot.ts";
 import { createChain } from "./chain.mjs";
 import { devWallet } from "./devwallet.mjs";
 import { loadEngine } from "./engine.ts";
