@@ -17,7 +17,7 @@ const pages = [
   { html: "delvers-preview.html", entry: "delvers-preview.ts" },
 ];
 const devPages = [
-  { html: "adena-check.html", entry: "adena-check.mjs" },
+  { html: "adena-check.html", entry: "adena-check.ts" },
   { html: "online-dev.html", entry: "online-dev.mjs" },
   { html: "lobby-preview.html", entry: "lobby-preview.mjs" },
 ];
