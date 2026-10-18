@@ -360,7 +360,7 @@ export function createLobby<Draft = unknown>({
     const unwatched = decided(v) && !seen(summaryKey(v));
     const mine = v.action === "move" || v.action === "finish" || v.action === "claimForfeit" || unwatched;
     const other = v.side === 0 ? 1 : 0;
-    const status =
+    const statusText =
       v.phase === "open"
         ? "Awaiting a rival"
         : v.action === "claimForfeit"
@@ -377,7 +377,7 @@ export function createLobby<Draft = unknown>({
                     ? `Challenge ${v.phase}`
                     : `Waiting for ${textOr(v.clans[other], "opponent")}`;
     const own = v.side === -1 ? v.clans[0] : textOr(v.clans[v.side], v.clans[0]);
-    return `<article class="match ${mine ? "match--turn" : ""}"><div class="match-top"><strong class="status">${esc(status)}</strong><small>${v.phase === "open" ? "Challenge" : `Round ${v.round ?? 1} / 3`}</small></div><div class="fighters">${portrait(own, 'class="portrait"')}<span class="versus">vs</span>${portrait(v.clans[other], 'class="portrait portrait--iron"')}<div>${esc(textOr(v.clans[other], "Rival to come"))}<div>${v.players[other] !== "" ? copyButton(v.players[other]) : "Anyone can accept"}</div></div></div><div class="match-bottom"><small>${unwatched ? "Watch the last clash" : v.phase === "ended" || v.phase === "expired" ? esc(reasonText(v)) : esc(timeLeft(dueOf(v)))}</small>${btn(mine ? "Open match" : "View match", "Open", model.busy, !mine, `data-id="${esc(v.id)}"`)}</div></article>`;
+    return `<article class="match ${mine ? "match--turn" : ""}"><div class="match-top"><strong class="status">${esc(statusText)}</strong><small>${v.phase === "open" ? "Challenge" : `Round ${v.round ?? 1} / 3`}</small></div><div class="fighters">${portrait(own, 'class="portrait"')}<span class="versus">vs</span>${portrait(v.clans[other], 'class="portrait portrait--iron"')}<div>${esc(textOr(v.clans[other], "Rival to come"))}<div>${v.players[other] !== "" ? copyButton(v.players[other]) : "Anyone can accept"}</div></div></div><div class="match-bottom"><small>${unwatched ? "Watch the last clash" : v.phase === "ended" || v.phase === "expired" ? esc(reasonText(v)) : esc(timeLeft(dueOf(v)))}</small>${btn(mine ? "Open match" : "View match", "Open", model.busy, !mine, `data-id="${esc(v.id)}"`)}</div></article>`;
   }
   function challengeCard(v: View) {
     const reserved = v.opponent;
