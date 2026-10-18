@@ -7,6 +7,7 @@ import * as v from "valibot";
 import type { Chain } from "./chain.ts";
 import { createReader } from "./gnovalue.ts";
 import { type Address, address } from "./ids.ts";
+import type { LeaderboardView, PlayerRow } from "./leaderboard.ts";
 
 export const pageSize = 50;
 
@@ -58,4 +59,60 @@ export function createStandings({
     ratedPlayers: () => read("RatedPlayers()", v.number()),
     clanStandings: () => read("ClanStandings()", v.array(ClanStandingSchema)),
   };
+}
+
+// playerRow is a standing as the screen shows it: no name, rank or main clan is null.
+export function playerRow(s: Standing): PlayerRow {
+  return {
+    id: s.Player,
+    rank: s.Rank === 0 ? null : s.Rank,
+    address: s.Player,
+    name: s.Name === "" ? null : s.Name,
+    mainClan: s.MainClan === "" ? null : s.MainClan,
+    elo: s.Rating,
+    wins: s.Wins,
+    losses: s.Losses,
+    draws: s.Draws,
+  };
+}
+
+// boardView is the ladder's first page and the clan standings, without the viewer's own
+// standing; any failed query makes it an error view.
+export async function boardView(standings: Standings): Promise<LeaderboardView> {
+  try {
+    const [players, clans] = await Promise.all([standings.leaderboard(0), standings.clanStandings()]);
+    return {
+      status: "ready",
+      preview: false,
+      players: players.map(playerRow),
+      ownPlayer: null,
+      clans: clans.map((c) => ({
+        rank: c.Rank,
+        clan: c.Clan,
+        rating: c.Rating,
+        wins: c.Wins,
+        losses: c.Losses,
+        draws: c.Draws,
+      })),
+      updatedLabel: "",
+    };
+  } catch {
+    return { status: "error", preview: false };
+  }
+}
+
+// withOwnStanding adds account's standing to a ready view when the account is ranked. It
+// returns view unchanged otherwise, a failed read included: the board stands without it.
+export async function withOwnStanding(
+  view: LeaderboardView,
+  standings: Standings,
+  account: Address | null,
+): Promise<LeaderboardView> {
+  if (view.status !== "ready" || account === null) return view;
+  try {
+    const own = await standings.standing(account);
+    return own.Rank === 0 ? view : { ...view, ownPlayer: playerRow(own) };
+  } catch {
+    return view;
+  }
 }

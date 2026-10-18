@@ -16,6 +16,7 @@ import {
   WalletError,
   classifySessions,
   connect,
+  currentAccount,
   deriveKeys,
   generations,
   lockedMatches,
@@ -479,4 +480,22 @@ test("a reply with fields the page does not read still connects", async () => {
     GetAccount: async () => ({ status: "success", data: { address: "g1player", extra: 1 }, extra: true }),
   });
   assert.deepEqual(await connect(wallet, "dev"), { address: "g1player" });
+});
+
+test("the account a wallet already shares, read without asking to connect", async () => {
+  const alice = address("g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w");
+  assert.equal(await currentAccount(undefined), null);
+  const shared = async () => ({
+    status: "success",
+    type: "GET_ACCOUNT",
+    message: "",
+    data: { address: alice, chainId: "dev", status: "ACTIVE" },
+  });
+  assert.equal(await currentAccount({ GetAccount: shared }), alice);
+  const unshared = async () => ({ status: "failure", type: "NOT_CONNECTED", message: "", data: null });
+  assert.equal(await currentAccount({ GetAccount: unshared }), null);
+  const locked = async () => {
+    throw new Error("locked");
+  };
+  assert.equal(await currentAccount({ GetAccount: locked }), null);
 });

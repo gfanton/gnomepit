@@ -163,6 +163,17 @@ export async function connect(
   return { address: answer(await wallet.GetAccount(), AccountSchema).address };
 }
 
+// currentAccount is the account wallet already shares with this page, read without asking
+// to connect; null with no wallet, or when it answers anything but its account.
+export async function currentAccount(wallet: Pick<Wallet, "GetAccount"> | undefined): Promise<Address | null> {
+  if (wallet === undefined) return null;
+  try {
+    return answer(await wallet.GetAccount(), AccountSchema).address;
+  } catch {
+    return null;
+  }
+}
+
 // answer returns a wallet response's data, as data reads it. Adena reports a few no-ops
 // as failures; alsoFine lists those.
 export function answer<T>(response: unknown, data: v.GenericSchema<unknown, T>, alsoFine: readonly string[] = []): T {

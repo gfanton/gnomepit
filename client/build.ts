@@ -17,6 +17,8 @@ const pages = [
   { html: "index.html", entry: "app.ts" },
   { html: "delvers-preview.html", entry: "delvers-preview.ts" },
 ];
+// Pages that read the chain, so a build without a network has nothing to show on them.
+const networkPages = [{ html: "leaderboard.html", entry: "leaderboard-page.ts" }];
 const devPages = [
   { html: "adena-check.html", entry: "adena-check.ts" },
   { html: "online-dev.html", entry: "online-dev.ts" },
@@ -47,8 +49,12 @@ export function browserBundle(): esbuild.BuildOptions {
 
 // build replaces everything in outDir with the site; an unknown network rejects before any write.
 export async function build(options: BuildOptions): Promise<void> {
-  networkFor(options.network);
-  const shipped = options.network === "local" ? [...pages, ...devPages] : pages;
+  const network = networkFor(options.network);
+  const shipped = [
+    ...pages,
+    ...(network === null ? [] : networkPages),
+    ...(options.network === "local" ? devPages : []),
+  ];
   await rm(options.outDir, { recursive: true, force: true });
   await mkdir(join(options.outDir, "art"), { recursive: true });
   await esbuild.build({

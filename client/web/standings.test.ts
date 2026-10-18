@@ -5,8 +5,8 @@ import { readFileSync } from "node:fs";
 import * as v from "valibot";
 
 import { ChainError } from "./chain.ts";
-import { address } from "./ids.ts";
-import { createStandings } from "./standings.ts";
+import { type Address, address } from "./ids.ts";
+import { type Standing, type Standings, boardView, createStandings, withOwnStanding } from "./standings.ts";
 
 const realm = "gno.land/r/gfanton/gnomehall/arena";
 const alice = address("g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w");
@@ -90,4 +90,73 @@ test("a failed read rejects", async () => {
     realm,
   });
   await assert.rejects(standings.leaderboard(0), /node down/);
+});
+
+const standingOf = (player: Address, rank: number, name = ""): Standing => ({
+  Rank: rank,
+  Player: player,
+  Name: name,
+  MainClan: rank === 0 ? "" : "Pickers",
+  Rating: 1000,
+  Wins: rank === 0 ? 0 : 1,
+  Losses: 0,
+  Draws: 0,
+});
+
+function stub(parts: Partial<Standings>): Standings {
+  return {
+    leaderboard: async () => [],
+    standing: async (player) => standingOf(player, 0),
+    ratedPlayers: async () => 0,
+    clanStandings: async () => [],
+    ...parts,
+  };
+}
+
+const nodeDown = async (): Promise<never> => {
+  throw new ChainError("failed", "node down");
+};
+
+test("the board maps names, and an empty name to none", async () => {
+  const view = await boardView(stub({ leaderboard: async () => [standingOf(alice, 1, "alice"), standingOf(bob, 2)] }));
+  assert.ok(view.status === "ready");
+  assert.equal(view.preview, false);
+  assert.equal(view.ownPlayer, null);
+  assert.equal(view.updatedLabel, "");
+  assert.equal(view.players[0]?.name, "alice");
+  assert.equal(view.players[1]?.name, null);
+  assert.equal(view.players[1]?.address, bob);
+  assert.equal(view.players[1]?.id, bob);
+  assert.equal(view.players[1]?.rank, 2);
+});
+
+test("a failed query makes the board an error", async () => {
+  assert.deepEqual(await boardView(stub({ clanStandings: nodeDown })), { status: "error", preview: false });
+});
+
+test("the own standing joins a ready board only for a ranked account", async () => {
+  const board = await boardView(stub({ leaderboard: async () => [standingOf(alice, 1)] }));
+  const ranked = await withOwnStanding(board, stub({ standing: async (p) => standingOf(p, 1) }), alice);
+  assert.ok(ranked.status === "ready");
+  assert.equal(ranked.ownPlayer?.id, alice);
+
+  const unranked = await withOwnStanding(board, stub({}), alice);
+  const noAccount = await withOwnStanding(board, stub({ standing: async (p) => standingOf(p, 1) }), null);
+  const failed = await withOwnStanding(board, stub({ standing: nodeDown }), alice);
+  for (const view of [unranked, noAccount, failed]) {
+    assert.ok(view.status === "ready");
+    assert.equal(view.ownPlayer, null);
+  }
+  const error = { status: "error", preview: false } as const;
+  assert.equal(await withOwnStanding(error, stub({}), alice), error);
+});
+
+test("an own standing below the first page still shows, with no row marked", async () => {
+  const carol = address("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5");
+  const others = Array.from({ length: 50 }, (_, i) => standingOf(i % 2 === 0 ? alice : bob, i + 1));
+  const board = await boardView(stub({ leaderboard: async () => others }));
+  const view = await withOwnStanding(board, stub({ standing: async (p) => standingOf(p, 75) }), carol);
+  assert.ok(view.status === "ready");
+  assert.equal(view.ownPlayer?.rank, 75);
+  assert.ok(!view.players.some((p) => p.id === carol));
 });
