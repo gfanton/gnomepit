@@ -32,7 +32,7 @@ dist/
 .direnv/
 result
 result-*
-# Overrides a global .claude ignore so the shared settings stay tracked.
+# Track the shared Claude Code settings and keep the rest of .claude/ out.
 !/.claude/
 /.claude/*
 !/.claude/settings.json
