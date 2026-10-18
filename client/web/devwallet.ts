@@ -26,6 +26,9 @@ export const devAccounts = {
 const sessionAdmin = new Set(["/auth.m_create_session", "/auth.m_revoke_session", "/auth.m_revoke_all_sessions"]);
 const adenaGasWanted = 2_000_000_000;
 const adenaGasFee = 100_000; // ugnot
+// A gas or fee of 0 or NaN counts as none named.
+const orDefault = (named: number | undefined, fallback: number): number =>
+  named === undefined || named === 0 || Number.isNaN(named) ? fallback : named;
 
 type Success<T> = { status: "success"; type: string; message: ""; data: T };
 type Failure = { status: "failure"; type: string; message: string; data: null };
@@ -84,7 +87,7 @@ export function devWallet({
     if (msgs.every((msg) => sessionAdmin.has(msg.type))) {
       return signer.signTx({
         ...base,
-        fee: { gasWanted: gasWanted ?? adenaGasWanted, gasFee: `${gasFee ?? adenaGasFee}ugnot` },
+        fee: { gasWanted: orDefault(gasWanted, adenaGasWanted), gasFee: `${orDefault(gasFee, adenaGasFee)}ugnot` },
       });
     }
     return payFor(chain, (fee) => signer.signTx({ ...base, fee }));
