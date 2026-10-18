@@ -99,6 +99,18 @@ test("a session creation is signed with the fee it names, as Adena signs it", as
   );
 });
 
+test("a session creation naming zero gas and a zero fee is signed with the default fee, as if it named none", async () => {
+  const { requests, spy } = recording();
+  const keys = await deriveKeys(btoa("root signature"), 0, signer);
+  const session = sessionMessage(alice, keys.sessionPubKey, 1_800_000_000, "gno.land/r/x", spendLimit, 86_400);
+  const wallet = devWallet({ name: "alice", signer: spy, chain: replayChain("account"), chainId: "dev" });
+  assert.equal((await wallet.SignTx({ messages: [session], gasWanted: 0, gasFee: 0 })).status, "success");
+  assert.deepEqual(
+    requests.map((r) => r.fee),
+    [{ gasWanted: 2_000_000_000, gasFee: "100000ugnot" }],
+  );
+});
+
 // The replay holds account answers only, so a simulation would fail the test.
 test("revokes signed with a creation, or alone, take the fee they name, as Adena signs them", async () => {
   const { requests, spy } = recording();
