@@ -8,7 +8,7 @@ import { randomDeck, randomPlan } from "./bot.ts";
 import { createChain } from "./chain.ts";
 import { devWallet } from "./devwallet.mjs";
 import { loadEngine } from "./engine.ts";
-import { createIndexer } from "./indexer.mjs";
+import { createIndexer } from "./indexer.ts";
 import { networkFrom, networks } from "./network.ts";
 import * as signer from "./signer.mjs";
 import { waitForAdena } from "./wallet.mjs";

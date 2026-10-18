@@ -130,8 +130,8 @@ export type Chain = {
   broadcast(tx: string): Promise<Broadcast>;
 };
 
-// The part of fetch the client calls.
-type Fetch = (
+// The part of fetch a client of a JSON API calls.
+export type Fetch = (
   url: string,
   init: { method: "POST"; headers: Record<string, string>; body: string },
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;

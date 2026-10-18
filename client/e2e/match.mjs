@@ -11,7 +11,7 @@ import { createChain, payFor } from "../web/chain.ts";
 import { devWallet } from "../web/devwallet.mjs";
 import { nodeEngine } from "../web/engine-node.ts";
 import { createReader } from "../web/gnovalue.ts";
-import { createIndexer } from "../web/indexer.mjs";
+import { createIndexer } from "../web/indexer.ts";
 import { networks } from "../web/network.ts";
 import * as signer from "../web/signer.mjs";
 import { deriveKeys, generations, rootSignature } from "../web/wallet.mjs";

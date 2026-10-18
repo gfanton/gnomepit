@@ -6,7 +6,7 @@
 import { createArena } from "./arena.mjs";
 import { createChain } from "./chain.ts";
 import { devWallet } from "./devwallet.mjs";
-import { createIndexer } from "./indexer.mjs";
+import { createIndexer } from "./indexer.ts";
 import { networkFrom } from "./network.ts";
 import * as signer from "./signer.mjs";
 import { waitForAdena } from "./wallet.mjs";
