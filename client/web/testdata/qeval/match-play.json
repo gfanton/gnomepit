@@ -110,31 +110,39 @@
                     "@type": "/gno.PrimitiveType",
                     "value": "1024"
                   },
-                  "N": "K2zRagAAAAA="
+                  "N": "3UTWagAAAAA="
                 },
                 {
                   "T": {
                     "@type": "/gno.PrimitiveType",
                     "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": ""
                   }
                 },
                 {
                   "T": {
                     "@type": "/gno.PrimitiveType",
                     "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": ""
+                  }
+                },
+                {
+                  "T": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": ""
                   }
                 }
               ]
-            }
-          },
-          {
-            "T": {
-              "@type": "/gno.PrimitiveType",
-              "value": "16"
-            },
-            "V": {
-              "@type": "/gno.StringValue",
-              "value": ""
             }
           },
           {
@@ -253,12 +261,20 @@
                             "T": {
                               "@type": "/gno.PrimitiveType",
                               "value": "16"
+                            },
+                            "V": {
+                              "@type": "/gno.StringValue",
+                              "value": ""
                             }
                           },
                           {
                             "T": {
                               "@type": "/gno.PrimitiveType",
                               "value": "16"
+                            },
+                            "V": {
+                              "@type": "/gno.StringValue",
+                              "value": ""
                             }
                           }
                         ],

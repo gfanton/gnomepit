@@ -110,18 +110,36 @@
                     "@type": "/gno.PrimitiveType",
                     "value": "1024"
                   },
-                  "N": "KmzRagAAAAA="
+                  "N": "3UTWagAAAAA="
                 },
                 {
                   "T": {
                     "@type": "/gno.PrimitiveType",
                     "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": ""
                   }
                 },
                 {
                   "T": {
                     "@type": "/gno.PrimitiveType",
                     "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": ""
+                  }
+                },
+                {
+                  "T": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": ""
                   }
                 }
               ]
@@ -135,12 +153,6 @@
             "V": {
               "@type": "/gno.StringValue",
               "value": ""
-            }
-          },
-          {
-            "T": {
-              "@type": "/gno.PrimitiveType",
-              "value": "16"
             }
           },
           {

@@ -132,6 +132,16 @@
                       "@type": "/gno.StringValue",
                       "value": "hp"
                     }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": ""
+                    }
                   }
                 ]
               }

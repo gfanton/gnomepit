@@ -92,16 +92,16 @@
                     "@type": "/gno.PrimitiveType",
                     "value": "16"
                   }
+                },
+                {
+                  "Name": "Opponent",
+                  "Type": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  }
                 }
               ]
             }
-          }
-        },
-        {
-          "Name": "Opponent",
-          "Type": {
-            "@type": "/gno.PrimitiveType",
-            "value": "16"
           }
         },
         {

@@ -68,6 +68,7 @@ func TestChallengeNamesAnOpponent(cur realm, t *testing.T) {
 	testing.SetRealm(testing.NewUserRealm(alice))
 	Challenge(cross(cur), "Ironhide", sealOf(saltA, "deck"), sealOf(saltB, "plan"), boxOf("box"), bob)
 	uassert.Equal(t, bob.String(), Open(0, 50)[0].Opponent)
+	uassert.Equal(t, bob.String(), Matches(alice, 0, 50)[0].Opponent)
 }
 
 func TestChallengeRejects(cur realm, t *testing.T) {

@@ -89,6 +89,10 @@
                   "T": {
                     "@type": "/gno.PrimitiveType",
                     "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": ""
                   }
                 },
                 {
@@ -102,18 +106,36 @@
                     "@type": "/gno.PrimitiveType",
                     "value": "1024"
                   },
-                  "N": "EFXZagAAAAA="
+                  "N": "xC3eagAAAAA="
                 },
                 {
                   "T": {
                     "@type": "/gno.PrimitiveType",
                     "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": ""
                   }
                 },
                 {
                   "T": {
                     "@type": "/gno.PrimitiveType",
                     "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": ""
+                  }
+                },
+                {
+                  "T": {
+                    "@type": "/gno.PrimitiveType",
+                    "value": "16"
+                  },
+                  "V": {
+                    "@type": "/gno.StringValue",
+                    "value": ""
                   }
                 }
               ]
@@ -133,12 +155,10 @@
             "T": {
               "@type": "/gno.PrimitiveType",
               "value": "16"
-            }
-          },
-          {
-            "T": {
-              "@type": "/gno.PrimitiveType",
-              "value": "16"
+            },
+            "V": {
+              "@type": "/gno.StringValue",
+              "value": ""
             }
           },
           {

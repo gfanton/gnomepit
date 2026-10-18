@@ -457,6 +457,17 @@ test("the board hides an ended match's result until its last clash has played", 
   assert.match(shown(), /Decided by HP/);
 });
 
+test("My matches names the opponent a posted challenge is reserved for", async (t) => {
+  stubPage(t);
+  const arena = followedArena();
+  arena.myMatches = async () => [detail({ ID: matchId("6"), Opponent: bob }), detail({ ID: matchId("7") })];
+  const { lobby, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  const board = shown();
+  assert.equal(board.match(/Reserved for/g)?.length, 1);
+  assert.equal(board.match(/Anyone can accept/g)?.length, 1);
+});
+
 test("a match opened from its link is watched", async (t) => {
   stubPage(t);
   const arena = endingArena({ ...lastTurn, action: "wait" });

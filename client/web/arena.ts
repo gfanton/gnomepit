@@ -100,11 +100,11 @@ const MatchSummarySchema = v.object({
   Deadline: v.number(),
   Result: v.string(),
   Reason: v.string(),
+  Opponent: AddressOrNoneSchema,
 });
 
 const MatchViewSchema = v.object({
   ...MatchSummarySchema.entries,
-  Opponent: AddressOrNoneSchema,
   ChallengerDeck: v.string(),
   AcceptorDeck: v.string(),
   Plans: v.array(v.array(v.string())),
@@ -202,10 +202,8 @@ export function cardNames(ids: number[], cards: Card[]): string {
   return ids.map((id) => cardOf(cards, id).name).join(",");
 }
 
-// A summary carries no DeadlinePassed and no Opponent; a board challenge is always open.
-type Turn =
-  | (MatchSummary & { Opponent?: Address | ""; DeadlinePassed?: boolean | undefined })
-  | (OpenChallenge & { Phase: "open" });
+// A summary carries no DeadlinePassed; a board challenge is always open.
+type Turn = (MatchSummary & { DeadlinePassed?: boolean | undefined }) | (OpenChallenge & { Phase: "open" });
 
 // actionFor says what player me can do in a match. Without DeadlinePassed, the deadline is
 // read against now, in Unix seconds. pending is the challenger's next clash, when known.

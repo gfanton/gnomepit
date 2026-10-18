@@ -12,7 +12,8 @@ import (
 // MatchSummary is one match as a player's list shows it. Round is the round being
 // played, or the last one resolved once the match is over. ToMove is the address that
 // must move next, empty when none. Deadline is the end of the current move's 24 hours,
-// or the expiry of an open challenge, in Unix seconds.
+// or the expiry of an open challenge, in Unix seconds. Opponent is the address an open
+// challenge is reserved for, "" when anyone can accept it and once accepted.
 type MatchSummary struct {
 	ID, Phase                    string
 	Round                        int
@@ -21,16 +22,15 @@ type MatchSummary struct {
 	ToMove                       string
 	Deadline                     int64
 	Result, Reason               string
+	Opponent                     string
 }
 
-// MatchView is everything one match screen needs. Opponent is the address an open
-// challenge is reserved for, "" once accepted. Plans holds [challenger, acceptor]
+// MatchView is everything one match screen needs. Plans holds [challenger, acceptor]
 // for each resolved round, and for the round being played while the match runs, ""
 // while a plan is sealed or not yet made; HP holds both sides' HP after each resolved
 // round; Box is the challenger's encrypted pending plan, in base64.
 type MatchView struct {
 	MatchSummary
-	Opponent                     string
 	ChallengerDeck, AcceptorDeck string
 	Plans                        [][]string
 	Box                          string
@@ -80,7 +80,6 @@ func Match(id string) MatchView {
 func (m record) view(rules *engine.Ruleset, id int, now int64) MatchView {
 	v := MatchView{
 		MatchSummary:   m.summary(rules, id, now),
-		Opponent:       m.opponent.String(),
 		ChallengerDeck: deckText(rules, m.decks[0]),
 		AcceptorDeck:   deckText(rules, m.decks[1]),
 		Plans:          [][]string{},
@@ -116,6 +115,7 @@ func (m record) summary(rules *engine.Ruleset, id int, now int64) MatchSummary {
 		AcceptorClan:   clanName(rules, m.clans[1]),
 		Result:         m.result,
 		Reason:         m.reason,
+		Opponent:       m.opponent.String(),
 	}
 	switch m.phase {
 	case phaseOpen:
