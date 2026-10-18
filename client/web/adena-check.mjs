@@ -8,7 +8,7 @@ import { randomDeck, randomPlan } from "./bot.ts";
 import { createChain } from "./chain.ts";
 import { devWallet } from "./devwallet.mjs";
 import { loadEngine } from "./engine.ts";
-import { createReader } from "./gnovalue.mjs";
+import { createReader } from "./gnovalue.ts";
 import { networkFrom, networks } from "./network.ts";
 import * as signer from "./signer.mjs";
 import { answer, rootText, waitForAdena } from "./wallet.mjs";

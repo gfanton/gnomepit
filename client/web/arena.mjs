@@ -4,7 +4,7 @@
 // sealed plan, reveals it and seals the next one in one call.
 
 import { ChainError, feeFor, payFor } from "./chain.ts";
-import { createReader } from "./gnovalue.mjs";
+import { createReader } from "./gnovalue.ts";
 import {
   WalletError,
   classifySessions,

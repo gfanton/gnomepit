@@ -10,7 +10,7 @@ import { createArena } from "../web/arena.mjs";
 import { createChain, payFor } from "../web/chain.ts";
 import { devWallet } from "../web/devwallet.mjs";
 import { nodeEngine } from "../web/engine-node.ts";
-import { createReader } from "../web/gnovalue.mjs";
+import { createReader } from "../web/gnovalue.ts";
 import { createIndexer } from "../web/indexer.mjs";
 import { networks } from "../web/network.ts";
 import * as signer from "../web/signer.mjs";

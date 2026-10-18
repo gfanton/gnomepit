@@ -2,15 +2,36 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { createReader, decode, structTypes, typeFields } from "./gnovalue.mjs";
+import { createReader, decode, structTypes, typeFields } from "./gnovalue.ts";
 
-const load = (name) => JSON.parse(readFileSync(new URL(`./testdata/qeval/${name}.json`, import.meta.url)));
-const result = (name) => load(name).results[0];
+const load = (name: string): unknown =>
+  JSON.parse(readFileSync(new URL(`./testdata/qeval/${name}.json`, import.meta.url), "utf8"));
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+const isList = (value: unknown): value is unknown[] => Array.isArray(value);
+
+// struct, list and num read a decoded value as the struct, slice or int a test expects.
+function struct(value: unknown): Record<string, unknown> {
+  assert.ok(isRecord(value), "not a decoded struct");
+  return value;
+}
+function list(value: unknown): unknown[] {
+  assert.ok(isList(value), "not a decoded slice");
+  return value;
+}
+function num(value: unknown): number {
+  assert.ok(typeof value === "number", "not a decoded int");
+  return value;
+}
+
+const results = (name: string) => list(struct(load(name)).results);
+const result = (name: string) => results(name)[0];
 const fields = new Map([...typeFields(load("qtype-OpenChallenge")), ...typeFields(load("qtype-MatchView"))]);
 
 const arena = "gno.land/r/gfanton/gnomehall/arena";
 const player = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5";
-const int = (n) => {
+const int = (n: number) => {
   const bytes = new Uint8Array(8);
   new DataView(bytes.buffer).setBigInt64(0, BigInt(n), true);
   return { T: { "@type": "/gno.PrimitiveType", value: "32" }, N: btoa(String.fromCharCode(...bytes)) };
@@ -18,8 +39,8 @@ const int = (n) => {
 
 test("a type answer names the fields of every struct type it holds", () => {
   const types = typeFields(load("qtype-MatchView"));
-  assert.equal(types.get(`${arena}.MatchView`)[0], "MatchSummary");
-  assert.deepEqual(types.get(`${arena}.MatchSummary`).slice(0, 3), ["ID", "Phase", "Round"]);
+  assert.equal(types.get(`${arena}.MatchView`)?.[0], "MatchSummary");
+  assert.deepEqual(types.get(`${arena}.MatchSummary`)?.slice(0, 3), ["ID", "Phase", "Round"]);
 });
 
 test("a result lists the struct types its decoding needs", () => {
@@ -28,28 +49,28 @@ test("a result lists the struct types its decoding needs", () => {
 });
 
 test("a reader decodes a query's answer and asks for each struct type's fields once", async () => {
-  const asked = { exprs: [], types: [] };
+  const asked: { exprs: string[]; types: string[] } = { exprs: [], types: [] };
   const chain = {
-    evalJSON: async (expr) => (asked.exprs.push(expr), load("open").results),
-    typeJSON: async (id) => (asked.types.push(id), load(`qtype-${id.split(".").at(-1)}`)),
+    evalJSON: async (expr: string) => (asked.exprs.push(expr), results("open")),
+    typeJSON: async (id: string) => (asked.types.push(id), load(`qtype-${id.split(".").at(-1)}`)),
   };
   const read = createReader(chain);
-  for (let i = 0; i < 2; i++) assert.equal((await read(`${arena}.Open(0, 50)`))[0].Clan, "Pickers");
+  for (let i = 0; i < 2; i++) assert.equal(struct(list(await read(`${arena}.Open(0, 50)`))[0]).Clan, "Pickers");
   assert.deepEqual(asked.exprs, [`${arena}.Open(0, 50)`, `${arena}.Open(0, 50)`]);
   assert.deepEqual(asked.types, [`${arena}.OpenChallenge`]);
 });
 
 test("open challenges decode to plain objects", () => {
-  const [c] = decode(result("open"), fields);
+  const c = struct(list(decode(result("open"), fields))[0]);
   assert.equal(c.Clan, "Pickers");
   assert.equal(c.Challenger, player);
   assert.equal(c.Opponent, "");
   assert.equal(typeof c.Posted, "number");
-  assert.equal(c.Expires - c.Posted, 604800);
+  assert.equal(num(c.Expires) - num(c.Posted), 604800);
 });
 
 test("a match view merges its summary and decodes nested slices", () => {
-  const v = decode(result("match-play"), fields);
+  const v = struct(decode(result("match-play"), fields));
   assert.equal(v.Phase, "play");
   assert.equal(v.Round, 2);
   assert.equal(v.ToMove, player);
@@ -64,17 +85,17 @@ test("a match view merges its summary and decodes nested slices", () => {
 });
 
 test("an open match decodes its empty slices to []", () => {
-  const v = decode(result("match-open"), fields);
+  const v = struct(decode(result("match-open"), fields));
   assert.deepEqual(v.Plans, []);
   assert.deepEqual(v.HP, []);
 });
 
 test("an ended match carries its result", () => {
-  const v = decode(result("match-ended"), fields);
+  const v = struct(decode(result("match-ended"), fields));
   assert.equal(v.Phase, "ended");
   assert.equal(v.Result, "draw");
   assert.equal(v.Reason, "hp");
-  assert.equal(v.HP.length, 3);
+  assert.equal(list(v.HP).length, 3);
 });
 
 test("negative ints and bools decode", () => {
