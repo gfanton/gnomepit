@@ -14,7 +14,7 @@ import { createReader } from "../web/gnovalue.ts";
 import { createIndexer } from "../web/indexer.ts";
 import { networks } from "../web/network.ts";
 import * as signer from "../web/signer.ts";
-import { deriveKeys, generations, rootSignature } from "../web/wallet.mjs";
+import { deriveKeys, generations, rootSignature } from "../web/wallet.ts";
 
 const rpc = process.argv[2] ?? networks.local.rpc;
 const indexerURL = process.argv[3];

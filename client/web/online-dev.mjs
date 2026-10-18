@@ -11,7 +11,7 @@ import { loadEngine } from "./engine.ts";
 import { createIndexer } from "./indexer.ts";
 import { networkFrom, networks } from "./network.ts";
 import * as signer from "./signer.ts";
-import { waitForAdena } from "./wallet.mjs";
+import { waitForAdena } from "./wallet.ts";
 
 const params = new URLSearchParams(location.search);
 const { chainId, rpc, realm, indexer: indexerURL } = networkFrom(params, networks.local);

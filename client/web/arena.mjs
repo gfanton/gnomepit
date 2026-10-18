@@ -23,7 +23,7 @@ import {
   sessionLifetime as defaultLifetime,
   sessionMessage,
   sessionReserve,
-} from "./wallet.mjs";
+} from "./wallet.ts";
 
 const pageSize = 50; // the realm's maxPage
 // ms; setTimeout runs a longer delay at once.

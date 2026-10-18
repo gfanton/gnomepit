@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { createChain } from "./chain.ts";
 import { devAccounts, devWallet } from "./devwallet.mjs";
 import * as signer from "./signer.ts";
-import { deriveKeys, revokeMessage, sessionBudget, sessionMessage } from "./wallet.mjs";
+import { deriveKeys, revokeMessage, sessionBudget, sessionMessage } from "./wallet.ts";
 
 const alice = devAccounts.alice.address;
 const spendLimit = sessionBudget("challenger", { gas: 1000, amount: 1, denom: "ugnot" });

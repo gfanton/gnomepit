@@ -9,7 +9,7 @@ import { devWallet } from "./devwallet.mjs";
 import { createIndexer } from "./indexer.ts";
 import { networkFrom } from "./network.ts";
 import * as signer from "./signer.ts";
-import { waitForAdena } from "./wallet.mjs";
+import { waitForAdena } from "./wallet.ts";
 
 export async function loadArena(engine, built) {
   const params = new URLSearchParams(location.search);

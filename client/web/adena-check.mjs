@@ -3,6 +3,8 @@
 // session, and Adena signs a move itself. ?dev=alice runs the page with the dev wallet
 // instead, to test the page.
 
+import * as v from "valibot";
+
 import { createArena } from "./arena.mjs";
 import { randomDeck, randomPlan } from "./bot.ts";
 import { createChain } from "./chain.ts";
@@ -11,11 +13,13 @@ import { loadEngine } from "./engine.ts";
 import { createReader } from "./gnovalue.ts";
 import { networkFrom, networks } from "./network.ts";
 import * as signer from "./signer.ts";
-import { answer, rootText, waitForAdena } from "./wallet.mjs";
+import { answer, rootText, waitForAdena } from "./wallet.ts";
 
 const params = new URLSearchParams(location.search);
 const { chainId, rpc, realm } = networkFrom(params, networks.local);
 const devName = params.get("dev");
+// The part of SignArbitrary's answer the check reads.
+const SignatureSchema = v.object({ signature: v.object({ signature: v.string() }) });
 
 const $ = (id) => document.getElementById(id);
 const engine = await loadEngine("engine.wasm", "cards.json");
@@ -71,7 +75,8 @@ check("connect", "connection", async () => {
 check("check-signature", "signature", async () => {
   const { address } = await bySession.connect();
   const sign = async () =>
-    answer(await wallet.SignArbitrary({ signer: address, data: rootText(location.origin) })).signature.signature;
+    answer(await wallet.SignArbitrary({ signer: address, data: rootText(location.origin) }), SignatureSchema).signature
+      .signature;
   const [first, second] = [await sign(), await sign()];
   return [first === second, first === second ? `both signatures are ${first}` : `first ${first}\nsecond ${second}`];
 });

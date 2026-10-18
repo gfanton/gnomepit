@@ -34,7 +34,7 @@ import {
   sessionBudget,
   sessionMessage,
   sessionReserve,
-} from "./wallet.mjs";
+} from "./wallet.ts";
 
 const engine = await nodeEngine();
 const alice = "g1alice";
