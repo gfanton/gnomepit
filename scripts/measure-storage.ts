@@ -1,10 +1,12 @@
 // Measures what each arena move locks in storage on a running `make dev`: alice and bob
 // play the realm test's worked match twice, then a third that bob resigns after round 1,
-// each through a session for the match, and a table per match gives each move's storage,
-// gas, fee and deposit. On a fresh gnodev the first match carries the one-time costs, two
-// new players, a new chunk, both players' first standings and ladder entries and the clan
-// records, all but the chunk in its last Reveal; the second gives what a match between
-// known players locks, and the third what a resignation costs.
+// then carol and dave play the worked match, each through a session for the match, and a
+// table per match gives each move's storage, gas, fee and deposit. On a fresh gnodev the
+// first match carries the one-time costs, two new players, a new chunk, both players' first
+// standings and ladder entries and the clan records, all but the chunk in its last Reveal;
+// the second gives what a match between known players locks, and the third what a
+// resignation costs. The fourth ends two players' first rated match on a ladder that already
+// holds players, which adds more ladder nodes than the first match's ending did.
 //
 //   [CHAIN=<chain id>] node scripts/measure-storage.ts [rpc url]
 
@@ -89,7 +91,9 @@ function player(name: keyof typeof devAccounts): Arena {
 
 const alice = player("alice");
 const bob = player("bob");
-for (const arena of [alice, bob]) {
+const carol = player("carol");
+const dave = player("dave");
+for (const arena of [alice, bob, carol, dave]) {
   await arena.connect();
   assert.equal((await arena.authorize()).state, "active");
 }
@@ -106,21 +110,22 @@ async function step<T>(move: string, make: () => Promise<T>): Promise<{ id: T; r
   return { id, row: { move, storage, gasUsed, fee: feeFor(gasWantedFor(gasUsed), price), deposit } };
 }
 
-async function playMatch(): Promise<{ id: MatchId; rows: Row[] }> {
+// playMatch plays the worked match, a challenging and b accepting.
+async function playMatch(a: Arena, b: Arena): Promise<{ id: MatchId; rows: Row[] }> {
   const { id, row: posted } = await step("Challenge", () =>
-    alice.challenge({ clan: "Pickers", deck: ids(deckA), plan: ids("Chalk Dust,Double Tap") }),
+    a.challenge({ clan: "Pickers", deck: ids(deckA), plan: ids("Chalk Dust,Double Tap") }),
   );
   const rows = [posted];
   const moves: [string, () => Promise<void>][] = [
-    ["Accept", () => bob.accept(id, { clan: "Ironhide", deck: ids(deckB), plan: ids("Hammer Blow,Spiked Shield") })],
-    ["Reveal, round 1", () => alice.move(id, ids(picks))],
-    ["Play, round 2", () => bob.move(id, ids(braces))],
-    ["Reveal, round 2", () => alice.move(id, ids(picks))],
-    ["Play, round 3", () => bob.move(id, ids(braces))],
-    ["Reveal, round 3", () => alice.finish(id)],
+    ["Accept", () => b.accept(id, { clan: "Ironhide", deck: ids(deckB), plan: ids("Hammer Blow,Spiked Shield") })],
+    ["Reveal, round 1", () => a.move(id, ids(picks))],
+    ["Play, round 2", () => b.move(id, ids(braces))],
+    ["Reveal, round 2", () => a.move(id, ids(picks))],
+    ["Play, round 3", () => b.move(id, ids(braces))],
+    ["Reveal, round 3", () => a.finish(id)],
   ];
   for (const [move, make] of moves) rows.push((await step(move, make)).row);
-  const ended = await alice.match(id);
+  const ended = await a.match(id);
   assert.equal(ended.Phase, "ended");
   assert.equal(ended.Reason, "hp");
   return { id, rows };
@@ -154,10 +159,11 @@ const n = (value: number) => value.toLocaleString("en-US");
 const line = ({ move, storage, gasUsed, fee, deposit }: Row) =>
   `| ${move} | ${n(storage)} B | ${n(gasUsed)} | ${n(fee)} ugnot | ${n(deposit)} ugnot |`;
 
-const opening = await playMatch();
+const opening = await playMatch(alice, bob);
 assert.equal(opening.id, "1", "the first match must be the chain's first; restart gnodev");
-const matches = [opening, await playMatch(), await resignedMatch()] as const;
-for (const arena of [alice, bob]) assert.equal(arena.account().mode, "session", "every move went through a session");
+const matches = [opening, await playMatch(alice, bob), await resignedMatch(), await playMatch(carol, dave)] as const;
+for (const arena of [alice, bob, carol, dave])
+  assert.equal(arena.account().mode, "session", "every move went through a session");
 
 for (const { id, rows } of matches) {
   console.log(`\nMatch ${id}\n\n| Move | Storage | Gas used | Fee | Deposit |\n|---|---|---|---|---|`);
@@ -167,9 +173,14 @@ const [first, second] = [totals(matches[0].rows), totals(matches[1].rows)];
 console.log(
   `\nOne-time costs, match ${matches[0].id} minus match ${matches[1].id}: ${n(first.storage - second.storage)} B, ${n(first.deposit - second.deposit)} ugnot deposit`,
 );
-const ending = matches[0].rows.at(-1);
-assert.ok(ending?.move === "Reveal, round 3");
-console.log(
-  `First rated ending, match ${matches[0].id}'s Reveal, round 3: ${n(ending.gasUsed)} gas used, ${n(ending.deposit)} ugnot deposit`,
-);
+for (const [label, match] of [
+  ["on an empty ladder", matches[0]],
+  ["on a ladder that holds players", matches[3]],
+] as const) {
+  const ending = match.rows.at(-1);
+  assert.ok(ending?.move === "Reveal, round 3");
+  console.log(
+    `First rated ending ${label}, match ${match.id}'s Reveal, round 3: ${n(ending.gasUsed)} gas used, ${n(ending.deposit)} ugnot deposit`,
+  );
+}
 process.exit(0);

@@ -226,30 +226,31 @@ const reserve = sessionReserve(floor);
 const budget = sessionBudget("challenger", floor);
 
 test("at the floor price, the budgets and reserves are client/ONLINE.md's", () => {
-  assert.equal(sessionBudget("challenger", floor), 1_062_811);
-  assert.equal(sessionBudget("acceptor", floor), 951_192);
+  assert.equal(sessionBudget("challenger", floor), 1_280_629);
+  assert.equal(sessionBudget("acceptor", floor), 1_140_898);
   assert.deepEqual(reserve, {
-    opening: { challenger: 264_069, acceptor: 248_170 },
-    later: { challenger: 383_546, acceptor: 359_130 },
+    opening: { challenger: 264_113, acceptor: 248_206 },
+    later: { challenger: 503_159, acceptor: 463_316 },
   });
 });
 
 test("either side's session keeps enough for the move that ends a first rated match", () => {
-  // client/ONLINE.md's Storage per move: the first match's round-3 Reveal deposits for the
-  // first rated match; the acceptor ends a match with a Resign, measured in the third.
-  const challenger = 303_400 + feeFor(gasWantedFor(37_647_912), floor);
-  const acceptor = 303_400 + feeFor(gasWantedFor(19_150_553), floor);
+  // client/ONLINE.md's Storage per move: the fourth match's last Reveal deposits for two
+  // players' first rated match on a ladder that holds players; the challenger may end a match
+  // with any Reveal, the costliest measured in the third match, and the acceptor with a Resign.
+  const challenger = 398_000 + feeFor(gasWantedFor(49_430_602), floor);
+  const acceptor = 398_000 + feeFor(gasWantedFor(19_246_023), floor);
   assert.ok(reserve.later.challenger >= challenger, `challenger reserve ${reserve.later.challenger} < ${challenger}`);
   assert.ok(reserve.later.acceptor >= acceptor, `acceptor reserve ${reserve.later.acceptor} < ${acceptor}`);
 });
 
 // Deposits are priced per byte and stay; only the fees follow the gas price.
 test("at five times the floor price, budgets and reserves pay five times the fees and the same deposits", () => {
-  assert.equal(sessionBudget("challenger", busy), 1_906_843);
-  assert.equal(sessionBudget("acceptor", busy), 1_465_552);
+  assert.equal(sessionBudget("challenger", busy), 2_239_141);
+  assert.equal(sessionBudget("acceptor", busy), 1_657_279);
   assert.deepEqual(sessionReserve(busy), {
-    opening: { challenger: 340_341, acceptor: 377_647 },
-    later: { challenger: 582_767, acceptor: 460_685 },
+    opening: { challenger: 340_564, acceptor: 377_829 },
+    later: { challenger: 764_593, acceptor: 565_375 },
   });
 });
 

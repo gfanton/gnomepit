@@ -29,5 +29,5 @@ test("a ?dev= link plays with that dev account's wallet, and another name fails 
   const options = { signer, chain, chainId: "gnomehall-dev" };
   const wallet = known(await pageWallet("bob", options));
   assert.equal(answer(await wallet.GetAccount(), v.object({ address: v.string() })).address, devAccounts.bob.address);
-  await assert.rejects(pageWallet("carol", options), /unknown dev account "carol"; known: alice, bob/);
+  await assert.rejects(pageWallet("erin", options), /unknown dev account "erin"; known: alice, bob, carol, dave/);
 });

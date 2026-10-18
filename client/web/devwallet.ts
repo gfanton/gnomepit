@@ -19,6 +19,14 @@ export const devAccounts = {
     key: "f597ba7dafa0e172e8ef9188d0ff39f0b6a2cb2006112bd9e2717544e99b5b8d",
     address: address("g1h3cka3ya6jw3yr64erpklnhvrgh5l4du6w0faw"),
   },
+  carol: {
+    key: "997f277999014ae2de71bc4965e086719cfd32cd7c41a4b8a29cd41dedea367e",
+    address: address("g1x79lhtyj8sef3yyv3pvy20hzmgfst0274k8jx0"),
+  },
+  dave: {
+    key: "efe5c7e83a9070d6608cfadef46559243ecdde6de9ce987a13ebbf3d81b149b6",
+    address: address("g1t834akqrqg83csrq98t443larad7vnr6pp3lsd"),
+  },
 };
 
 // Adena signs a transaction of session messages alone without simulating it, with the

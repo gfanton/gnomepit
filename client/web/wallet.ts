@@ -13,36 +13,36 @@ import type { Message, Signer } from "./signer.ts";
 export type Role = "challenger" | "acceptor";
 type Move = { gasUsed: number; deposit: number };
 
-// What the move that ends both players' first rated match deposits for their standings, their
-// ladder entries and the clan records: the round-3 Reveal of client/ONLINE.md's first match.
-// Any move that ends a match makes the same writes.
-const firstRatedDeposit = 303_400;
-// The move each side pays to end a match, with the first rated deposit: the challenger's
-// round-3 Reveal of the first match and the acceptor's Resign of the third. A ClaimForfeit
-// makes a Resign's writes.
+// The gas used by each side's costliest later move, Reveal or Play, in any measured match.
+const costliestLaterGas: Record<Role, number> = { challenger: 49_430_602, acceptor: 21_356_839 };
+// What the move that ends two players' first rated match deposits for their standings, their
+// ladder entries and the clan records, on a ladder that already holds players: the last Reveal
+// of client/ONLINE.md's fourth match. Any move that ends a match makes those writes.
+const firstRatedDeposit = 398_000;
+// The move each side pays to end a match, with the first rated deposit. A knockout lets any of
+// the challenger's Reveals end it, so theirs uses the costliest Reveal's gas; the acceptor ends
+// a match with a Resign, measured in the third match, or a ClaimForfeit, which writes the same.
 const endings: Record<Role, Move> = {
-  challenger: { gasUsed: 37_647_912, deposit: firstRatedDeposit },
-  acceptor: { gasUsed: 19_150_553, deposit: firstRatedDeposit },
+  challenger: { gasUsed: costliestLaterGas.challenger, deposit: firstRatedDeposit },
+  acceptor: { gasUsed: 19_246_023, deposit: firstRatedDeposit },
 };
 // Each side's moves in the first match of client/ONLINE.md "Storage per move", which carries
 // the one-time costs, opening first: the gas each used and the ugnot it deposited. The
 // acceptor's list ends with the ending they pay when they resign or claim a forfeit.
 const measuredMoves: Record<Role, readonly [Move, ...Move[]]> = {
   challenger: [
-    { gasUsed: 15_806_706, deposit: 245_000 }, // Challenge
-    { gasUsed: 48_863_646, deposit: 0 }, // Reveal, round 1
-    { gasUsed: 35_457_225, deposit: 0 }, // Reveal, round 2
+    { gasUsed: 15_843_919, deposit: 245_000 }, // Challenge
+    { gasUsed: 48_981_438, deposit: 0 }, // Reveal, round 1
+    { gasUsed: 35_586_567, deposit: 0 }, // Reveal, round 2
     endings.challenger, // Reveal, round 3
   ],
   acceptor: [
-    { gasUsed: 26_891_107, deposit: 215_800 }, // Accept
-    { gasUsed: 20_730_708, deposit: 0 }, // Play, round 2
-    { gasUsed: 20_818_573, deposit: 0 }, // Play, round 3
+    { gasUsed: 26_921_336, deposit: 215_800 }, // Accept
+    { gasUsed: 20_829_608, deposit: 0 }, // Play, round 2
+    { gasUsed: 20_919_577, deposit: 0 }, // Play, round 3
     endings.acceptor, // Resign or ClaimForfeit
   ],
 };
-// The gas used by each side's costliest later move, Reveal or Play, in any measured match.
-const costliestLaterGas: Record<Role, number> = { challenger: 49_367_248, acceptor: 21_177_432 };
 // A later move's reserve keeps a tenth more, since moves cost more as their chunk fills.
 const laterMargin = 1.1;
 

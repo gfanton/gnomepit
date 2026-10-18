@@ -5,12 +5,13 @@ GOLDEN := $(WEB)/testdata/golden-tx.json
 # GNOTIF_DIR names the gnotif checkout whose registry the arena imports; the dev shell sets it to
 # the gnotif revision the flake pins.
 REGISTRY := deps/gnotif/v0
-# The local chain: a chain ID and ports clear of a default gnodev, and the dev wallet's two
+# The local chain: a chain ID and ports clear of a default gnodev, and the dev wallet's four
 # players (client/web/devwallet.ts), each funded with 10,000 GNOT.
 DEV_CHAIN := gnomehall-dev
 DEV_RPC := 127.0.0.1:36657
 DEV_WEB := 127.0.0.1:8890
-DEV_ACCOUNTS := g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w g1h3cka3ya6jw3yr64erpklnhvrgh5l4du6w0faw
+DEV_ACCOUNTS := g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w g1h3cka3ya6jw3yr64erpklnhvrgh5l4du6w0faw \
+	g1x79lhtyj8sef3yyv3pvy20hzmgfst0274k8jx0 g1t834akqrqg83csrq98t443larad7vnr6pp3lsd
 # The indexer that pushes the local chain's arena calls to the page.
 DEV_INDEXER := 127.0.0.1:8546
 TX_INDEXER := github.com/gnolang/tx-indexer/cmd@v1.3.0
