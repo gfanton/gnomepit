@@ -1479,7 +1479,6 @@ function patchPlayback(): void {
   elementById("next", HTMLButtonElement).disabled = done || held;
   elementById("skip", HTMLButtonElement).disabled = done || held;
   elementById("play", HTMLButtonElement).disabled = done || held;
-  // Only the guided match's playback draws the lesson strip.
   if (flow.mode === "tutorial") {
     const lesson = elementById("lesson", HTMLDivElement);
     lesson.hidden = playback.lesson?.ready !== true;
