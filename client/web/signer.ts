@@ -98,9 +98,11 @@ export async function signBytes(privKeyHex: string, data: string): Promise<strin
 // The chain checks signatures against amino JSON, which leaves out a session's zero
 // spend_period; decodeTxMessages writes it as "0".
 function aminoMessages(messages: Any[]): unknown[] {
-  const decoded = decodeTxMessages(messages);
-  for (const msg of decoded) if (v.is(ZeroSpendPeriodSchema, msg)) Reflect.deleteProperty(msg, "spend_period");
-  return decoded;
+  return decodeTxMessages(messages).map((msg) => {
+    if (!v.is(ZeroSpendPeriodSchema, msg)) return msg;
+    const { spend_period: _, ...rest } = msg;
+    return rest;
+  });
 }
 
 function toAny({ type, value }: Message): Any {
