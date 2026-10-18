@@ -2,19 +2,23 @@
 // alice's renewed mid-match, then one the wallet signs move by move. Given an indexer, it
 // also checks that the indexer's feed reports every call, in order.
 //
-//   [CHAIN=<chain id>] node client/e2e/match.mjs [rpc url] [indexer GraphQL url]
+//   [CHAIN=<chain id>] node client/e2e/match.ts [rpc url] [indexer GraphQL url]
 
 import assert from "node:assert/strict";
 
-import { createArena } from "../web/arena.ts";
-import { createChain, payFor } from "../web/chain.ts";
-import { devWallet } from "../web/devwallet.ts";
+import * as v from "valibot";
+
+import { type Arena, type ArenaChange, type ArenaOptions, type Opening, createArena } from "../web/arena.ts";
+import { ChainError, type Session, createChain, payFor } from "../web/chain.ts";
+import { type devAccounts, devWallet } from "../web/devwallet.ts";
+import { type GameState, type Side, cardOf } from "../web/engine.ts";
 import { nodeEngine } from "../web/engine-node.ts";
 import { createReader } from "../web/gnovalue.ts";
+import type { Address, MatchId } from "../web/ids.ts";
 import { createIndexer } from "../web/indexer.ts";
 import { networks } from "../web/network.ts";
 import * as signer from "../web/signer.ts";
-import { deriveKeys, generations, rootSignature } from "../web/wallet.ts";
+import { type SessionKeys, deriveKeys, generations, rootSignature } from "../web/wallet.ts";
 
 const rpc = process.argv[2] ?? networks.local.rpc;
 const indexerURL = process.argv[3];
@@ -28,86 +32,103 @@ const shortLifetime = 30;
 const engine = await nodeEngine();
 const chain = createChain({ rpc });
 
-function memory() {
-  const items = new Map();
-  return { getItem: (k) => items.get(k) ?? null, setItem: (k, v) => items.set(k, String(v)) };
+function memory(): Pick<Storage, "getItem" | "setItem"> {
+  const items = new Map<string, string>();
+  return { getItem: (k) => items.get(k) ?? null, setItem: (k, value) => items.set(k, String(value)) };
 }
 
-function player(name, options = {}) {
+function player(
+  name: keyof typeof devAccounts,
+  options: Partial<Pick<ArenaOptions, "sessionLifetime" | "signEachMove">> = {},
+): Arena {
   const wallet = devWallet({ name, signer, chain, chainId });
   return createArena({ chain, wallet, engine, signer, realm, chainId, origin, storage: memory(), ...options });
 }
 
 const read = createReader(chain);
-const locksOn = async (address, id) => (await read(`${realm}.Locks("${address}")`)).filter((l) => l.Match === id);
+// The part of the realm's session locks the script reads.
+const LocksSchema = v.array(v.object({ Session: v.string(), Match: v.string(), Expires: v.number() }));
+const locksOn = async (address: Address, id: MatchId) =>
+  v.parse(LocksSchema, await read(`${realm}.Locks("${address}")`)).filter((l) => l.Match === id);
 
-const deckOf = (clan) => {
-  const { cards } = engine.clans.find((c) => c.name === clan);
-  return cards.slice(0, 8).some((id) => engine.cards[id].rare)
-    ? cards.slice(0, 8)
-    : [...cards.slice(0, 7), cards.find((id) => engine.cards[id].rare)];
+const deckOf = (clan: string): number[] => {
+  const pool = engine.clans.find((c) => c.name === clan);
+  assert.ok(pool !== undefined, `the engine deals no clan ${clan}`);
+  const { cards } = pool;
+  if (cards.slice(0, 8).some((id) => cardOf(engine.cards, id).rare)) return cards.slice(0, 8);
+  const rare = cards.find((id) => cardOf(engine.cards, id).rare);
+  assert.ok(rare !== undefined, `${clan} has no Rare`);
+  return [...cards.slice(0, 7), rare];
 };
 const decks = { a: deckOf("Pickers"), b: deckOf("Ironhide") };
 for (const [clan, deck] of [
   ["Pickers", decks.a],
   ["Ironhide", decks.b],
-])
+] as const)
   assert.equal(engine.legalDeck({ clan, deck }), true);
 
 // planFor picks a legal plan that spends a special when one is left, so rounds differ.
-function planFor(state, side, deck) {
+function planFor(state: GameState, side: Side, deck: number[]): number[] {
   const plans = engine.legalPlans({ state, side, deck });
-  return plans.find((p) => p.some((id) => engine.cards[id].special)) ?? plans[0];
+  const plan = plans.find((p) => p.some((id) => cardOf(engine.cards, id).special)) ?? plans[0];
+  assert.ok(plan !== undefined, "the engine lists no legal plan");
+  return plan;
 }
-const start = { round: 1, gnomes: [0, 1].map(() => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] })) };
-const openings = [
+const gnome = () => ({ hp: engine.hp, vulnerable: 0, strength: 0, spent: [] });
+const start: GameState = { round: 1, gnomes: [gnome(), gnome()] };
+const openings: [Opening, Opening] = [
   { clan: "Pickers", deck: decks.a, plan: planFor(start, 0, decks.a) },
   { clan: "Ironhide", deck: decks.b, plan: planFor(start, 1, decks.b) },
 ];
 
-const log = (...line) => console.log(...line);
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const log = (...line: unknown[]) => console.log(...line);
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const unixNow = () => Math.floor(Date.now() / 1000);
 
-async function ready(name, arena) {
+async function ready(name: string, arena: Arena): Promise<Address> {
   const before = await arena.connect();
   const after = await arena.authorize();
   log(
-    `${name}: ${before.state} -> ${after.state} (${after.mode})${after.fallback ? `, fallback: ${after.fallback}` : ""}`,
+    `${name}: ${before.state} -> ${after.state} (${after.mode})${(after.fallback ?? "") === "" ? "" : `, fallback: ${after.fallback}`}`,
   );
   assert.equal(after.state, "active");
+  assert.ok(after.address !== null, `${name} is connected`);
   return after.address;
 }
 
 // The feed's first change, {}, comes once the indexer has taken the subscription.
-const feed = [];
+const feed: Extract<ArenaChange, { func: string }>[] = [];
 let stopFeed = () => {};
 if (indexerURL !== undefined) {
   const watcher = createArena({
     chain,
     wallet: null,
     engine,
+    signer,
     realm,
     chainId,
     origin,
     storage: memory(),
     indexer: createIndexer({ url: indexerURL }),
   });
-  await new Promise((resolve) => {
-    stopFeed = watcher.subscribe((change) => (change.func === undefined ? resolve() : feed.push(change)));
+  await new Promise<void>((resolve) => {
+    stopFeed = watcher.subscribe((change) => {
+      if ("func" in change) feed.push(change);
+      else resolve();
+    });
   });
 }
 // Every arena call that lands, as [func, match], match being null for a challenge.
-const sent = [];
+const sent: [string, MatchId | null][] = [];
 
-async function post(arena) {
+async function post(arena: Arena): Promise<MatchId> {
   const id = await arena.challenge(openings[0]);
   sent.push(["Challenge", null]);
   log(`match ${id} posted`);
   return id;
 }
 
-async function accept(arena, id) {
+async function accept(arena: Arena, id: MatchId): Promise<void> {
   assert.equal((await arena.openChallenges()).find((c) => c.ID === id)?.action, "accept");
   await arena.accept(id, openings[1]);
   sent.push(["Accept", id]);
@@ -116,13 +137,15 @@ async function accept(arena, id) {
 
 // play takes match id from its acceptance to its end, a revealing and b playing;
 // afterRound1 runs once round 1 is resolved.
-async function play(id, a, b, afterRound1 = async () => {}) {
+async function play(id: MatchId, a: Arena, b: Arena, afterRound1 = async () => {}): Promise<void> {
   for (let moves = 0; moves < 10; moves++) {
     const va = await a.match(id);
     if (va.Phase === "ended") break;
     if (va.action === "move") {
-      log(`alice reveals round ${va.Round} (${va.pending.result}) and seals the next`);
-      await a.move(id, planFor(va.pending.state, 0, decks.a));
+      const { pending } = va;
+      assert.ok(pending !== undefined, `alice's move in match ${id} comes with her opened clash`);
+      log(`alice reveals round ${va.Round} (${pending.result}) and seals the next`);
+      await a.move(id, planFor(pending.state, 0, decks.a));
       sent.push(["Reveal", id]);
       if (va.Round === 1) await afterRound1();
     } else if (va.action === "finish") {
@@ -142,14 +165,20 @@ async function play(id, a, b, afterRound1 = async () => {}) {
   assert.equal(seenByA.Phase, "ended");
   assert.equal(seenByA.Result, seenByB.Result);
   assert.equal(seenByA.action, "done");
-  assert.equal(seenByA.rounds.at(-1).result, seenByA.Result, "the page's replay ends the match the way the realm did");
+  assert.equal(seenByA.rounds.at(-1)?.result, seenByA.Result, "the page's replay ends the match the way the realm did");
   log(`match ${id} ended: ${seenByA.Result} by ${seenByA.Reason}, HP ${JSON.stringify(seenByA.HP)}`);
 }
 
 // forceCall sends the arena call func(args) signed with session, a session of master's that
 // the arena itself would not pick, and returns the chain's refusal.
-async function forceCall(master, root, session, func, args) {
-  let keys;
+async function forceCall(
+  master: Address,
+  root: string,
+  session: Session,
+  func: string,
+  args: string[],
+): Promise<string> {
+  let keys: SessionKeys | undefined;
   for (let g = 0; g < generations && keys === undefined; g++) {
     const k = await deriveKeys(root, g, signer);
     if (k.sessionAddress === session.address) keys = k;
@@ -168,7 +197,8 @@ async function forceCall(master, root, session, func, args) {
   try {
     await chain.broadcast(await payFor(chain, (fee) => signer.signTx({ ...request, fee })));
   } catch (err) {
-    return err.reason;
+    if (err instanceof ChainError) return err.reason;
+    throw err;
   }
   assert.fail(`the chain took ${func} from a locked session`);
 }
@@ -181,7 +211,7 @@ const aliceAddress = await ready("alice", alice);
 const bobAddress = await ready("bob", bob);
 
 const id = await post(alice);
-assert.equal((await alice.account()).mode, "session", "alice's challenge got a session");
+assert.equal(alice.account().mode, "session", "alice's challenge got a session");
 const [first] = await locksOn(aliceAddress, id);
 assert.ok(first !== undefined, `Locks lists alice's lock on match ${id}`);
 log(`alice's session ${first.Session} is locked to match ${id}`);
@@ -205,7 +235,7 @@ assert.match(resignation, new RegExp(`session locked to match ${id}$`));
 log(`a resignation in match ${elsewhere} with that session: ${resignation}`);
 
 await accept(bob, id);
-assert.equal((await bob.account()).mode, "session", "bob's acceptance got a session");
+assert.equal(bob.account().mode, "session", "bob's acceptance got a session");
 assert.equal((await locksOn(bobAddress, id)).length, 1, `Locks lists bob's lock on match ${id}`);
 log(`bob's session is locked to match ${id}`);
 
@@ -233,6 +263,7 @@ assert.ok(renewedAfterRound1, `match ${id} went past round 1, so alice's session
 const renewedLocks = await locksOn(aliceAddress, id);
 assert.equal(renewedLocks.length, 1, `Locks lists one lock of alice's on match ${id}`);
 const [renewed] = renewedLocks;
+assert.ok(renewed !== undefined, `Locks lists the renewed session's lock on match ${id}`);
 assert.notDeepEqual(
   [renewed.Session, renewed.Expires],
   [first.Session, first.Expires],

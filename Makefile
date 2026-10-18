@@ -62,7 +62,7 @@ record: ## Record the RPC answers the script tests replay, from a running make d
 	CHAIN=$(DEV_CHAIN) node scripts/record-rpc.mjs http://$(DEV_RPC)
 
 e2e: wasm ## Play two arena matches on a running make dev and make indexer, one through per-match sessions and one the wallet signs
-	CHAIN=$(DEV_CHAIN) node client/e2e/match.mjs http://$(DEV_RPC) http://$(DEV_INDEXER)/graphql/query
+	CHAIN=$(DEV_CHAIN) node client/e2e/match.ts http://$(DEV_RPC) http://$(DEV_INDEXER)/graphql/query
 
 test: realm-test build check ## Run the Gno, Go and script tests; script tests run engine.wasm
 	go vet ./...
