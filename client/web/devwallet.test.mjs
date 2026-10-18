@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { createChain } from "./chain.mjs";
+import { createChain } from "./chain.ts";
 import { devAccounts, devWallet } from "./devwallet.mjs";
 import * as signer from "./signer.mjs";
 import { deriveKeys, revokeMessage, sessionBudget, sessionMessage } from "./wallet.mjs";

@@ -18,7 +18,7 @@ import {
   replay,
   walletFailure,
 } from "./arena.mjs";
-import { ChainError } from "./chain.mjs";
+import { ChainError } from "./chain.ts";
 import { devAccounts, devWallet } from "./devwallet.mjs";
 import { nodeEngine } from "./engine-node.ts";
 import { createLobby } from "./lobby.mjs";

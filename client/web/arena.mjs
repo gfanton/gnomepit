@@ -3,7 +3,7 @@
 // every move. Seals, salts, boxes and reveals stay inside: a challenger's move opens the
 // sealed plan, reveals it and seals the next one in one call.
 
-import { ChainError, feeFor, payFor } from "./chain.mjs";
+import { ChainError, feeFor, payFor } from "./chain.ts";
 import { createReader } from "./gnovalue.mjs";
 import {
   WalletError,

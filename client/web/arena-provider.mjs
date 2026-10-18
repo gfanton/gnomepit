@@ -4,7 +4,7 @@
 // local chain instead of Adena.
 
 import { createArena } from "./arena.mjs";
-import { createChain } from "./chain.mjs";
+import { createChain } from "./chain.ts";
 import { devWallet } from "./devwallet.mjs";
 import { createIndexer } from "./indexer.mjs";
 import { networkFrom } from "./network.ts";

@@ -2,7 +2,7 @@
 // answers the same calls; the one signature every key derives from; the sessions that
 // let the page sign a match's moves; and the boxes that keep a challenger's sealed plans.
 
-import { feeFor, gasWantedFor } from "./chain.mjs";
+import { feeFor, gasWantedFor } from "./chain.ts";
 import { fromBase64, fromHex, toBase64, toHex } from "./encoding.ts";
 
 // Each side's moves in the first match of client/ONLINE.md "Storage per move", which carries

@@ -3,7 +3,7 @@
 // both accounts on gnodev. The keys are public, so the dev wallet is for local chains
 // only.
 
-import { payFor } from "./chain.mjs";
+import { payFor } from "./chain.ts";
 import { toBase64 } from "./encoding.ts";
 
 // Each key is the sha256 of "gnomehall dev <name>".

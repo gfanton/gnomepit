@@ -1,5 +1,5 @@
 // Records raw JSON-RPC answers from a running `make dev` into client/web/testdata/rpc:
-// every answer chain.mjs's tests and the dev wallet's tests replay. It signs as the dev
+// every answer chain.ts's tests and the dev wallet's tests replay. It signs as the dev
 // wallet's alice, and creates one more session for her on each run.
 //
 //   [CHAIN=<chain id>] node scripts/record-rpc.mjs [rpc url]
