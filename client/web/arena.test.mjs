@@ -20,7 +20,7 @@ import {
 } from "./arena.mjs";
 import { ChainError } from "./chain.mjs";
 import { devAccounts, devWallet } from "./devwallet.mjs";
-import { nodeEngine } from "./engine-node.mjs";
+import { nodeEngine } from "./engine-node.ts";
 import { createLobby } from "./lobby.mjs";
 import * as signer from "./signer.mjs";
 import {

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { nodeEngine } from "./engine-node.mjs";
+import { nodeEngine } from "./engine-node.ts";
 import { afterFiniteAnimations, coach, lessonsFor, railsNext, tutorialMatch, tutorialMemory } from "./tutorial.mjs";
 
 const engine = await nodeEngine();

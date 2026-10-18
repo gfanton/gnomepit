@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import { cardIDs, createArena } from "../client/web/arena.mjs";
 import { createChain, feeFor, gasWantedFor } from "../client/web/chain.mjs";
 import { devWallet } from "../client/web/devwallet.mjs";
-import { nodeEngine } from "../client/web/engine-node.mjs";
+import { nodeEngine } from "../client/web/engine-node.ts";
 import { networks } from "../client/web/network.ts";
 import * as signer from "../client/web/signer.mjs";
 

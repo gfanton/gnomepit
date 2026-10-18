@@ -3,17 +3,18 @@
 
 import { readFile } from "node:fs/promises";
 
-import { startEngine } from "./engine.ts";
+import { startEngine, type Engine } from "./engine.ts";
 
-let started;
+let started: Promise<Engine> | undefined;
 
-export function nodeEngine() {
+export function nodeEngine(): Promise<Engine> {
   started ??= start();
   return started;
 }
 
-async function start() {
-  await import("./wasm_exec.js");
+async function start(): Promise<Engine> {
+  // wasm_exec.js is a script, not a module: it runs only to define globalThis.Go.
+  await import(new URL("./wasm_exec.js", import.meta.url).href);
   const go = new globalThis.Go();
   const wasm = await readFile(new URL("./engine.wasm", import.meta.url));
   const { instance } = await WebAssembly.instantiate(wasm, go.importObject);

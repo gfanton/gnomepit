@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
-import { nodeEngine } from "./engine-node.mjs";
+import { nodeEngine } from "./engine-node.ts";
 import * as signer from "./signer.mjs";
 import {
   WalletError,

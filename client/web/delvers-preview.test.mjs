@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { readFileSync } from "node:fs";
 
-import { nodeEngine } from "./engine-node.mjs";
+import { nodeEngine } from "./engine-node.ts";
 
 const engine = await nodeEngine();
 const preview = JSON.parse(readFileSync(new URL("./art/delvers-cards-v2.json", import.meta.url))).cards;

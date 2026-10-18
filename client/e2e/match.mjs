@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { createArena } from "../web/arena.mjs";
 import { createChain, payFor } from "../web/chain.mjs";
 import { devWallet } from "../web/devwallet.mjs";
-import { nodeEngine } from "../web/engine-node.mjs";
+import { nodeEngine } from "../web/engine-node.ts";
 import { createReader } from "../web/gnovalue.mjs";
 import { createIndexer } from "../web/indexer.mjs";
 import { networks } from "../web/network.ts";
