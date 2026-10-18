@@ -1,12 +1,12 @@
 SHELL := /bin/sh
 WEB := client/web
-JS := client/js
+PNPM_STAMP := node_modules/.modules.yaml
 GOLDEN := $(WEB)/testdata/golden-tx.json
-# The gnotif checkout whose registry the arena imports, at its development path.
-GNOTIF_DIR ?= $(HOME)/code/gfanton/gnotif
+# GNOTIF_DIR names the gnotif checkout whose registry the arena imports; the dev shell sets it to
+# the gnotif revision the flake pins.
 REGISTRY := deps/gnotif/v0
 # The local chain: a chain ID and ports clear of a default gnodev, and the dev wallet's two
-# players (client/web/devwallet.mjs), each funded with 10,000 GNOT.
+# players (client/web/devwallet.ts), each funded with 10,000 GNOT.
 DEV_CHAIN := gnomehall-dev
 DEV_RPC := 127.0.0.1:36657
 DEV_WEB := 127.0.0.1:8890
@@ -16,7 +16,7 @@ DEV_INDEXER := 127.0.0.1:8546
 TX_INDEXER := github.com/gnolang/tx-indexer/cmd@v1.3.0
 INDEXER_DB := .indexer
 
-.PHONY: all wasm golden vendor serve dev indexer capture fund record e2e test realm-test deps clean help
+.PHONY: all wasm golden build check serve dev indexer capture fund record e2e test realm-test deps clean fclean help
 
 all: wasm ## Build the page's engine (default)
 
@@ -28,13 +28,20 @@ golden: ## Sign the signer tests' golden transactions with the chain's own Go ty
 	go -C client/golden run . > $(GOLDEN).tmp
 	mv -f $(GOLDEN).tmp $(GOLDEN)
 
-# The gno clients call Node's Buffer and crypto, which the page has no copy of.
-vendor: ## Bundle what signer.mjs takes from the gno JS clients into client/web/vendor/gno.mjs
-	npm ci --prefix $(JS) && npx --prefix $(JS) esbuild $(JS)/entry.mjs --bundle --format=esm --minify \
-		--inject:$(JS)/buffer.mjs --alias:crypto=./$(JS)/crypto.mjs --outfile=$(WEB)/vendor/gno.mjs
+build: wasm $(PNPM_STAMP) ## Build engine.wasm and bundle the pages into dist/ for GNOMEHALL_NETWORK: local (the default) or offline
+	pnpm run build
 
-serve: ## Serve the page on 127.0.0.1:8080
-	go run ./client/serve -dir $(WEB)
+$(PNPM_STAMP): package.json pnpm-lock.yaml pnpm-workspace.yaml
+	pnpm install --frozen-lockfile
+	touch $@
+
+check: $(PNPM_STAMP) ## Type-check, lint and format-check the TypeScript
+	pnpm run check
+	pnpm run lint
+	pnpm run fmt:check
+
+serve: build ## Build dist/ and serve it on 127.0.0.1:8080
+	go run ./client/serve -dir dist
 
 dev: deps ## Run gnodev with the engine, the arena, the gnotif registry and the dev accounts
 	gnodev local -chain-id $(DEV_CHAIN) -node-rpc-listener $(DEV_RPC) -web-listener $(DEV_WEB) \
@@ -52,28 +59,33 @@ capture: ## Record the arena's query answers from a running make dev
 fund: ## Send 1,000 GNOT on a running make dev to ADDRESS, such as an Adena account
 	RPC=$(DEV_RPC) CHAIN=$(DEV_CHAIN) scripts/fund.sh $(ADDRESS)
 
-record: ## Record the RPC answers the script tests replay, from a running make dev
-	CHAIN=$(DEV_CHAIN) node scripts/record-rpc.mjs http://$(DEV_RPC)
+record: $(PNPM_STAMP) ## Record the RPC answers the TypeScript tests replay, from a running make dev
+	CHAIN=$(DEV_CHAIN) node scripts/record-rpc.ts http://$(DEV_RPC)
 
-e2e: wasm ## Play two arena matches on a running make dev and make indexer, one through per-match sessions and one the wallet signs
-	CHAIN=$(DEV_CHAIN) node client/e2e/match.mjs http://$(DEV_RPC) http://$(DEV_INDEXER)/graphql/query
+e2e: wasm $(PNPM_STAMP) ## Play two arena matches on a running make dev and make indexer, one through per-match sessions and one the wallet signs
+	CHAIN=$(DEV_CHAIN) node client/e2e/match.ts http://$(DEV_RPC) http://$(DEV_INDEXER)/graphql/query
 
-test: realm-test wasm ## Run the Gno, Go and script tests; script tests run engine.wasm
+test: realm-test build check ## Run the Gno tests, build the page, check the TypeScript, then run go vet, the Go tests and the TypeScript tests
 	go vet ./...
 	go test ./...
-	node --test '$(WEB)/*.test.mjs'
+	pnpm test
 
 realm-test: deps ## Run the arena realm's tests
 	gno test ./r/...
 
 deps: ## Copy the gnotif registry from GNOTIF_DIR into deps/, without its tests
+	$(if $(GNOTIF_DIR),,$(error GNOTIF_DIR is unset: enter the dev shell or set it to a gnotif checkout))
 	rm -rf $(REGISTRY)
 	mkdir -p $(REGISTRY)
 	cp -f $(GNOTIF_DIR)/gno/r/gnotif/v0/gnomod.toml $(REGISTRY)/
 	find $(GNOTIF_DIR)/gno/r/gnotif/v0 -maxdepth 1 -name '*.gno' ! -name '*_test.gno' -exec cp -f {} $(REGISTRY)/ \;
 
 clean: ## Remove the build outputs
+	rm -rf dist
 	rm -f $(WEB)/engine.wasm $(WEB)/wasm_exec.js
+
+fclean: clean ## Remove the build outputs and the installed packages
+	rm -rf node_modules
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | sed 's/:.*## / — /'

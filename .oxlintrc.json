@@ -1,0 +1,25 @@
+{
+  "rules": {
+    "typescript/no-floating-promises": [
+      "error",
+      { "allowForKnownSafeCalls": [{ "from": "package", "name": "test", "package": "node:test" }] }
+    ],
+    "typescript/no-misused-promises": "error",
+    "typescript/no-unsafe-argument": "error",
+    "typescript/no-unsafe-assignment": "error",
+    "typescript/no-unsafe-call": "error",
+    "typescript/no-unsafe-member-access": "error",
+    "typescript/no-unsafe-return": "error",
+    "typescript/no-unsafe-type-assertion": "error",
+    "typescript/strict-boolean-expressions": [
+      "error",
+      { "allowString": false, "allowNumber": false, "allowNullableObject": false }
+    ],
+    "typescript/switch-exhaustiveness-check": "error",
+    "typescript/explicit-module-boundary-types": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }]
+  },
+  "ignorePatterns": ["**/*.js"]
+}

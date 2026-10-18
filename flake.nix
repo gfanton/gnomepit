@@ -75,6 +75,7 @@
             pkgs.go
             pkgs.tinygo
             pkgs.nodejs_24
+            pkgs.pnpm
             gnoPkg
             gnodevPkg
           ];

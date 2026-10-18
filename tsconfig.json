@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": [
+    "client/web/*.test.ts",
+    "client/web/engine-node.ts",
+    "client/web/fixture.ts",
+    "client/web/shims/*.d.ts",
+    "client/e2e/*.ts",
+    "client/*.ts",
+    "scripts/*.ts"
+  ]
+}
