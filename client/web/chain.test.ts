@@ -122,7 +122,7 @@ test("a query the realm refuses fails with the realm's reason", async () => {
 test("a simulation gives the gas the transaction uses", async () => {
   const { chain, sent } = replay("simulate");
   const gas = await chain.simulate("dHg=");
-  // record-rpc.mjs simulates and then broadcasts the same transaction.
+  // record-rpc.ts simulates and then broadcasts the same transaction.
   assert.equal(gas, Number(broadcastRecording("broadcast-ok").GasUsed));
   assert.equal(sent[0]?.params.path, ".app/simulate");
   assert.equal(sent[0]?.params.data, "dHg=");

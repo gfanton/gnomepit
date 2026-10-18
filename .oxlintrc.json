@@ -18,5 +18,5 @@
     "typescript/switch-exhaustiveness-check": "error",
     "typescript/explicit-module-boundary-types": "error"
   },
-  "ignorePatterns": ["**/*.mjs", "**/*.js"]
+  "ignorePatterns": ["**/*.js"]
 }
