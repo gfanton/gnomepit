@@ -1,5 +1,5 @@
 // Command golden signs fixed requests with the chain's own types and prints them as JSON,
-// [{name, request, tx}], for the page's signer tests. A request is in the form signer.mjs
+// [{name, request, tx}], for the page's signer tests. A request is in the form signer.ts
 // takes, messages in Adena's form; tx is the base64 amino transaction, or for sign-bytes
 // the base64 signature.
 package main
