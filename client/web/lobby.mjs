@@ -1,4 +1,4 @@
-import { escapeHTML } from "./keywords.mjs";
+import { escapeHTML } from "./keywords.ts";
 import { viewOf, shortAddress, timeLeft, field } from "./online-model.mjs";
 const esc = (value) => escapeHTML(String(value ?? "")).replaceAll('"', "&quot;");
 const btn = (text, action, disabled = false, secondary = false, extra = "") =>

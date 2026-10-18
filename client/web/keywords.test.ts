@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { glossary, markKeywords, escapeHTML } from "./keywords.mjs";
+import { glossary, markKeywords, escapeHTML } from "./keywords.ts";
 
-const kw = (key, word) => `<span class="kw" data-kw="${key}">${word}</span>`;
+const kw = (key: string, word: string) => `<span class="kw" data-kw="${key}">${word}</span>`;
 
 test("markKeywords wraps each rule word in a span naming its glossary entry", () => {
   assert.equal(
@@ -51,7 +51,7 @@ test("every key the markup and the badges use has a glossary entry", () => {
     "quick",
     "slow",
     "rare",
-  ]) {
+  ] as const) {
     assert.equal(typeof glossary[key], "string", key);
     assert.ok(glossary[key].length > 0, key);
   }

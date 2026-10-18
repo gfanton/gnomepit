@@ -19,17 +19,17 @@ export const glossary = {
   rare: "The clan's signature card. Every deck of the clan holds it.",
 };
 
-const forms = { cancelled: "cancel", cancels: "cancel" };
+const forms: Record<string, string> = { cancelled: "cancel", cancels: "cancel" };
 const words = /\b(Interrupt|Parry|Block|Counter|Vulnerable|Strength|cancelled|cancels)\b/g;
 
 // markKeywords turns a card text into HTML with each rule word wrapped in a tip anchor.
-export function markKeywords(text) {
+export function markKeywords(text: string): string {
   return escapeHTML(text).replace(
     words,
     (word) => `<span class="kw" data-kw="${forms[word] ?? word.toLowerCase()}">${word}</span>`,
   );
 }
 
-export function escapeHTML(text) {
+export function escapeHTML(text: string): string {
   return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;");
 }

@@ -1,4 +1,4 @@
-import { escapeHTML } from "./keywords.mjs";
+import { escapeHTML } from "./keywords.ts";
 const emblem =
   '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M12 3h8M12 3 8 15M20 3l5 13M8 15l8-5 9 6-2 10-10 3-8-6ZM16 10l-3 8 6 2-6 9"/></svg>';
 function riskText(text) {
