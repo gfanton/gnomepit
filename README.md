@@ -2,7 +2,7 @@
 
 Gnomehall is a two-player card duel between gnome clans beneath a mountain. Each player builds a deck of eight special cards from a clan's pool, plans three beats per round in secret, and both plans resolve together. Play against a bot, share one screen, or play online, where the Gno realm `r/arena` holds the match and checks every move with the same engine the page runs.
 
-Play it at <https://gfanton.github.io/gnomehall/>.
+The page at <https://gfanton.github.io/gnomehall/> plays offline: against the bot, two players on one device, or the guided match. Online play needs the arena on a chain the page is built for; `make serve` builds it for the local chain of `make dev`.
 
 ## Develop
 
@@ -11,7 +11,7 @@ Enter the dev shell with `direnv allow` or `nix develop`. It carries Go, TinyGo,
 - `make dev` runs a local chain with the engine, the arena and the dev accounts.
 - `make indexer` indexes the running chain for the page's live updates.
 - `make serve` builds the page into `dist/` and serves it on <http://127.0.0.1:8080/>.
-- `make test` runs the Gno, Go and script tests, then the TypeScript checks.
+- `make test` runs the realm's Gno tests, builds the page, type-checks, lints and format-checks the TypeScript, then runs `go vet`, the Go tests and the TypeScript tests.
 
 `make help` lists every target.
 
