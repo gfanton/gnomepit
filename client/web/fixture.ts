@@ -1,5 +1,5 @@
-// Test fixture mirroring client/web/cards.json: the card view and the three clans, and a
-// battle event builder.
+// Test fixture mirroring client/web/cards.json: the card view and the three clans, with a
+// battle event builder and a guard for the values a test counts on.
 
 import assert from "node:assert/strict";
 
@@ -62,6 +62,12 @@ export const id = (name: string): number => {
   assert.ok(card, `no card named ${name}`);
   return card.id;
 };
+
+// known is the value a test counts on; a missing one fails the test.
+export function known<T>(value: T | null | undefined): T {
+  assert.ok(value !== null && value !== undefined, "a value the test counts on is missing");
+  return value;
+}
 
 const untouched: Vitals = { hp: 15, block: 0, counter: 0, vulnerable: 0, strength: 0 };
 

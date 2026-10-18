@@ -1,7 +1,15 @@
 // The guided first match: a ready Pickers deck against a scripted Ironhide, with the coach's
 // words for each planning step and each lesson the playback stops on.
 
+import * as v from "valibot";
+
+import type { BattleEvent, Card, Engine } from "./engine.ts";
+
 export const tutorialKey = "gnomehall:tutorial";
+
+const AnswerSchema = v.picklist(["done", "skipped"]);
+
+export type TutorialAnswer = v.InferOutput<typeof AnswerSchema>;
 
 export const coach = {
   rounds: [
@@ -96,19 +104,28 @@ const script = {
     ["Feint", "Spiked Shield"],
   ],
   rails: [["Kneecap", "Chalk Dust", "Sling Stone"], ["Pick", "Dodge Roll"], null],
+} as const;
+
+export type TutorialMatch = {
+  clans: [string, string];
+  decks: [number[], number[]];
+  opponent: number[][];
+  rails: (number[] | null)[];
 };
 
 // tutorialMatch resolves the script's card names to the engine's card ids.
-export function tutorialMatch(engine) {
-  const ids = (names) =>
+export function tutorialMatch(engine: Engine): TutorialMatch {
+  const ids = (names: readonly string[]) =>
     names.map((name) => {
       const card = engine.cards.find((c) => c.name === name);
       if (card === undefined) throw new Error(`unknown card: ${name}`);
       return card.id;
     });
+  const deck = (names: readonly string[]) => ids(names).sort((a, b) => a - b);
+  const [mine, theirs] = script.decks;
   return {
     clans: [...script.clans],
-    decks: script.decks.map((deck) => ids(deck).sort((a, b) => a - b)),
+    decks: [deck(mine), deck(theirs)],
     opponent: script.opponent.map(ids),
     rails: script.rails.map((plan) => (plan === null ? null : ids(plan))),
   };
@@ -116,14 +133,14 @@ export function tutorialMatch(engine) {
 
 // railsNext is the card the rails ask for next, or undefined once the plan is complete, has
 // left the rails, or the round has none.
-export function railsNext(rails, plan) {
+export function railsNext(rails: number[] | null, plan: number[]): number | undefined {
   if (rails === null || plan.length >= rails.length) return undefined;
   return plan.every((id, i) => id === rails[i]) ? rails[plan.length] : undefined;
 }
 
 // lessonsFor places each of the round's lessons at the index of the first event it describes.
-export function lessonsFor(round, events, cards) {
-  const lessons = [];
+export function lessonsFor(round: number, events: BattleEvent[], cards: Card[]): { at: number; text: string }[] {
+  const lessons: { at: number; text: string }[] = [];
   for (const lesson of coach.lessons.filter((l) => l.round === round)) {
     const at = events.findIndex(
       (ev) =>
@@ -138,13 +155,16 @@ export function lessonsFor(round, events, cards) {
 
 // tutorialMemory keeps whether this browser finished or skipped the guided match. Storage
 // that throws keeps the answer for this visit only, so the offer shows again on the next.
-export function tutorialMemory(storage) {
-  let answer = null;
+export function tutorialMemory(storage: Pick<Storage, "getItem" | "setItem"> | undefined): {
+  seen(): boolean;
+  remember(value: TutorialAnswer): void;
+} {
+  let answer: TutorialAnswer | null = null;
   return {
     seen() {
       if (answer !== null) return true;
       try {
-        return ["done", "skipped"].includes(storage.getItem(tutorialKey));
+        return v.is(AnswerSchema, storage?.getItem(tutorialKey));
       } catch {
         return false;
       }
@@ -152,7 +172,7 @@ export function tutorialMemory(storage) {
     remember(value) {
       answer = value;
       try {
-        storage.setItem(tutorialKey, value);
+        storage?.setItem(tutorialKey, value);
       } catch {}
     },
   };
@@ -160,7 +180,9 @@ export function tutorialMemory(storage) {
 
 // afterFiniteAnimations waits for the animations that end; looping ones, like a breathing
 // portrait, would never let it resolve.
-export async function afterFiniteAnimations(animations) {
+export async function afterFiniteAnimations(
+  animations: { effect: { getTiming(): EffectTiming } | null; finished: Promise<unknown> }[],
+): Promise<void> {
   const ending = animations.filter((a) => Number.isFinite(a.effect?.getTiming().iterations));
   await Promise.all(ending.map((a) => a.finished.catch(() => {})));
 }

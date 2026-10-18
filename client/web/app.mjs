@@ -15,7 +15,7 @@ import { loadArena } from "./arena-provider.mjs";
 import { createLobby } from "./lobby.mjs";
 import { networkFor } from "./network.ts";
 import { replayView, viewOf } from "./online-model.mjs";
-import { afterFiniteAnimations, coach, lessonsFor, railsNext, tutorialMatch, tutorialMemory } from "./tutorial.mjs";
+import { afterFiniteAnimations, coach, lessonsFor, railsNext, tutorialMatch, tutorialMemory } from "./tutorial.ts";
 
 const engine = await loadEngine("engine.wasm", "cards.json");
 const art = artIndex(await (await fetch("art/assets.json")).json());
