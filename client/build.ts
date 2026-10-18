@@ -18,7 +18,7 @@ const pages = [
 ];
 const devPages = [
   { html: "adena-check.html", entry: "adena-check.ts" },
-  { html: "online-dev.html", entry: "online-dev.mjs" },
+  { html: "online-dev.html", entry: "online-dev.ts" },
   { html: "lobby-preview.html", entry: "lobby-preview.mjs" },
 ];
 const staticFiles = [
