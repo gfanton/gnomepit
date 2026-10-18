@@ -181,5 +181,5 @@ Check three things in onyx's release before deploying the arena there:
 
 ## Tests
 
-- `make test` runs the realm's tests, the Go tests and the script tests; the script tests run `engine.wasm`.
+- `make test` runs the realm's tests, builds the page, type-checks, lints and format-checks the TypeScript, then runs `go vet`, the Go tests and the script tests; the script tests run `engine.wasm`.
 - With `make dev` and `make indexer` running, `make e2e` plays its matches. With `make dev` running, `make capture` records the query answers `gnovalue.ts`'s tests read, and `make record` records the RPC answers the other tests replay.
