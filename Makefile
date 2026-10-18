@@ -2,8 +2,8 @@ SHELL := /bin/sh
 WEB := client/web
 PNPM_STAMP := node_modules/.modules.yaml
 GOLDEN := $(WEB)/testdata/golden-tx.json
-# The gnotif checkout whose registry the arena imports, at its development path.
-GNOTIF_DIR ?= $(HOME)/code/gfanton/gnotif
+# GNOTIF_DIR names the gnotif checkout whose registry the arena imports; the dev shell sets it to
+# the gnotif revision the flake pins.
 REGISTRY := deps/gnotif/v0
 # The local chain: a chain ID and ports clear of a default gnodev, and the dev wallet's two
 # players (client/web/devwallet.ts), each funded with 10,000 GNOT.
@@ -74,6 +74,7 @@ realm-test: deps ## Run the arena realm's tests
 	gno test ./r/...
 
 deps: ## Copy the gnotif registry from GNOTIF_DIR into deps/, without its tests
+	$(if $(GNOTIF_DIR),,$(error GNOTIF_DIR is unset: enter the dev shell or set it to a gnotif checkout))
 	rm -rf $(REGISTRY)
 	mkdir -p $(REGISTRY)
 	cp -f $(GNOTIF_DIR)/gno/r/gnotif/v0/gnomod.toml $(REGISTRY)/
