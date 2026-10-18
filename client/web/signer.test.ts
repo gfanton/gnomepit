@@ -102,7 +102,7 @@ test("a private key that is not 32 bytes of hex is refused", async () => {
   }
 });
 
-test("a message signer.mjs does not know is refused", async () => {
+test("a message signer.ts does not know is refused", async () => {
   // Names every object inherits must not pass for a message codec.
   for (const type of ["/bank.MsgSend", "constructor", "__proto__", "toString"]) {
     const request = { ...goldenRequest("wallet-call"), msgs: [{ type, value: {} }] };

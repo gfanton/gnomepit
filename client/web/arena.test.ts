@@ -613,7 +613,7 @@ test("a stored mode the page does not know reads as session", async () => {
   assert.equal(accountOf(await arena.connect()).mode, "session");
 });
 
-test("values the page stored before this change still read", async () => {
+test("a root signature, contract mode and its reason stored by an earlier page still read", async () => {
   const player = address("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5");
   const storage = memory();
   storage.setItem(`gnomehall:dev:${player}:root`, btoa("sig"));
