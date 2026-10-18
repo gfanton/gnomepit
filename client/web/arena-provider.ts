@@ -3,30 +3,23 @@
 // ?indexer= polls the node instead. ?dev=alice or ?dev=bob plays with a dev wallet on a
 // local chain instead of Adena.
 
-import * as v from "valibot";
-
 import { type Arena, createArena } from "./arena.ts";
-import { createChain } from "./chain.ts";
-import { devWallet } from "./devwallet.ts";
+import { type Chain, createChain } from "./chain.ts";
+import { devAccounts, devWallet } from "./devwallet.ts";
 import type { Engine } from "./engine.ts";
 import { createIndexer } from "./indexer.ts";
 import { type Network, networkFrom } from "./network.ts";
 import * as signer from "./signer.ts";
-import { waitForAdena } from "./wallet.ts";
-
-const DevNameSchema = v.picklist(["alice", "bob"]);
+import type { Signer } from "./signer.ts";
+import { type Wallet, waitForAdena } from "./wallet.ts";
 
 export async function loadArena(engine: Engine, built: Network): Promise<Arena> {
   const params = new URLSearchParams(location.search);
   const { chainId, rpc, realm, indexer } = networkFrom(params, built);
-  const devName = params.get("dev");
   const chain = createChain({ rpc });
   return createArena({
     chain,
-    wallet:
-      devName === null
-        ? await waitForAdena()
-        : devWallet({ name: v.parse(DevNameSchema, devName), signer, chain, chainId }),
+    wallet: await pageWallet(params.get("dev"), { signer, chain, chainId }),
     engine,
     signer,
     realm,
@@ -36,6 +29,19 @@ export async function loadArena(engine: Engine, built: Network): Promise<Arena> 
     indexer: indexer === null ? undefined : createIndexer({ url: indexer }),
     network: walletNetwork(params, built),
   });
+}
+
+const isDevName = (name: string): name is keyof typeof devAccounts => Object.hasOwn(devAccounts, name);
+
+// pageWallet is the wallet a page plays with: Adena, or, for a ?dev= value, that dev
+// account's wallet on chain. A value that names no dev account fails.
+export async function pageWallet(
+  dev: string | null,
+  { signer, chain, chainId }: { signer: Signer; chain: Chain; chainId: string },
+): Promise<Wallet | undefined> {
+  if (dev === null) return waitForAdena();
+  if (!isDevName(dev)) throw new Error(`unknown dev account "${dev}"; known: ${Object.keys(devAccounts).join(", ")}`);
+  return devWallet({ name: dev, signer, chain, chainId });
 }
 
 // walletNetwork is the network the page may ask Adena to add: the build's own, and none

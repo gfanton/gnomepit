@@ -6,33 +6,28 @@
 import * as v from "valibot";
 
 import { type AccountState, type Arena, ArenaError, type Listed, type OpenChallenge, createArena } from "./arena.ts";
+import { pageWallet } from "./arena-provider.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
 import { ChainError, createChain } from "./chain.ts";
-import { devWallet } from "./devwallet.ts";
 import { elementById } from "./dom.ts";
 import { type GameState, loadEngine } from "./engine.ts";
 import { createReader } from "./gnovalue.ts";
 import type { Address } from "./ids.ts";
 import { networkFrom, networks } from "./network.ts";
 import * as signer from "./signer.ts";
-import { type Wallet, WalletError, answer, replyOf, rootText, waitForAdena } from "./wallet.ts";
+import { WalletError, answer, replyOf, rootText } from "./wallet.ts";
 
 const params = new URLSearchParams(location.search);
 const { chainId, rpc, realm } = networkFrom(params, networks.local);
-const devName = params.get("dev");
 // The part of SignArbitrary's answer the check reads.
 const SignatureSchema = v.object({ signature: v.object({ signature: v.string() }) });
-const DevNameSchema = v.picklist(["alice", "bob"]);
 // The part of the realm's session locks the revoke check reads.
 const LocksSchema = v.array(v.object({ Session: v.string(), Match: v.string(), Expires: v.number() }));
 
 const engine = await loadEngine("engine.wasm", "cards.json");
 const chain = createChain({ rpc });
 const read = createReader(chain);
-const wallet: Wallet | undefined =
-  devName === null
-    ? await waitForAdena()
-    : devWallet({ name: v.parse(DevNameSchema, devName), signer, chain, chainId });
+const wallet = await pageWallet(params.get("dev"), { signer, chain, chainId });
 const options = { chain, wallet, engine, signer, realm, chainId, origin: location.origin, storage: localStorage };
 const bySession = createArena(options);
 const byWallet = createArena({ ...options, signEachMove: true });

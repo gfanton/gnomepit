@@ -3,31 +3,25 @@
 // end to end. Without dev it uses Adena; &contract=1 has the wallet sign every move;
 // &rpc=, &chain=, &realm= and &indexer= point it elsewhere, and an empty &indexer= polls.
 
-import * as v from "valibot";
-
 import { ArenaError, type Connection, type Listed, type MatchSummary, type Opening, createArena } from "./arena.ts";
+import { pageWallet } from "./arena-provider.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
 import { ChainError, createChain } from "./chain.ts";
-import { devWallet } from "./devwallet.ts";
 import { elementById } from "./dom.ts";
 import { type GameState, type Side, loadEngine } from "./engine.ts";
 import type { MatchId } from "./ids.ts";
 import { createIndexer } from "./indexer.ts";
 import { networkFrom, networks } from "./network.ts";
 import * as signer from "./signer.ts";
-import { type Wallet, WalletError, waitForAdena } from "./wallet.ts";
+import { WalletError } from "./wallet.ts";
 
 const params = new URLSearchParams(location.search);
 const { chainId, rpc, realm, indexer: indexerURL } = networkFrom(params, networks.local);
 const devName = params.get("dev");
-const DevNameSchema = v.picklist(["alice", "bob"]);
 
 const engine = await loadEngine("engine.wasm", "cards.json");
 const chain = createChain({ rpc });
-const wallet: Wallet | undefined =
-  devName === null
-    ? await waitForAdena()
-    : devWallet({ name: v.parse(DevNameSchema, devName), signer, chain, chainId });
+const wallet = await pageWallet(devName, { signer, chain, chainId });
 const indexer = indexerURL === null ? undefined : createIndexer({ url: indexerURL });
 const arena = createArena({
   chain,
