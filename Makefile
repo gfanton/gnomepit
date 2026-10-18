@@ -31,8 +31,9 @@ golden: ## Sign the signer tests' golden transactions with the chain's own Go ty
 build: wasm $(PNPM_STAMP) ## Bundle each page with esbuild into dist/ with its files, for GNOMEHALL_NETWORK (local by default)
 	pnpm run build
 
-$(PNPM_STAMP): package.json pnpm-lock.yaml
+$(PNPM_STAMP): package.json pnpm-lock.yaml pnpm-workspace.yaml
 	pnpm install --frozen-lockfile
+	touch $@
 
 check: $(PNPM_STAMP) ## Type-check, lint and format-check the TypeScript
 	pnpm run check
