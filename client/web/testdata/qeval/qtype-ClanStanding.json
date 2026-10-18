@@ -1,0 +1,55 @@
+{
+  "typeid": "gno.land/r/gfanton/gnomehall/arena.ClanStanding",
+  "type": {
+    "@type": "/gno.DeclaredType",
+    "PkgPath": "gno.land/r/gfanton/gnomehall/arena",
+    "Name": "ClanStanding",
+    "Base": {
+      "@type": "/gno.StructType",
+      "Fields": [
+        {
+          "Name": "Rank",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "32"
+          }
+        },
+        {
+          "Name": "Clan",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "Rating",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "32"
+          }
+        },
+        {
+          "Name": "Wins",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "32"
+          }
+        },
+        {
+          "Name": "Losses",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "32"
+          }
+        },
+        {
+          "Name": "Draws",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "32"
+          }
+        }
+      ]
+    }
+  }
+}

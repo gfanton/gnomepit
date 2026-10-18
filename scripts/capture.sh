@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Plays one arena match against itself on a running `make dev`, as gnodev's test1
 # account, and saves the decoded vm/qeval_json and vm/qtype_json answers after each
-# move into the directory given as $1. The page modules' tests read these files.
+# move into the directory given as $1. The page modules' tests read these files. A
+# match against itself is not rated, so the standings it saves are the ones a `make e2e`
+# run left on the same chain: run that first on a fresh `make dev`.
 set -o errexit -o nounset -o pipefail
 
 readonly OUT="${1:?usage: capture.sh <out dir>}"
@@ -11,6 +13,8 @@ readonly ARENA="gno.land/r/gfanton/gnomehall/arena"
 # gnodev premines test1 on every chain it starts; its mnemonic is public.
 readonly MNEMONIC="source bonus chronic canvas draft south burst lottery vacant surface solve popular case indicate oppose farm nothing bullet exhibit title speed wink action roast"
 readonly PLAYER="g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5"
+# The dev wallet's alice (client/web/devwallet.ts), who plays the e2e matches.
+readonly ALICE="g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w"
 readonly DECK_A="Pickaxe Flurry,Kneecap,Sling Stone,Dodge Roll,Chalk Dust,Double Tap,Momentum,Undermine"
 readonly DECK_B="Stone Guard,Bulwark,Hammer Blow,Cobble Throw,Spiked Shield,Anvil Stomp,Feint,Avalanche"
 readonly SALT_DECK="0101010101010101010101010101010101010101010101010101010101010101"
@@ -75,7 +79,12 @@ call Play "${id}" "${BRACES}" >/dev/null
 call Reveal "${id}" "" "" "${PICKS}" "${SALT_3}" "" "" >/dev/null
 snapshot ended
 query vm/qeval_json "${ARENA}.Matches(\"${PLAYER}\", 0, 50)" matches
+query vm/qeval_json "${ARENA}.Leaderboard(0, 50)" leaderboard
+query vm/qeval_json "${ARENA}.StandingOf(\"${ALICE}\")" standing-rated
+query vm/qeval_json "${ARENA}.StandingOf(\"${PLAYER}\")" standing-unrated
+query vm/qeval_json "${ARENA}.RatedPlayers()" rated-players
+query vm/qeval_json "${ARENA}.ClanStandings()" clan-standings
 
-for type in OpenChallenge MatchSummary MatchView; do
+for type in OpenChallenge MatchSummary MatchView Standing ClanStanding; do
   query vm/qtype_json "${ARENA}.${type}" "qtype-${type}"
 done

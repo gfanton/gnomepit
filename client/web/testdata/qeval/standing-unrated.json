@@ -1,0 +1,78 @@
+{
+  "results": [
+    {
+      "T": {
+        "@type": "/gno.RefType",
+        "ID": "gno.land/r/gfanton/gnomehall/arena.Standing"
+      },
+      "V": {
+        "@type": "/gno.StructValue",
+        "ObjectInfo": {
+          "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+          "ModTime": "0",
+          "RefCount": "0",
+          "LastObjectSize": "0"
+        },
+        "Fields": [
+          {
+            "T": {
+              "@type": "/gno.PrimitiveType",
+              "value": "32"
+            }
+          },
+          {
+            "T": {
+              "@type": "/gno.PrimitiveType",
+              "value": "16"
+            },
+            "V": {
+              "@type": "/gno.StringValue",
+              "value": "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5"
+            }
+          },
+          {
+            "T": {
+              "@type": "/gno.PrimitiveType",
+              "value": "16"
+            },
+            "V": {
+              "@type": "/gno.StringValue",
+              "value": ""
+            }
+          },
+          {
+            "T": {
+              "@type": "/gno.PrimitiveType",
+              "value": "16"
+            }
+          },
+          {
+            "T": {
+              "@type": "/gno.PrimitiveType",
+              "value": "32"
+            },
+            "N": "6AMAAAAAAAA="
+          },
+          {
+            "T": {
+              "@type": "/gno.PrimitiveType",
+              "value": "32"
+            }
+          },
+          {
+            "T": {
+              "@type": "/gno.PrimitiveType",
+              "value": "32"
+            }
+          },
+          {
+            "T": {
+              "@type": "/gno.PrimitiveType",
+              "value": "32"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

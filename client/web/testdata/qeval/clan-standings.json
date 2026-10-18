@@ -1,0 +1,211 @@
+{
+  "results": [
+    {
+      "T": {
+        "@type": "/gno.SliceType",
+        "Elt": {
+          "@type": "/gno.RefType",
+          "ID": "gno.land/r/gfanton/gnomehall/arena.ClanStanding"
+        },
+        "Vrd": false
+      },
+      "V": {
+        "@type": "/gno.SliceValue",
+        "Base": {
+          "@type": "/gno.ArrayValue",
+          "ObjectInfo": {
+            "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+            "ModTime": "0",
+            "RefCount": "0",
+            "LastObjectSize": "0"
+          },
+          "List": [
+            {
+              "T": {
+                "@type": "/gno.RefType",
+                "ID": "gno.land/r/gfanton/gnomehall/arena.ClanStanding"
+              },
+              "V": {
+                "@type": "/gno.StructValue",
+                "ObjectInfo": {
+                  "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                  "ModTime": "0",
+                  "RefCount": "0",
+                  "LastObjectSize": "0"
+                },
+                "Fields": [
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    },
+                    "N": "AQAAAAAAAAA="
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": "Pickers"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    },
+                    "N": "9wMAAAAAAAA="
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    },
+                    "N": "AgAAAAAAAAA="
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "T": {
+                "@type": "/gno.RefType",
+                "ID": "gno.land/r/gfanton/gnomehall/arena.ClanStanding"
+              },
+              "V": {
+                "@type": "/gno.StructValue",
+                "ObjectInfo": {
+                  "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                  "ModTime": "0",
+                  "RefCount": "0",
+                  "LastObjectSize": "0"
+                },
+                "Fields": [
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    },
+                    "N": "AgAAAAAAAAA="
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": "Delvers"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    },
+                    "N": "6AMAAAAAAAA="
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "T": {
+                "@type": "/gno.RefType",
+                "ID": "gno.land/r/gfanton/gnomehall/arena.ClanStanding"
+              },
+              "V": {
+                "@type": "/gno.StructValue",
+                "ObjectInfo": {
+                  "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                  "ModTime": "0",
+                  "RefCount": "0",
+                  "LastObjectSize": "0"
+                },
+                "Fields": [
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    },
+                    "N": "AwAAAAAAAAA="
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": "Ironhide"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    },
+                    "N": "2QMAAAAAAAA="
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    },
+                    "N": "AgAAAAAAAAA="
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "Data": null
+        },
+        "Offset": "0",
+        "Length": "3",
+        "Maxcap": "3"
+      }
+    }
+  ]
+}
