@@ -452,6 +452,36 @@ test("only the poster of a reserved challenge is told to share it", async (t) =>
   assert.doesNotMatch(reserved.shown(), /Share the link/);
 });
 
+test("resigning replaces the move confirmation", async (t) => {
+  stubPage(t);
+  const arena = endingArena(bobsMove);
+  arena.move = async () => {};
+  arena.resign = async () => {
+    arena.view = { ...bobsMove, Phase: "ended", Result: "a", Reason: "resign", action: "done" };
+  };
+  const { lobby, shown } = lobbyOf(arena, bob);
+  await lobby.enter();
+  await lobby.sendDraft({ intent: "move", view: { id: matchId("4") } }, "Ironhide", [0], [0, 0, 0]);
+  assert.match(shown(), /Your move is confirmed\./);
+  await lobby.action("ResignConfirm");
+  assert.doesNotMatch(shown(), /Your move is confirmed\./);
+});
+
+test("the move confirmation goes once the watched match moves on", async (t) => {
+  stubPage(t);
+  const arena = endingArena(bobsMove);
+  arena.move = async () => {
+    arena.view = { ...bobsMove, ToMove: alice, action: "wait" };
+  };
+  const { lobby, shown } = lobbyOf(arena, bob);
+  await lobby.enter();
+  await lobby.sendDraft({ intent: "move", view: { id: matchId("4") } }, "Ironhide", [0], [0, 0, 0]);
+  await known(arena.onView)(arena.view);
+  assert.match(shown(), /Your move is confirmed\./);
+  await known(arena.onView)({ ...bobsMove, Phase: "ended", Result: "b", Reason: "resign", action: "done" });
+  assert.doesNotMatch(shown(), /Your move is confirmed\./);
+});
+
 test("an unsent plan stays while its match waits for it, and goes when the player resigns", async (t) => {
   stubPage(t);
   const arena = endingArena(bobsMove);

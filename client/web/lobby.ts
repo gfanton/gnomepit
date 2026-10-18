@@ -200,6 +200,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
     const token = epoch;
     model.busy = true;
     model.error = "";
+    model.notice = "";
     changed();
     try {
       await task();
@@ -266,7 +267,11 @@ export function createLobby<Draft extends Drafted = Drafted>({
         if (token !== epoch || !model.active) return;
         try {
           const raw = value ?? (await online().match(id));
-          model.view = viewOf(raw, address());
+          const next = viewOf(raw, address());
+          // A match that moved on outdates the notice about the last thing done in it.
+          if (model.view !== null && (next.phase !== model.view.phase || next.action !== model.view.action))
+            model.notice = "";
+          model.view = next;
           dropStaleDraft(model.view);
           if (model.inGame) return;
           await showEnding(raw);
