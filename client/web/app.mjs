@@ -1,7 +1,7 @@
 // The page: renders the flow's screens into #app and turns clicks into flow actions. Every
 // rule comes from the engine; this module only draws and routes.
 
-import { loadEngine } from "./engine.mjs";
+import { loadEngine } from "./engine.ts";
 import { initial, reduce, botTurn } from "./flow.mjs";
 import { deckSize, newDeck, toggle, rareOf } from "./deck.mjs";
 import { randomDeck, randomPlan } from "./bot.mjs";

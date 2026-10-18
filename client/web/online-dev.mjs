@@ -7,7 +7,7 @@ import { ArenaError, createArena } from "./arena.mjs";
 import { randomDeck, randomPlan } from "./bot.mjs";
 import { createChain } from "./chain.mjs";
 import { devWallet } from "./devwallet.mjs";
-import { loadEngine } from "./engine.mjs";
+import { loadEngine } from "./engine.ts";
 import { createIndexer } from "./indexer.mjs";
 import { networkFrom, networks } from "./network.ts";
 import * as signer from "./signer.mjs";

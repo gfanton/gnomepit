@@ -3,7 +3,7 @@
 
 import { readFile } from "node:fs/promises";
 
-import { startEngine } from "./engine.mjs";
+import { startEngine } from "./engine.ts";
 
 let started;
 
