@@ -17,7 +17,8 @@ type Move = { gasUsed: number; deposit: number };
 const costliestLaterGas: Record<Role, number> = { challenger: 49_430_602, acceptor: 21_356_839 };
 // What the move that ends two players' first rated match deposits for their standings, their
 // ladder entries and the clan records, on a ladder that already holds players: the last Reveal
-// of client/ONLINE.md's fourth match. Any move that ends a match makes those writes.
+// of client/ONLINE.md's fourth match. Any move that ends a match between two clans makes those
+// writes.
 const firstRatedDeposit = 398_000;
 // The move each side pays to end a match, with the first rated deposit. A knockout lets any of
 // the challenger's Reveals end it, so theirs uses the costliest Reveal's gas; the acceptor ends

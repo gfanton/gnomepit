@@ -146,12 +146,14 @@ func TestSelfMatchUnrated(t *testing.T) {
 	uassert.Equal(t, "", clanRecords)
 }
 
-func TestForfeitSkipsClans(t *testing.T) {
+func TestForfeitCountsForClans(t *testing.T) {
 	reset()
 	rate(engine.ProofOfConcept(), ended(alice, bob, 1, 2, "b", "forfeit"))
 	uassert.Equal(t, 984, loadPlayer(alice).standing.rating)
 	uassert.Equal(t, 1016, loadPlayer(bob).standing.rating)
-	uassert.Equal(t, "", clanRecords)
+	c := decodeClans(clanRecords, 3)
+	uassert.True(t, c[0] == clanRecord{992, 0, 1, 0}, "the clan that ran out of time loses")
+	uassert.True(t, c[1] == clanRecord{1008, 1, 0, 0})
 }
 
 func TestMirrorSkipsClans(t *testing.T) {

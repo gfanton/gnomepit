@@ -52,8 +52,8 @@ func clampRating(r int) int {
 }
 
 // rate counts match m, which has just ended, in both players' standings and on the
-// ladder, and in the clan records when two clans met and nobody forfeited. A match its
-// challenger accepted is not rated.
+// ladder, and in the clan records when two different clans met. A match its challenger
+// accepted is not rated.
 func rate(rules *engine.Ruleset, m record) {
 	if m.challenger == m.acceptor {
 		return
@@ -68,7 +68,7 @@ func rate(rules *engine.Ruleset, m record) {
 	saveStanding(m.challenger, a)
 	saveStanding(m.acceptor, b)
 
-	if m.clans[0] == m.clans[1] || m.reason == "forfeit" {
+	if m.clans[0] == m.clans[1] {
 		return
 	}
 	c := decodeClans(clanRecords, len(rules.Clans))
