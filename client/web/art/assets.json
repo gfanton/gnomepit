@@ -320,6 +320,14 @@
       "master": "delvers-portrait-v1.png",
       "display": "delvers-portrait-v1.jpg",
       "prompts": "delvers-portrait-v1-prompt.json"
+    },
+    {
+      "name": "Mountain hall",
+      "clan": "Shared",
+      "kind": "background",
+      "master": "mountain-hall-v2.png",
+      "display": "mountain-hall-v2.jpg",
+      "prompts": "mountain-hall-prompts.json"
     }
   ],
   "superseded_assets": [

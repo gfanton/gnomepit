@@ -1,0 +1,201 @@
+/* Shared mountain architecture, with materials for each room in the hall. */
+body:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings) {
+  background:
+    linear-gradient(to bottom, color-mix(in srgb, var(--gh-color-canvas) 28%, transparent), var(--gh-color-canvas) 1080px),
+    url('art/mountain-hall-v2.jpg') center top / auto 1120px no-repeat,
+    var(--gh-color-canvas);
+}
+:is(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings) {
+  position: relative;
+  isolation: isolate;
+  padding-top: 30px;
+}
+:is(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings)::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--gh-color-canvas) 84%, transparent) 12% 88%, transparent);
+}
+:is(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings) .masthead {
+  border-bottom-color: color-mix(in srgb, var(--gh-color-trim) 38%, transparent);
+  text-shadow: 0 2px 8px var(--gh-color-shadow);
+  padding-bottom: 24px;
+}
+.board[data-screen="title"] .wordmark, .lobby .wordmark {
+  color: var(--gh-color-text-glow);
+}
+.intro--home {
+  min-height: 390px;
+  gap: 48px;
+  padding: 20px 0 24px;
+}
+.intro--home h1 {
+  color: var(--gh-color-text-bright);
+  text-shadow: 0 3px 24px color-mix(in srgb, var(--gh-color-shadow) 65%, transparent);
+}
+.intro--home .intro__art {
+  height: 360px;
+  border-radius: 4px 64px 4px 4px;
+  border-color: color-mix(in srgb, var(--gh-color-trim-bright) 65%, transparent);
+  box-shadow: 0 24px 48px color-mix(in srgb, var(--gh-color-shadow) 55%, transparent), 0 0 48px color-mix(in srgb, var(--gh-color-flame) 8%, transparent);
+}
+.intro--home .intro__art img { object-position: center 55%; }
+.board[data-screen="title"] .home-clans {
+  position: relative;
+  padding: 30px 0 8px;
+  border-top-color: color-mix(in srgb, var(--gh-color-trim) 40%, transparent);
+}
+.board[data-screen="title"] .home-clans::before {
+  content: '◆';
+  position: absolute;
+  top: -11px;
+  left: calc(50% - 18px);
+  width: 36px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--gh-color-trim);
+  background: var(--gh-color-canvas);
+}
+.board:is([data-screen="title"], [data-stage="clan"]) .clan-choice {
+  border-radius: 4px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--choice-color) 9%, var(--gh-color-surface)), var(--gh-color-canvas));
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--gh-color-shadow) 16%, transparent), 0 12px 24px color-mix(in srgb, var(--gh-color-shadow) 35%, transparent);
+}
+.board:is([data-screen="title"], [data-stage="clan"]) .clan-choice__art {
+  border-bottom: 1px solid color-mix(in srgb, var(--choice-color) 65%, transparent);
+}
+.board:is([data-screen="title"], [data-stage="clan"]) .clan-choice__body { padding: 24px; }
+:is(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings) .button:not(.button--secondary):not(:disabled):not(:hover) {
+  background: linear-gradient(var(--gh-color-highlight), var(--gh-color-accent-deep));
+  border-color: var(--gh-color-accent);
+  box-shadow: inset 0 1px color-mix(in srgb, var(--gh-color-text-bright) 45%, transparent), 0 4px 12px color-mix(in srgb, var(--gh-color-shadow) 40%, transparent);
+}
+.lobby .hall-banner {
+  border-radius: 4px;
+  border-color: color-mix(in srgb, var(--gh-color-trim) 55%, transparent);
+  background: linear-gradient(110deg, var(--gh-color-canvas), var(--gh-color-surface));
+  box-shadow: 0 16px 30px color-mix(in srgb, var(--gh-color-shadow) 35%, transparent), inset 3px 0 var(--gh-color-trim);
+}
+.lobby .hall-banner img { opacity: .8; }
+.lobby .section-head {
+  padding-bottom: 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--gh-color-trim) 35%, transparent);
+}
+.lobby .match {
+  border-radius: 4px;
+  background: linear-gradient(125deg, color-mix(in srgb, var(--gh-color-ambient-warm) 9%, var(--gh-color-surface)), var(--gh-color-canvas));
+  box-shadow: inset 0 1px color-mix(in srgb, var(--gh-color-trim) 12%, transparent), 0 6px 12px color-mix(in srgb, var(--gh-color-shadow) 25%, transparent);
+}
+.lobby .match--turn {
+  border-color: var(--gh-color-accent);
+  box-shadow: inset 3px 0 var(--gh-color-accent), 0 0 22px color-mix(in srgb, var(--gh-color-flame) 7%, transparent);
+}
+.lobby .challenge {
+  border-radius: 2px 5px 5px 2px;
+  background: linear-gradient(120deg, var(--gh-color-text-warm), var(--gh-color-text-pale));
+  box-shadow: inset 0 0 20px color-mix(in srgb, var(--gh-color-pickers-deep) 12%, transparent), 0 5px 12px color-mix(in srgb, var(--gh-color-shadow) 35%, transparent);
+}
+/* Clan alcoves: separate pools of light above grounded, dark plinths. */
+.clan-selection .section-intro { padding-block: 10px 18px; }
+.board .clan-selection .clan-choice {
+  position: relative;
+  border-top-width: 2px;
+  border-radius: 44px 44px 4px 4px;
+  box-shadow: 0 16px 32px color-mix(in srgb, var(--gh-color-shadow) 45%, transparent), 0 -12px 36px color-mix(in srgb, var(--choice-color) 12%, transparent);
+}
+.clan-selection .clan-choice__art { aspect-ratio: 4 / 3; }
+.clan-selection .clan-choice__eyebrow { color: var(--choice-color); }
+.clan-selection .clan-choice__cta { border-top-color: color-mix(in srgb, var(--choice-color) 40%, transparent); }
+.board[data-screen="deck"] .setup-steps {
+  padding: 14px 18px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim) 28%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--gh-color-canvas) 92%, transparent);
+  box-shadow: inset 0 1px color-mix(in srgb, var(--gh-color-trim) 10%, transparent);
+}
+/* Deck workbench: a worn timber rim surrounds a quiet inset playing surface. */
+body:has(.board[data-screen="deck"][data-stage="cards"]) { background-position: center top, 55% -140px, center; }
+.board[data-screen="deck"][data-stage="cards"] .frame--acting {
+  border: 6px solid var(--gh-color-pickers-deep);
+  outline: 1px solid color-mix(in srgb, var(--gh-color-trim) 50%, transparent);
+  outline-offset: -2px;
+  border-radius: 5px;
+  padding: 26px;
+  background:
+    radial-gradient(ellipse at 20% 0%, color-mix(in srgb, var(--gh-color-ambient-warm) 12%, transparent), transparent 65%),
+    var(--gh-color-canvas);
+  box-shadow: inset 0 3px 14px color-mix(in srgb, var(--gh-color-shadow) 70%, transparent), 0 20px 48px color-mix(in srgb, var(--gh-color-shadow) 50%, transparent);
+}
+.board[data-screen="deck"][data-stage="cards"] .frame__head { padding-bottom: 6px; }
+.board[data-screen="deck"][data-stage="cards"] .clan-banner {
+  border-radius: 3px;
+  border-left: 3px solid var(--gh-color-pickers);
+  box-shadow: inset 0 1px color-mix(in srgb, var(--gh-color-text-bright) 5%, transparent);
+}
+.board[data-screen="deck"][data-stage="cards"] .clan-banner--ironhide { border-left-color: var(--gh-color-ironhide); }
+.board[data-screen="deck"][data-stage="cards"] .clan-banner--delvers { border-left-color: var(--gh-color-delvers-light); }
+.board[data-screen="deck"][data-stage="cards"] .card-grid { padding: 16px 5px; gap: 22px 18px; }
+.board[data-screen="deck"][data-stage="cards"] .frame--acting > .button-row {
+  padding-top: 18px;
+  border-top: 1px solid color-mix(in srgb, var(--gh-color-trim) 30%, transparent);
+  justify-content: flex-end;
+}
+/* Champions gallery: engraved brass trim and solid slate behind the records. */
+body:has(.standings) { background-position: center top, 45% -80px, center; }
+.standings .standings-hero {
+  padding: 42px 28px;
+  margin-block: 24px;
+  border-block: 1px solid color-mix(in srgb, var(--gh-color-trim) 40%, transparent);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--gh-color-canvas) 94%, transparent), color-mix(in srgb, var(--gh-color-surface) 65%, transparent));
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--gh-color-shadow) 20%, transparent);
+}
+.standings .standings-hero h1 { color: var(--gh-color-text-glow); }
+.standings .ranking-seal {
+  background: radial-gradient(circle at 35% 25%, var(--gh-color-surface-raised), var(--gh-color-canvas));
+  box-shadow: inset 0 0 18px color-mix(in srgb, var(--gh-color-shadow) 55%, transparent), 0 6px 18px color-mix(in srgb, var(--gh-color-shadow) 40%, transparent);
+}
+.standings .player-standings {
+  align-self: start;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim) 42%, transparent);
+  border-top: 3px solid var(--gh-color-trim);
+  border-radius: 3px;
+  background: var(--gh-color-canvas);
+  box-shadow: inset 0 1px color-mix(in srgb, var(--gh-color-trim) 12%, transparent), 0 12px 28px color-mix(in srgb, var(--gh-color-shadow) 35%, transparent);
+}
+.standings .ranking-table thead {
+  background: linear-gradient(var(--gh-color-surface-raised), var(--gh-color-surface));
+}
+.standings .ranking-table tbody tr:nth-child(-n+3):not(.is-you) {
+  background: color-mix(in srgb, var(--gh-color-trim) 5%, var(--gh-color-canvas));
+}
+.standings .clan-standing {
+  border-radius: 3px;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--gh-color-shadow) 35%, transparent);
+}
+.standings .clan-place { box-shadow: 0 2px 8px var(--gh-color-shadow); }
+@media (max-width: 800px) {
+  .lobby .hall-banner img { opacity: .25; }
+  body:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings) { background-size: auto, auto 850px, auto; }
+  .intro--home { min-height: 0; gap: 24px; padding-top: 4px; }
+  .intro--home .intro__art { height: 280px; }
+  .board:is([data-screen="title"], [data-stage="clan"]) .clan-choice__body { padding: 18px; }
+  .board[data-screen="deck"][data-stage="cards"] .frame--acting { padding: 16px; border-width: 4px; }
+  .board[data-screen="deck"][data-stage="cards"] .card-grid { gap: 16px 12px; }
+  .standings .standings-hero { padding: 26px 20px; }
+  .standings .player-standings { padding: 14px; }
+}
+@media (max-width: 600px) {
+  .intro--home .intro__art { height: 230px; border-top-right-radius: 40px; }
+  :is(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings) { padding-top: 20px; }
+  .board .clan-selection .clan-choice { border-radius: 32px 32px 4px 4px; }
+  .clan-selection .clan-choice__art { aspect-ratio: 16 / 9; }
+  .board[data-screen="deck"][data-stage="cards"] .frame--acting { padding: 12px 8px; }
+  .board[data-screen="deck"][data-stage="cards"] .clan-banner { display: grid; grid-template-columns: 54px minmax(0, 1fr); padding: 14px 10px; gap: 14px; }
+  .board[data-screen="deck"][data-stage="cards"] .clan-banner > .button { grid-column: 1 / -1; justify-self: start; }
+  .board[data-screen="deck"][data-stage="cards"] .card-grid { gap: 14px 10px; }
+  .standings .standings-hero { padding: 24px 16px; }
+  .standings .player-standings { padding: 10px 6px; }
+}
