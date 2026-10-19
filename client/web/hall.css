@@ -107,7 +107,6 @@ body:where(:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby,
   box-shadow: 0 16px 32px color-mix(in srgb, var(--gh-color-shadow) 45%, transparent), 0 -12px 36px color-mix(in srgb, var(--choice-color) 12%, transparent);
 }
 .clan-selection .clan-choice__art { aspect-ratio: 4 / 3; }
-.clan-selection .clan-choice__eyebrow { color: var(--choice-color); }
 .clan-selection .clan-choice__cta { border-top-color: color-mix(in srgb, var(--choice-color) 40%, transparent); }
 .board[data-screen="deck"] .setup-steps {
   padding: 14px 18px;
