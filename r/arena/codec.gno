@@ -458,8 +458,9 @@ type sessionLock struct {
 // A player's bytes are a 2-byte id count, the ids at 4 bytes each, a 1-byte standing
 // length, 0 for none, the standing, then the locks. A standing is the rating, wins, losses
 // and draws at 2 bytes each, the last clan at 1, then a 2-byte count per clan.
-// ceiling: every write decodes and rewrites all of a player's ids, up to 65,535, so its gas
-// grows with their matches; an avl index of ids per player if some play thousands.
+// ceiling: joining a match and changing a lock decode and rewrite all of a player's ids, up to
+// 65,535, so their gas grows with the player's matches; an avl index of ids per player if some
+// play thousands.
 func decodePlayer(s string) playerRecord {
 	var p playerRecord
 	if s == "" {
@@ -490,6 +491,23 @@ func decodeStanding(s string) *standing {
 	return readStanding(r)
 }
 
+// withStanding returns a player's bytes s with their standing replaced by st. It copies the
+// ids and locks without reading them, so its cost does not grow with the player's matches.
+func withStanding(s string, st *standing) string {
+	if s == "" {
+		return encodePlayer(playerRecord{standing: st})
+	}
+	r := &reader{s: s}
+	r.text(4 * int(r.u16()))
+	head := r.at
+	readStanding(r)
+	w := &writer{}
+	w.text(s[:head])
+	writeStanding(w, st)
+	w.text(s[r.at:])
+	return w.String()
+}
+
 func readStanding(r *reader) *standing {
 	n := int(r.u8())
 	if n == 0 {
@@ -514,25 +532,29 @@ func encodePlayer(p playerRecord) string {
 	for _, id := range p.ids {
 		w.u32(uint64(id))
 	}
-	if st := p.standing; st == nil {
-		w.u8(0)
-	} else {
-		w.u8(uint64(standingFix + 2*len(st.perClan)))
-		w.u16(uint64(st.rating))
-		w.u16(uint64(st.wins))
-		w.u16(uint64(st.losses))
-		w.u16(uint64(st.draws))
-		w.u8(uint64(st.lastClan))
-		for _, n := range st.perClan {
-			w.u16(uint64(n))
-		}
-	}
+	writeStanding(w, p.standing)
 	for _, l := range p.locks {
 		w.addr(l.session)
 		w.u32(uint64(l.id))
 		w.u32(uint64(l.expires))
 	}
 	return w.String()
+}
+
+func writeStanding(w *writer, st *standing) {
+	if st == nil {
+		w.u8(0)
+		return
+	}
+	w.u8(uint64(standingFix + 2*len(st.perClan)))
+	w.u16(uint64(st.rating))
+	w.u16(uint64(st.wins))
+	w.u16(uint64(st.losses))
+	w.u16(uint64(st.draws))
+	w.u8(uint64(st.lastClan))
+	for _, n := range st.perClan {
+		w.u16(uint64(n))
+	}
 }
 
 // ladderKey orders the ladder: highest rating first, then address order.

@@ -59,15 +59,14 @@ func rate(rules *engine.Ruleset, m record) {
 		return
 	}
 	score := scoreOf(m.result)
-	pa, pb := loadPlayer(m.challenger), loadPlayer(m.acceptor)
-	a, b := ratedStanding(rules, &pa, m.challenger), ratedStanding(rules, &pb, m.acceptor)
+	a, b := ratedStanding(rules, m.challenger), ratedStanding(rules, m.acceptor)
 	a.rating, b.rating = applyChange(a.rating, b.rating, eloChange(a.rating, b.rating, score, playerK))
 	a.count(score, m.clans[0])
 	b.count(1000-score, m.clans[1])
 	ladder, _ = ladder.Set(ladderKey(a.rating, m.challenger), nil)
 	ladder, _ = ladder.Set(ladderKey(b.rating, m.acceptor), nil)
-	savePlayer(m.challenger, pa)
-	savePlayer(m.acceptor, pb)
+	saveStanding(m.challenger, a)
+	saveStanding(m.acceptor, b)
 
 	if m.clans[0] == m.clans[1] || m.reason == "forfeit" {
 		return
@@ -80,18 +79,19 @@ func rate(rules *engine.Ruleset, m record) {
 	clanRecords = encodeClans(c)
 }
 
-// ratedStanding returns p's standing, created at startRating for a first rated match, with
+// ratedStanding returns a's standing, created at startRating for a first rated match, with
 // a count for every clan of rules, and takes its key off the ladder until it is counted.
-func ratedStanding(rules *engine.Ruleset, p *playerRecord, a address) *standing {
-	if p.standing == nil {
-		p.standing = &standing{rating: startRating}
+func ratedStanding(rules *engine.Ruleset, a address) *standing {
+	st := loadStanding(a)
+	if st == nil {
+		st = &standing{rating: startRating}
 	} else {
-		ladder, _, _, _ = ladder.Remove(ladderKey(p.standing.rating, a))
+		ladder, _, _, _ = ladder.Remove(ladderKey(st.rating, a))
 	}
-	for len(p.standing.perClan) < len(rules.Clans) {
-		p.standing.perClan = append(p.standing.perClan, 0)
+	for len(st.perClan) < len(rules.Clans) {
+		st.perClan = append(st.perClan, 0)
 	}
-	return p.standing
+	return st
 }
 
 // scoreOf is the challenger's score, in thousandths, in a match that ended with result.

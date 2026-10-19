@@ -117,6 +117,20 @@ func TestRateMovesLadderKeys(t *testing.T) {
 	uassert.Equal(t, ladderKey(b.rating, bob), keys[1])
 }
 
+func TestRateKeepsMatchesAndLocks(t *testing.T) {
+	reset()
+	ids := make([]int, 3000)
+	for i := range ids {
+		ids[i] = i + 1
+	}
+	locks := []sessionLock{{session: carol, id: 3000, expires: 1_790_000_000}}
+	savePlayer(alice, playerRecord{ids: ids, locks: locks})
+	rate(engine.ProofOfConcept(), ended(alice, bob, 1, 2, "a", "hp"))
+	got := loadPlayer(alice)
+	uassert.Equal(t, encodePlayer(playerRecord{ids: ids, standing: got.standing, locks: locks}), stringAt(&players, string(alice)))
+	uassert.Equal(t, 1016, got.standing.rating)
+}
+
 func TestRateDraw(t *testing.T) {
 	reset()
 	rate(engine.ProofOfConcept(), ended(alice, bob, 1, 2, "draw", "hp"))

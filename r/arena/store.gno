@@ -68,6 +68,15 @@ func savePlayer(a address, p playerRecord) {
 	players.Set(string(a), encodePlayer(p))
 }
 
+// loadStanding returns a's standing, nil before their first rated match.
+func loadStanding(a address) *standing {
+	return decodeStanding(stringAt(&players, string(a)))
+}
+
+func saveStanding(a address, st *standing) {
+	players.Set(string(a), withStanding(stringAt(&players, string(a)), st))
+}
+
 // add appends id unless the player already has it.
 func (p *playerRecord) add(id int) {
 	for _, have := range p.ids {
