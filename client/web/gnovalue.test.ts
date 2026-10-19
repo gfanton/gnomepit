@@ -29,7 +29,7 @@ const results = (name: string) => list(struct(load(name)).results);
 const result = (name: string) => results(name)[0];
 const fields = new Map([...typeFields(load("qtype-OpenChallenge")), ...typeFields(load("qtype-MatchView"))]);
 
-const arena = "gno.land/r/gfanton/gnomehall/arena";
+const arena = "gno.land/r/gfanton/gnomepit/arena";
 const player = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5";
 const int = (n: number) => {
   const bytes = new Uint8Array(8);
@@ -115,7 +115,7 @@ test("an object reference throws", () => {
 test("a struct of an unknown type throws", () => {
   assert.throws(
     () => decode(result("open"), new Map()),
-    /no fields known for gno.land\/r\/gfanton\/gnomehall\/arena.OpenChallenge/,
+    /no fields known for gno.land\/r\/gfanton\/gnomepit\/arena.OpenChallenge/,
   );
 });
 

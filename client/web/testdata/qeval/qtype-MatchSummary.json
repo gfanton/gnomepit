@@ -1,8 +1,8 @@
 {
-  "typeid": "gno.land/r/gfanton/gnomehall/arena.MatchSummary",
+  "typeid": "gno.land/r/gfanton/gnomepit/arena.MatchSummary",
   "type": {
     "@type": "/gno.DeclaredType",
-    "PkgPath": "gno.land/r/gfanton/gnomehall/arena",
+    "PkgPath": "gno.land/r/gfanton/gnomepit/arena",
     "Name": "MatchSummary",
     "Base": {
       "@type": "/gno.StructType",

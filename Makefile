@@ -7,7 +7,7 @@ GOLDEN := $(WEB)/testdata/golden-tx.json
 REGISTRY := deps/gnotif/v0
 # The local chain: a chain ID and ports clear of a default gnodev, and the dev wallet's four
 # players (client/web/devwallet.ts), each funded with 10,000 GNOT.
-DEV_CHAIN := gnomehall-dev
+DEV_CHAIN := gnomepit-dev
 DEV_RPC := 127.0.0.1:36657
 DEV_WEB := 127.0.0.1:8890
 DEV_ACCOUNTS := g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w g1h3cka3ya6jw3yr64erpklnhvrgh5l4du6w0faw \
@@ -29,7 +29,7 @@ golden: ## Sign the signer tests' golden transactions with the chain's own Go ty
 	go -C client/golden run . > $(GOLDEN).tmp
 	mv -f $(GOLDEN).tmp $(GOLDEN)
 
-build: wasm $(PNPM_STAMP) ## Build engine.wasm and bundle the pages into dist/ for GNOMEHALL_NETWORK: local (the default) or offline
+build: wasm $(PNPM_STAMP) ## Build engine.wasm and bundle the pages into dist/ for GNOMEPIT_NETWORK: local (the default) or offline
 	pnpm run build
 
 $(PNPM_STAMP): package.json pnpm-lock.yaml pnpm-workspace.yaml

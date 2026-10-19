@@ -30,7 +30,7 @@ test("each dev account's key gives its listed address", async () => {
 // These calls never reach the chain, so it has no recording to replay.
 test("the dev wallet answers connection calls like Adena", async () => {
   const wallet = devWallet({ name: "alice", signer, chain: replayChain(), chainId: "dev" });
-  assert.equal((await wallet.AddEstablish("Gnomehall")).status, "success");
+  assert.equal((await wallet.AddEstablish("Gnomepit")).status, "success");
   assert.equal((await wallet.GetNetwork()).data.chainId, "dev");
   assert.equal((await wallet.GetAccount()).data.address, alice);
   assert.equal((await wallet.SwitchNetwork("onyx-1")).type, "UNADDED_NETWORK");
@@ -38,17 +38,17 @@ test("the dev wallet answers connection calls like Adena", async () => {
 
 test("SignArbitrary signs Adena's document the same way every time", async () => {
   const wallet = devWallet({ name: "alice", signer, chain: replayChain(), chainId: "dev" });
-  const first = await wallet.SignArbitrary({ signer: alice, data: "Gnomehall at http://x" });
-  const again = await wallet.SignArbitrary({ signer: alice, data: "Gnomehall at http://x" });
+  const first = await wallet.SignArbitrary({ signer: alice, data: "Gnomepit at http://x" });
+  const again = await wallet.SignArbitrary({ signer: alice, data: "Gnomepit at http://x" });
   assert.equal(first.status, "success");
   assert.equal(first.data.signature.signature, again.data?.signature.signature);
   assert.equal(first.data.signature.pubKey.value, (await signer.keyInfo(devAccounts.alice.key)).pubKey);
   const msg = known(first.data.signed.msgs[0]);
   assert.equal(msg.type, "sign/MsgSignData");
-  assert.equal(atob(msg.value.data), "Gnomehall at http://x");
+  assert.equal(atob(msg.value.data), "Gnomepit at http://x");
   assert.equal(first.data.signed.chain_id, "dev");
 
-  const other = await wallet.SignArbitrary({ signer: alice, data: "Gnomehall at http://elsewhere" });
+  const other = await wallet.SignArbitrary({ signer: alice, data: "Gnomepit at http://elsewhere" });
   assert.notEqual(other.data?.signature.signature, first.data.signature.signature);
   assert.equal((await wallet.SignArbitrary({ signer: devAccounts.bob.address, data: "x" })).status, "failure");
 });

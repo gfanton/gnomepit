@@ -64,7 +64,7 @@ function isSigner(value: unknown): value is GoldenSigner {
 
 // The page runs the gno clients on the shims' Buffer and crypto, not Node's.
 test("the page's bundle of the signer signs the golden transactions the same", async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), "gnomehall-signer-"));
+  const dir = await mkdtemp(join(tmpdir(), "gnomepit-signer-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const outfile = join(dir, "signer.mjs");
   await esbuild.build({

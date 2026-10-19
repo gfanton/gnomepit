@@ -5,9 +5,9 @@ import { networkFor, networkFrom, networks } from "./network.ts";
 
 test("networkFor gives the local and offline builds' networks and refuses any other name", () => {
   assert.deepEqual(networkFor("local"), {
-    chainId: "gnomehall-dev",
+    chainId: "gnomepit-dev",
     rpc: "http://127.0.0.1:36657",
-    realm: "gno.land/r/gfanton/gnomehall/arena",
+    realm: "gno.land/r/gfanton/gnomepit/arena",
     indexer: "http://127.0.0.1:8546/graphql/query",
   });
   assert.equal(networkFor("offline"), null);

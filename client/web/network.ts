@@ -12,9 +12,9 @@ export type Network = {
 // null is the offline build: no chain at all.
 export const networks = {
   local: {
-    chainId: "gnomehall-dev",
+    chainId: "gnomepit-dev",
     rpc: "http://127.0.0.1:36657",
-    realm: "gno.land/r/gfanton/gnomehall/arena",
+    realm: "gno.land/r/gfanton/gnomepit/arena",
     indexer: "http://127.0.0.1:8546/graphql/query",
   },
   offline: null,

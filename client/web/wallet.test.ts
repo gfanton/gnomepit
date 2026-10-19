@@ -40,7 +40,7 @@ const floor = { gas: 1000, amount: 1, denom: "ugnot" };
 const busy = { ...floor, amount: 5 };
 const signature = btoa("a root signature of 64 bytes, as a wallet would return one....");
 const otherSignature = btoa("another root signature, from another wallet or another site....");
-const realm = "gno.land/r/gfanton/gnomehall/arena";
+const realm = "gno.land/r/gfanton/gnomepit/arena";
 const now = 1_800_000_000;
 
 const failure = (type: WalletError["type"]) => (err: unknown) => err instanceof WalletError && err.type === type;
@@ -55,10 +55,10 @@ test("waitForAdena returns Adena once the extension injects it, and nothing with
   assert.equal(await waitForAdena(2000), adena);
 });
 
-test("the root text names Gnomehall and the site", () => {
+test("the root text names Gnomepit and the site", () => {
   assert.equal(
     rootText("http://127.0.0.1:8080"),
-    "Gnomehall at http://127.0.0.1:8080\nSign once on each device to play online. This signs no transaction.",
+    "Gnomepit at http://127.0.0.1:8080\nSign once on each device to play online. This signs no transaction.",
   );
 });
 
@@ -386,7 +386,7 @@ test("a generation registered again signs with the account number the chain give
 
 // The same keys may hold sessions for another arena the site plays on.
 test("a session for another realm path is neither live nor dead until it expires", () => {
-  const elsewhere = { allowPaths: ["vm/exec:gno.land/r/gfanton/gnomehall/arena_v1"] };
+  const elsewhere = { allowPaths: ["vm/exec:gno.land/r/gfanton/gnomepit/arena_v1"] };
   const out = classify([sessionAt(0, elsewhere), sessionAt(1, { ...elsewhere, expiresAt: now - 1 })]);
   assert.deepEqual(out.unlocked, []);
   assert.deepEqual(generationsOf(out.dead), [1]);

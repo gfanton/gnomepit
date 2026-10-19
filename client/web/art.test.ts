@@ -30,7 +30,7 @@ const manifest = {
       prompts: "p.json",
     },
     {
-      name: "Gnomehall hero",
+      name: "Gnomepit hero",
       clan: "Both",
       kind: "hero",
       master: "hall-hero-v2.png",

@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"gno.land/p/nt/testutils/v0"
-	"gno.land/r/gfanton/gnomehall/arena"
+	"gno.land/r/gfanton/gnomepit/arena"
 )
 
 const (
@@ -75,7 +75,7 @@ func main(cur realm) {
 //         "value": "Ironhide accepted your challenge. Your move within 24 hours."
 //       }
 //     ],
-//     "pkg_path": "gno.land/r/gfanton/gnomehall/arena"
+//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
 //   },
 //   {
 //     "type": "Turn",
@@ -93,7 +93,7 @@ func main(cur realm) {
 //         "value": "Round 1 is over: you 12 HP, them 12. Your move within 24 hours."
 //       }
 //     ],
-//     "pkg_path": "gno.land/r/gfanton/gnomehall/arena"
+//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
 //   },
 //   {
 //     "type": "Turn",
@@ -111,7 +111,7 @@ func main(cur realm) {
 //         "value": "Ironhide played round 2. Your move within 24 hours."
 //       }
 //     ],
-//     "pkg_path": "gno.land/r/gfanton/gnomehall/arena"
+//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
 //   },
 //   {
 //     "type": "Ended",
@@ -129,6 +129,6 @@ func main(cur realm) {
 //         "value": "You won by knockout."
 //       }
 //     ],
-//     "pkg_path": "gno.land/r/gfanton/gnomehall/arena"
+//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
 //   }
 // ]

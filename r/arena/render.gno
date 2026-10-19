@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"gno.land/p/gfanton/gnomehall/engine"
+	"gno.land/p/gfanton/gnomepit/engine"
 )
 
 const notFound = "# Not found\n\nThe arena has no page at this path.\n"
@@ -35,7 +35,7 @@ func Render(path string) string {
 
 func renderBoard() string {
 	var b strings.Builder
-	b.WriteString("# Gnomehall arena\n\nOpen challenges, newest first.\n\n")
+	b.WriteString("# Gnomepit arena\n\nOpen challenges, newest first.\n\n")
 	list := Open(0, maxPage)
 	if len(list) == 0 {
 		b.WriteString("No open challenge.\n")

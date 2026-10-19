@@ -11,7 +11,7 @@
         "gasWanted": 21500000,
         "gasFee": "21500ugnot"
       },
-      "memo": "Gnomehall",
+      "memo": "Gnomepit",
       "msgs": [
         {
           "type": "/vm.m_call",
@@ -19,7 +19,7 @@
             "caller": "g10xcqpzrky6eff2g52qdye53xkk9jxkvrjuxlp8",
             "send": "1000000ugnot",
             "max_deposit": "",
-            "pkg_path": "gno.land/r/gfanton/gnomehall/arena",
+            "pkg_path": "gno.land/r/gfanton/gnomepit/arena",
             "func": "Play",
             "args": [
               "12",
@@ -29,7 +29,7 @@
         }
       ]
     },
-    "tx": "CoUBCgovdm0ubV9jYWxsEncKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSDDEwMDAwMDB1Z25vdCIiZ25vLmxhbmQvci9nZmFudG9uL2dub21laGFsbC9hcmVuYSoEUGxheTICMTIyD1BpY2ssQnJhY2UsUGljaxIRCMDBwBQSCjIxNTAwdWdub3QaqAEKOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiEDG4TFVnsSZECZXT7VqroFZdceGDRgSBn/nBf16dXdB48SQNpDhrkTQQG+QxlfjjW03NghkMmjcfzFXb5fLOqqFYDUezfa//E+2F/fPj6CTq4LchfnSQ62RYj8LEVomffPUhAaKGcxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxbHV1eGUiCUdub21laGFsbA=="
+    "tx": "CoQBCgovdm0ubV9jYWxsEnYKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSDDEwMDAwMDB1Z25vdCIhZ25vLmxhbmQvci9nZmFudG9uL2dub21lcGl0L2FyZW5hKgRQbGF5MgIxMjIPUGljayxCcmFjZSxQaWNrEhEIwMHAFBIKMjE1MDB1Z25vdBqoAQo6ChMvdG0uUHViS2V5U2VjcDI1NmsxEiMKIQMbhMVWexJkQJldPtWqugVl1x4YNGBIGf+cF/Xp1d0HjxJAC6qdHCJWsAJb0qgcXvzdbHHnj9DoXDLWo+SUflVwP3gJcqkQ5kKD1RDjA6uV27Ik1dBZ65t995gNozt08SY5jBooZzFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFsdXV4ZSIIR25vbWVwaXQ="
   },
   {
     "name": "session-call",
@@ -51,7 +51,7 @@
             "caller": "g10xcqpzrky6eff2g52qdye53xkk9jxkvrjuxlp8",
             "send": "",
             "max_deposit": "",
-            "pkg_path": "gno.land/r/gfanton/gnomehall/arena",
+            "pkg_path": "gno.land/r/gfanton/gnomepit/arena",
             "func": "Challenge",
             "args": [
               "Pickers",
@@ -64,7 +64,7 @@
         }
       ]
     },
-    "tx": "CpECCgovdm0ubV9jYWxsEoICCihnMTB4Y3FwenJreTZlZmYyZzUycWR5ZTUzeGtrOWp4a3ZyanV4bHA4IiJnbm8ubGFuZC9yL2dmYW50b24vZ25vbWVoYWxsL2FyZW5hKglDaGFsbGVuZ2UyB1BpY2tlcnMyQDVlM2ExZjBjOWI4ZDdlNmY1YTRiM2MyZDFlMGY5YThiN2M2ZDVlNGYzYTJiMWMwZDllOGY3YTZiNWM0ZDNlMmYyQDVlM2ExZjBjOWI4ZDdlNmY1YTRiM2MyZDFlMGY5YThiN2M2ZDVlNGYzYTJiMWMwZDllOGY3YTZiNWM0ZDNlMmYyGEFRSURCQVVHQndnSkNnc01EUTRQRUE9PTIAEhEIgI7OHBIKMzAwMDB1Z25vdBqoAQo6ChMvdG0uUHViS2V5U2VjcDI1NmsxEiMKIQJNS2zRNhAyypvSrrnZAKpNRdnq2ArJQjN0xFGnJU0HZhJAtJjIr1Hrz30g7ZZdQBkj9VNgpRuSI/6FbGHpT/hWoEJzgox77EYDeYoz1PmaAQF8CZ0zKQkNeOZPQrTWsYH6xRooZzFhMHF3dXplMmg4NXp3N25xcHNqM2dhMHo5Z2V5cmd3cHlybTNtMg=="
+    "tx": "CpACCgovdm0ubV9jYWxsEoECCihnMTB4Y3FwenJreTZlZmYyZzUycWR5ZTUzeGtrOWp4a3ZyanV4bHA4IiFnbm8ubGFuZC9yL2dmYW50b24vZ25vbWVwaXQvYXJlbmEqCUNoYWxsZW5nZTIHUGlja2VyczJANWUzYTFmMGM5YjhkN2U2ZjVhNGIzYzJkMWUwZjlhOGI3YzZkNWU0ZjNhMmIxYzBkOWU4ZjdhNmI1YzRkM2UyZjJANWUzYTFmMGM5YjhkN2U2ZjVhNGIzYzJkMWUwZjlhOGI3YzZkNWU0ZjNhMmIxYzBkOWU4ZjdhNmI1YzRkM2UyZjIYQVFJREJBVUdCd2dKQ2dzTURRNFBFQT09MgASEQiAjs4cEgozMDAwMHVnbm90GqgBCjoKEy90bS5QdWJLZXlTZWNwMjU2azESIwohAk1LbNE2EDLKm9KuudkAqk1F2erYCslCM3TEUaclTQdmEkCOxI7vo67HSkC5hwpxYswjawnUXizlkRRCdGJQnH+PvB/lNOzoi5sWu9Aje1MqnwD+X+GfGctsP6ztneJZ9VF4GihnMWEwcXd1emUyaDg1enc3bnFwc2ozZ2EwejlnZXlyZ3dweXJtM20y"
   },
   {
     "name": "create-and-revoke",
@@ -100,7 +100,7 @@
             },
             "expires_at": "1760086400",
             "allow_paths": [
-              "vm/exec:gno.land/r/gfanton/gnomehall/arena"
+              "vm/exec:gno.land/r/gfanton/gnomepit/arena"
             ],
             "spend_limit": "10000000ugnot",
             "spend_period": "0"
@@ -108,7 +108,7 @@
         }
       ]
     },
-    "tx": "CoABChYvYXV0aC5tX3Jldm9rZV9zZXNzaW9uEmYKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiECTUts0TYQMsqb0q652QCqTUXZ6tgKyUIzdMRRpyVNB2YKwgEKFi9hdXRoLm1fY3JlYXRlX3Nlc3Npb24SpwEKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiECTUts0TYQMsqb0q652QCqTUXZ6tgKyUIzdMRRpyVNB2YYgKbGjg0iKnZtL2V4ZWM6Z25vLmxhbmQvci9nZmFudG9uL2dub21laGFsbC9hcmVuYSoNMTAwMDAwMDB1Z25vdBIQCIC23AUSCTYwMDB1Z25vdBqoAQo6ChMvdG0uUHViS2V5U2VjcDI1NmsxEiMKIQMbhMVWexJkQJldPtWqugVl1x4YNGBIGf+cF/Xp1d0HjxJA3HDCbLLKhK+zL8g53aS7cGrm+rjClajr4fgY1UqhExh6wUY+517sH4QwfVQoqq05cXbqF4oBH3YpZkmuUJ86sBooZzFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFsdXV4ZQ=="
+    "tx": "CoABChYvYXV0aC5tX3Jldm9rZV9zZXNzaW9uEmYKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiECTUts0TYQMsqb0q652QCqTUXZ6tgKyUIzdMRRpyVNB2YKwQEKFi9hdXRoLm1fY3JlYXRlX3Nlc3Npb24SpgEKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiECTUts0TYQMsqb0q652QCqTUXZ6tgKyUIzdMRRpyVNB2YYgKbGjg0iKXZtL2V4ZWM6Z25vLmxhbmQvci9nZmFudG9uL2dub21lcGl0L2FyZW5hKg0xMDAwMDAwMHVnbm90EhAIgLbcBRIJNjAwMHVnbm90GqgBCjoKEy90bS5QdWJLZXlTZWNwMjU2azESIwohAxuExVZ7EmRAmV0+1aq6BWXXHhg0YEgZ/5wX9enV3QePEkCee87spA/AyMIVFLGdryy7HUhQjjdLZ30a/D/EXUOUoQ74S3yeT8A82x93DTVTjsBzs/bywhh47cBOhAa0Vt1KGihnMXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcWx1dXhl"
   },
   {
     "name": "create-with-period",
@@ -134,7 +134,7 @@
             },
             "expires_at": "1760086400",
             "allow_paths": [
-              "vm/exec:gno.land/r/gfanton/gnomehall/arena"
+              "vm/exec:gno.land/r/gfanton/gnomepit/arena"
             ],
             "spend_limit": "10000000ugnot",
             "spend_period": "3600"
@@ -142,14 +142,14 @@
         }
       ]
     },
-    "tx": "CsUBChYvYXV0aC5tX2NyZWF0ZV9zZXNzaW9uEqoBCihnMTB4Y3FwenJreTZlZmYyZzUycWR5ZTUzeGtrOWp4a3ZyanV4bHA4EjoKEy90bS5QdWJLZXlTZWNwMjU2azESIwohAk1LbNE2EDLKm9KuudkAqk1F2erYCslCM3TEUaclTQdmGICmxo4NIip2bS9leGVjOmduby5sYW5kL3IvZ2ZhbnRvbi9nbm9tZWhhbGwvYXJlbmEqDTEwMDAwMDAwdWdub3QwoDgSEAiAm+4CEgkzMDAwdWdub3QaqAEKOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiEDG4TFVnsSZECZXT7VqroFZdceGDRgSBn/nBf16dXdB48SQFcXpyHIcLSiqcaxDt4AshlvtQgo3xCd+yl3KqkYmVwKMVpAUzD5s1FPyHeMf8Z8TYoWcRrS2DCEntdj8xK53NgaKGcxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxbHV1eGU="
+    "tx": "CsQBChYvYXV0aC5tX2NyZWF0ZV9zZXNzaW9uEqkBCihnMTB4Y3FwenJreTZlZmYyZzUycWR5ZTUzeGtrOWp4a3ZyanV4bHA4EjoKEy90bS5QdWJLZXlTZWNwMjU2azESIwohAk1LbNE2EDLKm9KuudkAqk1F2erYCslCM3TEUaclTQdmGICmxo4NIil2bS9leGVjOmduby5sYW5kL3IvZ2ZhbnRvbi9nbm9tZXBpdC9hcmVuYSoNMTAwMDAwMDB1Z25vdDCgOBIQCICb7gISCTMwMDB1Z25vdBqoAQo6ChMvdG0uUHViS2V5U2VjcDI1NmsxEiMKIQMbhMVWexJkQJldPtWqugVl1x4YNGBIGf+cF/Xp1d0HjxJAdt8gQu8v+3XOzjWbv5YoZ633Ydz+P56mYGSRiipyDNMQzARXUlduwpbSxCH/xv3h2LhCFLsqYo9Q0EjZ+WcBBhooZzFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFsdXV4ZQ=="
   },
   {
     "name": "sign-bytes",
     "request": {
       "privKey": "0101010101010101010101010101010101010101010101010101010101010101",
-      "bytes": "R25vbWVoYWxsIGF0IGh0dHA6Ly8xMjcuMC4wLjE6ODA4MA=="
+      "bytes": "R25vbWVwaXQgYXQgaHR0cDovLzEyNy4wLjAuMTo4MDgw"
     },
-    "tx": "WR9aZwaNJMtZFUHAajzuKN6tKAqhOLszBa9XGpUX8S91Qx7HaLiXcG+9qD8aY9Dl/44RdBAO2+c24rmbLAjTTA=="
+    "tx": "sdI0c/xUiEovjtz2udkN1PKUtY8F9FqCzX1EEI8M0CAk2bBOqY6NMluzOqC+0nvnRnoPpe7NIUKSyu7kadbv4A=="
   }
 ]

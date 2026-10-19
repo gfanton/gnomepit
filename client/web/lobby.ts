@@ -287,8 +287,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
   const decided = (v: View) => v.side >= 0 && v.phase === "ended" && (v.reason === "hp" || v.reason === "knockout");
   // The board knows a match by its summary alone. Match numbers start again on a fresh chain;
   // the plans tell two matches under one number apart.
-  const summaryKey = (v: View) =>
-    `gnomehall:ending:${address()}:${v.id}:${v.players.join(",")}:${v.result}:${v.reason}`;
+  const summaryKey = (v: View) => `gnomepit:ending:${address()}:${v.id}:${v.players.join(",")}:${v.result}:${v.reason}`;
   const endingKey = (v: View) => `${summaryKey(v)}:${JSON.stringify(v.plans)}`;
   // showEnding plays the clash that ended a match, once per player, before its result shows.
   async function showEnding(raw: MatchDetail) {
@@ -372,7 +371,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
           : "";
   }
   function header() {
-    return `<header class="masthead"><a class="wordmark" href="./" data-action="onlineExit">Gnomehall<span>UNDER THE MOUNTAIN</span></a><div class="account">${btn(address() !== "" ? shortAddress(address()) + " · Account" : "Connect wallet", "Account", arena === null || model.busy, true)}${address() !== "" ? `<small>${ready() ? "Device ready" : "Approval needed"}</small>` : ""}</div></header>`;
+    return `<header class="masthead"><a class="wordmark" href="./" data-action="onlineExit">Gnomepit<span>UNDER THE MOUNTAIN</span></a><div class="account">${btn(address() !== "" ? shortAddress(address()) + " · Account" : "Connect wallet", "Account", arena === null || model.busy, true)}${address() !== "" ? `<small>${ready() ? "Device ready" : "Approval needed"}</small>` : ""}</div></header>`;
   }
   function matchCard(v: View) {
     const unwatched = decided(v) && !seen(summaryKey(v));

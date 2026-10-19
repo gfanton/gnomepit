@@ -1,8 +1,8 @@
 {
-  "typeid": "gno.land/r/gfanton/gnomehall/arena.OpenChallenge",
+  "typeid": "gno.land/r/gfanton/gnomepit/arena.OpenChallenge",
   "type": {
     "@type": "/gno.DeclaredType",
-    "PkgPath": "gno.land/r/gfanton/gnomehall/arena",
+    "PkgPath": "gno.land/r/gfanton/gnomepit/arena",
     "Name": "OpenChallenge",
     "Base": {
       "@type": "/gno.StructType",

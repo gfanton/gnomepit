@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	"gno.land/p/gfanton/gnomehall/engine"
+	"gno.land/p/gfanton/gnomepit/engine"
 	"gno.land/p/nt/uassert/v0"
 	"gno.land/p/nt/urequire/v0"
 )

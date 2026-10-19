@@ -11,7 +11,7 @@
         "Info": ""
       },
       "GasWanted": "100000000",
-      "GasUsed": "624360"
+      "GasUsed": "624381"
     },
     "deliver_tx": {
       "ResponseBase": {
@@ -20,18 +20,18 @@
         "Events": [
           {
             "@type": "/tm.StorageDepositEvent",
-            "bytes_delta": "2286",
-            "fee_delta": "228600ugnot",
-            "pkg_path": "gno.land/r/gfanton/gnomehall/arena"
+            "bytes_delta": "2305",
+            "fee_delta": "230500ugnot",
+            "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
           }
         ],
         "Log": "msg:0,success:true,log:,events:[]",
         "Info": ""
       },
       "GasWanted": "100000000",
-      "GasUsed": "12954411"
+      "GasUsed": "14224009"
     },
-    "hash": "F3WH1HxdD7d92GIMU4qIKFgFIJ+b8hAu7KP74ougdUI=",
+    "hash": "GSxE4IYWxz3rVeTpoK1TTRQnncTr3/x6mWN5liOjN5o=",
     "height": "3"
   }
 }

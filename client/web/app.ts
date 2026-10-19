@@ -41,7 +41,7 @@ import {
 } from "./tutorial.ts";
 
 // The build's network name, which esbuild's define writes in.
-declare const GNOMEHALL_NETWORK: string;
+declare const GNOMEPIT_NETWORK: string;
 
 type Pair<T> = [T, T];
 // Where a player heads from home, or after the guided match.
@@ -158,11 +158,11 @@ function collectionHTML(): string {
 }
 
 function masthead(note = "A duel beneath the mountain"): string {
-  return `<header class="masthead"><a class="wordmark" href="./">Gnomehall<span>UNDER THE MOUNTAIN</span></a><span class="masthead__note">${note}</span></header>`;
+  return `<header class="masthead"><a class="wordmark" href="./">Gnomepit<span>UNDER THE MOUNTAIN</span></a><span class="masthead__note">${note}</span></header>`;
 }
 
 const tutorialFlag = tutorialMemory(localStorage);
-const built = networkFor(GNOMEHALL_NETWORK);
+const built = networkFor(GNOMEPIT_NETWORK);
 const arena = built === null ? null : await loadArena(engine, built);
 const lobby: Lobby<Draft> | null =
   arena === null
@@ -1165,7 +1165,7 @@ function clanChoicesHTML(home = false): string {
     .join("")}</div>`;
 }
 function title(): string {
-  return `<header class="masthead"><a class="wordmark" href="./">Gnomehall<span>UNDER THE MOUNTAIN</span></a><nav class="home-nav" aria-label="Explore the game">${lobby !== null ? '<a href="leaderboard.html">Leaderboard</a>' : ""}<button type="button" data-action="tutorial">How to play</button><button type="button" data-action="library">Card library</button></nav></header>
+  return `<header class="masthead"><a class="wordmark" href="./">Gnomepit<span>UNDER THE MOUNTAIN</span></a><nav class="home-nav" aria-label="Explore the game">${lobby !== null ? '<a href="leaderboard.html">Leaderboard</a>' : ""}<button type="button" data-action="tutorial">How to play</button><button type="button" data-action="library">Card library</button></nav></header>
     <section class="intro intro--home">
       <div class="intro__copy"><span class="eyebrow">A TACTICAL CARD DUEL</span>
         <h1>Small gnomes.<br>Big grudges.</h1>
@@ -1173,7 +1173,7 @@ function title(): string {
         <div class="home-play">${lobby !== null ? `<button class="button" type="button" data-action="playMode" data-mode="online">Play online <span aria-hidden="true">→</span></button>` : ""}<button class="button button--secondary" type="button" data-action="tutorial">How to play</button></div>
         ${lobby !== null ? `<p class="home-play__note">24 hours per move · needs the Adena wallet</p>` : ""}
       </div>
-      <div class="intro__art"><img src="art/hall-hero-v2.jpg" alt="Gnomes gather around a card table in the underground hall"><span class="intro__art-label">WELCOME TO GNOMEHALL<span>Different clans. Shared grudges.</span></span></div>
+      <div class="intro__art"><img src="art/hall-hero-v2.jpg" alt="Gnomes gather around a card table in the underground hall"><span class="intro__art-label">WELCOME TO GNOMEPIT<span>Different clans. Shared grudges.</span></span></div>
     </section>
     <section class="home-clans" aria-labelledby="home-clans-title"><div class="section-intro"><div><span class="eyebrow">FIND YOUR WAY TO FIGHT</span><h2 id="home-clans-title">Which clan calls to you?</h2></div><p>Three personalities. One table.</p></div>${clanChoicesHTML(true)}</section>
     <footer class="hall-footer"><span>Forged below. Settled at the table.</span><nav class="offline-row" aria-label="Play offline"><span>Play offline:</span><button type="button" class="text-button" data-action="playMode" data-mode="bot">Bot</button><button type="button" class="text-button" data-action="playMode" data-mode="hotseat">Two players</button><button type="button" class="text-button" data-action="library">Card library</button></nav></footer>
@@ -1236,7 +1236,7 @@ function handoff(): string {
 }
 
 function battleHeaderHTML(round: number, phase: string): string {
-  return `<header class="battle-header"><span class="battle-header__brand"><a class="wordmark" href="./">Gnomehall</a><span class="battle-header__note">A quarrel in three rounds</span></span>${roundHTML(round, phase)}
+  return `<header class="battle-header"><span class="battle-header__brand"><a class="wordmark" href="./">Gnomepit</a><span class="battle-header__note">A quarrel in three rounds</span></span>${roundHTML(round, phase)}
     <button class="button button--secondary battle-intel-button" type="button" data-action="intel">Opponent & history</button></header>`;
 }
 

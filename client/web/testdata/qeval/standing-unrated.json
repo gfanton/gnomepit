@@ -3,12 +3,12 @@
     {
       "T": {
         "@type": "/gno.RefType",
-        "ID": "gno.land/r/gfanton/gnomehall/arena.Standing"
+        "ID": "gno.land/r/gfanton/gnomepit/arena.Standing"
       },
       "V": {
         "@type": "/gno.StructValue",
         "ObjectInfo": {
-          "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+          "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
           "ModTime": "0",
           "RefCount": "0",
           "LastObjectSize": "0"

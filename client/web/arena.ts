@@ -513,7 +513,7 @@ export function createArena({
   const readValue = createReader(chain);
   const keyCache = new Map<string, Promise<SessionKeys>>();
 
-  const storageKey = (name: Stored) => `gnomehall:${chainId}:${address}:${name}`;
+  const storageKey = (name: Stored) => `gnomepit:${chainId}:${address}:${name}`;
   const stored = (name: Stored) => storage.getItem(storageKey(name));
   const store = (name: Stored, value: string) => storage.setItem(storageKey(name), value);
   // A stored mode this page does not know reads as session.
@@ -616,7 +616,7 @@ export function createArena({
     const reply = replyOf(
       await signingWallet().DoContract({
         messages,
-        memo: "Gnomehall session",
+        memo: "Gnomepit session",
         gasWanted,
         gasFee: feeFor(gasWanted, found.price),
       }),

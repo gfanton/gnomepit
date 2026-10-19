@@ -65,6 +65,12 @@ test("loading, error and empty views say so", () => {
   assert.match(leaderboardHTML(ready({})), /A place waiting to be earned/);
 });
 
+test("the masthead names Gnomepit and the seal carries its initials", () => {
+  const html = leaderboardHTML(ready({}));
+  assert.match(html, /class="wordmark"[^>]*>Gnomepit</);
+  assert.match(html, /class="ranking-seal" aria-hidden="true">GP</);
+});
+
 test("only a preview carries the preview notice", () => {
   assert.match(leaderboardHTML(previewView(null)), /DESIGN PREVIEW/);
   assert.doesNotMatch(leaderboardHTML(ready({})), /DESIGN PREVIEW/);

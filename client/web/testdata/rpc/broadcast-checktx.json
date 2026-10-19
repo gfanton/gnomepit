@@ -9,7 +9,7 @@
         },
         "Data": null,
         "Events": null,
-        "Log": "--= Error =--\nData: std.UnauthorizedError{abciError:std.abciError{}}\nMsg Traces:\n    0  gno/tm2/pkg/std/errors.go:84 - signature verification failed; verify correct account, sequence, and chain-id\nStack Trace:\n    0  gno/tm2/pkg/errors/errors.go:93\n    1  gno/tm2/pkg/std/errors.go:84\n    2  gno/tm2/pkg/sdk/auth/ante.go:328\n    3  gno/gno.land/pkg/gnoland/app.go:225\n    4  gno/tm2/pkg/sdk/baseapp.go:916\n    5  gno/tm2/pkg/sdk/baseapp.go:640\n    6  gno/tm2/pkg/bft/abci/client/local_client.go:103\n    7  gno/tm2/pkg/bft/appconn/app_conn.go:115\n    8  gno/tm2/pkg/bft/mempool/clist_mempool.go:286\n    9  gno/tm2/pkg/bft/mempool/clist_mempool.go:214\n   10  gno/tm2/pkg/bft/rpc/core/mempool.go:87\n... 17 more lines elided",
+        "Log": "--= Error =--\nData: std.UnauthorizedError{abciError:std.abciError{}}\nMsg Traces:\n    0  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/std/errors.go:84 - signature verification failed; verify correct account, sequence, and chain-id\nStack Trace:\n    0  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/errors/errors.go:93\n    1  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/std/errors.go:84\n    2  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/sdk/auth/ante.go:328\n    3  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/gno.land/pkg/gnoland/app.go:225\n    4  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/sdk/baseapp.go:916\n    5  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/sdk/baseapp.go:640\n    6  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/bft/abci/client/local_client.go:103\n    7  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/bft/appconn/app_conn.go:115\n    8  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/bft/mempool/clist_mempool.go:286\n    9  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/bft/mempool/clist_mempool.go:214\n   10  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/bft/rpc/core/mempool.go:77\n... 17 more lines elided",
         "Info": ""
       },
       "GasWanted": "0",
@@ -26,7 +26,7 @@
       "GasWanted": "0",
       "GasUsed": "0"
     },
-    "hash": "PCWiYYsdUhhpq7UDWrTNAFjs6vlIPtOeincN0cWF72w=",
+    "hash": "8dKkJuIATzo3F7ZAtyFxDXSa6WEjeqcFXJK6orvPviU=",
     "height": "0"
   }
 }

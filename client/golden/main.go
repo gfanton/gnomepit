@@ -25,7 +25,7 @@ const (
 	chainID    = "dev"
 	masterKey  = "0101010101010101010101010101010101010101010101010101010101010101"
 	sessionKey = "0202020202020202020202020202020202020202020202020202020202020202"
-	arena      = "gno.land/r/gfanton/gnomehall/arena"
+	arena      = "gno.land/r/gfanton/gnomepit/arena"
 	seal       = "5e3a1f0c9b8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f"
 )
 
@@ -117,7 +117,7 @@ func run() error {
 	}{
 		{"wallet-call", txRequest{
 			ChainID: chainID, AccountNumber: 7, Sequence: 3, PrivKey: masterKey,
-			Fee: fee{GasWanted: 21_500_000, GasFee: "21500ugnot"}, Memo: "Gnomehall",
+			Fee: fee{GasWanted: 21_500_000, GasFee: "21500ugnot"}, Memo: "Gnomepit",
 			Msgs: []adenaMsg{{"/vm.m_call", callValue{
 				Caller: masterAddr, Send: "1000000ugnot", PkgPath: arena, Func: "Play",
 				Args: []string{"12", "Pick,Brace,Pick"},
@@ -162,7 +162,7 @@ func run() error {
 		out = append(out, golden{Name: r.name, Request: r.req, Tx: tx})
 	}
 
-	doc := signBytesRequest{PrivKey: masterKey, Bytes: []byte("Gnomehall at http://127.0.0.1:8080")}
+	doc := signBytesRequest{PrivKey: masterKey, Bytes: []byte("Gnomepit at http://127.0.0.1:8080")}
 	signature, err := master.Sign(doc.Bytes)
 	if err != nil {
 		return fmt.Errorf("sign-bytes: %w", err)

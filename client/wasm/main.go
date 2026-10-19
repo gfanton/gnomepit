@@ -1,6 +1,6 @@
 //go:build js && wasm
 
-// The page's engine: registers the bridge on globalThis.gnomehall and stays resident.
+// The page's engine: registers the bridge on globalThis.gnomepit and stays resident.
 package main
 
 import (
@@ -11,7 +11,7 @@ import (
 
 func main() {
 	b := bridge.New()
-	js.Global().Set("gnomehall", map[string]any{
+	js.Global().Set("gnomepit", map[string]any{
 		"load":       call(b.Load),
 		"legalDeck":  call(b.LegalDeck),
 		"legalPlans": call(b.LegalPlans),

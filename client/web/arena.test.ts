@@ -276,7 +276,7 @@ test("notify opts the wallet's address in to the arena's two triggers", async ()
   const notifier: Notifier = {
     enable: async () => ({}),
     triggers: async (target) => {
-      assert.equal(target, "gno.land/r/gfanton/gnomehall/arena");
+      assert.equal(target, "gno.land/r/gfanton/gnomepit/arena");
       return [
         { id: "0000001", event: "Turn" },
         { id: "0000002", event: "Ended" },
@@ -291,7 +291,7 @@ test("notify opts the wallet's address in to the arena's two triggers", async ()
     wallet,
     engine,
     signer,
-    realm: "gno.land/r/gfanton/gnomehall/arena",
+    realm: "gno.land/r/gfanton/gnomepit/arena",
     chainId: "dev",
     origin: "http://x",
     storage: memory(),
@@ -308,7 +308,7 @@ test("notify opts the wallet's address in to the arena's two triggers", async ()
 });
 
 test("the arena says whether it found a wallet and can send notifications", () => {
-  const realm = "gno.land/r/gfanton/gnomehall/arena";
+  const realm = "gno.land/r/gfanton/gnomepit/arena";
   const bare = createArena({
     chain: arenaChain(),
     wallet: null,
@@ -348,7 +348,7 @@ test("watch reports a match when it changes, and stops", async () => {
     wallet: null,
     engine,
     signer,
-    realm: "gno.land/r/gfanton/gnomehall/arena",
+    realm: "gno.land/r/gfanton/gnomepit/arena",
     chainId: "dev",
     origin: "http://x",
     storage: memory(),
@@ -369,7 +369,7 @@ test("watch reports a match when it changes, and stops", async () => {
   assert.equal(seen.length, count);
 });
 
-const realm = "gno.land/r/gfanton/gnomehall/arena";
+const realm = "gno.land/r/gfanton/gnomepit/arena";
 const load = (name: string): unknown =>
   JSON.parse(readFileSync(new URL(`./testdata/qeval/${name}.json`, import.meta.url), "utf8"));
 // A recorded vm/qeval_json answer.
@@ -530,7 +530,7 @@ test("a challenger on a device that has not authorized sees the match, and a box
   assert.equal(unopened.action, "move");
   assert.equal(unopened.planning, undefined);
 
-  storage.setItem(`gnomehall:dev:${player}:root`, btoa("a signature from another site"));
+  storage.setItem(`gnomepit:dev:${player}:root`, btoa("a signature from another site"));
   await assert.rejects(arena.match(matchId("1")), (err) => err instanceof ArenaError && err.type === "unauthorized");
 });
 
@@ -599,7 +599,7 @@ test("a player's session locks read as typed locks, and an answer of another sha
 test("a stored mode the page does not know reads as session", async () => {
   const player = address("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5");
   const storage = memory();
-  storage.setItem(`gnomehall:dev:${player}:mode`, "sometimes");
+  storage.setItem(`gnomepit:dev:${player}:mode`, "sometimes");
   const arena = createArena({
     chain: arenaChain(),
     wallet: walletFor(player),
@@ -616,9 +616,9 @@ test("a stored mode the page does not know reads as session", async () => {
 test("a root signature, contract mode and its reason stored by an earlier page still read", async () => {
   const player = address("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5");
   const storage = memory();
-  storage.setItem(`gnomehall:dev:${player}:root`, btoa("sig"));
-  storage.setItem(`gnomehall:dev:${player}:mode`, "contract");
-  storage.setItem(`gnomehall:dev:${player}:fallback`, "Adena cannot create sessions");
+  storage.setItem(`gnomepit:dev:${player}:root`, btoa("sig"));
+  storage.setItem(`gnomepit:dev:${player}:mode`, "contract");
+  storage.setItem(`gnomepit:dev:${player}:fallback`, "Adena cannot create sessions");
   const arena = createArena({
     chain: arenaChain(),
     wallet: walletFor(player),
@@ -660,7 +660,7 @@ test("a challenger's opened box gives the pending clash and the deck to plan fro
     storage,
   });
   await arena.connect();
-  storage.setItem(`gnomehall:dev:${player}:root`, signature);
+  storage.setItem(`gnomepit:dev:${player}:root`, signature);
 
   const opened = await arena.match(matchId("1"));
   assert.equal(opened.action, "move");
@@ -970,7 +970,7 @@ test("an opening that cannot read a locked match sends nothing", async () => {
 });
 
 test("with every generation holding a session it may not revoke, the wallet signs each move", async () => {
-  const elsewhere = { allowPaths: ["vm/exec:gno.land/r/gfanton/gnomehall/arena_v1"] };
+  const elsewhere = { allowPaths: ["vm/exec:gno.land/r/gfanton/gnomepit/arena_v1"] };
   const chain = arenaChain({ sessions: await Promise.all([...Array(16).keys()].map((g) => sessionOf(g, elsewhere))) });
   const { arena, contracts } = sessionPlayer(chain);
   await arena.connect();
@@ -1334,7 +1334,7 @@ test("in the per-move mode, a move signs with the live session locked to its mat
     matches: { 1: revealWith(box), 2: "match-play" },
   });
   const storage = memory();
-  storage.setItem(`gnomehall:dev:${test1}:mode`, "contract");
+  storage.setItem(`gnomepit:dev:${test1}:mode`, "contract");
   const { arena, contracts, signed } = sessionPlayer(chain, { storage });
   await arena.connect();
   await arena.authorize();

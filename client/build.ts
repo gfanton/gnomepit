@@ -1,5 +1,5 @@
 // Builds the site for one network: a bundle per page, the pages' HTML and the files they fetch.
-// Run as a script, it builds dist/ for $GNOMEHALL_NETWORK, local by default.
+// Run as a script, it builds dist/ for $GNOMEPIT_NETWORK, local by default.
 
 import { realpathSync } from "node:fs";
 import { copyFile, mkdir, readdir, rm } from "node:fs/promises";
@@ -62,7 +62,7 @@ export async function build(options: BuildOptions): Promise<void> {
     entryPoints: shipped.map(({ entry }) => ({ in: join(web, entry), out: parse(entry).name })),
     outdir: options.outDir,
     minify: true,
-    define: { GNOMEHALL_NETWORK: JSON.stringify(options.network) },
+    define: { GNOMEPIT_NETWORK: JSON.stringify(options.network) },
   });
   // ceiling: names are not hashed and Pages caches each file ten minutes, so for ten minutes after a
   // deploy a visit can pair the new HTML with an old bundle; hashing names and rewriting the HTML lifts it.
@@ -75,7 +75,7 @@ export async function build(options: BuildOptions): Promise<void> {
 if (realpathSync(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
   try {
     await build({
-      network: process.env.GNOMEHALL_NETWORK ?? "local",
+      network: process.env.GNOMEPIT_NETWORK ?? "local",
       outDir: fileURLToPath(new URL("../dist/", import.meta.url)),
     });
   } catch (err) {

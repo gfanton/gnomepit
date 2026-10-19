@@ -11,7 +11,7 @@
         "Info": ""
       },
       "GasWanted": "100000000",
-      "GasUsed": "623887"
+      "GasUsed": "623908"
     },
     "deliver_tx": {
       "ResponseBase": {
@@ -22,7 +22,7 @@
             "@type": "/tm.StorageUnlockEvent",
             "bytes_delta": "-156",
             "fee_refund": "15600ugnot",
-            "pkg_path": "gno.land/r/gfanton/gnomehall/arena",
+            "pkg_path": "gno.land/r/gfanton/gnomepit/arena",
             "refund_withheld": false
           }
         ],
@@ -30,9 +30,9 @@
         "Info": ""
       },
       "GasWanted": "100000000",
-      "GasUsed": "11892663"
+      "GasUsed": "13361244"
     },
-    "hash": "fL0cw+J4cqBPpb/H/1bjj1sMWX4LjS+H059QUg8lYH0=",
+    "hash": "PEi+sExhOETu3tWZn6qBBJ9zdMegZiBQ9be6e3Wi1hE=",
     "height": "7"
   }
 }

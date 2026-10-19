@@ -5,7 +5,7 @@ import * as v from "valibot";
 
 import { createIndexer, type IndexedCall } from "./indexer.ts";
 
-const realm = "gno.land/r/gfanton/gnomehall/arena";
+const realm = "gno.land/r/gfanton/gnomepit/arena";
 const alice = "g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w";
 const url = "http://127.0.0.1:8546/graphql/query";
 

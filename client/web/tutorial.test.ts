@@ -131,7 +131,7 @@ test("the flag reads done or skipped from storage", () => {
   const storage = { getItem: (k: string) => items.get(k) ?? null, setItem: (k: string, v: string) => items.set(k, v) };
   assert.equal(tutorialMemory(storage).seen(), false);
   tutorialMemory(storage).remember("skipped");
-  assert.equal(items.get("gnomehall:tutorial"), "skipped");
+  assert.equal(items.get("gnomepit:tutorial"), "skipped");
   assert.equal(tutorialMemory(storage).seen(), true);
   assert.equal(tutorialMemory(undefined).seen(), false);
 });

@@ -1,5 +1,5 @@
 // Loads the engine's WebAssembly and wraps the JSON functions it registers as
-// globalThis.gnomehall. wasm_exec.js, loaded by the page first, defines globalThis.Go.
+// globalThis.gnomepit. wasm_exec.js, loaded by the page first, defines globalThis.Go.
 
 import * as v from "valibot";
 
@@ -9,7 +9,7 @@ declare global {
   var Go: new () => Go;
   // Each function takes one JSON request and returns one JSON reply; undefined until the
   // engine module runs.
-  var gnomehall: Record<"load" | "legalDeck" | "legalPlans" | "resolve", (json: string) => string> | undefined;
+  var gnomepit: Record<"load" | "legalDeck" | "legalPlans" | "resolve", (json: string) => string> | undefined;
 }
 
 // The schemas follow client/bridge/wire.go. Card ids index the ruleset's card list.
@@ -123,7 +123,7 @@ export async function loadEngine(wasmUrl: string, cardsUrl: string): Promise<Eng
 // the rules.
 export async function startEngine(go: Go, instance: WebAssembly.Instance, cardsText: string): Promise<Engine> {
   void go.run(instance);
-  const bridge = await untilDefined(() => globalThis.gnomehall);
+  const bridge = await untilDefined(() => globalThis.gnomepit);
 
   const call = <T>(
     name: "legalDeck" | "legalPlans" | "resolve",

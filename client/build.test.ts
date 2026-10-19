@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { build } from "./build.ts";
 
 async function tempDir(t: TestContext): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), "gnomehall-build-"));
+  const dir = await mkdtemp(join(tmpdir(), "gnomepit-build-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   return dir;
 }
@@ -27,7 +27,7 @@ test("an unknown network stops the build before it writes anything", async (t) =
   await assert.rejects(build({ network: "nowhere", outDir: out }), /unknown network "nowhere"/);
   assert.equal(await readFile(join(out, "keep.txt"), "utf8"), "kept");
   const run = spawnSync(process.execPath, [fileURLToPath(new URL("./build.ts", import.meta.url))], {
-    env: { ...process.env, GNOMEHALL_NETWORK: "nowhere" },
+    env: { ...process.env, GNOMEPIT_NETWORK: "nowhere" },
     encoding: "utf8",
   });
   assert.equal(run.status, 1);
@@ -38,7 +38,7 @@ test("run through a symlink to the checkout, the script still refuses an unknown
   const checkout = join(await tempDir(t), "checkout");
   await symlink(fileURLToPath(new URL("..", import.meta.url)), checkout);
   const run = spawnSync(process.execPath, [join(checkout, "client", "build.ts")], {
-    env: { ...process.env, GNOMEHALL_NETWORK: "nowhere" },
+    env: { ...process.env, GNOMEPIT_NETWORK: "nowhere" },
     encoding: "utf8",
   });
   assert.notEqual(run.status, 0);
@@ -69,7 +69,7 @@ test("an offline build ships the game and no dev page; a local build adds the de
   for (const page of devPages) assert.ok(existsSync(join(local, page)), page);
   for (const file of networkFiles) assert.ok(existsSync(join(local, file)), file);
   for (const out of [offline, local]) {
-    assert.doesNotMatch(await readFile(join(out, "app.js"), "utf8"), /GNOMEHALL_NETWORK/);
+    assert.doesNotMatch(await readFile(join(out, "app.js"), "utf8"), /GNOMEPIT_NETWORK/);
   }
 });
 

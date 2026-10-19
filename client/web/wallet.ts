@@ -156,7 +156,7 @@ export async function connect(
   network: { chainName?: string; rpcUrl?: string } = {},
 ): Promise<{ address: Address }> {
   if (typeof wallet?.AddEstablish !== "function") throw new WalletError("noWallet", "No Adena wallet in this browser");
-  answer(await wallet.AddEstablish("Gnomehall"), v.unknown(), ["ALREADY_CONNECTED"]);
+  answer(await wallet.AddEstablish("Gnomepit"), v.unknown(), ["ALREADY_CONNECTED"]);
   const current = answer(await wallet.GetNetwork(), NetworkSchema);
   if (current.chainId !== chainId) {
     let switched = await wallet.SwitchNetwork(chainId);
@@ -217,7 +217,7 @@ export const nonEmpty = (text: string | null | undefined): string | undefined =>
 // rootText is what the player signs once per device; it names the site, which Adena
 // also shows.
 export function rootText(origin: string): string {
-  return `Gnomehall at ${origin}\nSign once on each device to play online. This signs no transaction.`;
+  return `Gnomepit at ${origin}\nSign once on each device to play online. This signs no transaction.`;
 }
 
 // rootSignature asks the wallet to sign rootText and returns the signature in base64.
@@ -250,11 +250,11 @@ export async function deriveKeys(
     info: new TextEncoder().encode(info),
   });
   const sessionKey = toHex(
-    new Uint8Array(await crypto.subtle.deriveBits(hkdf(`gnomehall session ${generation}`), material, 256)),
+    new Uint8Array(await crypto.subtle.deriveBits(hkdf(`gnomepit session ${generation}`), material, 256)),
   );
   const { address, pubKey } = await signer.keyInfo(sessionKey);
   const boxKey = await crypto.subtle.deriveKey(
-    hkdf("gnomehall box"),
+    hkdf("gnomepit box"),
     material,
     { name: "AES-GCM", length: 256 },
     false,

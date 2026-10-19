@@ -11,7 +11,7 @@
         "Info": ""
       },
       "GasWanted": "100000000",
-      "GasUsed": "624057"
+      "GasUsed": "624078"
     },
     "deliver_tx": {
       "ResponseBase": {
@@ -21,13 +21,13 @@
         },
         "Data": "",
         "Events": null,
-        "Log": "msg:0,success:false,log:--= Error =--\nData: errors.FmtError{format:\"unknown match\", args:[]interface {}(nil)}\nMsg Traces:\n    0  gno/tm2/pkg/errors/errors.go:103 - VM panic: unknown match\nStacktrace:\npanic: unknown match\nfind at gno.land/r/gfanton/gnomehall/arena/play.gno:191\nAccept at gno.land/r/gfanton/gnomehall/arena/play.gno:17\n\n\nStack Trace:\n    0  gno/tm2/pkg/errors/errors.go:88\n    1  gno/tm2/pkg/errors/errors.go:103\n    2  gno/gno.land/pkg/sdk/vm/keeper.go:1453\n    3  gno/gno.land/pkg/sdk/vm/keeper.go:1426\n    4  /nix/store/9w6fm5c9v3lx0vxd4pqy7i8qmdfsmq7g-go-1.27.1/share/go/src/runtime/panic.go:859\n... 27 more lines elided,events:[]",
+        "Log": "msg:0,success:false,log:--= Error =--\nData: errors.FmtError{format:\"unknown match\", args:[]interface {}(nil)}\nMsg Traces:\n    0  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/errors/errors.go:103 - VM panic: unknown match\nStacktrace:\npanic: unknown match\nfind at gno.land/r/gfanton/gnomepit/arena/play.gno:198\nAccept at gno.land/r/gfanton/gnomepit/arena/play.gno:17\n\n\nStack Trace:\n    0  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/errors/errors.go:88\n    1  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/errors/errors.go:103\n    2  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/gno.land/pkg/sdk/vm/keeper.go:1453\n    3  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/gno.land/pkg/sdk/vm/keeper.go:1426\n    4  runtime/panic.go:860\n... 27 more lines elided,events:[]",
         "Info": "vm.version=develop"
       },
       "GasWanted": "100000000",
-      "GasUsed": "5952454"
+      "GasUsed": "6719914"
     },
-    "hash": "Ow6RtG5pFQ2irusAfq4dureO3Xt6Ho12Ny0tc8hMF4I=",
+    "hash": "R7vMbglV+KTxqpHa+6RcErsXUNkZVGHiZ+okla2mL4M=",
     "height": "4"
   }
 }

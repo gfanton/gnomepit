@@ -1,8 +1,8 @@
 {
-  "typeid": "gno.land/r/gfanton/gnomehall/arena.ClanStanding",
+  "typeid": "gno.land/r/gfanton/gnomepit/arena.ClanStanding",
   "type": {
     "@type": "/gno.DeclaredType",
-    "PkgPath": "gno.land/r/gfanton/gnomehall/arena",
+    "PkgPath": "gno.land/r/gfanton/gnomepit/arena",
     "Name": "ClanStanding",
     "Base": {
       "@type": "/gno.StructType",

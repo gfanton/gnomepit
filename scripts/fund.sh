@@ -5,7 +5,7 @@ set -o errexit -o nounset -o pipefail
 
 readonly TO="${1:?usage: fund.sh <address>}"
 readonly RPC="${RPC:-127.0.0.1:36657}"
-readonly CHAIN="${CHAIN:-gnomehall-dev}"
+readonly CHAIN="${CHAIN:-gnomepit-dev}"
 # gnodev premines test1 on every chain it starts; its mnemonic is public.
 readonly MNEMONIC="source bonus chronic canvas draft south burst lottery vacant surface solve popular case indicate oppose farm nothing bullet exhibit title speed wink action roast"
 

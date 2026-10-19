@@ -1,4 +1,4 @@
-// Package arena holds Gnomehall's online matches. A challenger posts a sealed deck and
+// Package arena holds Gnomepit's online matches. A challenger posts a sealed deck and
 // round-1 plan; an acceptor answers face up; the challenger reveals each round with the
 // seal of the next, and the shared duel engine checks and resolves every move. A session
 // key is bound to the match of the first call it signs: it then acts in no other match and
@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"gno.land/p/gfanton/gnomehall/engine"
+	"gno.land/p/gfanton/gnomepit/engine"
 )
 
 const (

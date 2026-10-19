@@ -1,6 +1,6 @@
-# Gnomehall
+# Gnomepit
 
-Gnomehall is a two-player card duel between gnome clans beneath a mountain. Each player builds a deck of eight special cards from a clan's pool, plans three beats per round in secret, and both plans resolve together. Play against a bot, share one screen, or play online, where the Gno realm `r/arena` holds the match and checks every move with the same engine the page runs.
+Gnomepit is a two-player card duel between gnome clans beneath a mountain. Each player builds a deck of eight special cards from a clan's pool, plans three beats per round in secret, and both plans resolve together. Play against a bot, share one screen, or play online, where the Gno realm `r/arena` holds the match and checks every move with the same engine the page runs.
 
 The page at <https://gfanton.github.io/gnomehall/> plays offline: against the bot, two players on one device, or the guided match. Online play needs the arena on a chain the page is built for; `make serve` builds the page for the local chain `make dev` runs.
 

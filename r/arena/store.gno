@@ -3,7 +3,7 @@ package arena
 import (
 	"encoding/binary"
 
-	"gno.land/p/gfanton/gnomehall/engine"
+	"gno.land/p/gfanton/gnomepit/engine"
 	"gno.land/p/nt/avl/v0"
 )
 

@@ -1,8 +1,8 @@
 {
-  "typeid": "gno.land/r/gfanton/gnomehall/arena.Standing",
+  "typeid": "gno.land/r/gfanton/gnomepit/arena.Standing",
   "type": {
     "@type": "/gno.DeclaredType",
-    "PkgPath": "gno.land/r/gfanton/gnomehall/arena",
+    "PkgPath": "gno.land/r/gfanton/gnomepit/arena",
     "Name": "Standing",
     "Base": {
       "@type": "/gno.StructType",

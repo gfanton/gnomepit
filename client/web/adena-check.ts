@@ -91,7 +91,7 @@ elementById("add-network", HTMLButtonElement).onclick = async () => {
     connection.textContent = "No Adena in this browser.";
     return;
   }
-  const added = replyOf(await wallet.AddNetwork?.({ chainId, chainName: "Gnomehall gnodev", rpcUrl: rpc }));
+  const added = replyOf(await wallet.AddNetwork?.({ chainId, chainName: "Gnomepit gnodev", rpcUrl: rpc }));
   connection.textContent = `AddNetwork: ${added?.status ?? "not offered"} ${added?.type ?? ""} ${added?.message ?? ""}`;
 };
 
@@ -155,7 +155,7 @@ check("check-contract", "contract", async () => {
 });
 
 elementById("forget", HTMLButtonElement).onclick = () => {
-  const keys = Object.keys(localStorage).filter((k) => k.startsWith(`gnomehall:${chainId}:`));
+  const keys = Object.keys(localStorage).filter((k) => k.startsWith(`gnomepit:${chainId}:`));
   for (const key of keys) localStorage.removeItem(key);
   elementById("forgotten", HTMLOutputElement).textContent =
     `Forgot ${keys.length} stored values; the next check asks Adena again.`;

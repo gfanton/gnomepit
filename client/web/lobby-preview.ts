@@ -116,7 +116,7 @@ function render(): void {
         ? "Session expires tomorrow"
         : "Session active · 6 days left";
   app.innerHTML = `<aside class="review-bar" aria-label="Prototype controls"><span><strong>Design preview</strong> · Sample data, no wallet calls</span><label>Preview state <select id="state">${states.map((s) => `<option ${s === state ? "selected" : ""}>${s}</option>`).join("")}</select></label></aside>
- <header class="masthead"><a class="wordmark" href="index.html">Gnomehall<span>UNDER THE MOUNTAIN</span></a><div class="account">${button(needsSetup ? "Connect wallet" : "g1…9k2r · Account", "setup", true)}<small>${needsSetup ? "Online play needs Adena" : sessionLabel}</small></div></header>
+ <header class="masthead"><a class="wordmark" href="index.html">Gnomepit<span>UNDER THE MOUNTAIN</span></a><div class="account">${button(needsSetup ? "Connect wallet" : "g1…9k2r · Account", "setup", true)}<small>${needsSetup ? "Online play needs Adena" : sessionLabel}</small></div></header>
  <section class="hall-banner"><img src="art/hall-hero-v2.jpg" alt=""/><div class="copy"><span class="eyebrow">THE CHALLENGE BOARD</span><h1>A rival awaits.</h1><p>Settle a grudge in three rounds. Play together tonight, or take turns over a few days. Each move has a 24-hour deadline.</p><div class="banner-actions">${button("Post a challenge", needsSetup ? "setup" : "post")}${button(state === "Notifications on" ? "Notifications on" : "Notify me", "notify", true)}</div></div></section>
  ${notice()}${needsSetup ? `<section class="notice"><div><strong>${state === "No wallet" ? "You’ll need the Adena wallet" : state === "Wrong network" ? "Switch to the game’s network" : "Connect to join the hall"}</strong><p>Browse challenges now. Connect your wallet when you’re ready to play.</p></div>${button("Set up online play", "setup")}</section>` : ""}
  <div class="lobby-columns"><section aria-labelledby="matches-title"><div class="section-head"><div><h2 id="matches-title">My matches</h2><p>${needsSetup ? "Connect to see your matches" : "One grudge needs your attention"}</p></div><span> ${needsSetup ? "" : "3 matches"}</span></div><div class="match-list">${state === "Empty hall" || needsSetup ? `<div class="empty"><h3>Your first grudge starts here.</h3><p>${needsSetup ? "Connect your wallet to find and resume matches." : "Accept a challenge or post one of your own."}</p>${button(needsSetup ? "Connect wallet" : "Post a challenge", needsSetup ? "setup" : "post")}</div>` : match("Your move", 2, "18h 42m left", "turn", true) + match("Waiting for Ironhide", 1, "22h 16m left", "wait") + `<article class="match"><div class="match-top"><span class="status">Awaiting a rival</span><small>Pickers</small></div><p>Your challenge · Anyone can accept</p><div class="match-bottom"><small>Expires in 5 days</small>${button("Manage challenge", "manage", true)}</div></article>`}</div></section>
@@ -164,7 +164,7 @@ async function onClick(e: MouseEvent): Promise<void> {
   if (a === "setup" && !needsConnection() && state !== "Session expiring") {
     dialog(
       "Your account",
-      `<p>Connected as g1…9k2r.</p><p>${state === "Session expiring" ? "Session expires tomorrow." : "Your session is active for six more days."}</p><p>Gnomehall moves can be sent without another wallet pop-up until your session expires.</p>`,
+      `<p>Connected as g1…9k2r.</p><p>${state === "Session expiring" ? "Session expires tomorrow." : "Your session is active for six more days."}</p><p>Gnomepit moves can be sent without another wallet pop-up until your session expires.</p>`,
       button("Renew session", "renew", true),
     );
     return;
@@ -184,7 +184,7 @@ async function onClick(e: MouseEvent): Promise<void> {
         ? "<p>Install the Adena browser wallet, then return here to connect.</p>"
         : wrong
           ? "<p>Your wallet is on a different network. Switch to the network used by this game to continue.</p>"
-          : '<p>Two approvals the first time. After that, send your moves without a wallet pop-up for seven days.</p><ol class="steps"><li><strong>1 · Sign once on this device</strong><p>This lets the page keep your hidden plans private and recover them on this device.</p></li><li><strong>2 · Approve a seven-day session</strong><p>The page can sign Gnomehall moves for you. Fees count toward a 10 GNOT session limit. Your wallet still approves setup and renewal.</p></li></ol>',
+          : '<p>Two approvals the first time. After that, send your moves without a wallet pop-up for seven days.</p><ol class="steps"><li><strong>1 · Sign once on this device</strong><p>This lets the page keep your hidden plans private and recover them on this device.</p></li><li><strong>2 · Approve a seven-day session</strong><p>The page can sign Gnomepit moves for you. Fees count toward a 10 GNOT session limit. Your wallet still approves setup and renewal.</p></li></ol>',
       button(
         no
           ? "Preview wallet installed"

@@ -3,12 +3,12 @@
     {
       "T": {
         "@type": "/gno.RefType",
-        "ID": "gno.land/r/gfanton/gnomehall/arena.MatchView"
+        "ID": "gno.land/r/gfanton/gnomepit/arena.MatchView"
       },
       "V": {
         "@type": "/gno.StructValue",
         "ObjectInfo": {
-          "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+          "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
           "ModTime": "0",
           "RefCount": "0",
           "LastObjectSize": "0"
@@ -17,12 +17,12 @@
           {
             "T": {
               "@type": "/gno.RefType",
-              "ID": "gno.land/r/gfanton/gnomehall/arena.MatchSummary"
+              "ID": "gno.land/r/gfanton/gnomepit/arena.MatchSummary"
             },
             "V": {
               "@type": "/gno.StructValue",
               "ObjectInfo": {
-                "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
                 "ModTime": "0",
                 "RefCount": "0",
                 "LastObjectSize": "0"
@@ -35,7 +35,7 @@
                   },
                   "V": {
                     "@type": "/gno.StringValue",
-                    "value": "1"
+                    "value": "5"
                   }
                 },
                 {
@@ -178,7 +178,7 @@
               "Base": {
                 "@type": "/gno.ArrayValue",
                 "ObjectInfo": {
-                  "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                  "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
                   "ModTime": "0",
                   "RefCount": "0",
                   "LastObjectSize": "0"
@@ -198,7 +198,7 @@
                       "Base": {
                         "@type": "/gno.ArrayValue",
                         "ObjectInfo": {
-                          "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                          "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
                           "ModTime": "0",
                           "RefCount": "0",
                           "LastObjectSize": "0"
@@ -246,7 +246,7 @@
                       "Base": {
                         "@type": "/gno.ArrayValue",
                         "ObjectInfo": {
-                          "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                          "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
                           "ModTime": "0",
                           "RefCount": "0",
                           "LastObjectSize": "0"
@@ -294,7 +294,7 @@
                       "Base": {
                         "@type": "/gno.ArrayValue",
                         "ObjectInfo": {
-                          "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                          "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
                           "ModTime": "0",
                           "RefCount": "0",
                           "LastObjectSize": "0"
@@ -364,7 +364,7 @@
               "Base": {
                 "@type": "/gno.ArrayValue",
                 "ObjectInfo": {
-                  "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                  "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
                   "ModTime": "0",
                   "RefCount": "0",
                   "LastObjectSize": "0"
@@ -384,7 +384,7 @@
                       "Base": {
                         "@type": "/gno.ArrayValue",
                         "ObjectInfo": {
-                          "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                          "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
                           "ModTime": "0",
                           "RefCount": "0",
                           "LastObjectSize": "0"
@@ -426,7 +426,7 @@
                       "Base": {
                         "@type": "/gno.ArrayValue",
                         "ObjectInfo": {
-                          "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                          "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
                           "ModTime": "0",
                           "RefCount": "0",
                           "LastObjectSize": "0"
@@ -468,7 +468,7 @@
                       "Base": {
                         "@type": "/gno.ArrayValue",
                         "ObjectInfo": {
-                          "ID": "074cb295af4e039562a7634f8278165cc79bb11f:0",
+                          "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
                           "ModTime": "0",
                           "RefCount": "0",
                           "LastObjectSize": "0"

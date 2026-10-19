@@ -1,5 +1,5 @@
 {
-  description = "Gnomehall: a card duel on gno.land";
+  description = "Gnomepit: a card duel on gno.land";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";

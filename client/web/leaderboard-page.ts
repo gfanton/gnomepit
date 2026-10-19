@@ -12,7 +12,7 @@ import * as signer from "./signer.ts";
 import { boardView, createStandings, withOwnStanding } from "./standings.ts";
 import { currentAccount } from "./wallet.ts";
 
-declare const GNOMEHALL_NETWORK: string;
+declare const GNOMEPIT_NETWORK: string;
 
 const root = elementById("leaderboard", HTMLElement);
 const render = (view: LeaderboardView): void => {
@@ -24,7 +24,7 @@ if (params.get("preview") === "1") {
   const { previewView } = await import("./leaderboard-preview.ts");
   render(previewView(params.get("state")));
 } else {
-  const built = networkFor(GNOMEHALL_NETWORK);
+  const built = networkFor(GNOMEPIT_NETWORK);
   if (built === null) throw new Error("This build has no network");
   const { chainId, rpc, realm } = networkFrom(params, built);
   const chain = createChain({ rpc });

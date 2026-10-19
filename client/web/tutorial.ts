@@ -5,7 +5,7 @@ import * as v from "valibot";
 
 import type { BattleEvent, Card, Engine } from "./engine.ts";
 
-export const tutorialKey = "gnomehall:tutorial";
+export const tutorialKey = "gnomepit:tutorial";
 
 const AnswerSchema = v.picklist(["done", "skipped"]);
 

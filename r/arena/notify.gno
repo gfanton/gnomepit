@@ -14,7 +14,7 @@ var self string
 // notifies in "to", so a browser opts in with its wallet's address.
 func init(cur realm) {
 	self = cur.PkgPath()
-	gnotif.Declare(cross(cur), self, "Turn", "", "to", "Your move in Gnomehall", "{text}", "/?match={match}")
+	gnotif.Declare(cross(cur), self, "Turn", "", "to", "Your move in Gnomepit", "{text}", "/?match={match}")
 	gnotif.Declare(cross(cur), self, "Ended", "", "to", "Match over", "{text}", "/?match={match}")
 }
 
