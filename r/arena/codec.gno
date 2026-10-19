@@ -458,9 +458,8 @@ type sessionLock struct {
 // A player's bytes are a 2-byte id count, the ids at 4 bytes each, a 1-byte standing
 // length, 0 for none, the standing, then the locks. A standing is the rating, wins, losses
 // and draws at 2 bytes each, the last clan at 1, then a 2-byte count per clan.
-// ceiling: joining a match and changing a lock decode and rewrite all of a player's ids, up to
-// 65,535, so their gas grows with the player's matches; an avl index of ids per player if some
-// play thousands.
+// ceiling: joining a match or changing a lock rewrites all of a player's ids, up to 65,535, so
+// gas grows with their matches; an avl index of ids per player if some play thousands.
 func decodePlayer(s string) playerRecord {
 	var p playerRecord
 	if s == "" {

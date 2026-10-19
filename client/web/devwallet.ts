@@ -1,6 +1,6 @@
 // A wallet for local play and scripted tests: it holds a dev key in the page and
 // answers the Adena calls the arena makes, in Adena's response shapes. make dev funds
-// every account on gnodev. The keys are public, so the dev wallet is for local chains
+// every dev account on gnodev. The keys are public, so the dev wallet is for local chains
 // only.
 
 import { type Broadcast, type Chain, messageOf, payFor } from "./chain.ts";
