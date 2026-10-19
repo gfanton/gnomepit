@@ -1,8 +1,8 @@
 /* Shared mountain architecture, with materials for each room in the hall. */
-body:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings) {
+body:where(:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings)) {
   background:
     linear-gradient(to bottom, color-mix(in srgb, var(--gh-color-canvas) 28%, transparent), var(--gh-color-canvas) 1080px),
-    url('art/mountain-hall-v2.jpg') center top / auto 1120px no-repeat,
+    url('art/mountain-hall-v2.jpg') center top / max(100%, 1680px) auto no-repeat,
     var(--gh-color-canvas);
 }
 :is(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings) {
@@ -48,7 +48,7 @@ body:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .stand
   border-top-color: color-mix(in srgb, var(--gh-color-trim) 40%, transparent);
 }
 .board[data-screen="title"] .home-clans::before {
-  content: '◆';
+  content: '◆' / '';
   position: absolute;
   top: -11px;
   left: calc(50% - 18px);
@@ -90,12 +90,13 @@ body:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .stand
 }
 .lobby .match--turn {
   border-color: var(--gh-color-accent);
+  background: linear-gradient(125deg, color-mix(in srgb, var(--gh-color-accent) 10%, var(--gh-color-surface)), var(--gh-color-canvas));
   box-shadow: inset 3px 0 var(--gh-color-accent), 0 0 22px color-mix(in srgb, var(--gh-color-flame) 7%, transparent);
 }
 .lobby .challenge {
   border-radius: 2px 5px 5px 2px;
   background: linear-gradient(120deg, var(--gh-color-text-warm), var(--gh-color-text-pale));
-  box-shadow: inset 0 0 20px color-mix(in srgb, var(--gh-color-pickers-deep) 12%, transparent), 0 5px 12px color-mix(in srgb, var(--gh-color-shadow) 35%, transparent);
+  box-shadow: inset 0 0 20px color-mix(in srgb, var(--notice-clan) 12%, transparent), 0 5px 12px color-mix(in srgb, var(--gh-color-shadow) 35%, transparent);
 }
 /* Clan alcoves: separate pools of light above grounded, dark plinths. */
 .clan-selection .section-intro { padding-block: 10px 18px; }
@@ -118,7 +119,7 @@ body:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .stand
 /* Deck workbench: a worn timber rim surrounds a quiet inset playing surface. */
 body:has(.board[data-screen="deck"][data-stage="cards"]) { background-position: center top, 55% -140px, center; }
 .board[data-screen="deck"][data-stage="cards"] .frame--acting {
-  border: 6px solid var(--gh-color-pickers-deep);
+  border: 6px solid var(--gh-color-timber);
   outline: 1px solid color-mix(in srgb, var(--gh-color-trim) 50%, transparent);
   outline-offset: -2px;
   border-radius: 5px;
@@ -178,7 +179,7 @@ body:has(.standings) { background-position: center top, 45% -80px, center; }
 .standings .clan-place { box-shadow: 0 2px 8px var(--gh-color-shadow); }
 @media (max-width: 800px) {
   .lobby .hall-banner img { opacity: .25; }
-  body:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings) { background-size: auto, auto 850px, auto; }
+  body:where(:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings)) { background-size: auto, auto 850px, auto; }
   .intro--home { min-height: 0; gap: 24px; padding-top: 4px; }
   .intro--home .intro__art { height: 280px; }
   .board:is([data-screen="title"], [data-stage="clan"]) .clan-choice__body { padding: 18px; }

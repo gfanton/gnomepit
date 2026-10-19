@@ -323,7 +323,7 @@
     },
     {
       "name": "Mountain hall",
-      "clan": "Shared",
+      "clan": "Both",
       "kind": "background",
       "master": "mountain-hall-v2.png",
       "display": "mountain-hall-v2.jpg",
