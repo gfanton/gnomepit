@@ -47,7 +47,6 @@
 .delvers-clan-hero {max-width:840px;}
 .delvers-clan-hero img {height:auto;max-height:none;}
 .delvers-gallery .card {--gh-card-height:440px;}
-.clan-choice--delvers .clan-choice__eyebrow {color:var(--gh-color-delvers-warning);}
 .delvers-gallery img[src*="open-guard-delvers-v3"],
 .delvers-gallery img[src*="cribbing-delvers-v3"],
 .delvers-gallery img[src*="deadfall-delvers-v3"] { object-position:center top; }
