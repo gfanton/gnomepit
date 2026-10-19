@@ -58,6 +58,8 @@ test("an offline build ships the game and no dev page; a local build adds the de
     "art/assets.json",
     "art/delvers-cards-v2.json",
     "art/duel-table.jpg",
+    "art/mountain-hall-v2.jpg",
+    "hall.css",
   ]) {
     assert.ok(existsSync(join(offline, file)), file);
   }
