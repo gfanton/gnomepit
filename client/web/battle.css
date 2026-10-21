@@ -18,16 +18,17 @@
   min-width: 0;
 }
 .battle-header .wordmark {
-  font-size: 25px;
+  font-size: 28px;
 }
 .battle-header__note {
   color: var(--gh-color-text-muted);
-  font: italic 14px var(--gh-font-display);
+  font: var(--gh-type-note);
 }
 .battle-intel-button {
   justify-self: end;
   padding: 8px 13px;
-  font-size: 12px;
+  font-weight: 700;
+  font: var(--gh-type-caption);
 }
 
 /* ---- Table and fighters */
@@ -141,22 +142,21 @@
   min-width: 0;
 }
 .fighter__name h2 {
-  font: bold 25px/1.15 var(--gh-font-display);
   margin: 0;
+  font: var(--gh-type-heading);
 }
 .fighter__name .label {
-  font-size: 9px;
   color: var(--fighter-metal);
 }
 .fighter__health-label {
-  font-size: 10px;
   color: var(--gh-color-text-dim);
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  font: var(--gh-type-label);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-label);
 }
 .fighter .number {
-  font: bold 19px var(--gh-font-display);
-  font-variant-numeric: tabular-nums;
+  font: var(--gh-type-subheading);
+  font-variant-numeric: var(--gh-numerals);
 }
 .fighter .hp__bar {
   height: 9px;
@@ -167,7 +167,6 @@
   gap: 4px;
 }
 .fighter .chip {
-  font-size: 10px;
   padding: 1px 5px;
   background: color-mix(in srgb, var(--gh-color-surface) 87%, transparent);
 }
@@ -192,17 +191,16 @@
   );
 }
 .round-medallion .eyebrow {
-  font-size: 9px;
-  letter-spacing: 1.4px;
   margin: 0;
 }
 .round-medallion__number {
-  font: bold 22px/1.15 var(--gh-font-display);
   color: var(--gh-color-text-glow);
+  font: var(--gh-type-subheading);
+  font-variant-numeric: var(--gh-numerals);
 }
 .round-medallion__number small {
-  font-size: 12px;
   color: var(--gh-color-text-dim);
+  font: var(--gh-type-caption);
 }
 .round-pips {
   display: flex;
@@ -238,13 +236,9 @@
 .duel-table--playback .track-row__label {
   margin-bottom: 10px;
 }
-.track-row__label .label {
-  font-size: 9px;
-  letter-spacing: 1.4px;
-}
 .track-hint {
-  font-size: 10px;
   color: var(--gh-color-text-muted);
+  font: var(--gh-type-caption);
 }
 .plan-track {
   display: grid;
@@ -271,12 +265,13 @@
   color: var(--gh-color-text-muted);
   background: color-mix(in srgb, var(--gh-color-surface) 58%, transparent);
   box-shadow: inset 0 3px 12px color-mix(in srgb, var(--gh-color-shadow) 20%, transparent);
-  font-size: 12px;
+  font: var(--gh-type-caption);
 }
 .slot__number {
-  font: 24px var(--gh-font-display);
   color: var(--gh-color-accent-deep);
   opacity: 0.6;
+  font: var(--gh-type-subheading);
+  font-variant-numeric: var(--gh-numerals);
 }
 .track-note {
   align-self: stretch;
@@ -287,9 +282,8 @@
   border-top: 0;
   border-radius: 0 0 5px 5px;
   color: var(--gh-color-text-muted);
-  font-size: 10px;
-  line-height: 1.2;
   text-align: center;
+  font: var(--gh-type-caption);
 }
 .card-back {
   height: 66px;
@@ -369,10 +363,10 @@
   border: 1px solid transparent;
   background: color-mix(in srgb, var(--gh-color-surface) 74%, transparent);
   border-radius: 20px;
-  font-size: 10px;
   color: var(--gh-color-text-pale);
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  font: var(--gh-type-label);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-label);
 }
 .beat-marker__gem {
   width: 6px;
@@ -408,14 +402,6 @@
 .board--battle .card--track .card__cost {
   width: 27px;
   height: 27px;
-  font-size: 19px;
-}
-.board--battle .card--track .card__name {
-  font-size: 16px;
-  line-height: 1.1;
-}
-.board--battle .card--track .card__text {
-  font-size: 14px;
 }
 .board--battle .card--track .card__foot {
   min-height: 11px;
@@ -426,7 +412,6 @@
 }
 .card--track .badge {
   padding: 2px 4px;
-  font-size: 8px;
 }
 .duel-table--playback .card--track:not(.card--acting) {
   filter: brightness(0.84);
@@ -451,9 +436,8 @@
   border-radius: 2px;
   background: var(--gh-color-danger);
   color: var(--gh-color-text);
-  font-size: 16px;
-  font-weight: bold;
   transform: rotate(-8deg);
+  font: var(--gh-type-title);
 }
 .table-caption,
 .battle-event {
@@ -462,13 +446,13 @@
   text-align: center;
   max-width: 790px;
   color: var(--gh-color-text-pale);
-  font: italic 13px/1.35 var(--gh-font-display);
   display: grid;
   place-items: center;
+  font: var(--gh-type-note);
 }
 .battle-event {
-  font: 13px/1.4 var(--gh-font-body);
   color: var(--gh-color-text-warm);
+  font: var(--gh-type-caption);
 }
 .battle-controls {
   display: flex;
@@ -487,7 +471,8 @@
 .battle-controls .round-log-button {
   min-height: 32px;
   padding: 6px 12px;
-  font-size: 12px;
+  font-weight: 700;
+  font: var(--gh-type-caption);
 }
 
 /* ---- Hand: a fan of full cards; the hovered card rises and straightens */
@@ -514,11 +499,8 @@
   margin-right: auto;
   min-width: 0;
 }
-.hand-zone__title .heading {
-  font-size: 19px;
-}
 .hand-zone__title .muted {
-  font-size: 12px;
+  font: var(--gh-type-caption);
 }
 .hand-zone__hint {
   display: grid;
@@ -527,7 +509,6 @@
 }
 .hand-zone__hint .label {
   color: var(--gh-color-text-warm);
-  font-size: 10px;
 }
 .hand-zone__hint .label span {
   margin-left: 10px;
@@ -536,7 +517,7 @@
   letter-spacing: 0;
 }
 .hand-zone__hint .muted {
-  font-size: 10px;
+  font: var(--gh-type-caption);
 }
 .hand-zone__heading .button {
   min-height: 40px;
@@ -592,24 +573,16 @@
   grid-template-rows: 32px 116px 1fr 24px;
   padding: 8px;
 }
-.card--hand .card__name {
-  font-size: 16px;
-}
 .card--hand .card__text {
-  font-size: 14px;
   padding-top: 7px;
 }
 .card--hand .card__cost {
   width: 27px;
   height: 27px;
-  font-size: 19px;
 }
 .card--hand .card__foot .badge--quick,
 .card--hand .card__foot .badge--slow {
   display: inline-flex;
-}
-.card--hand .card__clan {
-  font-size: 8px;
 }
 /* Fanned cards overlap, so an unplayable one darkens instead of turning see-through. */
 .card--hand.card--dimmed {
@@ -630,10 +603,12 @@
   color: var(--gh-color-text-glow);
   border: 1px solid color-mix(in srgb, var(--gh-color-border-muted) 33%, transparent);
   border-radius: 4px;
-  font-size: 9px;
   padding: 3px 6px;
   cursor: pointer;
   opacity: 0;
+  font: var(--gh-type-tag);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-tag);
 }
 .hand-entry:hover .card-inspect,
 .hand-entry:has(:focus-visible) .card-inspect {
@@ -665,9 +640,8 @@
   flex: 1 1 0;
   min-width: 0;
   margin: 0;
-  font-size: 14px;
-  line-height: 1.4;
   color: var(--gh-color-text);
+  font: var(--gh-type-body);
 }
 .coach__words strong {
   margin-right: 4px;
@@ -675,9 +649,9 @@
   color: var(--gh-color-text-bright);
 }
 .coach__step {
-  font-size: 11px;
   color: var(--gh-color-text-muted);
   white-space: nowrap;
+  font: var(--gh-type-caption);
 }
 .card.card--coached {
   outline: 2px solid var(--gh-color-accent);
@@ -738,9 +712,8 @@
 .played-pile:hover:not(:disabled) .pile-back {
   transform: translateY(-5px);
 }
-.played-pile .label,
 .played-pile .muted {
-  font-size: 10px;
+  font: var(--gh-type-caption);
 }
 
 /* ---- Playback */
@@ -752,15 +725,12 @@
   align-items: center;
   gap: 16px;
 }
-.playback-meta .label {
-  font-size: 9px;
-}
 .speed-control {
   display: flex;
   align-items: center;
   gap: 6px;
   color: var(--gh-color-text-muted);
-  font-size: 11px;
+  font: var(--gh-type-caption);
 }
 .speed-control select {
   font: inherit;
@@ -777,8 +747,8 @@
   display: none;
 }
 .battle-finish .banner {
-  font-size: 16px;
   margin: 2px 0 7px;
+  font: var(--gh-type-title);
 }
 .combat-floats {
   position: absolute;
@@ -804,6 +774,7 @@
     1px 0 var(--gh-color-shadow),
     -1px 0 var(--gh-color-shadow);
   animation: combat-float 850ms ease-out forwards;
+  font-variant-numeric: var(--gh-numerals);
 }
 .combat-float--damage {
   color: var(--gh-color-damage);
@@ -851,6 +822,9 @@
   padding-bottom: 12px;
   margin-bottom: 20px;
 }
+.dialog-heading .heading {
+  font: var(--gh-type-heading);
+}
 .battle-drawer {
   width: 580px;
   max-width: calc(100vw - 24px);
@@ -863,12 +837,9 @@
 .battle-drawer .card-grid .card {
   width: 100%;
 }
-.battle-drawer .card__text {
-  font-size: 14px;
-}
 .battle-drawer .muted {
   margin: 0 0 12px;
-  font-size: 13px;
+  font: var(--gh-type-caption);
 }
 #round-log .log {
   max-height: none;
@@ -900,13 +871,10 @@
   height: 330px;
   grid-template-rows: 36px 154px 1fr 25px;
 }
-.card-reader .card__text {
-  font-size: 14px;
-}
 .card-reader .muted {
   margin: 0;
   text-align: center;
-  font-size: 12px;
+  font: var(--gh-type-caption);
 }
 .card-reader .button {
   width: 100%;
@@ -968,7 +936,7 @@
     gap: 18px;
   }
   .fighter__name h2 {
-    font-size: 22px;
+    font: var(--gh-type-subheading);
   }
 }
 /* Below 1001px the hand scrolls sideways instead of fanning. */
@@ -1022,11 +990,9 @@
     width: 52px;
     height: 52px;
   }
-  .fighter__name h2 {
-    font-size: 19px;
-  }
   .fighter .number {
-    font-size: 17px;
+    font: var(--gh-type-title);
+    font-variant-numeric: var(--gh-numerals);
   }
   .track-row,
   .beat-markers {
@@ -1072,7 +1038,6 @@
   .card-inspect {
     opacity: 1;
     bottom: -16px;
-    font-size: 10px;
     padding: 4px 8px;
   }
   .played-pile {
@@ -1104,10 +1069,9 @@
     min-height: 38px;
   }
   .battle-header .wordmark {
-    font-size: 23px;
+    font-size: 26px;
   }
   .battle-intel-button {
-    font-size: 10px;
     padding: 8px;
   }
   .duel-table {
@@ -1142,18 +1106,11 @@
     height: 14px;
   }
   .fighter__name h2 {
-    font-size: 15px;
     overflow-wrap: anywhere;
-  }
-  .fighter__name .label {
-    font-size: 7px;
-    letter-spacing: 0.5px;
+    font: var(--gh-type-title);
   }
   .fighter__health-label {
     display: none;
-  }
-  .fighter .number {
-    font-size: 15px;
   }
   .fighter:last-child .hp__row {
     justify-content: flex-end;
@@ -1165,7 +1122,6 @@
     min-height: 16px;
   }
   .fighter .chip {
-    font-size: 10px;
     padding: 1px 3px;
   }
   .round-medallion {
@@ -1176,10 +1132,11 @@
     display: none;
   }
   .round-medallion__number {
-    font-size: 18px;
+    font: var(--gh-type-title);
+    font-variant-numeric: var(--gh-numerals);
   }
   .round-medallion__number small {
-    font-size: 9px;
+    font: var(--gh-type-tag);
   }
   .round-pips {
     gap: 4px;
@@ -1188,24 +1145,13 @@
     width: 4px;
     height: 4px;
   }
-  .track-row__label .label {
-    font-size: 8px;
-  }
-  .track-hint {
-    font-size: 9px;
-  }
   .plan-track .slot__well {
     gap: 3px;
-    font-size: 10px;
-  }
-  .slot__number {
-    font-size: 22px;
   }
   .beat-markers {
     gap: 6px;
   }
   .beat-markers .timeline__beat {
-    font-size: 9px;
     padding: 4px 8px;
     gap: 5px;
   }
@@ -1216,12 +1162,6 @@
     padding: 10px;
     flex-wrap: wrap;
     gap: 10px;
-  }
-  .hand-zone__title .heading {
-    font-size: 18px;
-  }
-  .hand-zone__title .muted {
-    font-size: 11px;
   }
   .battle-controls .button,
   .hand-zone__heading .button {

@@ -20,8 +20,8 @@
   padding: 12px 16px;
   background: var(--gh-color-surface-raised);
   border-left: 3px solid var(--gh-color-trim);
-  font-size: 14px;
   color: var(--gh-color-text-warm);
+  font: var(--gh-type-caption);
 }
 /* Champions gallery: engraved brass trim and solid slate behind the records. */
 .standings-hero {
@@ -40,14 +40,15 @@
   box-shadow: 0 12px 30px color-mix(in srgb, var(--gh-color-shadow) 20%, transparent);
 }
 .standings-hero h1 {
-  font: normal clamp(38px, 4.7vw, 64px)/1.05 var(--gh-font-display);
   margin: 12px 0 14px;
   color: var(--gh-color-text-glow);
+  font: var(--gh-type-display);
+  letter-spacing: var(--gh-tracking-display);
 }
 .standings-hero p {
-  font-size: 16px;
   color: var(--gh-color-text-muted);
   margin: 0;
+  font: var(--gh-type-body);
 }
 .ranking-seal {
   display: grid;
@@ -62,16 +63,17 @@
   outline-offset: -7px;
   transform: rotate(-5deg);
   border-radius: 50%;
-  font: 32px var(--gh-font-display);
   color: var(--gh-color-trim-bright);
   background: radial-gradient(circle at 35% 25%, var(--gh-color-surface-raised), var(--gh-color-canvas));
   box-shadow:
     inset 0 0 18px color-mix(in srgb, var(--gh-color-shadow) 55%, transparent),
     0 6px 18px color-mix(in srgb, var(--gh-color-shadow) 40%, transparent);
+  font: 500 32px var(--gh-font-display);
 }
 .ranking-seal span {
-  font: 9px var(--gh-font-body);
-  letter-spacing: 1px;
+  font: 500 12px var(--gh-font-body);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-tag);
 }
 .own-standing {
   display: flex;
@@ -96,15 +98,14 @@
   margin-bottom: 14px;
 }
 .own-standing h2 {
-  font: 26px var(--gh-font-display);
   margin: 0;
+  font: var(--gh-type-subheading);
 }
 .own-standing p {
-  font-size: 14px;
   color: var(--gh-color-text-muted);
   max-width: 350px;
-  line-height: 1.5;
   margin: 8px 0 0;
+  font: var(--gh-type-caption);
 }
 .own-standing__numbers {
   display: flex;
@@ -114,17 +115,16 @@
 .own-standing dt,
 .stat-label {
   display: block;
-  font-size: 11px;
-  letter-spacing: 1px;
   color: var(--gh-color-text-muted);
-}
-.own-standing dt {
-  text-transform: uppercase;
+  font: var(--gh-type-label);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-label);
 }
 .own-standing dd {
   margin: 7px 0 0;
-  font: 32px var(--gh-font-display);
   color: var(--gh-color-text-bright);
+  font: var(--gh-type-heading);
+  font-variant-numeric: var(--gh-numerals);
 }
 .own-standing__record {
   padding-left: 30px;
@@ -159,38 +159,34 @@
   margin-bottom: 18px;
 }
 .standings-section-title h2 {
-  font: 29px var(--gh-font-display);
   margin: 7px 0 0;
-}
-.standings-section-title .eyebrow {
-  font-size: 10px;
-  letter-spacing: 1.3px;
+  font: var(--gh-type-heading);
 }
 .rating-label {
-  font-size: 10px;
-  letter-spacing: 1px;
   color: var(--gh-color-highlight);
   border: 1px solid var(--gh-color-border);
   padding: 8px;
   white-space: nowrap;
+  font: var(--gh-type-tag);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-tag);
 }
 .ranking-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
+  font: var(--gh-type-caption);
+  font-variant-numeric: var(--gh-numerals);
 }
 .ranking-table thead {
   background: linear-gradient(var(--gh-color-surface-raised), var(--gh-color-surface));
   color: var(--gh-color-text-muted);
 }
 .ranking-table thead th {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  font-weight: normal;
   padding: 14px 10px;
   text-align: right;
+  font: var(--gh-type-label);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-label);
 }
 .ranking-table thead th:nth-child(2),
 .ranking-table thead th:nth-child(3) {
@@ -204,7 +200,6 @@
 }
 .ranking-table tbody th {
   text-align: left;
-  font-weight: normal;
   position: relative;
 }
 .ranking-table tr:hover {
@@ -213,13 +208,14 @@
 .ranking-table .rank-number {
   text-align: center;
   width: 48px;
-  font-size: 16px;
   color: var(--gh-color-text-muted);
+  font: var(--gh-type-title);
+  font-variant-numeric: var(--gh-numerals);
 }
 .ranking-table .rank-number--medal {
   color: var(--gh-color-highlight);
-  font-family: var(--gh-font-display);
-  font-size: 23px;
+  font: var(--gh-type-subheading);
+  font-variant-numeric: var(--gh-numerals);
 }
 .ranking-table tbody tr:nth-child(2) .rank-number--medal {
   color: var(--gh-color-text-pale);
@@ -236,14 +232,14 @@
   outline-offset: -1px;
 }
 .ranking-table .elo {
-  font-weight: bold;
-  font-size: 18px;
   color: var(--gh-color-text-bright);
+  font: var(--gh-type-subheading);
+  font-variant-numeric: var(--gh-numerals);
 }
 .ranking-table .main-clan {
   text-align: left;
-  font-size: 12px;
   white-space: nowrap;
+  font: var(--gh-type-caption);
 }
 .main-clan {
   color: var(--clan-color, var(--gh-color-text-muted));
@@ -257,15 +253,15 @@
 }
 .player-identity strong {
   display: block;
-  font-size: 15px;
-  font-weight: bold;
   overflow-wrap: anywhere;
+  font-weight: 700;
+  font: var(--gh-type-body);
 }
 .player-clan {
   display: block;
   color: var(--clan-color, var(--gh-color-text-muted));
-  font-size: 12px;
   margin-top: 4px;
+  font: var(--gh-type-caption);
 }
 .ranking-table .player-clan {
   display: none;
@@ -285,38 +281,41 @@
 }
 .you-label {
   display: inline-block;
-  font-size: 9px;
-  letter-spacing: 1px;
   color: var(--gh-color-select);
   margin-left: 8px;
+  font: var(--gh-type-tag);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-tag);
 }
 .own-standing .rank-portrait {
   width: 50px;
   height: 50px;
 }
 .own-standing .player-identity strong {
-  font-size: 19px;
+  font: var(--gh-type-subheading);
 }
 .record {
   display: flex;
   align-items: center;
   gap: 18px;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
+  font: var(--gh-type-caption);
+  font-variant-numeric: var(--gh-numerals);
 }
 .record > span {
   white-space: nowrap;
 }
 .record b {
-  font-size: 16px;
   color: var(--gh-color-text);
-  font-weight: normal;
+  font: var(--gh-type-body);
+  font-variant-numeric: var(--gh-numerals);
 }
 .record abbr {
-  font-size: 11px;
   color: var(--gh-color-text-muted);
   margin-left: 3px;
   text-decoration: none;
+  font: var(--gh-type-tag);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-tag);
 }
 .ranking-table abbr {
   text-decoration: none;
@@ -352,9 +351,10 @@
   padding: 5px 9px;
   background: var(--gh-color-canvas);
   border: 1px solid var(--gh-color-trim);
-  font: 20px var(--gh-font-display);
   color: var(--gh-color-highlight);
   box-shadow: 0 2px 8px var(--gh-color-shadow);
+  font: var(--gh-type-subheading);
+  font-variant-numeric: var(--gh-numerals);
 }
 .clan-standing__body {
   padding: 17px;
@@ -368,18 +368,17 @@
   margin-bottom: 18px;
 }
 .clan-standing h3 {
-  font: 25px var(--gh-font-display);
   margin: 0;
+  font: var(--gh-type-subheading);
 }
 .clan-standing__heading > span {
   text-align: right;
 }
 .clan-standing__heading strong {
-  font-size: 21px;
-  font-weight: normal;
+  font: var(--gh-type-subheading);
+  font-variant-numeric: var(--gh-numerals);
 }
 .clan-standing__heading .stat-label {
-  font-size: 9px;
   margin-top: 3px;
 }
 .clan-standing .record {
@@ -397,15 +396,14 @@
   border-radius: 6px;
 }
 .empty-panel h3 {
-  font: 27px var(--gh-font-display);
   margin: 10px 0;
+  font: var(--gh-type-subheading);
 }
 .empty-panel p {
-  font-size: 15px;
-  line-height: 1.6;
   color: var(--gh-color-text-muted);
   max-width: 390px;
   margin: 0 0 18px;
+  font: var(--gh-type-body);
 }
 .empty-mark {
   font: 48px var(--gh-font-display);
@@ -414,9 +412,6 @@
 .clan-standings .empty-panel {
   min-height: 240px;
 }
-.clan-standings .empty-panel h3 {
-  font-size: 23px;
-}
 .loading-rule {
   width: 80px;
   height: 3px;
@@ -424,10 +419,9 @@
   animation: record-pulse 1.5s ease-in-out infinite alternate;
 }
 .rankings-note {
-  font-size: 12px;
   color: var(--gh-color-text-muted);
-  line-height: 1.7;
   margin: 18px 0;
+  font: var(--gh-type-caption);
 }
 .rankings-note span {
   display: block;
@@ -439,8 +433,8 @@
   margin-top: 36px;
   padding-top: 22px;
   border-top: 1px solid var(--gh-color-border);
-  font-size: 13px;
   color: var(--gh-color-text-muted);
+  font: var(--gh-type-caption);
 }
 @keyframes record-pulse {
   to {
@@ -498,13 +492,6 @@
   .standings {
     padding: 20px 18px;
   }
-  .standings-hero h1 {
-    font-size: 42px;
-  }
-  .standings-hero p {
-    font-size: 15px;
-    line-height: 1.5;
-  }
   .ranking-seal {
     display: none;
   }
@@ -520,24 +507,12 @@
   .own-standing__numbers {
     gap: 24px;
   }
-  .own-standing dd {
-    font-size: 25px;
-  }
   .own-standing__record {
     padding-left: 14px;
   }
   .own-standing__record .record {
     gap: 10px;
     flex-wrap: wrap;
-  }
-  .own-standing .stat-label {
-    font-size: 10px;
-  }
-  .standings-section-title h2 {
-    font-size: 27px;
-  }
-  .rating-label {
-    font-size: 9px;
   }
   .standings-layout {
     margin-top: 24px;
@@ -571,7 +546,6 @@
     grid-column: 1;
     width: auto;
     text-align: left;
-    font-size: 18px;
   }
   .ranking-table tbody th {
     grid-column: 2;
@@ -580,14 +554,14 @@
   .ranking-table .elo {
     grid-column: 3;
     grid-row: 1;
-    font-size: 22px;
   }
   .ranking-table .elo .mobile-label {
     display: block;
     color: var(--gh-color-text-muted);
-    font-size: 10px;
-    font-weight: normal;
     margin-bottom: 4px;
+    font: var(--gh-type-tag);
+    font-variant-caps: all-small-caps;
+    letter-spacing: var(--gh-tracking-tag);
   }
   .ranking-table .record-cell {
     grid-column: 2/-1;
@@ -611,9 +585,6 @@
   .player-identity {
     gap: 9px;
   }
-  .player-identity strong {
-    font-size: 14px;
-  }
   .you-label {
     margin-left: 47px;
     margin-top: 5px;
@@ -622,7 +593,8 @@
     gap: 25px;
   }
   .ranking-table .record b {
-    font-size: 14px;
+    font: var(--gh-type-caption);
+    font-variant-numeric: var(--gh-numerals);
   }
   .clan-standings {
     grid-template-columns: 1fr;
@@ -652,24 +624,15 @@
   .clan-standing__heading > span {
     text-align: right;
   }
-  .clan-standing h3 {
-    font-size: 23px;
-  }
-  .clan-standing__heading strong {
-    font-size: 19px;
-  }
   .clan-standing .record {
     gap: 10px;
   }
   .clan-standing .record b {
-    font-size: 14px;
+    font: var(--gh-type-caption);
+    font-variant-numeric: var(--gh-numerals);
   }
   .standings-footer {
     flex-direction: column;
-  }
-  .preview-notice {
-    line-height: 1.5;
-    font-size: 12px;
   }
 }
 @media (max-width: 800px) {

@@ -6,22 +6,21 @@
 .lobby h1,
 .lobby h2,
 .lobby h3 {
-  font-family: var(--gh-font-display);
+  font: var(--gh-type-heading);
 }
 .lobby h2 {
-  font-size: 25px;
   margin: 0;
 }
 .lobby h3 {
   margin: 0;
-  font-size: 20px;
+  font: var(--gh-type-subheading);
 }
 .lobby p {
   margin: 8px 0;
 }
 .lobby small {
-  font-size: 14px;
   color: var(--gh-color-text-muted);
+  font: var(--gh-type-caption);
 }
 .lobby button {
   min-height: 44px;
@@ -30,10 +29,6 @@
 .lobby input {
   font: inherit;
   min-height: 44px;
-}
-.lobby .eyebrow {
-  font-size: 14px;
-  letter-spacing: 1px;
 }
 .review-bar {
   display: flex;
@@ -105,9 +100,9 @@
   max-width: 570px;
 }
 .hall-banner h1 {
-  font-size: 42px;
-  line-height: 1.1;
   margin: 8px 0 12px;
+  font: 800 40px/1.05 var(--gh-font-display);
+  letter-spacing: var(--gh-tracking-display);
 }
 .hall-banner p {
   max-width: 440px;
@@ -197,15 +192,14 @@
 }
 .versus {
   color: var(--gh-color-text-muted);
-  font-style: italic;
+  font: var(--gh-type-note);
 }
 .opponent {
   min-width: 0;
 }
 .address {
-  font-family: var(--gh-font-body);
-  font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  font-variant-numeric: var(--gh-numerals);
 }
 .copy-address {
   min-height: 32px !important;
@@ -241,7 +235,7 @@
   align-items: flex-start;
 }
 .challenge .clan-name {
-  font: bold 21px var(--gh-font-display);
+  font: var(--gh-type-subheading);
 }
 .challenge .notice-mark {
   font-size: 30px;
@@ -301,7 +295,7 @@
 }
 .wallet-setup__after {
   color: var(--gh-color-text-muted);
-  font-size: 14px;
+  font: var(--gh-type-caption);
 }
 .dialog-head + .wallet-setup__steps {
   grid-template-columns: 1fr;
@@ -345,7 +339,7 @@
   gap: 10px;
 }
 .dialog-head h2 {
-  font: 28px var(--gh-font-display);
+  font: var(--gh-type-heading);
 }
 .steps {
   display: grid;
@@ -448,7 +442,7 @@
     display: none;
   }
   .lobby .wordmark {
-    font-size: 25px;
+    font-size: 28px;
   }
   .notice {
     align-items: flex-start;
@@ -531,7 +525,7 @@
 .lobby [data-action="onlineCopy"] {
   min-height: 32px;
   padding: 2px 5px;
-  font-size: 14px;
+  font: var(--gh-type-caption);
 }
 .lobby .notice-mark svg {
   width: 30px;

@@ -1,4 +1,78 @@
 /* Gnomepit: lantern-lit stone, copper and illustrated parchment. */
+/* Alegreya and Alegreya Sans (OFL, fonts/), subset to Latin with lining figures as the default. */
+@font-face {
+  font-family: "Alegreya";
+  src: url("fonts/alegreya.woff2") format("woff2");
+  font-weight: 400 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Alegreya";
+  src: url("fonts/alegreya-italic.woff2") format("woff2");
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Alegreya Sans";
+  src: url("fonts/alegreya-sans-500.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Alegreya Sans";
+  src: url("fonts/alegreya-sans-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+/* Fallbacks scaled to the web fonts' widths and line boxes on the game's own copy, so the swap
+   barely moves the layout. */
+@font-face {
+  font-family: "Alegreya fallback";
+  src: local("Georgia");
+  font-weight: 400 600;
+  size-adjust: 91.7%;
+  ascent-override: 110.8%;
+  descent-override: 37.6%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Alegreya fallback";
+  src: local("Georgia Bold"), local("Georgia-Bold");
+  font-weight: 700 900;
+  size-adjust: 80%;
+  ascent-override: 127%;
+  descent-override: 43.1%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Alegreya fallback";
+  src: local("Georgia Italic"), local("Georgia-Italic");
+  font-style: italic;
+  font-weight: 400;
+  size-adjust: 80.2%;
+  ascent-override: 126.7%;
+  descent-override: 43%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Alegreya Sans fallback";
+  src: local("Trebuchet MS"), local("TrebuchetMS");
+  font-weight: 400 600;
+  size-adjust: 84.3%;
+  ascent-override: 106.8%;
+  descent-override: 35.6%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Alegreya Sans fallback";
+  src: local("Trebuchet MS Bold"), local("TrebuchetMS-Bold");
+  font-weight: 700 900;
+  size-adjust: 82.1%;
+  ascent-override: 109.6%;
+  descent-override: 36.5%;
+  line-gap-override: 0%;
+}
 :root {
   color-scheme: dark;
   /* Primitives by material; the number is the colour's OKLab lightness in percent.
@@ -134,8 +208,26 @@
   --gh-color-delvers-light: var(--gh-palette-amethyst-77);
   --gh-color-delvers-deep: var(--gh-palette-plum-43);
   --gh-color-delvers-warning: var(--gh-palette-sulfur-82);
-  --gh-font-display: Georgia, "Times New Roman", serif;
-  --gh-font-body: "Trebuchet MS", system-ui, sans-serif;
+  --gh-font-display: "Alegreya", "Alegreya fallback", Georgia, serif;
+  --gh-font-body: "Alegreya Sans", "Alegreya Sans fallback", "Trebuchet MS", system-ui, sans-serif;
+  /* Type roles. The font shorthand resets font-variant, so a rule that takes a role sets its own
+     caps and numerals after it. */
+  --gh-type-display: 800 clamp(42px, 4.4vw, 64px) / 1.05 var(--gh-font-display);
+  --gh-type-heading: 800 30px / 1.15 var(--gh-font-display);
+  --gh-type-subheading: 700 22px / 1.2 var(--gh-font-display);
+  --gh-type-title: 700 17px / 1.15 var(--gh-font-display);
+  --gh-type-title-compact: 700 15px / 1.05 var(--gh-font-display);
+  --gh-type-note: italic 400 16px / 1.4 var(--gh-font-display);
+  --gh-type-body: 500 16px / 1.55 var(--gh-font-body);
+  --gh-type-rules: 500 14px / 1.35 var(--gh-font-body);
+  --gh-type-caption: 500 14px / 1.45 var(--gh-font-body);
+  --gh-type-label: 500 14px / 1.3 var(--gh-font-body);
+  --gh-type-tag: 700 12px / 1 var(--gh-font-body);
+  --gh-tracking-display: -0.01em;
+  --gh-tracking-body: 0.01em;
+  --gh-tracking-label: 0.06em;
+  --gh-tracking-tag: 0.04em;
+  --gh-numerals: lining-nums tabular-nums;
   --gh-card-width: 188px;
   --gh-card-height: 274px;
   --gh-motion-fast: 160ms;
@@ -192,7 +284,8 @@ html {
   min-height: 100%;
   background: var(--gh-color-canvas);
   color: var(--gh-color-text);
-  font: 14px/1.5 var(--gh-font-body);
+  font: var(--gh-type-body);
+  letter-spacing: var(--gh-tracking-body);
 }
 body {
   margin: 0;
@@ -232,6 +325,14 @@ img {
   display: block;
   max-width: 100%;
   image-rendering: auto;
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
 }
 svg {
   width: 28px;
@@ -281,32 +382,32 @@ dialog::backdrop {
   padding-bottom: 20px;
 }
 .wordmark {
-  font: bold 30px/1 var(--gh-font-display);
-  letter-spacing: -0.7px;
   text-decoration: none;
+  font: 800 34px/1 var(--gh-font-display);
+  letter-spacing: var(--gh-tracking-display);
 }
 .wordmark span {
   display: block;
-  font: 9px/1.4 var(--gh-font-body);
-  letter-spacing: 3px;
   margin-top: 9px;
   color: var(--gh-color-accent-deep);
+  font: 500 12px/1.4 var(--gh-font-body);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.15em;
 }
 .masthead__note {
-  font: italic 15px var(--gh-font-display);
   color: var(--gh-color-text-muted);
+  font: var(--gh-type-note);
 }
 .heading {
-  font: bold 23px/1.2 var(--gh-font-display);
   margin: 0;
+  font: var(--gh-type-subheading);
 }
 .label,
 .eyebrow {
-  font: 11px/1.4 var(--gh-font-body);
-  font-weight: 700;
-  letter-spacing: 1.3px;
-  text-transform: uppercase;
   color: var(--gh-color-text-muted);
+  font: var(--gh-type-label);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-label);
 }
 .eyebrow {
   color: var(--gh-color-accent);
@@ -314,8 +415,8 @@ dialog::backdrop {
   margin-bottom: 8px;
 }
 .number {
-  font-variant-numeric: tabular-nums;
   font-weight: 700;
+  font-variant-numeric: var(--gh-numerals);
 }
 .muted {
   color: var(--gh-color-text-muted);
@@ -324,7 +425,7 @@ dialog::backdrop {
   color: var(--gh-color-text-muted);
   max-width: 50%;
   text-align: right;
-  font-size: 13px;
+  font: var(--gh-type-caption);
 }
 .frame {
   background: linear-gradient(135deg, var(--gh-color-surface-raised), var(--gh-color-surface));
@@ -392,6 +493,7 @@ dialog::backdrop {
   transition:
     background var(--gh-motion-fast),
     transform var(--gh-motion-fast);
+  line-height: 1.2;
 }
 .button:hover:not(:disabled) {
   background: var(--gh-color-accent-hover);
@@ -427,22 +529,21 @@ dialog::backdrop {
   padding: 12px 0;
 }
 .intro h1 {
-  font: bold clamp(38px, 4.3vw, 62px)/1.04 var(--gh-font-display);
-  letter-spacing: -2px;
   margin: 16px 0 20px;
+  font: var(--gh-type-display);
+  letter-spacing: var(--gh-tracking-display);
 }
 .intro p {
   max-width: 365px;
-  font-size: 15px;
-  line-height: 1.7;
   color: var(--gh-color-text-muted);
   margin: 0 0 24px;
+  font: var(--gh-type-body);
 }
 .intro__caption {
   display: block;
-  font-size: 11px;
   color: var(--gh-color-text-dim);
   margin-top: 14px;
+  font: var(--gh-type-caption);
 }
 .intro__art {
   position: relative;
@@ -468,16 +569,17 @@ dialog::backdrop {
   bottom: 22px;
   left: 24px;
   z-index: 1;
-  font-size: 10px;
-  letter-spacing: 2px;
   color: var(--gh-color-accent);
+  font: var(--gh-type-label);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-label);
 }
 .intro__art-label span {
   display: block;
-  font: italic 18px var(--gh-font-display);
-  letter-spacing: 0;
   margin-top: 5px;
   color: var(--gh-color-text);
+  font: var(--gh-type-note);
+  letter-spacing: 0;
 }
 .showcase {
   border-top: 1px solid color-mix(in srgb, var(--gh-color-trim) 19%, transparent);
@@ -530,8 +632,7 @@ dialog::backdrop {
 .collection > summary span {
   float: right;
   color: var(--gh-color-text-muted);
-  font-weight: normal;
-  font-size: 12px;
+  font: var(--gh-type-caption);
 }
 .collection__groups {
   display: grid;
@@ -544,7 +645,7 @@ dialog::backdrop {
   display: flex;
   justify-content: space-between;
   color: var(--gh-color-text-dim);
-  font-size: 11px;
+  font: var(--gh-type-caption);
 }
 .hall-footer b {
   margin: 0 8px;
@@ -566,7 +667,7 @@ dialog::backdrop {
 .clan-banner p {
   margin: 6px 0 0;
   color: var(--gh-color-text-muted);
-  font-size: 13px;
+  font: var(--gh-type-caption);
 }
 .clan-banner .button-row {
   margin-left: auto;
@@ -622,6 +723,7 @@ dialog::backdrop {
     transform var(--gh-motion-fast),
     box-shadow var(--gh-motion-fast),
     opacity var(--gh-motion-fast);
+  letter-spacing: 0;
 }
 .card--ironhide {
   --clan-edge: var(--gh-palette-iron-66);
@@ -777,10 +879,11 @@ button.card:focus-visible {
   background: var(--card-cost);
   border: 1px solid var(--card-metal-light);
   color: var(--gh-color-text-bright);
-  font: bold 18px var(--gh-font-display);
+  font: var(--gh-type-title);
+  font-variant-numeric: var(--gh-numerals);
 }
 .card__name {
-  font: bold 15px/1.1 var(--gh-font-display);
+  font: var(--gh-type-title);
 }
 .card__art {
   border-radius: 3px;
@@ -807,12 +910,13 @@ button.card:focus-visible {
   height: 44px;
 }
 .card__art--pending span {
-  font-size: 9px;
-  letter-spacing: 0.5px;
+  font: var(--gh-type-tag);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-tag);
 }
 .card__text {
   padding: 10px 5px 4px;
-  font: 14px/1.35 var(--gh-font-body);
+  font: var(--gh-type-rules);
 }
 .card__foot {
   display: flex;
@@ -826,10 +930,10 @@ button.card:focus-visible {
   align-items: center;
   gap: 3px;
   margin-right: auto;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
   color: var(--card-label);
+  font: var(--gh-type-tag);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-tag);
 }
 .card__clan svg {
   width: 14px;
@@ -845,13 +949,13 @@ button.card:focus-visible {
   display: none;
 }
 .badge {
-  font-size: 9px;
-  line-height: 1;
   padding: 4px;
   background: var(--gh-color-badge);
   color: var(--gh-color-ink);
   border-radius: 3px;
-  font-weight: bold;
+  font: var(--gh-type-tag);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-tag);
 }
 .badge--quick {
   background: var(--gh-color-tier-quick);
@@ -907,12 +1011,13 @@ button.card:focus-visible {
   box-shadow: 0 2px 5px color-mix(in srgb, var(--gh-color-shadow) 13%, transparent);
 }
 .card--small .card__name {
-  font-size: 12px;
+  font: var(--gh-type-title-compact);
 }
 .card--small .card__cost {
   width: 21px;
   height: 21px;
-  font-size: 14px;
+  font: var(--gh-type-title-compact);
+  font-variant-numeric: var(--gh-numerals);
 }
 .card--small .card__foot {
   border: 0;
@@ -968,10 +1073,12 @@ button.card:focus-visible {
 }
 .chip {
   background: var(--gh-color-surface-raised);
-  font-size: 11px;
   border-radius: 4px;
   padding: 2px 6px;
   border: 1px solid color-mix(in srgb, var(--gh-color-border-light) 16%, transparent);
+  font: var(--gh-type-tag);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-tag);
 }
 .chip--block {
   color: var(--gh-color-block);
@@ -1018,7 +1125,7 @@ button.card:focus-visible {
   overflow-y: auto;
   display: grid;
   gap: 3px;
-  font-size: 13px;
+  font: var(--gh-type-caption);
 }
 .log--grid {
   grid-template-columns: auto 1fr;
@@ -1031,7 +1138,9 @@ button.card:focus-visible {
   padding-right: 10px;
   border-right: 1px solid var(--gh-color-border-soft);
   color: var(--gh-color-text-muted);
-  font-size: 11px;
+  font: var(--gh-type-label);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-label);
 }
 .log-text {
   width: 100%;
@@ -1075,9 +1184,9 @@ button.card:focus-visible {
   gap: 14px;
 }
 .banner {
-  font: bold 24px var(--gh-font-display);
   color: var(--gh-color-accent-hover);
   text-align: center;
+  font: var(--gh-type-subheading);
 }
 
 @media (max-width: 1050px) {
@@ -1088,7 +1197,7 @@ button.card:focus-visible {
     gap: 12px;
   }
   .card__name {
-    font-size: 13px;
+    font: var(--gh-type-title-compact);
   }
   .showcase__cards {
     gap: 14px;
@@ -1144,9 +1253,6 @@ button.card:focus-visible {
   }
   .intro {
     grid-template-columns: 1fr;
-  }
-  .intro h1 {
-    font-size: 48px;
   }
   .intro__art {
     height: 260px;

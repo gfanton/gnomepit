@@ -3,7 +3,6 @@
   display: flex;
   align-items: center;
   gap: 22px;
-  font-size: 14px;
 }
 .home-nav a,
 .home-nav button,
@@ -40,13 +39,11 @@
   object-position: center 55%;
 }
 .intro--home h1 {
-  font-size: clamp(40px, 4.1vw, 58px);
   margin: 10px 0 16px;
   color: var(--gh-color-text-bright);
   text-shadow: 0 3px 24px color-mix(in srgb, var(--gh-color-shadow) 65%, transparent);
 }
 .intro--home p {
-  font-size: 16px;
   max-width: 350px;
   margin-bottom: 22px;
 }
@@ -57,9 +54,9 @@
   flex-wrap: wrap;
 }
 .intro--home .home-play__note {
-  font-size: 14px;
   color: var(--gh-color-text-muted);
   margin: 12px 0 0;
+  font: var(--gh-type-caption);
 }
 .offline-row {
   display: flex;
@@ -71,14 +68,13 @@
   max-width: min(420px, calc(100vw - 32px));
 }
 .offer h2 {
-  font: bold 26px var(--gh-font-display);
   margin: 0 0 8px;
+  font: var(--gh-type-heading);
 }
 .offer p {
-  font-size: 15px;
-  line-height: 1.5;
   color: var(--gh-color-text-muted);
   margin: 0 0 20px;
+  font: var(--gh-type-body);
 }
 .section-intro {
   display: flex;
@@ -89,18 +85,13 @@
 }
 .section-intro h1,
 .section-intro h2 {
-  font-family: var(--gh-font-display);
-  font-size: 30px;
-  line-height: 1.15;
   margin: 8px 0 0;
+  font: var(--gh-type-heading);
 }
 .section-intro p {
-  font-size: 15px;
   color: var(--gh-color-text-muted);
   margin: 8px 0 0;
-}
-.section-intro .eyebrow {
-  font-size: 12px;
+  font: var(--gh-type-body);
 }
 .home-clans {
   position: relative;
@@ -183,17 +174,17 @@
   flex: 1;
 }
 .clan-choice__eyebrow {
-  font-size: 11px;
-  font-weight: bold;
-  letter-spacing: 0.9px;
   color: var(--gh-color-text-muted);
+  font: var(--gh-type-label);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-label);
 }
 .clan-choice__name {
   display: flex;
   align-items: center;
   gap: 9px;
-  font: bold 29px/1.1 var(--gh-font-display);
   margin: 10px 0;
+  font: var(--gh-type-heading);
 }
 .clan-choice__name svg {
   color: var(--clan-color);
@@ -201,24 +192,23 @@
   height: 26px;
 }
 .clan-choice p {
-  font-size: 15px;
-  line-height: 1.55;
   color: var(--gh-color-text-muted);
   margin: 0 0 18px;
+  font: var(--gh-type-body);
 }
 .clan-choice__style {
-  font-size: 14px;
   color: var(--gh-color-text);
   margin-top: auto;
+  font: var(--gh-type-caption);
 }
 .clan-choice__cta {
   display: block;
-  font-weight: bold;
-  font-size: 14px;
   color: var(--gh-color-text-warm);
   border-top: 1px solid var(--gh-color-border);
   padding-top: 14px;
   margin-top: 16px;
+  font-weight: 700;
+  font: var(--gh-type-body);
 }
 .clan-choice:disabled .clan-choice__cta {
   color: var(--gh-color-text-muted);
@@ -249,7 +239,6 @@
   background: color-mix(in srgb, var(--gh-color-canvas) 92%, transparent);
   box-shadow: inset 0 1px color-mix(in srgb, var(--gh-color-trim) 10%, transparent);
   color: var(--gh-color-text-muted);
-  font-size: 14px;
 }
 .setup-steps [aria-current] {
   color: var(--gh-color-highlight);
@@ -260,13 +249,13 @@
   padding-block: 10px 18px;
 }
 .clan-selection__note {
-  font-size: 14px;
   color: var(--gh-color-text-muted);
   margin: 24px 0;
+  font: var(--gh-type-caption);
 }
 .hall-footer {
   align-items: center;
-  font-size: 14px;
+  font: var(--gh-type-caption);
 }
 @media (max-width: 800px) {
   .clan-choices {
@@ -274,9 +263,6 @@
   }
   .clan-choice__body {
     padding: 18px;
-  }
-  .clan-choice__name {
-    font-size: 25px;
   }
   .intro--home {
     grid-template-columns: 1fr;
@@ -291,15 +277,8 @@
     align-items: flex-start;
   }
   .section-intro h1,
-  .section-intro h2 {
-    font-size: 27px;
-  }
   .clan-choice__eyebrow {
     letter-spacing: 0;
-    font-size: 10px;
-  }
-  .clan-choice p {
-    font-size: 14px;
   }
 }
 @media (max-width: 600px) {
@@ -315,15 +294,6 @@
   }
   .clan-selection .clan-choice__art {
     aspect-ratio: 16 / 9;
-  }
-  .clan-choice__eyebrow {
-    font-size: 12px;
-  }
-  .clan-choice__name {
-    font-size: 29px;
-  }
-  .clan-choice p {
-    font-size: 15px;
   }
   .section-intro {
     flex-direction: column;
@@ -347,9 +317,6 @@
   .hall-footer {
     flex-wrap: wrap;
     gap: 10px;
-  }
-  .intro--home h1 {
-    font-size: 46px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

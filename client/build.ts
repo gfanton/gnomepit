@@ -57,6 +57,7 @@ export async function build(options: BuildOptions): Promise<void> {
   ];
   await rm(options.outDir, { recursive: true, force: true });
   await mkdir(join(options.outDir, "art"), { recursive: true });
+  await mkdir(join(options.outDir, "fonts"), { recursive: true });
   await esbuild.build({
     ...browserBundle(),
     entryPoints: shipped.map(({ entry }) => ({ in: join(web, entry), out: parse(entry).name })),
@@ -68,7 +69,9 @@ export async function build(options: BuildOptions): Promise<void> {
   // deploy a visit can pair the new HTML with an old bundle; hashing names and rewriting the HTML lifts it.
   const css = (await readdir(web)).filter((name) => name.endsWith(".css"));
   const art = (await readdir(join(web, "art"))).filter((name) => name.endsWith(".jpg")).map((name) => `art/${name}`);
-  const files = [...shipped.map(({ html }) => html), ...css, ...staticFiles, ...art];
+  // Every file in fonts/, so each font ships with the OFL licence it must travel with.
+  const fonts = (await readdir(join(web, "fonts"))).map((name) => `fonts/${name}`);
+  const files = [...shipped.map(({ html }) => html), ...css, ...staticFiles, ...art, ...fonts];
   await Promise.all(files.map((file) => copyFile(join(web, file), join(options.outDir, file))));
 }
 

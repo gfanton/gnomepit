@@ -75,6 +75,21 @@ test("an offline build ships the game and no dev page; a local build adds the de
   }
 });
 
+test("every font a stylesheet loads ships, with its licence", async (t) => {
+  const offline = await built(t, "offline");
+  const fonts = new Set<string>();
+  for (const sheet of (await readdir(offline)).filter((name) => name.endsWith(".css"))) {
+    for (const [, font] of (await readFile(join(offline, sheet), "utf8")).matchAll(/url\(["']?(fonts\/[^"')]+)/g)) {
+      if (font !== undefined) fonts.add(font);
+    }
+  }
+  assert.ok(fonts.size > 0, "no stylesheet loads a font");
+  for (const font of fonts) assert.ok(existsSync(join(offline, font)), font);
+  for (const licence of ["fonts/OFL-Alegreya.txt", "fonts/OFL-Alegreya-Sans.txt"]) {
+    assert.ok(existsSync(join(offline, licence)), licence);
+  }
+});
+
 test("a build empties its output first, so nothing from an earlier build is published", async (t) => {
   const out = await tempDir(t);
   await writeFile(join(out, "online-dev.html"), "stale");
