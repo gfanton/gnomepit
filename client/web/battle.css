@@ -249,6 +249,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  grid-column: span var(--beats, 1);
   min-width: 0;
   gap: 4px;
 }
@@ -1203,6 +1204,265 @@
   }
   .battle-drawer {
     padding: 16px 12px;
+  }
+}
+/* Phones: the beats run down the screen, your plan beside your fighter and theirs beside theirs,
+   and a card spans as many rows as it takes beats. The rows share the height the window leaves.
+   The hand docks at the bottom as a strip of card tops, and tapping one opens the reader. */
+@media (max-width: 700px) {
+  .board.board--battle {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    padding: 10px 10px 0;
+  }
+  .board--battle > .duel-table {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    overflow-x: visible;
+  }
+  .duel-center {
+    flex: 1 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-rows: auto repeat(3, minmax(56px, 1fr)) auto;
+    gap: var(--gh-space-2);
+  }
+  .track-row,
+  .beat-markers {
+    display: grid;
+    grid-template-rows: subgrid;
+    gap: normal;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+  }
+  .track-row {
+    grid-row: 1 / 5;
+  }
+  .track-row--yours {
+    grid-column: 1;
+  }
+  .track-row--opponent {
+    grid-column: 3;
+  }
+  .track-row__label,
+  .duel-table--playback .track-row__label {
+    flex-wrap: wrap;
+    align-items: baseline;
+    align-content: end;
+    gap: 0 var(--gh-space-2);
+    margin: 0;
+  }
+  .track-row--opponent .track-row__label {
+    justify-content: flex-end;
+    text-align: right;
+  }
+  .track-row .plan-track {
+    grid-row: 2 / 5;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: subgrid;
+    gap: normal;
+    margin: 0;
+  }
+  .plan-track .slot {
+    grid-column: 1;
+    grid-row: span var(--beats, 1);
+    align-items: stretch;
+    min-height: 0;
+  }
+  .plan-track .slot > :first-child {
+    flex: 1 1 0;
+    width: auto;
+    height: auto;
+    min-height: 0;
+  }
+  .plan-track--hidden .card-back {
+    height: auto;
+  }
+  .track-hint,
+  .track-note,
+  .table-caption,
+  .slot__number,
+  .playback-meta > .label {
+    display: none;
+  }
+  .beat-markers {
+    grid-row: 2 / 5;
+    grid-column: 2;
+    grid-template-columns: auto;
+  }
+  .beat-markers::before {
+    inset: 0 auto 0 50%;
+    width: 1px;
+    height: auto;
+    background: linear-gradient(
+      transparent,
+      color-mix(in srgb, var(--gh-color-trim-bright) 40%, transparent) 15%,
+      color-mix(in srgb, var(--gh-color-trim-bright) 40%, transparent) 85%,
+      transparent
+    );
+  }
+  .beat-markers .timeline__beat {
+    flex-direction: column;
+    gap: var(--gh-space-1);
+    align-self: center;
+    padding: 6px 7px;
+    font: var(--gh-type-title-compact);
+    font-variant-numeric: var(--gh-numerals);
+  }
+  .beat-marker__word,
+  .hand-zone__title .muted {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .board--battle .card--track {
+    container: beat-card / size;
+    width: auto;
+    height: auto;
+    min-height: 0;
+    padding: 6px;
+    grid-template-rows: 28px minmax(0, 1fr);
+  }
+  .board--battle .card--track .card__cost {
+    width: 24px;
+    height: 24px;
+  }
+  .board--battle .card--track .card__name {
+    font: var(--gh-type-title-compact);
+  }
+  .board--battle .card--track .card__text,
+  .board--battle .card--track .card__foot {
+    display: none;
+  }
+  .battle-event {
+    grid-column: 1 / -1;
+  }
+  .battle-controls .button,
+  .hand-zone__heading .button {
+    min-height: 44px;
+  }
+  /* Each fighter's HP follows its name, "Pickers 15 / 15", and drops below a name too long to
+     share the line. */
+  .fighter__vitals {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--gh-space-1) var(--gh-space-2);
+  }
+  .fighter:last-child .fighter__vitals {
+    justify-content: flex-end;
+  }
+  .fighter__name {
+    display: contents;
+  }
+  .fighter .hp__row {
+    order: 1;
+  }
+  .fighter__name .label,
+  .fighter .hp__bar,
+  .fighter .chips {
+    order: 2;
+    flex-basis: 100%;
+  }
+  .plan-track .card--small {
+    align-content: center;
+  }
+  /* The coach's portrait sits in the text, so the lesson keeps the screen's full width. */
+  .coach {
+    display: flow-root;
+    padding: var(--gh-space-2) var(--gh-space-3);
+  }
+  .coach__portrait {
+    float: left;
+    width: 32px;
+    height: 32px;
+    margin: 2px var(--gh-space-2) 0 0;
+  }
+  .coach__words {
+    display: inline;
+  }
+  .coach__step {
+    margin-left: var(--gh-space-2);
+  }
+  .coach > .button {
+    display: block;
+    margin: var(--gh-space-2) 0 0 auto;
+  }
+  .round-log-button {
+    white-space: nowrap;
+  }
+  [data-screen="plan"] > .hand-zone {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    margin-inline: -10px;
+    padding: 0 10px env(safe-area-inset-bottom);
+    background: var(--gh-color-canvas);
+    box-shadow: 0 -10px 18px -10px color-mix(in srgb, var(--gh-color-shadow) 60%, transparent);
+  }
+  .hand-zone__heading {
+    flex-wrap: wrap;
+    align-items: center;
+    padding: var(--gh-space-2) 4px 0;
+  }
+  .hand-zone__title {
+    flex: 1 1 auto;
+  }
+  .hand-zone__title .heading {
+    font: var(--gh-type-title);
+  }
+  .hand-zone__hint {
+    display: none;
+  }
+  .hand-layout {
+    height: 112px;
+    overflow: clip;
+    align-items: start;
+  }
+  .board--battle .battle-hand {
+    padding: var(--gh-space-3) 12px 0;
+  }
+  .hand-entry:hover,
+  .hand-entry:has(:focus-visible) {
+    transform: translateY(calc(-1 * var(--gh-space-3)));
+  }
+  .card-inspect {
+    top: 44px;
+    bottom: auto;
+  }
+  .played-pile {
+    gap: var(--gh-space-1);
+    padding-top: var(--gh-space-3);
+  }
+  .played-pile .pile-back {
+    width: 48px;
+    height: 70px;
+  }
+  .played-pile .label {
+    display: none;
+  }
+  [data-screen="playback"] > .battle-controls {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    margin-bottom: 10px;
+    background: var(--gh-color-surface);
+  }
+}
+/* A beat card too short for its art shows only its cost and name. */
+@container beat-card (height < 64px) {
+  .card__art {
+    display: none;
+  }
+  .card__head {
+    grid-row: 1 / -1;
+    align-self: center;
   }
 }
 /* Wide windows: each fighter stands beside its own track, and the board fills the window. */

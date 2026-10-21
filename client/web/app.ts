@@ -1248,7 +1248,7 @@ function roundHTML(round: number, phase: string): string {
 }
 
 function beatMarkersHTML(): string {
-  return `<div class="beat-markers">${[1, 2, 3].map((n) => `<span class="timeline__beat" id="beat-${n}"><span class="beat-marker__gem" aria-hidden="true"></span>Beat ${n}</span>`).join("")}</div>`;
+  return `<div class="beat-markers">${[1, 2, 3].map((n) => `<span class="timeline__beat" id="beat-${n}"><span class="beat-marker__gem" aria-hidden="true"></span><span><span class="beat-marker__word">Beat </span>${n}</span></span>`).join("")}</div>`;
 }
 
 function battleDialogsHTML(viewer: Side): string {
@@ -1344,7 +1344,7 @@ function slotsHTML(): string {
     const c = cardOf(engine.cards, id);
     const from = beat;
     beat += c.cost;
-    return `<div class="slot" data-plan-index="${index}" style="grid-column:span ${c.cost}">${cardHTML(c, { track: true, action: "clearFrom", data: `data-beat="${from}"` })}<span class="track-note">${c.parry > 0 ? `Guards ${c.cost === 1 ? `beat ${beat}` : `beats ${from + 1}–${beat}`}` : c.cost > 1 ? `Lands on beat ${beat}` : "Click to remove"}</span></div>`;
+    return `<div class="slot" data-plan-index="${index}" style="--beats:${c.cost}">${cardHTML(c, { track: true, action: "clearFrom", data: `data-beat="${from}"` })}<span class="track-note">${c.parry > 0 ? `Guards ${c.cost === 1 ? `beat ${beat}` : `beats ${from + 1}–${beat}`}` : c.cost > 1 ? `Lands on beat ${beat}` : "Click to remove"}</span></div>`;
   });
   const coached = coachedCard();
   const empty = Array.from(
@@ -1370,7 +1370,7 @@ function practiceTrackHTML(ids: number[]): string {
       const c = cardOf(engine.cards, id);
       const from = beat + 1;
       beat += c.cost;
-      return `<div class="slot" style="grid-column:span ${c.cost}">${cardHTML(c, { small: true })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
+      return `<div class="slot" style="--beats:${c.cost}">${cardHTML(c, { small: true })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
     })
     .join("");
 }
@@ -1406,7 +1406,7 @@ function playbackScreen(): string {
         const c = cardOf(engine.cards, id);
         const from = beat + 1;
         beat += c.cost;
-        return `<div class="slot card-reveal" style="grid-column:span ${c.cost};--reveal-delay:${index * 120}ms">${cardHTML(c, { track: true, action: "inspectCard", data: `data-side="${side}" data-index="${index}"` })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
+        return `<div class="slot card-reveal" style="--beats:${c.cost};--reveal-delay:${index * 120}ms">${cardHTML(c, { track: true, action: "inspectCard", data: `data-side="${side}" data-index="${index}"` })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
       })
       .join("")}</div></div>`;
   };
