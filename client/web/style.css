@@ -230,6 +230,12 @@
   --gh-numerals: lining-nums tabular-nums;
   --gh-card-width: 188px;
   --gh-card-height: 274px;
+  --gh-space-1: 4px;
+  --gh-space-2: 8px;
+  --gh-space-3: 12px;
+  --gh-radius-md: 8px;
+  --gh-radius-lg: 24px;
+  --gh-radius-round: 999px;
   --gh-motion-fast: 160ms;
   --gh-motion-base: 220ms;
 }

@@ -1361,7 +1361,8 @@ function trackNote(c: Card, from: number, to: number): string {
   return c.cost > 1 ? `Lands on beat ${to}` : `Beat ${to}`;
 }
 
-// practiceTrackHTML lays out the guided match opponent's plan face up.
+// practiceTrackHTML lays out the guided match opponent's plan face up, as small cards that show
+// the full card on hover or focus, so the row stays as short as the hidden backs it stands for.
 function practiceTrackHTML(ids: number[]): string {
   let beat = 0;
   return ids
@@ -1369,7 +1370,7 @@ function practiceTrackHTML(ids: number[]): string {
       const c = cardOf(engine.cards, id);
       const from = beat + 1;
       beat += c.cost;
-      return `<div class="slot" style="grid-column:span ${c.cost}">${cardHTML(c, { track: true })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
+      return `<div class="slot" style="grid-column:span ${c.cost}">${cardHTML(c, { small: true })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
     })
     .join("");
 }
