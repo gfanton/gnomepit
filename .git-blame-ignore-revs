@@ -1,2 +1,5 @@
 # Format the client's scripts with Prettier
 270a21953308f90511602491adfae70996852fcb
+
+# Format the stylesheets with Prettier
+e476468e11c7c912d2efaabf562ebab74a92bcdb
