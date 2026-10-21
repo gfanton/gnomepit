@@ -1,310 +1,1422 @@
 /* The duel: one table for planning, reveal and resolution. */
-.board.board--battle { max-width: 1280px; padding: 16px 24px 26px; gap: 10px; }
-.battle-header { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; min-height: 40px; }
-.battle-header__brand { display: flex; align-items: baseline; gap: 16px; min-width: 0; }
-.battle-header .wordmark { font-size: 25px; }
-.battle-header__note { color: var(--gh-color-text-muted); font: italic 14px var(--gh-font-display); }
-.battle-intel-button { justify-self: end; padding: 8px 13px; font-size: 12px; }
+.board.board--battle {
+  max-width: 1280px;
+  padding: 16px 24px 26px;
+  gap: 10px;
+}
+.battle-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-height: 40px;
+}
+.battle-header__brand {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  min-width: 0;
+}
+.battle-header .wordmark {
+  font-size: 25px;
+}
+.battle-header__note {
+  color: var(--gh-color-text-muted);
+  font: italic 14px var(--gh-font-display);
+}
+.battle-intel-button {
+  justify-self: end;
+  padding: 8px 13px;
+  font-size: 12px;
+}
 
 /* ---- Table and fighters */
-.duel-table { position: relative; isolation: isolate; padding: 18px 36px 10px; border: 1px solid color-mix(in srgb, var(--gh-color-trim) 33%, transparent); border-radius: 22px; background: linear-gradient(color-mix(in srgb, var(--gh-color-canvas) 72%, transparent), color-mix(in srgb, var(--gh-color-canvas) 64%, transparent) 26%, color-mix(in srgb, var(--gh-color-canvas) 61%, transparent) 70%, color-mix(in srgb, var(--gh-color-canvas) 80%, transparent)), url('art/duel-table.jpg') center / cover; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gh-color-trim-bright) 20%, transparent), inset 0 -2px 12px color-mix(in srgb, var(--gh-color-shadow) 40%, transparent), 0 14px 36px color-mix(in srgb, var(--gh-color-shadow) 27%, transparent); }
-.duel-table::before { content: ''; position: absolute; z-index: -1; top: 10px; left: 0; width: 80px; height: 100px; border-radius: 50%; background: radial-gradient(ellipse, color-mix(in srgb, var(--gh-color-flame) 16%, transparent), transparent 70%); pointer-events: none; animation: lamp-glow 5s ease-in-out infinite alternate; }
-.duel-table.duel-table--playback { padding-top: 12px; }
-.duel-fighters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: center; margin-bottom: 10px; }
-.duel-table--playback .duel-fighters { margin-bottom: 16px; }
-.fighter { --fighter-metal: var(--gh-palette-copper-66); display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 16px; align-items: center; min-width: 0; }
-.fighter--ironhide { --fighter-metal: var(--gh-palette-iron-72); }
-.fighter:last-child { grid-template-columns: minmax(0, 1fr) 88px; }
-.fighter:last-child .fighter__portrait { order: 2; }
-.fighter:last-child .fighter__vitals { order: 1; }
-.fighter:last-child .fighter__name { text-align: right; }
-.fighter__portrait { position: relative; border: 2px solid var(--fighter-metal); border-radius: 50%; padding: 4px; background: var(--gh-color-surface); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gh-color-canvas) 73%, transparent), 0 5px 15px color-mix(in srgb, var(--gh-color-shadow) 27%, transparent); }
-.fighter__portrait .sprite { display: block; height: 76px; width: 76px; border: 0; border-radius: 50%; object-fit: cover; animation: fighter-breathe 5s ease-in-out infinite alternate; }
-.fighter:last-child .sprite { animation-delay: -2.5s; }
-.fighter__crest { position: absolute; right: -3px; bottom: -6px; display: grid; place-items: center; width: 27px; height: 27px; color: var(--fighter-metal); border: 1px solid var(--fighter-metal); background: var(--gh-color-surface); border-radius: 50%; }
-.fighter__crest svg { width: 19px; height: 19px; }
-.fighter__vitals { display: grid; gap: 5px; min-width: 0; }
-.fighter__name h2 { font: bold 25px/1.15 var(--gh-font-display); margin: 0; }
-.fighter__name .label { font-size: 9px; color: var(--fighter-metal); }
-.fighter__health-label { font-size: 10px; color: var(--gh-color-text-dim); text-transform: uppercase; letter-spacing: 1px; }
-.fighter .number { font: bold 19px var(--gh-font-display); font-variant-numeric: tabular-nums; }
-.fighter .hp__bar { height: 9px; border-color: color-mix(in srgb, var(--gh-color-border-muted) 40%, transparent); }
-.fighter .chips { min-height: 18px; gap: 4px; }
-.fighter .chip { font-size: 10px; padding: 1px 5px; background: color-mix(in srgb, var(--gh-color-surface) 87%, transparent); }
-.fighter:last-child .chips { justify-content: flex-end; }
-.fighter--defeated .sprite { filter: grayscale(.9) brightness(.65); animation: none; }
-.round-medallion { display: flex; align-items: center; gap: 10px; padding: 3px 16px; border: 1px solid color-mix(in srgb, var(--gh-color-trim) 31%, transparent); border-radius: 999px; background: radial-gradient(ellipse, color-mix(in srgb, var(--gh-color-ambient-warm) 15%, transparent), transparent 75%); }
-.round-medallion .eyebrow { font-size: 9px; letter-spacing: 1.4px; margin: 0; }
-.round-medallion__number { font: bold 22px/1.15 var(--gh-font-display); color: var(--gh-color-text-glow); }
-.round-medallion__number small { font-size: 12px; color: var(--gh-color-text-dim); }
-.round-pips { display: flex; gap: 6px; }
-.round-pips > span { width: 6px; height: 6px; transform: rotate(45deg); border: 1px solid var(--gh-color-border-muted); }
-.round-pips .round-pip--current { background: var(--gh-color-accent); border-color: var(--gh-color-accent); }
-.round-pips .round-pip--done { background: var(--gh-color-done); border-color: var(--gh-color-done); }
+.duel-table {
+  position: relative;
+  isolation: isolate;
+  padding: 18px 36px 10px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim) 33%, transparent);
+  border-radius: 22px;
+  background:
+    linear-gradient(
+      color-mix(in srgb, var(--gh-color-canvas) 72%, transparent),
+      color-mix(in srgb, var(--gh-color-canvas) 64%, transparent) 26%,
+      color-mix(in srgb, var(--gh-color-canvas) 61%, transparent) 70%,
+      color-mix(in srgb, var(--gh-color-canvas) 80%, transparent)
+    ),
+    url("art/duel-table.jpg") center / cover;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--gh-color-trim-bright) 20%, transparent),
+    inset 0 -2px 12px color-mix(in srgb, var(--gh-color-shadow) 40%, transparent),
+    0 14px 36px color-mix(in srgb, var(--gh-color-shadow) 27%, transparent);
+}
+.duel-table::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 10px;
+  left: 0;
+  width: 80px;
+  height: 100px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--gh-color-flame) 16%, transparent), transparent 70%);
+  pointer-events: none;
+  animation: lamp-glow 5s ease-in-out infinite alternate;
+}
+.duel-table.duel-table--playback {
+  padding-top: 12px;
+}
+.duel-fighters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.duel-table--playback .duel-fighters {
+  margin-bottom: 16px;
+}
+.fighter {
+  --fighter-metal: var(--gh-palette-copper-66);
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  min-width: 0;
+}
+.fighter--ironhide {
+  --fighter-metal: var(--gh-palette-iron-72);
+}
+.fighter:last-child {
+  grid-template-columns: minmax(0, 1fr) 88px;
+}
+.fighter:last-child .fighter__portrait {
+  order: 2;
+}
+.fighter:last-child .fighter__vitals {
+  order: 1;
+}
+.fighter:last-child .fighter__name {
+  text-align: right;
+}
+.fighter__portrait {
+  position: relative;
+  border: 2px solid var(--fighter-metal);
+  border-radius: 50%;
+  padding: 4px;
+  background: var(--gh-color-surface);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--gh-color-canvas) 73%, transparent),
+    0 5px 15px color-mix(in srgb, var(--gh-color-shadow) 27%, transparent);
+}
+.fighter__portrait .sprite {
+  display: block;
+  height: 76px;
+  width: 76px;
+  border: 0;
+  border-radius: 50%;
+  object-fit: cover;
+  animation: fighter-breathe 5s ease-in-out infinite alternate;
+}
+.fighter:last-child .sprite {
+  animation-delay: -2.5s;
+}
+.fighter__crest {
+  position: absolute;
+  right: -3px;
+  bottom: -6px;
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  color: var(--fighter-metal);
+  border: 1px solid var(--fighter-metal);
+  background: var(--gh-color-surface);
+  border-radius: 50%;
+}
+.fighter__crest svg {
+  width: 19px;
+  height: 19px;
+}
+.fighter__vitals {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.fighter__name h2 {
+  font: bold 25px/1.15 var(--gh-font-display);
+  margin: 0;
+}
+.fighter__name .label {
+  font-size: 9px;
+  color: var(--fighter-metal);
+}
+.fighter__health-label {
+  font-size: 10px;
+  color: var(--gh-color-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.fighter .number {
+  font: bold 19px var(--gh-font-display);
+  font-variant-numeric: tabular-nums;
+}
+.fighter .hp__bar {
+  height: 9px;
+  border-color: color-mix(in srgb, var(--gh-color-border-muted) 40%, transparent);
+}
+.fighter .chips {
+  min-height: 18px;
+  gap: 4px;
+}
+.fighter .chip {
+  font-size: 10px;
+  padding: 1px 5px;
+  background: color-mix(in srgb, var(--gh-color-surface) 87%, transparent);
+}
+.fighter:last-child .chips {
+  justify-content: flex-end;
+}
+.fighter--defeated .sprite {
+  filter: grayscale(0.9) brightness(0.65);
+  animation: none;
+}
+.round-medallion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 16px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim) 31%, transparent);
+  border-radius: 999px;
+  background: radial-gradient(
+    ellipse,
+    color-mix(in srgb, var(--gh-color-ambient-warm) 15%, transparent),
+    transparent 75%
+  );
+}
+.round-medallion .eyebrow {
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  margin: 0;
+}
+.round-medallion__number {
+  font: bold 22px/1.15 var(--gh-font-display);
+  color: var(--gh-color-text-glow);
+}
+.round-medallion__number small {
+  font-size: 12px;
+  color: var(--gh-color-text-dim);
+}
+.round-pips {
+  display: flex;
+  gap: 6px;
+}
+.round-pips > span {
+  width: 6px;
+  height: 6px;
+  transform: rotate(45deg);
+  border: 1px solid var(--gh-color-border-muted);
+}
+.round-pips .round-pip--current {
+  background: var(--gh-color-accent);
+  border-color: var(--gh-color-accent);
+}
+.round-pips .round-pip--done {
+  background: var(--gh-color-done);
+  border-color: var(--gh-color-done);
+}
 
 /* ---- Tracks: full cards on the table, duration shown by the bracket below each */
-.track-row, .beat-markers { max-width: 860px; margin: 0 auto; }
-.track-row__label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-.duel-table--playback .track-row__label { margin-bottom: 10px; }
-.track-row__label .label { font-size: 9px; letter-spacing: 1.4px; }
-.track-hint { font-size: 10px; color: var(--gh-color-text-muted); }
-.plan-track { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.plan-track .slot { display: flex; flex-direction: column; align-items: center; min-width: 0; gap: 4px; }
-.plan-track .slot__well { width: 188px; height: 274px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border: 1px dashed color-mix(in srgb, var(--gh-color-border-light) 40%, transparent); border-radius: 5px; color: var(--gh-color-text-muted); background: color-mix(in srgb, var(--gh-color-surface) 58%, transparent); box-shadow: inset 0 3px 12px color-mix(in srgb, var(--gh-color-shadow) 20%, transparent); font-size: 12px; }
-.slot__number { font: 24px var(--gh-font-display); color: var(--gh-color-accent-deep); opacity: .6; }
-.track-note { align-self: stretch; min-height: 12px; margin-top: 6px; padding: 5px 2px; border: 1px solid color-mix(in srgb, var(--gh-color-trim-bright) 50%, transparent); border-top: 0; border-radius: 0 0 5px 5px; color: var(--gh-color-text-muted); font-size: 10px; line-height: 1.2; text-align: center; }
-.card-back { height: 66px; display: grid; place-items: center; border-radius: 5px; border: 1px solid color-mix(in srgb, var(--gh-color-border-muted) 34%, transparent); background: repeating-linear-gradient(45deg, var(--gh-color-canvas) 0 6px, var(--gh-color-surface) 6px 7px, var(--gh-color-canvas) 7px 13px); box-shadow: inset 0 0 0 3px var(--gh-color-canvas), inset 0 0 0 4px color-mix(in srgb, var(--gh-color-border-muted) 19%, transparent), 0 3px 7px color-mix(in srgb, var(--gh-color-shadow) 27%, transparent); }
-.card-back > span { display: grid; place-items: center; width: 39px; height: 39px; border: 1px solid color-mix(in srgb, var(--gh-color-border-muted) 33%, transparent); border-radius: 50%; color: color-mix(in srgb, var(--gh-color-text-dim) 60%, transparent); }
-.card-back--pickers > span { color: var(--gh-color-pickers-light); border-color: color-mix(in srgb, var(--gh-color-pickers) 33%, transparent); }
-.card-back--ironhide > span { color: var(--gh-color-ironhide-light); border-color: color-mix(in srgb, var(--gh-color-ironhide-dim) 33%, transparent); }
-.card-back svg { width: 25px; height: 25px; }
-.plan-track--hidden { margin-bottom: 12px; }
-.plan-track--hidden .card-back { height: 42px; }
-.plan-track--hidden .card-back > span { height: 29px; width: 29px; }
-.plan-track--hidden .card-back svg { height: 20px; width: 20px; }
-.beat-markers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; position: relative; margin-top: 12px; margin-bottom: 12px; }
-.beat-markers::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--gh-color-trim-bright) 40%, transparent) 20%, color-mix(in srgb, var(--gh-color-trim-bright) 40%, transparent) 80%, transparent); z-index: -1; }
-.beat-markers .timeline__beat { display: flex; gap: 7px; justify-content: center; align-items: center; justify-self: center; padding: 4px 12px; border: 1px solid transparent; background: color-mix(in srgb, var(--gh-color-surface) 74%, transparent); border-radius: 20px; font-size: 10px; color: var(--gh-color-text-pale); text-transform: uppercase; letter-spacing: 1px; }
-.beat-marker__gem { width: 6px; height: 6px; transform: rotate(45deg); border: 1px solid var(--gh-color-border-light); }
-.beat-markers .timeline__beat--current { color: var(--gh-color-text-glow); background: color-mix(in srgb, var(--gh-color-ambient-warm) 33%, transparent); border-color: var(--gh-color-trim); box-shadow: 0 0 12px color-mix(in srgb, var(--gh-color-accent) 13%, transparent); }
-.timeline__beat--current .beat-marker__gem { background: var(--gh-color-accent); border-color: var(--gh-color-accent); }
-.beat-markers .timeline__beat--past { opacity: .5; }
-.board--battle .card--track { width: 188px; height: 274px; min-height: 274px; min-width: 0; padding: 8px; grid-template-rows: 32px 116px 1fr 24px; gap: 0; border-width: 2px; border-radius: 9px; box-shadow: 0 9px 18px color-mix(in srgb, var(--gh-color-shadow) 47%, transparent); }
-.board--battle .card--track .card__cost { width: 27px; height: 27px; font-size: 19px; }
-.board--battle .card--track .card__name { font-size: 16px; line-height: 1.1; }
-.board--battle .card--track .card__text { font-size: 14px; }
-.board--battle .card--track .card__foot { min-height: 11px; gap: 4px; padding: 4px 0 0; border: 0; border-top: 1px solid color-mix(in srgb, var(--gh-color-rule) 33%, transparent); }
-.card--track .badge { padding: 2px 4px; font-size: 8px; }
-.duel-table--playback .card--track:not(.card--acting) { filter: brightness(.84); }
-.duel-table--playback .card--track.card--acting { outline: 2px solid var(--gh-color-highlight); outline-offset: 4px; box-shadow: 0 0 30px color-mix(in srgb, var(--gh-color-accent) 31%, transparent), 0 12px 25px color-mix(in srgb, var(--gh-color-shadow) 53%, transparent); }
-.board--battle .card--track.card--cancelled { opacity: .6; filter: grayscale(.8) brightness(.7); }
-.card--track.card--cancelled::after { content: 'Cancelled'; position: absolute; inset: 50% 8px auto; padding: 9px; border: 1px solid var(--gh-color-danger-line); border-radius: 2px; background: var(--gh-color-danger); color: var(--gh-color-text); font-size: 16px; font-weight: bold; transform: rotate(-8deg); }
-.table-caption, .battle-event { min-height: 24px; margin: 8px auto 0; text-align: center; max-width: 790px; color: var(--gh-color-text-pale); font: italic 13px/1.35 var(--gh-font-display); display: grid; place-items: center; }
-.battle-event { font: 13px/1.4 var(--gh-font-body); color: var(--gh-color-text-warm); }
-.battle-controls { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 7px 14px; border: 1px solid color-mix(in srgb, var(--gh-color-border-muted) 28%, transparent); border-radius: 7px; background: color-mix(in srgb, var(--gh-color-surface) 91%, transparent); }
-.battle-controls .button { min-height: 40px; padding: 9px 20px; }
-.battle-controls .round-log-button { min-height: 32px; padding: 6px 12px; font-size: 12px; }
+.track-row,
+.beat-markers {
+  max-width: 860px;
+  margin: 0 auto;
+}
+.track-row__label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.duel-table--playback .track-row__label {
+  margin-bottom: 10px;
+}
+.track-row__label .label {
+  font-size: 9px;
+  letter-spacing: 1.4px;
+}
+.track-hint {
+  font-size: 10px;
+  color: var(--gh-color-text-muted);
+}
+.plan-track {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.plan-track .slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  gap: 4px;
+}
+.plan-track .slot__well {
+  width: 188px;
+  height: 274px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px dashed color-mix(in srgb, var(--gh-color-border-light) 40%, transparent);
+  border-radius: 5px;
+  color: var(--gh-color-text-muted);
+  background: color-mix(in srgb, var(--gh-color-surface) 58%, transparent);
+  box-shadow: inset 0 3px 12px color-mix(in srgb, var(--gh-color-shadow) 20%, transparent);
+  font-size: 12px;
+}
+.slot__number {
+  font: 24px var(--gh-font-display);
+  color: var(--gh-color-accent-deep);
+  opacity: 0.6;
+}
+.track-note {
+  align-self: stretch;
+  min-height: 12px;
+  margin-top: 6px;
+  padding: 5px 2px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim-bright) 50%, transparent);
+  border-top: 0;
+  border-radius: 0 0 5px 5px;
+  color: var(--gh-color-text-muted);
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: center;
+}
+.card-back {
+  height: 66px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-border-muted) 34%, transparent);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--gh-color-canvas) 0 6px,
+    var(--gh-color-surface) 6px 7px,
+    var(--gh-color-canvas) 7px 13px
+  );
+  box-shadow:
+    inset 0 0 0 3px var(--gh-color-canvas),
+    inset 0 0 0 4px color-mix(in srgb, var(--gh-color-border-muted) 19%, transparent),
+    0 3px 7px color-mix(in srgb, var(--gh-color-shadow) 27%, transparent);
+}
+.card-back > span {
+  display: grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-border-muted) 33%, transparent);
+  border-radius: 50%;
+  color: color-mix(in srgb, var(--gh-color-text-dim) 60%, transparent);
+}
+.card-back--pickers > span {
+  color: var(--gh-color-pickers-light);
+  border-color: color-mix(in srgb, var(--gh-color-pickers) 33%, transparent);
+}
+.card-back--ironhide > span {
+  color: var(--gh-color-ironhide-light);
+  border-color: color-mix(in srgb, var(--gh-color-ironhide-dim) 33%, transparent);
+}
+.card-back svg {
+  width: 25px;
+  height: 25px;
+}
+.plan-track--hidden {
+  margin-bottom: 12px;
+}
+.plan-track--hidden .card-back {
+  height: 42px;
+}
+.plan-track--hidden .card-back > span {
+  height: 29px;
+  width: 29px;
+}
+.plan-track--hidden .card-back svg {
+  height: 20px;
+  width: 20px;
+}
+.beat-markers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  position: relative;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+.beat-markers::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--gh-color-trim-bright) 40%, transparent) 20%,
+    color-mix(in srgb, var(--gh-color-trim-bright) 40%, transparent) 80%,
+    transparent
+  );
+  z-index: -1;
+}
+.beat-markers .timeline__beat {
+  display: flex;
+  gap: 7px;
+  justify-content: center;
+  align-items: center;
+  justify-self: center;
+  padding: 4px 12px;
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--gh-color-surface) 74%, transparent);
+  border-radius: 20px;
+  font-size: 10px;
+  color: var(--gh-color-text-pale);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.beat-marker__gem {
+  width: 6px;
+  height: 6px;
+  transform: rotate(45deg);
+  border: 1px solid var(--gh-color-border-light);
+}
+.beat-markers .timeline__beat--current {
+  color: var(--gh-color-text-glow);
+  background: color-mix(in srgb, var(--gh-color-ambient-warm) 33%, transparent);
+  border-color: var(--gh-color-trim);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--gh-color-accent) 13%, transparent);
+}
+.timeline__beat--current .beat-marker__gem {
+  background: var(--gh-color-accent);
+  border-color: var(--gh-color-accent);
+}
+.beat-markers .timeline__beat--past {
+  opacity: 0.5;
+}
+.board--battle .card--track {
+  width: 188px;
+  height: 274px;
+  min-height: 274px;
+  min-width: 0;
+  padding: 8px;
+  grid-template-rows: 32px 116px 1fr 24px;
+  gap: 0;
+  border-width: 2px;
+  border-radius: 9px;
+  box-shadow: 0 9px 18px color-mix(in srgb, var(--gh-color-shadow) 47%, transparent);
+}
+.board--battle .card--track .card__cost {
+  width: 27px;
+  height: 27px;
+  font-size: 19px;
+}
+.board--battle .card--track .card__name {
+  font-size: 16px;
+  line-height: 1.1;
+}
+.board--battle .card--track .card__text {
+  font-size: 14px;
+}
+.board--battle .card--track .card__foot {
+  min-height: 11px;
+  gap: 4px;
+  padding: 4px 0 0;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--gh-color-rule) 33%, transparent);
+}
+.card--track .badge {
+  padding: 2px 4px;
+  font-size: 8px;
+}
+.duel-table--playback .card--track:not(.card--acting) {
+  filter: brightness(0.84);
+}
+.duel-table--playback .card--track.card--acting {
+  outline: 2px solid var(--gh-color-highlight);
+  outline-offset: 4px;
+  box-shadow:
+    0 0 30px color-mix(in srgb, var(--gh-color-accent) 31%, transparent),
+    0 12px 25px color-mix(in srgb, var(--gh-color-shadow) 53%, transparent);
+}
+.board--battle .card--track.card--cancelled {
+  opacity: 0.6;
+  filter: grayscale(0.8) brightness(0.7);
+}
+.card--track.card--cancelled::after {
+  content: "Cancelled";
+  position: absolute;
+  inset: 50% 8px auto;
+  padding: 9px;
+  border: 1px solid var(--gh-color-danger-line);
+  border-radius: 2px;
+  background: var(--gh-color-danger);
+  color: var(--gh-color-text);
+  font-size: 16px;
+  font-weight: bold;
+  transform: rotate(-8deg);
+}
+.table-caption,
+.battle-event {
+  min-height: 24px;
+  margin: 8px auto 0;
+  text-align: center;
+  max-width: 790px;
+  color: var(--gh-color-text-pale);
+  font: italic 13px/1.35 var(--gh-font-display);
+  display: grid;
+  place-items: center;
+}
+.battle-event {
+  font: 13px/1.4 var(--gh-font-body);
+  color: var(--gh-color-text-warm);
+}
+.battle-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 7px 14px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-border-muted) 28%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--gh-color-surface) 91%, transparent);
+}
+.battle-controls .button {
+  min-height: 40px;
+  padding: 9px 20px;
+}
+.battle-controls .round-log-button {
+  min-height: 32px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
 
 /* ---- Hand: a fan of full cards; the hovered card rises and straightens */
-.hand-zone { min-width: 0; background: radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--gh-color-ambient-cool) 15%, transparent), transparent 70%); }
-.hand-zone__heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 8px 12px 0; }
-.hand-zone__title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-right: auto; min-width: 0; }
-.hand-zone__title .heading { font-size: 19px; }
-.hand-zone__title .muted { font-size: 12px; }
-.hand-zone__hint { display: grid; justify-items: end; gap: 2px; }
-.hand-zone__hint .label { color: var(--gh-color-text-warm); font-size: 10px; }
-.hand-zone__hint .label span { margin-left: 10px; font-weight: normal; color: var(--gh-color-text-dim); letter-spacing: 0; }
-.hand-zone__hint .muted { font-size: 10px; }
-.hand-zone__heading .button { min-height: 40px; padding: 9px 20px; }
-.hand-layout { display: grid; grid-template-columns: minmax(0, 1fr) 128px; gap: 20px; align-items: center; }
-.board--battle .battle-hand { display: flex; flex-wrap: nowrap; align-items: flex-start; justify-content: center; gap: 0; min-width: 0; padding: 64px 24px 48px; overflow: visible; scrollbar-width: thin; scrollbar-color: var(--gh-color-border-pale) var(--gh-color-canvas); }
-.hand-entry { position: relative; flex: 0 0 188px; width: 188px; z-index: var(--hand-order); transform: translateY(var(--hand-rise)) rotate(var(--hand-tilt)); transform-origin: 50% 100%; transition: transform var(--gh-motion-fast) ease; }
+.hand-zone {
+  min-width: 0;
+  background: radial-gradient(
+    ellipse at 50% 100%,
+    color-mix(in srgb, var(--gh-color-ambient-cool) 15%, transparent),
+    transparent 70%
+  );
+}
+.hand-zone__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 8px 12px 0;
+}
+.hand-zone__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-right: auto;
+  min-width: 0;
+}
+.hand-zone__title .heading {
+  font-size: 19px;
+}
+.hand-zone__title .muted {
+  font-size: 12px;
+}
+.hand-zone__hint {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+.hand-zone__hint .label {
+  color: var(--gh-color-text-warm);
+  font-size: 10px;
+}
+.hand-zone__hint .label span {
+  margin-left: 10px;
+  font-weight: normal;
+  color: var(--gh-color-text-dim);
+  letter-spacing: 0;
+}
+.hand-zone__hint .muted {
+  font-size: 10px;
+}
+.hand-zone__heading .button {
+  min-height: 40px;
+  padding: 9px 20px;
+}
+.hand-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 128px;
+  gap: 20px;
+  align-items: center;
+}
+.board--battle .battle-hand {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  min-width: 0;
+  padding: 64px 24px 48px;
+  overflow: visible;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gh-color-border-pale) var(--gh-color-canvas);
+}
+.hand-entry {
+  position: relative;
+  flex: 0 0 188px;
+  width: 188px;
+  z-index: var(--hand-order);
+  transform: translateY(var(--hand-rise)) rotate(var(--hand-tilt));
+  transform-origin: 50% 100%;
+  transition: transform var(--gh-motion-fast) ease;
+}
 /* Leave room for rotated edges and the side pile, even with a full hand. */
-.hand-layout .hand-entry + .hand-entry { margin-left: clamp(-146px, calc((min(100vw, 1280px) - 380px - var(--hand-count) * 188px) / max(1, var(--hand-count) - 1)), -60px); }
-.hand-entry:hover, .hand-entry:has(:focus-visible) { z-index: 40; transform: translateY(-54px) rotate(0deg); }
-.hand-entry.hand-entry--resting { transform: translateY(var(--hand-rise)) rotate(var(--hand-tilt)); }
-.board.board--battle .battle-hand .card--hand, .flying-card.card--hand { width: 188px; height: 274px; grid-template-rows: 32px 116px 1fr 24px; padding: 8px; }
-.card--hand .card__name { font-size: 16px; }
-.card--hand .card__text { font-size: 14px; padding-top: 7px; }
-.card--hand .card__cost { width: 27px; height: 27px; font-size: 19px; }
-.card--hand .card__foot .badge--quick, .card--hand .card__foot .badge--slow { display: inline-flex; }
-.card--hand .card__clan { font-size: 8px; }
+.hand-layout .hand-entry + .hand-entry {
+  margin-left: clamp(
+    -146px,
+    calc((min(100vw, 1280px) - 380px - var(--hand-count) * 188px) / max(1, var(--hand-count) - 1)),
+    -60px
+  );
+}
+.hand-entry:hover,
+.hand-entry:has(:focus-visible) {
+  z-index: 40;
+  transform: translateY(-54px) rotate(0deg);
+}
+.hand-entry.hand-entry--resting {
+  transform: translateY(var(--hand-rise)) rotate(var(--hand-tilt));
+}
+.board.board--battle .battle-hand .card--hand,
+.flying-card.card--hand {
+  width: 188px;
+  height: 274px;
+  grid-template-rows: 32px 116px 1fr 24px;
+  padding: 8px;
+}
+.card--hand .card__name {
+  font-size: 16px;
+}
+.card--hand .card__text {
+  font-size: 14px;
+  padding-top: 7px;
+}
+.card--hand .card__cost {
+  width: 27px;
+  height: 27px;
+  font-size: 19px;
+}
+.card--hand .card__foot .badge--quick,
+.card--hand .card__foot .badge--slow {
+  display: inline-flex;
+}
+.card--hand .card__clan {
+  font-size: 8px;
+}
 /* Fanned cards overlap, so an unplayable one darkens instead of turning see-through. */
-.card--hand.card--dimmed { opacity: 1; filter: brightness(.5); }
-.hand-entry button.card:hover:not(:disabled), .hand-entry button.card:focus-visible { transform: none; box-shadow: 0 12px 20px color-mix(in srgb, var(--gh-color-shadow) 47%, transparent); }
-.card-inspect { position: absolute; right: 6px; bottom: -12px; z-index: 1; background: color-mix(in srgb, var(--gh-color-surface) 94%, transparent); color: var(--gh-color-text-glow); border: 1px solid color-mix(in srgb, var(--gh-color-border-muted) 33%, transparent); border-radius: 4px; font-size: 9px; padding: 3px 6px; cursor: pointer; opacity: 0; }
-.hand-entry:hover .card-inspect, .hand-entry:has(:focus-visible) .card-inspect { opacity: 1; }
+.card--hand.card--dimmed {
+  opacity: 1;
+  filter: brightness(0.5);
+}
+.hand-entry button.card:hover:not(:disabled),
+.hand-entry button.card:focus-visible {
+  transform: none;
+  box-shadow: 0 12px 20px color-mix(in srgb, var(--gh-color-shadow) 47%, transparent);
+}
+.card-inspect {
+  position: absolute;
+  right: 6px;
+  bottom: -12px;
+  z-index: 1;
+  background: color-mix(in srgb, var(--gh-color-surface) 94%, transparent);
+  color: var(--gh-color-text-glow);
+  border: 1px solid color-mix(in srgb, var(--gh-color-border-muted) 33%, transparent);
+  border-radius: 4px;
+  font-size: 9px;
+  padding: 3px 6px;
+  cursor: pointer;
+  opacity: 0;
+}
+.hand-entry:hover .card-inspect,
+.hand-entry:has(:focus-visible) .card-inspect {
+  opacity: 1;
+}
 /* The guided match's coach sits in the hand's heading row, never over the board; its marks
    style the cards themselves so they rise and fly with them. */
-.coach { display: flex; align-items: center; gap: 12px; flex: 1 1 420px; min-width: 0; margin-right: auto; padding: 8px 12px; border: 1px solid var(--gh-color-trim); border-radius: 8px; background: color-mix(in srgb, var(--gh-color-surface) 82%, transparent); }
-.coach__portrait { flex: none; width: 40px; height: 40px; border: 2px solid var(--gh-color-trim); border-radius: 50%; object-fit: cover; }
-.coach__words { flex: 1 1 0; min-width: 0; margin: 0; font-size: 14px; line-height: 1.4; color: var(--gh-color-text); }
-.coach__words strong { margin-right: 4px; font-family: var(--gh-font-display); color: var(--gh-color-text-bright); }
-.coach__step { font-size: 11px; color: var(--gh-color-text-muted); white-space: nowrap; }
-.coach__status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.card.card--coached { outline: 2px solid var(--gh-color-accent); outline-offset: 3px; box-shadow: 0 0 18px 4px color-mix(in srgb, var(--gh-color-accent) 55%, transparent); }
-.card.card--coached:focus-visible { outline-color: var(--gh-color-highlight); }
-.hand-entry button.card.card--coached:hover:not(:disabled), .hand-entry button.card.card--coached:focus-visible { box-shadow: 0 12px 20px color-mix(in srgb, var(--gh-color-shadow) 47%, transparent), 0 0 18px 4px color-mix(in srgb, var(--gh-color-accent) 55%, transparent); }
-.slot__coach { padding: 0 12px; text-align: center; font-weight: bold; color: var(--gh-color-accent); }
-.coach[hidden] { display: none; }
-.playback-controls .coach--lesson { flex-basis: 100%; }
-.flying-card { position: fixed !important; z-index: 120; margin: 0; pointer-events: none; transform-origin: center; }
-.played-pile { display: grid; justify-items: center; gap: 9px; background: transparent; border: 0; color: var(--gh-color-text-warm); padding: 10px; cursor: pointer; }
-.played-pile:disabled { opacity: .45; cursor: default; }
-.played-pile .pile-back { width: 100px; height: 145px; box-shadow: 4px 4px 0 var(--gh-color-surface-raised), 5px 5px 0 color-mix(in srgb, var(--gh-color-border-muted) 40%, transparent), 9px 9px 0 var(--gh-color-surface); transition: transform var(--gh-motion-fast); }
-.played-pile:hover:not(:disabled) .pile-back { transform: translateY(-5px); }
-.played-pile .label, .played-pile .muted { font-size: 10px; }
+.coach {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 420px;
+  min-width: 0;
+  margin-right: auto;
+  padding: 8px 12px;
+  border: 1px solid var(--gh-color-trim);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--gh-color-surface) 82%, transparent);
+}
+.coach__portrait {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--gh-color-trim);
+  border-radius: 50%;
+  object-fit: cover;
+}
+.coach__words {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--gh-color-text);
+}
+.coach__words strong {
+  margin-right: 4px;
+  font-family: var(--gh-font-display);
+  color: var(--gh-color-text-bright);
+}
+.coach__step {
+  font-size: 11px;
+  color: var(--gh-color-text-muted);
+  white-space: nowrap;
+}
+.coach__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.card.card--coached {
+  outline: 2px solid var(--gh-color-accent);
+  outline-offset: 3px;
+  box-shadow: 0 0 18px 4px color-mix(in srgb, var(--gh-color-accent) 55%, transparent);
+}
+.card.card--coached:focus-visible {
+  outline-color: var(--gh-color-highlight);
+}
+.hand-entry button.card.card--coached:hover:not(:disabled),
+.hand-entry button.card.card--coached:focus-visible {
+  box-shadow:
+    0 12px 20px color-mix(in srgb, var(--gh-color-shadow) 47%, transparent),
+    0 0 18px 4px color-mix(in srgb, var(--gh-color-accent) 55%, transparent);
+}
+.slot__coach {
+  padding: 0 12px;
+  text-align: center;
+  font-weight: bold;
+  color: var(--gh-color-accent);
+}
+.coach[hidden] {
+  display: none;
+}
+.playback-controls .coach--lesson {
+  flex-basis: 100%;
+}
+.flying-card {
+  position: fixed !important;
+  z-index: 120;
+  margin: 0;
+  pointer-events: none;
+  transform-origin: center;
+}
+.played-pile {
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  background: transparent;
+  border: 0;
+  color: var(--gh-color-text-warm);
+  padding: 10px;
+  cursor: pointer;
+}
+.played-pile:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.played-pile .pile-back {
+  width: 100px;
+  height: 145px;
+  box-shadow:
+    4px 4px 0 var(--gh-color-surface-raised),
+    5px 5px 0 color-mix(in srgb, var(--gh-color-border-muted) 40%, transparent),
+    9px 9px 0 var(--gh-color-surface);
+  transition: transform var(--gh-motion-fast);
+}
+.played-pile:hover:not(:disabled) .pile-back {
+  transform: translateY(-5px);
+}
+.played-pile .label,
+.played-pile .muted {
+  font-size: 10px;
+}
 
 /* ---- Playback */
-.playback-controls { flex-wrap: wrap; }
-.playback-meta { display: flex; align-items: center; gap: 16px; }
-.playback-meta .label { font-size: 9px; }
-.speed-control { display: flex; align-items: center; gap: 6px; color: var(--gh-color-text-muted); font-size: 11px; }
-.speed-control select { font: inherit; padding: 5px; border-radius: 4px; color: var(--gh-color-text); background: var(--gh-color-surface); border: 1px solid var(--gh-color-border-pale); }
-.battle-finish { margin-left: auto; }
-.battle-finish:empty { display: none; }
-.battle-finish .banner { font-size: 16px; margin: 2px 0 7px; }
-.combat-floats { position: absolute; top: 24%; left: 65%; width: 155px; pointer-events: none; z-index: 20; display: grid; gap: 3px; }
-.fighter:last-child .combat-floats { left: auto; right: 35%; }
-.combat-float { display: block; white-space: nowrap; font: bold 23px var(--gh-font-display); color: var(--gh-color-text-bright); text-shadow: 0 2px 3px var(--gh-color-shadow), 1px 0 var(--gh-color-shadow), -1px 0 var(--gh-color-shadow); animation: combat-float 850ms ease-out forwards; }
-.combat-float--damage { color: var(--gh-color-damage); }
-.combat-float--block { color: var(--gh-color-block-bright); font-size: 18px; }
-.combat-float--buff { color: var(--gh-color-strength-bright); font-size: 17px; }
-.combat-float--debuff { color: var(--gh-color-vulnerable-bright); font-size: 17px; }
-.card-reveal { animation: card-reveal 650ms cubic-bezier(.2,.7,.2,1) both; animation-delay: var(--reveal-delay); transform-origin: 50% 50%; backface-visibility: hidden; }
+.playback-controls {
+  flex-wrap: wrap;
+}
+.playback-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.playback-meta .label {
+  font-size: 9px;
+}
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gh-color-text-muted);
+  font-size: 11px;
+}
+.speed-control select {
+  font: inherit;
+  padding: 5px;
+  border-radius: 4px;
+  color: var(--gh-color-text);
+  background: var(--gh-color-surface);
+  border: 1px solid var(--gh-color-border-pale);
+}
+.battle-finish {
+  margin-left: auto;
+}
+.battle-finish:empty {
+  display: none;
+}
+.battle-finish .banner {
+  font-size: 16px;
+  margin: 2px 0 7px;
+}
+.combat-floats {
+  position: absolute;
+  top: 24%;
+  left: 65%;
+  width: 155px;
+  pointer-events: none;
+  z-index: 20;
+  display: grid;
+  gap: 3px;
+}
+.fighter:last-child .combat-floats {
+  left: auto;
+  right: 35%;
+}
+.combat-float {
+  display: block;
+  white-space: nowrap;
+  font: bold 23px var(--gh-font-display);
+  color: var(--gh-color-text-bright);
+  text-shadow:
+    0 2px 3px var(--gh-color-shadow),
+    1px 0 var(--gh-color-shadow),
+    -1px 0 var(--gh-color-shadow);
+  animation: combat-float 850ms ease-out forwards;
+}
+.combat-float--damage {
+  color: var(--gh-color-damage);
+}
+.combat-float--block {
+  color: var(--gh-color-block-bright);
+  font-size: 18px;
+}
+.combat-float--buff {
+  color: var(--gh-color-strength-bright);
+  font-size: 17px;
+}
+.combat-float--debuff {
+  color: var(--gh-color-vulnerable-bright);
+  font-size: 17px;
+}
+.card-reveal {
+  animation: card-reveal 650ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--reveal-delay);
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+}
 
 /* ---- Drawer and card reader */
-.dialog-close { background: transparent; border: 0; color: var(--gh-color-text); font: 26px/1 var(--gh-font-body); width: 40px; height: 40px; flex: none; cursor: pointer; border-radius: 4px; }
-.dialog-close:hover { background: var(--gh-color-surface-strong); }
-.dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid color-mix(in srgb, var(--gh-color-border-soft) 40%, transparent); padding-bottom: 12px; margin-bottom: 20px; }
-.battle-drawer, .card-reader { color: var(--gh-color-text); background: var(--gh-color-surface); border: 1px solid color-mix(in srgb, var(--gh-color-trim-bright) 53%, transparent); border-radius: 12px; padding: 20px; max-height: 90dvh; box-shadow: 0 24px 70px color-mix(in srgb, var(--gh-color-shadow) 67%, transparent); }
-.battle-drawer { width: 580px; max-width: calc(100vw - 24px); }
-.battle-drawer .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.battle-drawer .card-grid .card { width: 100%; }
-.battle-drawer .card__text { font-size: 14px; }
-.battle-drawer .muted { margin: 0 0 12px; font-size: 13px; }
-#round-log .log { max-height: none; }
-.intel-history { border-top: 1px solid color-mix(in srgb, var(--gh-color-border-soft) 40%, transparent); margin-top: 24px; padding-top: 20px; }
-.card-reader { width: 310px; max-width: calc(100vw - 24px); padding: 18px; }
-.card-reader > .dialog-close { position: absolute; right: 0; top: 0; z-index: 2; background: var(--gh-color-surface-raised); border-radius: 0 10px 0 8px; }
-.card-reader #reader-content { justify-items: center; padding-top: 22px; }
-.card-reader .card { width: 240px; height: 330px; grid-template-rows: 36px 154px 1fr 25px; }
-.card-reader .card__text { font-size: 14px; }
-.card-reader .muted { margin: 0; text-align: center; font-size: 12px; }
-.card-reader .button { width: 100%; }
-dialog::backdrop { background: color-mix(in srgb, var(--gh-color-canvas) 74%, transparent); backdrop-filter: blur(4px); }
+.dialog-close {
+  background: transparent;
+  border: 0;
+  color: var(--gh-color-text);
+  font: 26px/1 var(--gh-font-body);
+  width: 40px;
+  height: 40px;
+  flex: none;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.dialog-close:hover {
+  background: var(--gh-color-surface-strong);
+}
+.dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--gh-color-border-soft) 40%, transparent);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+}
+.battle-drawer,
+.card-reader {
+  color: var(--gh-color-text);
+  background: var(--gh-color-surface);
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim-bright) 53%, transparent);
+  border-radius: 12px;
+  padding: 20px;
+  max-height: 90dvh;
+  box-shadow: 0 24px 70px color-mix(in srgb, var(--gh-color-shadow) 67%, transparent);
+}
+.battle-drawer {
+  width: 580px;
+  max-width: calc(100vw - 24px);
+}
+.battle-drawer .card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.battle-drawer .card-grid .card {
+  width: 100%;
+}
+.battle-drawer .card__text {
+  font-size: 14px;
+}
+.battle-drawer .muted {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+#round-log .log {
+  max-height: none;
+}
+.intel-history {
+  border-top: 1px solid color-mix(in srgb, var(--gh-color-border-soft) 40%, transparent);
+  margin-top: 24px;
+  padding-top: 20px;
+}
+.card-reader {
+  width: 310px;
+  max-width: calc(100vw - 24px);
+  padding: 18px;
+}
+.card-reader > .dialog-close {
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 2;
+  background: var(--gh-color-surface-raised);
+  border-radius: 0 10px 0 8px;
+}
+.card-reader #reader-content {
+  justify-items: center;
+  padding-top: 22px;
+}
+.card-reader .card {
+  width: 240px;
+  height: 330px;
+  grid-template-rows: 36px 154px 1fr 25px;
+}
+.card-reader .card__text {
+  font-size: 14px;
+}
+.card-reader .muted {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+}
+.card-reader .button {
+  width: 100%;
+}
+dialog::backdrop {
+  background: color-mix(in srgb, var(--gh-color-canvas) 74%, transparent);
+  backdrop-filter: blur(4px);
+}
 
-@keyframes fighter-breathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-1px) scale(1.018); } }
-@keyframes lamp-glow { from { opacity: .5; } to { opacity: 1; } }
-@keyframes card-reveal { 0% { opacity: 0; transform: perspective(700px) rotateY(80deg) translateY(-5px); } 65% { opacity: 1; } 100% { opacity: 1; transform: perspective(700px) rotateY(0) translateY(0); } }
-@keyframes combat-float { 0% { opacity: 0; transform: translateY(5px) scale(.85); } 15% { opacity: 1; transform: translateY(-4px) scale(1.05); } 65% { opacity: 1; } 100% { opacity: 0; transform: translateY(-28px) scale(1); } }
+@keyframes fighter-breathe {
+  from {
+    transform: translateY(0) scale(1);
+  }
+  to {
+    transform: translateY(-1px) scale(1.018);
+  }
+}
+@keyframes lamp-glow {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes card-reveal {
+  0% {
+    opacity: 0;
+    transform: perspective(700px) rotateY(80deg) translateY(-5px);
+  }
+  65% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(700px) rotateY(0) translateY(0);
+  }
+}
+@keyframes combat-float {
+  0% {
+    opacity: 0;
+    transform: translateY(5px) scale(0.85);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.05);
+  }
+  65% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-28px) scale(1);
+  }
+}
 
 @media (max-width: 1100px) {
-  .duel-table { padding-left: 24px; padding-right: 24px; }
-  .duel-fighters { gap: 18px; }
-  .fighter__name h2 { font-size: 22px; }
+  .duel-table {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  .duel-fighters {
+    gap: 18px;
+  }
+  .fighter__name h2 {
+    font-size: 22px;
+  }
 }
 /* Below 1001px the hand scrolls sideways instead of fanning. */
 @media (max-width: 1000px) {
-  .board--battle .battle-hand { justify-content: flex-start; overflow-x: auto; overflow-y: hidden; padding: 35px 12px; }
-  .hand-entry { transform: none; }
-  .hand-layout .hand-entry + .hand-entry { margin-left: -46px; }
-  .hand-entry:hover, .hand-entry:has(:focus-visible) { transform: translateY(-14px); }
-  .hand-entry.hand-entry--resting { transform: none; }
+  .board--battle .battle-hand {
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 35px 12px;
+  }
+  .hand-entry {
+    transform: none;
+  }
+  .hand-layout .hand-entry + .hand-entry {
+    margin-left: -46px;
+  }
+  .hand-entry:hover,
+  .hand-entry:has(:focus-visible) {
+    transform: translateY(-14px);
+  }
+  .hand-entry.hand-entry--resting {
+    transform: none;
+  }
 }
 @media (max-width: 800px) {
-  .board.board--battle { padding: 12px 16px 20px; gap: 10px; }
-  .battle-header__note { display: none; }
-  .duel-table { padding: 18px 16px 10px; overflow-x: auto; }
-  .duel-fighters { gap: 14px; position: sticky; left: 0; min-width: 0; }
-  .fighter { grid-template-columns: 64px minmax(0,1fr); gap: 10px; }
-  .fighter:last-child { grid-template-columns: minmax(0,1fr) 64px; }
-  .fighter__portrait .sprite { width: 52px; height: 52px; }
-  .fighter__name h2 { font-size: 19px; }
-  .fighter .number { font-size: 17px; }
-  .track-row, .beat-markers { min-width: 620px; }
-  .plan-track { gap: 12px; }
-  .plan-track .slot__well { width: 180px; height: 268px; }
-  .board--battle .card--track { width: 180px; height: 268px; min-height: 268px; grid-template-rows: 32px 110px 1fr 24px; }
-  .table-caption, .battle-event { position: sticky; left: 0; }
-  .hand-zone__title, .coach { flex-basis: 100%; }
-  .hand-zone__hint { justify-items: start; }
-  .hand-layout { grid-template-columns: minmax(0, 1fr) 86px; gap: 6px; }
-  .board--battle .battle-hand { padding-bottom: 30px; scroll-snap-type: x proximity; }
-  .hand-entry { transform: rotate(-3deg); scroll-snap-align: start; }
-  .card-inspect { opacity: 1; bottom: -16px; font-size: 10px; padding: 4px 8px; }
-  .played-pile { padding: 5px; }
-  .played-pile .pile-back { width: 65px; height: 100px; }
-  .playback-meta { gap: 10px; }
-  .combat-float { font-size: 20px; }
+  .board.board--battle {
+    padding: 12px 16px 20px;
+    gap: 10px;
+  }
+  .battle-header__note {
+    display: none;
+  }
+  .duel-table {
+    padding: 18px 16px 10px;
+    overflow-x: auto;
+  }
+  .duel-fighters {
+    gap: 14px;
+    position: sticky;
+    left: 0;
+    min-width: 0;
+  }
+  .fighter {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .fighter:last-child {
+    grid-template-columns: minmax(0, 1fr) 64px;
+  }
+  .fighter__portrait .sprite {
+    width: 52px;
+    height: 52px;
+  }
+  .fighter__name h2 {
+    font-size: 19px;
+  }
+  .fighter .number {
+    font-size: 17px;
+  }
+  .track-row,
+  .beat-markers {
+    min-width: 620px;
+  }
+  .plan-track {
+    gap: 12px;
+  }
+  .plan-track .slot__well {
+    width: 180px;
+    height: 268px;
+  }
+  .board--battle .card--track {
+    width: 180px;
+    height: 268px;
+    min-height: 268px;
+    grid-template-rows: 32px 110px 1fr 24px;
+  }
+  .table-caption,
+  .battle-event {
+    position: sticky;
+    left: 0;
+  }
+  .hand-zone__title,
+  .coach {
+    flex-basis: 100%;
+  }
+  .hand-zone__hint {
+    justify-items: start;
+  }
+  .hand-layout {
+    grid-template-columns: minmax(0, 1fr) 86px;
+    gap: 6px;
+  }
+  .board--battle .battle-hand {
+    padding-bottom: 30px;
+    scroll-snap-type: x proximity;
+  }
+  .hand-entry {
+    transform: rotate(-3deg);
+    scroll-snap-align: start;
+  }
+  .card-inspect {
+    opacity: 1;
+    bottom: -16px;
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+  .played-pile {
+    padding: 5px;
+  }
+  .played-pile .pile-back {
+    width: 65px;
+    height: 100px;
+  }
+  .playback-meta {
+    gap: 10px;
+  }
+  .combat-float {
+    font-size: 20px;
+  }
 }
 @media (max-width: 540px) {
-  .board.board--battle { padding: 10px 10px 20px; }
-  .coach { flex-wrap: wrap; }
-  .coach__step { flex-basis: 100%; }
-  .battle-header { gap: 8px; min-height: 38px; }
-  .battle-header .wordmark { font-size: 23px; }
-  .battle-intel-button { font-size: 10px; padding: 8px; }
-  .duel-table { padding: 14px 10px 10px; border-radius: 14px; }
-  .duel-fighters { gap: 8px; margin-bottom: 15px; }
-  .fighter { grid-template-columns: 42px minmax(0,1fr); gap: 7px; }
-  .fighter:last-child { grid-template-columns: minmax(0,1fr) 42px; }
-  .fighter__portrait { padding: 2px; }
-  .fighter__portrait .sprite { width: 34px; height: 34px; }
-  .fighter__crest { width: 19px; height: 19px; bottom: -6px; }
-  .fighter__crest svg { width: 14px; height: 14px; }
-  .fighter__name h2 { font-size: 15px; overflow-wrap: anywhere; }
-  .fighter__name .label { font-size: 7px; letter-spacing: .5px; }
-  .fighter__health-label { display: none; }
-  .fighter .number { font-size: 15px; }
-  .fighter:last-child .hp__row { justify-content: flex-end; }
-  .fighter .hp__bar { height: 7px; }
-  .fighter .chips { min-height: 16px; }
-  .fighter .chip { font-size: 10px; padding: 1px 3px; }
-  .round-medallion { gap: 6px; padding: 2px 10px; }
-  .round-medallion .eyebrow { display: none; }
-  .round-medallion__number { font-size: 18px; }
-  .round-medallion__number small { font-size: 9px; }
-  .round-pips { gap: 4px; }
-  .round-pips > span { width: 4px; height: 4px; }
-  .track-row__label .label { font-size: 8px; }
-  .track-hint { font-size: 9px; }
-  .plan-track .slot__well { gap: 3px; font-size: 10px; }
-  .slot__number { font-size: 22px; }
-  .beat-markers { gap: 6px; }
-  .beat-markers .timeline__beat { font-size: 9px; padding: 4px 8px; gap: 5px; }
-  .board--battle .card--track .card__foot { justify-content: flex-end; }
-  .battle-controls { padding: 10px; flex-wrap: wrap; gap: 10px; }
-  .hand-zone__title .heading { font-size: 18px; }
-  .hand-zone__title .muted { font-size: 11px; }
-  .battle-controls .button, .hand-zone__heading .button { padding: 8px 14px; min-height: 38px; }
-  .hand-zone__heading { padding-left: 4px; padding-right: 4px; }
-  .hand-zone__hint .label span { display: block; margin-left: 0; margin-top: 3px; }
-  .playback-controls > .button-row { margin-left: 0; }
-  .playback-meta { width: 100%; justify-content: space-between; }
-  .battle-finish { width: 100%; }
-  .battle-finish .button-row { justify-content: flex-end; }
-  .combat-floats { width: 100px; }
-  .combat-float { font-size: 17px; }
-  .combat-float--block, .combat-float--buff, .combat-float--debuff { font-size: 13px; }
-  .battle-drawer { padding: 16px 12px; }
+  .board.board--battle {
+    padding: 10px 10px 20px;
+  }
+  .coach {
+    flex-wrap: wrap;
+  }
+  .coach__step {
+    flex-basis: 100%;
+  }
+  .battle-header {
+    gap: 8px;
+    min-height: 38px;
+  }
+  .battle-header .wordmark {
+    font-size: 23px;
+  }
+  .battle-intel-button {
+    font-size: 10px;
+    padding: 8px;
+  }
+  .duel-table {
+    padding: 14px 10px 10px;
+    border-radius: 14px;
+  }
+  .duel-fighters {
+    gap: 8px;
+    margin-bottom: 15px;
+  }
+  .fighter {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 7px;
+  }
+  .fighter:last-child {
+    grid-template-columns: minmax(0, 1fr) 42px;
+  }
+  .fighter__portrait {
+    padding: 2px;
+  }
+  .fighter__portrait .sprite {
+    width: 34px;
+    height: 34px;
+  }
+  .fighter__crest {
+    width: 19px;
+    height: 19px;
+    bottom: -6px;
+  }
+  .fighter__crest svg {
+    width: 14px;
+    height: 14px;
+  }
+  .fighter__name h2 {
+    font-size: 15px;
+    overflow-wrap: anywhere;
+  }
+  .fighter__name .label {
+    font-size: 7px;
+    letter-spacing: 0.5px;
+  }
+  .fighter__health-label {
+    display: none;
+  }
+  .fighter .number {
+    font-size: 15px;
+  }
+  .fighter:last-child .hp__row {
+    justify-content: flex-end;
+  }
+  .fighter .hp__bar {
+    height: 7px;
+  }
+  .fighter .chips {
+    min-height: 16px;
+  }
+  .fighter .chip {
+    font-size: 10px;
+    padding: 1px 3px;
+  }
+  .round-medallion {
+    gap: 6px;
+    padding: 2px 10px;
+  }
+  .round-medallion .eyebrow {
+    display: none;
+  }
+  .round-medallion__number {
+    font-size: 18px;
+  }
+  .round-medallion__number small {
+    font-size: 9px;
+  }
+  .round-pips {
+    gap: 4px;
+  }
+  .round-pips > span {
+    width: 4px;
+    height: 4px;
+  }
+  .track-row__label .label {
+    font-size: 8px;
+  }
+  .track-hint {
+    font-size: 9px;
+  }
+  .plan-track .slot__well {
+    gap: 3px;
+    font-size: 10px;
+  }
+  .slot__number {
+    font-size: 22px;
+  }
+  .beat-markers {
+    gap: 6px;
+  }
+  .beat-markers .timeline__beat {
+    font-size: 9px;
+    padding: 4px 8px;
+    gap: 5px;
+  }
+  .board--battle .card--track .card__foot {
+    justify-content: flex-end;
+  }
+  .battle-controls {
+    padding: 10px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .hand-zone__title .heading {
+    font-size: 18px;
+  }
+  .hand-zone__title .muted {
+    font-size: 11px;
+  }
+  .battle-controls .button,
+  .hand-zone__heading .button {
+    padding: 8px 14px;
+    min-height: 38px;
+  }
+  .hand-zone__heading {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+  .hand-zone__hint .label span {
+    display: block;
+    margin-left: 0;
+    margin-top: 3px;
+  }
+  .playback-controls > .button-row {
+    margin-left: 0;
+  }
+  .playback-meta {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .battle-finish {
+    width: 100%;
+  }
+  .battle-finish .button-row {
+    justify-content: flex-end;
+  }
+  .combat-floats {
+    width: 100px;
+  }
+  .combat-float {
+    font-size: 17px;
+  }
+  .combat-float--block,
+  .combat-float--buff,
+  .combat-float--debuff {
+    font-size: 13px;
+  }
+  .battle-drawer {
+    padding: 16px 12px;
+  }
 }
 /* Wide windows: each fighter stands beside its own track, and the board fills the window. */
 @media (min-width: 1001px) {
-  .board.board--battle { display: flex; flex-direction: column; min-height: 100dvh; padding: 10px 24px 12px; }
-  .duel-table { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(0, 860px) minmax(130px, 1fr); grid-template-areas: "me center opp"; align-content: center; column-gap: 20px; }
-  .duel-fighters { display: contents; }
-  .fighter { grid-area: me; align-self: end; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 10px; text-align: center; }
-  .fighter:last-child { grid-area: opp; align-self: start; grid-template-columns: minmax(0, 1fr); }
-  .fighter:last-child .fighter__portrait, .fighter:last-child .fighter__vitals { order: 0; }
-  .fighter:last-child .fighter__name { text-align: center; }
-  .fighter__vitals { width: 100%; }
-  .fighter .chips, .fighter:last-child .chips { justify-content: center; }
-  .duel-center { grid-area: center; min-width: 0; }
-  .duel-table, .duel-table.duel-table--playback { padding-top: 12px; }
-  .beat-markers { margin-top: 6px; margin-bottom: 6px; }
-  .plan-track--hidden { margin-bottom: 4px; }
-  [data-screen="playback"] > .duel-table { flex: 1 0 auto; }
+  .board.board--battle {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    padding: 10px 24px 12px;
+  }
+  .duel-table {
+    display: grid;
+    grid-template-columns: minmax(130px, 1fr) minmax(0, 860px) minmax(130px, 1fr);
+    grid-template-areas: "me center opp";
+    align-content: center;
+    column-gap: 20px;
+  }
+  .duel-fighters {
+    display: contents;
+  }
+  .fighter {
+    grid-area: me;
+    align-self: end;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 10px;
+    text-align: center;
+  }
+  .fighter:last-child {
+    grid-area: opp;
+    align-self: start;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .fighter:last-child .fighter__portrait,
+  .fighter:last-child .fighter__vitals {
+    order: 0;
+  }
+  .fighter:last-child .fighter__name {
+    text-align: center;
+  }
+  .fighter__vitals {
+    width: 100%;
+  }
+  .fighter .chips,
+  .fighter:last-child .chips {
+    justify-content: center;
+  }
+  .duel-center {
+    grid-area: center;
+    min-width: 0;
+  }
+  .duel-table,
+  .duel-table.duel-table--playback {
+    padding-top: 12px;
+  }
+  .beat-markers {
+    margin-top: 6px;
+    margin-bottom: 6px;
+  }
+  .plan-track--hidden {
+    margin-bottom: 4px;
+  }
+  [data-screen="playback"] > .duel-table {
+    flex: 1 0 auto;
+  }
 }
 /* Tall enough for the table: the plan screen stops scrolling and the hand docks at the bottom,
    cut by the window edge when short. A hovered card rises far enough to show whole. */
 @media (min-width: 1001px) and (min-height: 700px) {
-  .board.board--battle[data-screen="plan"] { height: 100dvh; padding-bottom: 0; overflow: hidden; }
-  [data-screen="plan"] > .hand-zone { display: flex; flex-direction: column; flex: 0 1 330px; min-height: 150px; }
-  [data-screen="plan"] .hand-zone__heading { padding-top: 4px; }
-  [data-screen="plan"] .hand-layout { flex: 1 1 0; min-height: 0; container-type: size; align-items: start; }
-  [data-screen="plan"] .battle-hand { padding: 6px 24px 0; }
+  .board.board--battle[data-screen="plan"] {
+    height: 100dvh;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+  [data-screen="plan"] > .hand-zone {
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 330px;
+    min-height: 150px;
+  }
+  [data-screen="plan"] .hand-zone__heading {
+    padding-top: 4px;
+  }
+  [data-screen="plan"] .hand-layout {
+    flex: 1 1 0;
+    min-height: 0;
+    container-type: size;
+    align-items: start;
+  }
+  [data-screen="plan"] .battle-hand {
+    padding: 6px 24px 0;
+  }
 }
 @media (min-width: 1001px) and (min-height: 700px) and (hover: hover) {
-  [data-screen="plan"] .hand-entry:hover, [data-screen="plan"] .hand-entry:has(:focus-visible) { transform: translateY(min(-54px, calc(100cqh - 284px))) rotate(0deg); }
-  [data-screen="plan"] .hand-entry.hand-entry--resting { transform: translateY(var(--hand-rise)) rotate(var(--hand-tilt)); }
+  [data-screen="plan"] .hand-entry:hover,
+  [data-screen="plan"] .hand-entry:has(:focus-visible) {
+    transform: translateY(min(-54px, calc(100cqh - 284px))) rotate(0deg);
+  }
+  [data-screen="plan"] .hand-entry.hand-entry--resting {
+    transform: translateY(var(--hand-rise)) rotate(var(--hand-tilt));
+  }
 }
 /* Touch: cards stay still, and Details is always shown. */
 @media (hover: none) {
-  .hand-entry, .hand-entry:hover, .hand-entry:has(:focus-visible) { transform: none; }
-  .card-inspect { opacity: 1; bottom: -18px; }
+  .hand-entry,
+  .hand-entry:hover,
+  .hand-entry:has(:focus-visible) {
+    transform: none;
+  }
+  .card-inspect {
+    opacity: 1;
+    bottom: -18px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
-  .combat-float { opacity: 1; }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .combat-float {
+    opacity: 1;
+  }
 }

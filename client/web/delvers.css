@@ -1,52 +1,137 @@
 /* Delvers material study: clan owns the frame; rarity refines it. */
 :root {
-  --gh-palette-sulfur-82:#d8c55a;
-  --gh-color-delvers-warning:var(--gh-palette-sulfur-82);
-  --gh-palette-plum-31:#34273d;
-  --gh-palette-plum-43:#594166;
-  --gh-palette-plum-56:#805d8e;
-  --gh-palette-amethyst-77:#c5a0dc;
-  --gh-palette-pewter-53:#737679;
-  --gh-palette-pewter-80:#bfc3c2;
-  --gh-palette-limestone-92:#e8e3db;
-  --gh-palette-limestone-85:#d4ccbf;
-  --gh-color-delvers:var(--gh-palette-plum-56);
-  --gh-color-delvers-light:var(--gh-palette-amethyst-77);
+  --gh-palette-sulfur-82: #d8c55a;
+  --gh-color-delvers-warning: var(--gh-palette-sulfur-82);
+  --gh-palette-plum-31: #34273d;
+  --gh-palette-plum-43: #594166;
+  --gh-palette-plum-56: #805d8e;
+  --gh-palette-amethyst-77: #c5a0dc;
+  --gh-palette-pewter-53: #737679;
+  --gh-palette-pewter-80: #bfc3c2;
+  --gh-palette-limestone-92: #e8e3db;
+  --gh-palette-limestone-85: #d4ccbf;
+  --gh-color-delvers: var(--gh-palette-plum-56);
+  --gh-color-delvers-light: var(--gh-palette-amethyst-77);
 }
 .card--delvers {
-  --clan-edge:var(--gh-palette-plum-56);
-  --card-stock:var(--gh-palette-limestone-92);
-  --card-stock-shade:var(--gh-palette-limestone-85);
-  --card-metal:var(--gh-palette-pewter-53);
-  --card-metal-light:var(--gh-palette-pewter-80);
-  --card-metal-dark:var(--gh-palette-plum-31);
-  --card-inlay:var(--gh-palette-plum-56);
-  --card-label:var(--gh-palette-plum-43);
-  --card-cost:var(--gh-palette-plum-43);
-  --card-radius:13px 4px 13px 4px;
+  --clan-edge: var(--gh-palette-plum-56);
+  --card-stock: var(--gh-palette-limestone-92);
+  --card-stock-shade: var(--gh-palette-limestone-85);
+  --card-metal: var(--gh-palette-pewter-53);
+  --card-metal-light: var(--gh-palette-pewter-80);
+  --card-metal-dark: var(--gh-palette-plum-31);
+  --card-inlay: var(--gh-palette-plum-56);
+  --card-label: var(--gh-palette-plum-43);
+  --card-cost: var(--gh-palette-plum-43);
+  --card-radius: 13px 4px 13px 4px;
 }
-.card--delvers .card__cost { border-radius:4px 12px 4px 12px; }
+.card--delvers .card__cost {
+  border-radius: 4px 12px 4px 12px;
+}
 .card--delvers > .card__ornament {
-  background:repeating-linear-gradient(135deg,transparent 0 5px,var(--gh-color-delvers-warning) 5px 6px,transparent 6px 12px) left 14px / 3px 30px no-repeat;
+  background: repeating-linear-gradient(
+      135deg,
+      transparent 0 5px,
+      var(--gh-color-delvers-warning) 5px 6px,
+      transparent 6px 12px
+    )
+    left 14px / 3px 30px no-repeat;
 }
 .card--delvers.card--rare {
-  --card-metal:var(--gh-palette-plum-43);
-  --card-metal-light:var(--gh-palette-pewter-80);
-  --card-inlay:var(--gh-palette-amethyst-77);
-  --card-stock-shade:var(--gh-palette-iron-86);
+  --card-metal: var(--gh-palette-plum-43);
+  --card-metal-light: var(--gh-palette-pewter-80);
+  --card-inlay: var(--gh-palette-amethyst-77);
+  --card-stock-shade: var(--gh-palette-iron-86);
 }
-.card--delvers.card--rare > .card__ornament { border:1px solid var(--card-metal-light); box-shadow:inset 0 0 0 1px var(--card-inlay); background:linear-gradient(135deg,transparent 38%,var(--card-inlay) 39% 60%,transparent 61%) right top / 18px 18px no-repeat,linear-gradient(135deg,transparent 38%,var(--card-inlay) 39% 60%,transparent 61%) left bottom / 18px 18px no-repeat; }
-.delvers-gallery { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:28px; margin-top:28px; }
-.delvers-gallery .card { --gh-card-width:100%;--gh-card-height:400px;grid-template-rows:38px 180px 1fr 28px;padding:9px; }
-.delvers-gallery .card__name { font-size:19px; }.delvers-gallery .card__text { font-size:16px;line-height:1.4;padding:14px 6px; }.delvers-gallery .card__clan { font-size:12px; }.delvers-gallery .card__art img { width:100%;height:100%;object-fit:cover; }.delvers-gallery .card__cost { width:30px;height:30px; }.delvers-gallery .badge {font-size:12px;}.delvers-gallery .card__clan svg {width:22px;height:22px;}
-.study-note {padding:16px 20px;border:1px solid var(--gh-color-border);border-radius:6px;margin:22px 0;}.study-note p{margin:0;}
-.art-placeholder { display:grid;place-items:center;background:var(--gh-color-surface);color:var(--gh-color-text);font-size:14px;text-align:center;padding:10px; }
+.card--delvers.card--rare > .card__ornament {
+  border: 1px solid var(--card-metal-light);
+  box-shadow: inset 0 0 0 1px var(--card-inlay);
+  background:
+    linear-gradient(135deg, transparent 38%, var(--card-inlay) 39% 60%, transparent 61%) right top / 18px 18px no-repeat,
+    linear-gradient(135deg, transparent 38%, var(--card-inlay) 39% 60%, transparent 61%) left bottom / 18px 18px
+      no-repeat;
+}
+.delvers-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 28px;
+  margin-top: 28px;
+}
+.delvers-gallery .card {
+  --gh-card-width: 100%;
+  --gh-card-height: 400px;
+  grid-template-rows: 38px 180px 1fr 28px;
+  padding: 9px;
+}
+.delvers-gallery .card__name {
+  font-size: 19px;
+}
+.delvers-gallery .card__text {
+  font-size: 16px;
+  line-height: 1.4;
+  padding: 14px 6px;
+}
+.delvers-gallery .card__clan {
+  font-size: 12px;
+}
+.delvers-gallery .card__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.delvers-gallery .card__cost {
+  width: 30px;
+  height: 30px;
+}
+.delvers-gallery .badge {
+  font-size: 12px;
+}
+.delvers-gallery .card__clan svg {
+  width: 22px;
+  height: 22px;
+}
+.study-note {
+  padding: 16px 20px;
+  border: 1px solid var(--gh-color-border);
+  border-radius: 6px;
+  margin: 22px 0;
+}
+.study-note p {
+  margin: 0;
+}
+.art-placeholder {
+  display: grid;
+  place-items: center;
+  background: var(--gh-color-surface);
+  color: var(--gh-color-text);
+  font-size: 14px;
+  text-align: center;
+  padding: 10px;
+}
 /* Updated pack: explicit self-inflicted risk, with the exact rules text. */
-.card--delvers .card__cost {color:var(--gh-color-delvers-warning);}
-.card__risk {display:block;margin-top:7px;padding:4px 6px;border-left:3px solid var(--card-metal-dark);background:color-mix(in srgb,var(--gh-color-delvers-warning) 28%,transparent);font-weight:bold;}
-.delvers-clan-hero {max-width:840px;}
-.delvers-clan-hero img {height:auto;max-height:none;}
-.delvers-gallery .card {--gh-card-height:440px;}
+.card--delvers .card__cost {
+  color: var(--gh-color-delvers-warning);
+}
+.card__risk {
+  display: block;
+  margin-top: 7px;
+  padding: 4px 6px;
+  border-left: 3px solid var(--card-metal-dark);
+  background: color-mix(in srgb, var(--gh-color-delvers-warning) 28%, transparent);
+  font-weight: bold;
+}
+.delvers-clan-hero {
+  max-width: 840px;
+}
+.delvers-clan-hero img {
+  height: auto;
+  max-height: none;
+}
+.delvers-gallery .card {
+  --gh-card-height: 440px;
+}
 .delvers-gallery img[src*="open-guard-delvers-v3"],
 .delvers-gallery img[src*="cribbing-delvers-v3"],
-.delvers-gallery img[src*="deadfall-delvers-v3"] { object-position:center top; }
+.delvers-gallery img[src*="deadfall-delvers-v3"] {
+  object-position: center top;
+}

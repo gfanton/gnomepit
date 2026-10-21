@@ -6,8 +6,8 @@
     "build": "node client/build.ts",
     "check": "tsc -p client/web && tsc -p .",
     "lint": "oxlint --type-aware client scripts",
-    "fmt": "prettier --write \"{client,scripts}/**/*.ts\"",
-    "fmt:check": "prettier --check \"{client,scripts}/**/*.ts\"",
+    "fmt": "prettier --write \"{client,scripts}/**/*.{ts,css}\"",
+    "fmt:check": "prettier --check \"{client,scripts}/**/*.{ts,css}\"",
     "test": "node --test \"client/web/*.test.ts\" \"client/*.test.ts\""
   },
   "dependencies": {

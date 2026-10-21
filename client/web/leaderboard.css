@@ -1,22 +1,673 @@
-:root { --gh-color-leaderboard-delvers:var(--gh-palette-orchid-78); }
+:root {
+  --gh-color-leaderboard-delvers: var(--gh-palette-orchid-78);
+}
 /* Ranked hall: metal and parchment accents, with clan identity kept separate from rank. */
-.standings {max-width:1380px;margin:auto;padding:28px 36px 36px;}
-.standings a {color:var(--gh-color-text-warm);}.standings .masthead{padding-bottom:22px;border-bottom:1px solid var(--gh-color-border);}
-.standings .home-nav [aria-current]{color:var(--gh-color-highlight);text-decoration:underline;text-underline-offset:7px;}
-.preview-notice {padding:12px 16px;background:var(--gh-color-surface-raised);border-left:3px solid var(--gh-color-trim);font-size:14px;color:var(--gh-color-text-warm);}
-.standings-hero {display:flex;justify-content:space-between;align-items:center;padding:44px 0 30px;gap:24px;}.standings-hero h1{font:normal clamp(38px,4.7vw,64px)/1.05 var(--gh-font-display);margin:12px 0 14px;}.standings-hero p{font-size:16px;color:var(--gh-color-text-muted);margin:0;}
-.ranking-seal {display:grid;place-content:center;gap:6px;text-align:center;width:112px;height:112px;flex:none;border:1px solid var(--gh-color-trim);outline:1px solid var(--gh-color-border);outline-offset:-7px;transform:rotate(-5deg);border-radius:50%;font:32px var(--gh-font-display);color:var(--gh-color-trim-bright);}.ranking-seal span{font:9px var(--gh-font-body);letter-spacing:1px;}
-.own-standing {display:flex;align-items:center;gap:32px;padding:24px 28px;background:linear-gradient(110deg,color-mix(in srgb,var(--gh-color-select) 12%,var(--gh-color-surface)),var(--gh-color-surface));border:1px solid var(--gh-color-select);border-left:4px solid var(--gh-color-select);border-radius:6px;}.own-standing__intro{margin-right:auto;}.own-standing .eyebrow{display:block;color:var(--gh-color-select);margin-bottom:14px;}.own-standing h2{font:26px var(--gh-font-display);margin:0;}.own-standing p{font-size:14px;color:var(--gh-color-text-muted);max-width:350px;line-height:1.5;margin:8px 0 0;}
-.own-standing__numbers{display:flex;gap:36px;margin:0;}.own-standing dt,.stat-label{display:block;font-size:11px;letter-spacing:1px;color:var(--gh-color-text-muted);}.own-standing dt{text-transform:uppercase;}.own-standing dd{margin:7px 0 0;font:32px var(--gh-font-display);color:var(--gh-color-text-bright);}.own-standing__record{padding-left:30px;border-left:1px solid var(--gh-color-border);}.own-standing__record .record{margin-top:12px;}
-.standings-layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:36px;margin-top:38px;}.standings-section-title{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:66px;margin-bottom:18px;}.standings-section-title h2{font:29px var(--gh-font-display);margin:7px 0 0;}.standings-section-title .eyebrow{font-size:10px;letter-spacing:1.3px;}.rating-label{font-size:10px;letter-spacing:1px;color:var(--gh-color-highlight);border:1px solid var(--gh-color-border);padding:8px;white-space:nowrap;}
-.ranking-table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums;}.ranking-table thead{background:var(--gh-color-surface-raised);color:var(--gh-color-text-muted);}.ranking-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.8px;font-weight:normal;padding:14px 10px;text-align:right;}.ranking-table thead th:nth-child(2),.ranking-table thead th:nth-child(3){text-align:left;}.ranking-table td,.ranking-table tbody th{border-bottom:1px solid color-mix(in srgb,var(--gh-color-border) 55%,transparent);padding:15px 10px;text-align:right;}.ranking-table tbody th{text-align:left;font-weight:normal;position:relative;}.ranking-table tr:hover{background:var(--gh-color-surface);}.ranking-table .rank-number{text-align:center;width:48px;font-size:16px;color:var(--gh-color-text-muted);}.ranking-table .rank-number--medal{color:var(--gh-color-highlight);font-family:var(--gh-font-display);font-size:23px;}.ranking-table tbody tr:nth-child(2) .rank-number--medal{color:var(--gh-color-text-pale);}.ranking-table tbody tr:nth-child(3) .rank-number--medal{color:var(--gh-color-pickers);}.ranking-table .is-you{background:color-mix(in srgb,var(--gh-color-select) 8%,var(--gh-color-canvas));outline:1px solid var(--gh-color-select);outline-offset:-1px;}.ranking-table .elo{font-weight:bold;font-size:18px;color:var(--gh-color-text-bright);}.ranking-table .main-clan{text-align:left;font-size:12px;white-space:nowrap;}
-.pickers{--clan-color:var(--gh-color-pickers);}.ironhide{--clan-color:var(--gh-color-ironhide);}.delvers{--clan-color:var(--gh-color-leaderboard-delvers);}.main-clan{color:var(--clan-color,var(--gh-color-text-muted));}
-.player-identity{display:inline-flex;gap:12px;align-items:center;vertical-align:middle;min-width:0;}.player-identity strong{display:block;font-size:15px;font-weight:bold;overflow-wrap:anywhere;}.player-clan{display:block;color:var(--clan-color,var(--gh-color-text-muted));font-size:12px;margin-top:4px;}.ranking-table .player-clan{display:none;}.rank-portrait{width:42px;height:42px;border-radius:50%;object-fit:cover;flex:none;border:1px solid var(--clan-color,var(--gh-color-border));}.rank-portrait--empty{display:grid;place-content:center;background:var(--gh-color-surface-raised);}.you-label{display:inline-block;font-size:9px;letter-spacing:1px;color:var(--gh-color-select);margin-left:8px;}.own-standing .rank-portrait{width:50px;height:50px;}.own-standing .player-identity strong{font-size:19px;}
-.record{display:flex;align-items:center;gap:18px;font-size:13px;font-variant-numeric:tabular-nums;}.record>span{white-space:nowrap;}.record b{font-size:16px;color:var(--gh-color-text);font-weight:normal;}.record abbr{font-size:11px;color:var(--gh-color-text-muted);margin-left:3px;text-decoration:none;}.ranking-table abbr{text-decoration:none;}.mobile-label,.mobile-record{display:none;}
-.clan-standing{border:1px solid var(--gh-color-border);border-radius:6px;overflow:hidden;margin-bottom:18px;background:var(--gh-color-surface);}.clan-standing__art{height:104px;position:relative;overflow:hidden;}.clan-standing__art img{width:100%;height:100%;object-fit:cover;object-position:center 35%;opacity:.85;}.clan-place{position:absolute;left:12px;top:12px;padding:5px 9px;background:var(--gh-color-canvas);border:1px solid var(--gh-color-trim);font:20px var(--gh-font-display);color:var(--gh-color-highlight);}.clan-standing__body{padding:17px;border-top:2px solid var(--clan-color);}.clan-standing__heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;}.clan-standing h3{font:25px var(--gh-font-display);margin:0;}.clan-standing__heading>span{text-align:right;}.clan-standing__heading strong{font-size:21px;font-weight:normal;}.clan-standing__heading .stat-label{font-size:9px;margin-top:3px;}.clan-standing .record{justify-content:space-between;}
-.empty-panel{min-height:280px;padding:40px 28px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;border:1px solid var(--gh-color-border);background:var(--gh-color-surface);border-radius:6px;}.empty-panel h3{font:27px var(--gh-font-display);margin:10px 0;}.empty-panel p{font-size:15px;line-height:1.6;color:var(--gh-color-text-muted);max-width:390px;margin:0 0 18px;}.empty-mark{font:48px var(--gh-font-display);color:var(--gh-color-trim);}.clan-standings .empty-panel{min-height:240px;}.clan-standings .empty-panel h3{font-size:23px;}.loading-rule{width:80px;height:3px;background:var(--gh-color-trim);animation:record-pulse 1.5s ease-in-out infinite alternate;}.rankings-note{font-size:12px;color:var(--gh-color-text-muted);line-height:1.7;margin:18px 0;}.rankings-note span{display:block;}.standings-footer{display:flex;justify-content:space-between;gap:18px;margin-top:36px;padding-top:22px;border-top:1px solid var(--gh-color-border);font-size:13px;color:var(--gh-color-text-muted);}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
-@keyframes record-pulse{to{opacity:.3;}}
-@media(min-width:1050px) {.ranking-table tbody tr{animation:rank-arrive .3s ease-out both;}@keyframes rank-arrive{from{transform:translateY(4px);}to{transform:none;}}}
-@media(max-width:1050px){.standings-layout{grid-template-columns:minmax(0,1fr);}.clan-standings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;}.clan-standings .standings-section-title{grid-column:1/-1;margin-bottom:0;}.clan-standing__heading{align-items:flex-start;flex-direction:column;}.clan-standing__heading>span{text-align:left;}.clan-standing .record{gap:6px;}.own-standing{gap:20px;padding:22px;}.own-standing__numbers{gap:24px;}.own-standing__record{padding-left:20px;}}
-@media(max-width:650px){.standings{padding:20px 18px;}.standings-hero{padding:32px 0 24px;}.standings-hero h1{font-size:42px;}.standings-hero p{font-size:15px;line-height:1.5;}.ranking-seal{display:none;}.own-standing{display:grid;grid-template-columns:1fr 1fr;gap:22px 16px;padding:22px 18px;}.own-standing__intro{grid-column:1/-1;}.own-standing__numbers{gap:24px;}.own-standing dd{font-size:25px;}.own-standing__record{padding-left:14px;}.own-standing__record .record{gap:10px;flex-wrap:wrap;}.own-standing .stat-label{font-size:10px;}.standings-section-title h2{font-size:27px;}.rating-label{font-size:9px;}.standings-layout{margin-top:24px;gap:24px;}.ranking-table thead{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;}.ranking-table tbody{display:block;}.ranking-table tr{display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;padding:16px 10px;gap:12px 8px;border-bottom:1px solid var(--gh-color-border);}.ranking-table td,.ranking-table tbody th{padding:0;border:0;}.ranking-table .rank-number{grid-row:1;grid-column:1;width:auto;text-align:left;font-size:18px;}.ranking-table tbody th{grid-column:2;grid-row:1;}.ranking-table .elo{grid-column:3;grid-row:1;font-size:22px;}.ranking-table .elo .mobile-label{display:block;color:var(--gh-color-text-muted);font-size:10px;font-weight:normal;margin-bottom:4px;}.ranking-table .record-cell{grid-column:2/-1;grid-row:2;text-align:left;}.ranking-table .main-clan,.desktop-record{display:none;}.mobile-record{display:block;}.ranking-table .player-clan{display:block;}.rank-portrait{width:38px;height:38px;}.player-identity{gap:9px;}.player-identity strong{font-size:14px;}.you-label{margin-left:47px;margin-top:5px;}.record{gap:25px;}.ranking-table .record b{font-size:14px;}.clan-standings{grid-template-columns:1fr;gap:0;}.clan-standing{display:grid;grid-template-columns:110px minmax(0,1fr);min-height:140px;}.clan-standing__art{height:100%;}.clan-standing__art img{object-position:center;}.clan-standing__body{border-top:0;border-left:2px solid var(--clan-color);padding:16px;}.clan-standing__heading{flex-direction:row;align-items:center;gap:8px;}.clan-standing__heading>span{text-align:right;}.clan-standing h3{font-size:23px;}.clan-standing__heading strong{font-size:19px;}.clan-standing .record{gap:10px;}.clan-standing .record b{font-size:14px;}.standings-footer{flex-direction:column;}.preview-notice{line-height:1.5;font-size:12px;}}
-@media(prefers-reduced-motion:reduce){.ranking-table tbody tr,.loading-rule{animation:none;}}
+.standings {
+  max-width: 1380px;
+  margin: auto;
+  padding: 28px 36px 36px;
+}
+.standings a {
+  color: var(--gh-color-text-warm);
+}
+.standings .masthead {
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--gh-color-border);
+}
+.standings .home-nav [aria-current] {
+  color: var(--gh-color-highlight);
+  text-decoration: underline;
+  text-underline-offset: 7px;
+}
+.preview-notice {
+  padding: 12px 16px;
+  background: var(--gh-color-surface-raised);
+  border-left: 3px solid var(--gh-color-trim);
+  font-size: 14px;
+  color: var(--gh-color-text-warm);
+}
+.standings-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 44px 0 30px;
+  gap: 24px;
+}
+.standings-hero h1 {
+  font: normal clamp(38px, 4.7vw, 64px)/1.05 var(--gh-font-display);
+  margin: 12px 0 14px;
+}
+.standings-hero p {
+  font-size: 16px;
+  color: var(--gh-color-text-muted);
+  margin: 0;
+}
+.ranking-seal {
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  text-align: center;
+  width: 112px;
+  height: 112px;
+  flex: none;
+  border: 1px solid var(--gh-color-trim);
+  outline: 1px solid var(--gh-color-border);
+  outline-offset: -7px;
+  transform: rotate(-5deg);
+  border-radius: 50%;
+  font: 32px var(--gh-font-display);
+  color: var(--gh-color-trim-bright);
+}
+.ranking-seal span {
+  font: 9px var(--gh-font-body);
+  letter-spacing: 1px;
+}
+.own-standing {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 24px 28px;
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--gh-color-select) 12%, var(--gh-color-surface)),
+    var(--gh-color-surface)
+  );
+  border: 1px solid var(--gh-color-select);
+  border-left: 4px solid var(--gh-color-select);
+  border-radius: 6px;
+}
+.own-standing__intro {
+  margin-right: auto;
+}
+.own-standing .eyebrow {
+  display: block;
+  color: var(--gh-color-select);
+  margin-bottom: 14px;
+}
+.own-standing h2 {
+  font: 26px var(--gh-font-display);
+  margin: 0;
+}
+.own-standing p {
+  font-size: 14px;
+  color: var(--gh-color-text-muted);
+  max-width: 350px;
+  line-height: 1.5;
+  margin: 8px 0 0;
+}
+.own-standing__numbers {
+  display: flex;
+  gap: 36px;
+  margin: 0;
+}
+.own-standing dt,
+.stat-label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--gh-color-text-muted);
+}
+.own-standing dt {
+  text-transform: uppercase;
+}
+.own-standing dd {
+  margin: 7px 0 0;
+  font: 32px var(--gh-font-display);
+  color: var(--gh-color-text-bright);
+}
+.own-standing__record {
+  padding-left: 30px;
+  border-left: 1px solid var(--gh-color-border);
+}
+.own-standing__record .record {
+  margin-top: 12px;
+}
+.standings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 36px;
+  margin-top: 38px;
+}
+.standings-section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 66px;
+  margin-bottom: 18px;
+}
+.standings-section-title h2 {
+  font: 29px var(--gh-font-display);
+  margin: 7px 0 0;
+}
+.standings-section-title .eyebrow {
+  font-size: 10px;
+  letter-spacing: 1.3px;
+}
+.rating-label {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--gh-color-highlight);
+  border: 1px solid var(--gh-color-border);
+  padding: 8px;
+  white-space: nowrap;
+}
+.ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.ranking-table thead {
+  background: var(--gh-color-surface-raised);
+  color: var(--gh-color-text-muted);
+}
+.ranking-table thead th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: normal;
+  padding: 14px 10px;
+  text-align: right;
+}
+.ranking-table thead th:nth-child(2),
+.ranking-table thead th:nth-child(3) {
+  text-align: left;
+}
+.ranking-table td,
+.ranking-table tbody th {
+  border-bottom: 1px solid color-mix(in srgb, var(--gh-color-border) 55%, transparent);
+  padding: 15px 10px;
+  text-align: right;
+}
+.ranking-table tbody th {
+  text-align: left;
+  font-weight: normal;
+  position: relative;
+}
+.ranking-table tr:hover {
+  background: var(--gh-color-surface);
+}
+.ranking-table .rank-number {
+  text-align: center;
+  width: 48px;
+  font-size: 16px;
+  color: var(--gh-color-text-muted);
+}
+.ranking-table .rank-number--medal {
+  color: var(--gh-color-highlight);
+  font-family: var(--gh-font-display);
+  font-size: 23px;
+}
+.ranking-table tbody tr:nth-child(2) .rank-number--medal {
+  color: var(--gh-color-text-pale);
+}
+.ranking-table tbody tr:nth-child(3) .rank-number--medal {
+  color: var(--gh-color-pickers);
+}
+.ranking-table .is-you {
+  background: color-mix(in srgb, var(--gh-color-select) 8%, var(--gh-color-canvas));
+  outline: 1px solid var(--gh-color-select);
+  outline-offset: -1px;
+}
+.ranking-table .elo {
+  font-weight: bold;
+  font-size: 18px;
+  color: var(--gh-color-text-bright);
+}
+.ranking-table .main-clan {
+  text-align: left;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.pickers {
+  --clan-color: var(--gh-color-pickers);
+}
+.ironhide {
+  --clan-color: var(--gh-color-ironhide);
+}
+.delvers {
+  --clan-color: var(--gh-color-leaderboard-delvers);
+}
+.main-clan {
+  color: var(--clan-color, var(--gh-color-text-muted));
+}
+.player-identity {
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+  vertical-align: middle;
+  min-width: 0;
+}
+.player-identity strong {
+  display: block;
+  font-size: 15px;
+  font-weight: bold;
+  overflow-wrap: anywhere;
+}
+.player-clan {
+  display: block;
+  color: var(--clan-color, var(--gh-color-text-muted));
+  font-size: 12px;
+  margin-top: 4px;
+}
+.ranking-table .player-clan {
+  display: none;
+}
+.rank-portrait {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+  border: 1px solid var(--clan-color, var(--gh-color-border));
+}
+.rank-portrait--empty {
+  display: grid;
+  place-content: center;
+  background: var(--gh-color-surface-raised);
+}
+.you-label {
+  display: inline-block;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--gh-color-select);
+  margin-left: 8px;
+}
+.own-standing .rank-portrait {
+  width: 50px;
+  height: 50px;
+}
+.own-standing .player-identity strong {
+  font-size: 19px;
+}
+.record {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.record > span {
+  white-space: nowrap;
+}
+.record b {
+  font-size: 16px;
+  color: var(--gh-color-text);
+  font-weight: normal;
+}
+.record abbr {
+  font-size: 11px;
+  color: var(--gh-color-text-muted);
+  margin-left: 3px;
+  text-decoration: none;
+}
+.ranking-table abbr {
+  text-decoration: none;
+}
+.mobile-label,
+.mobile-record {
+  display: none;
+}
+.clan-standing {
+  border: 1px solid var(--gh-color-border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 18px;
+  background: var(--gh-color-surface);
+}
+.clan-standing__art {
+  height: 104px;
+  position: relative;
+  overflow: hidden;
+}
+.clan-standing__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 35%;
+  opacity: 0.85;
+}
+.clan-place {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  padding: 5px 9px;
+  background: var(--gh-color-canvas);
+  border: 1px solid var(--gh-color-trim);
+  font: 20px var(--gh-font-display);
+  color: var(--gh-color-highlight);
+}
+.clan-standing__body {
+  padding: 17px;
+  border-top: 2px solid var(--clan-color);
+}
+.clan-standing__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.clan-standing h3 {
+  font: 25px var(--gh-font-display);
+  margin: 0;
+}
+.clan-standing__heading > span {
+  text-align: right;
+}
+.clan-standing__heading strong {
+  font-size: 21px;
+  font-weight: normal;
+}
+.clan-standing__heading .stat-label {
+  font-size: 9px;
+  margin-top: 3px;
+}
+.clan-standing .record {
+  justify-content: space-between;
+}
+.empty-panel {
+  min-height: 280px;
+  padding: 40px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  border: 1px solid var(--gh-color-border);
+  background: var(--gh-color-surface);
+  border-radius: 6px;
+}
+.empty-panel h3 {
+  font: 27px var(--gh-font-display);
+  margin: 10px 0;
+}
+.empty-panel p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--gh-color-text-muted);
+  max-width: 390px;
+  margin: 0 0 18px;
+}
+.empty-mark {
+  font: 48px var(--gh-font-display);
+  color: var(--gh-color-trim);
+}
+.clan-standings .empty-panel {
+  min-height: 240px;
+}
+.clan-standings .empty-panel h3 {
+  font-size: 23px;
+}
+.loading-rule {
+  width: 80px;
+  height: 3px;
+  background: var(--gh-color-trim);
+  animation: record-pulse 1.5s ease-in-out infinite alternate;
+}
+.rankings-note {
+  font-size: 12px;
+  color: var(--gh-color-text-muted);
+  line-height: 1.7;
+  margin: 18px 0;
+}
+.rankings-note span {
+  display: block;
+}
+.standings-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 36px;
+  padding-top: 22px;
+  border-top: 1px solid var(--gh-color-border);
+  font-size: 13px;
+  color: var(--gh-color-text-muted);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@keyframes record-pulse {
+  to {
+    opacity: 0.3;
+  }
+}
+@media (min-width: 1050px) {
+  .ranking-table tbody tr {
+    animation: rank-arrive 0.3s ease-out both;
+  }
+  @keyframes rank-arrive {
+    from {
+      transform: translateY(4px);
+    }
+    to {
+      transform: none;
+    }
+  }
+}
+@media (max-width: 1050px) {
+  .standings-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .clan-standings {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .clan-standings .standings-section-title {
+    grid-column: 1/-1;
+    margin-bottom: 0;
+  }
+  .clan-standing__heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .clan-standing__heading > span {
+    text-align: left;
+  }
+  .clan-standing .record {
+    gap: 6px;
+  }
+  .own-standing {
+    gap: 20px;
+    padding: 22px;
+  }
+  .own-standing__numbers {
+    gap: 24px;
+  }
+  .own-standing__record {
+    padding-left: 20px;
+  }
+}
+@media (max-width: 650px) {
+  .standings {
+    padding: 20px 18px;
+  }
+  .standings-hero {
+    padding: 32px 0 24px;
+  }
+  .standings-hero h1 {
+    font-size: 42px;
+  }
+  .standings-hero p {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .ranking-seal {
+    display: none;
+  }
+  .own-standing {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px 16px;
+    padding: 22px 18px;
+  }
+  .own-standing__intro {
+    grid-column: 1/-1;
+  }
+  .own-standing__numbers {
+    gap: 24px;
+  }
+  .own-standing dd {
+    font-size: 25px;
+  }
+  .own-standing__record {
+    padding-left: 14px;
+  }
+  .own-standing__record .record {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .own-standing .stat-label {
+    font-size: 10px;
+  }
+  .standings-section-title h2 {
+    font-size: 27px;
+  }
+  .rating-label {
+    font-size: 9px;
+  }
+  .standings-layout {
+    margin-top: 24px;
+    gap: 24px;
+  }
+  .ranking-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    clip-path: inset(50%);
+    overflow: hidden;
+  }
+  .ranking-table tbody {
+    display: block;
+  }
+  .ranking-table tr {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    align-items: center;
+    padding: 16px 10px;
+    gap: 12px 8px;
+    border-bottom: 1px solid var(--gh-color-border);
+  }
+  .ranking-table td,
+  .ranking-table tbody th {
+    padding: 0;
+    border: 0;
+  }
+  .ranking-table .rank-number {
+    grid-row: 1;
+    grid-column: 1;
+    width: auto;
+    text-align: left;
+    font-size: 18px;
+  }
+  .ranking-table tbody th {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .ranking-table .elo {
+    grid-column: 3;
+    grid-row: 1;
+    font-size: 22px;
+  }
+  .ranking-table .elo .mobile-label {
+    display: block;
+    color: var(--gh-color-text-muted);
+    font-size: 10px;
+    font-weight: normal;
+    margin-bottom: 4px;
+  }
+  .ranking-table .record-cell {
+    grid-column: 2/-1;
+    grid-row: 2;
+    text-align: left;
+  }
+  .ranking-table .main-clan,
+  .desktop-record {
+    display: none;
+  }
+  .mobile-record {
+    display: block;
+  }
+  .ranking-table .player-clan {
+    display: block;
+  }
+  .rank-portrait {
+    width: 38px;
+    height: 38px;
+  }
+  .player-identity {
+    gap: 9px;
+  }
+  .player-identity strong {
+    font-size: 14px;
+  }
+  .you-label {
+    margin-left: 47px;
+    margin-top: 5px;
+  }
+  .record {
+    gap: 25px;
+  }
+  .ranking-table .record b {
+    font-size: 14px;
+  }
+  .clan-standings {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .clan-standing {
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr);
+    min-height: 140px;
+  }
+  .clan-standing__art {
+    height: 100%;
+  }
+  .clan-standing__art img {
+    object-position: center;
+  }
+  .clan-standing__body {
+    border-top: 0;
+    border-left: 2px solid var(--clan-color);
+    padding: 16px;
+  }
+  .clan-standing__heading {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+  .clan-standing__heading > span {
+    text-align: right;
+  }
+  .clan-standing h3 {
+    font-size: 23px;
+  }
+  .clan-standing__heading strong {
+    font-size: 19px;
+  }
+  .clan-standing .record {
+    gap: 10px;
+  }
+  .clan-standing .record b {
+    font-size: 14px;
+  }
+  .standings-footer {
+    flex-direction: column;
+  }
+  .preview-notice {
+    line-height: 1.5;
+    font-size: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ranking-table tbody tr,
+  .loading-rule {
+    animation: none;
+  }
+}
