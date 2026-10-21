@@ -77,15 +77,12 @@
   margin-bottom: 16px;
 }
 .fighter {
-  --fighter-metal: var(--gh-palette-copper-66);
+  --fighter-metal: var(--clan-color, var(--gh-color-trim));
   display: grid;
   grid-template-columns: 88px minmax(0, 1fr);
   gap: 16px;
   align-items: center;
   min-width: 0;
-}
-.fighter--ironhide {
-  --fighter-metal: var(--gh-palette-iron-72);
 }
 .fighter:last-child {
   grid-template-columns: minmax(0, 1fr) 88px;
@@ -316,17 +313,9 @@
   place-items: center;
   width: 39px;
   height: 39px;
-  border: 1px solid color-mix(in srgb, var(--gh-color-border-muted) 33%, transparent);
+  border: 1px solid color-mix(in srgb, var(--clan-line, var(--gh-color-border-muted)) 33%, transparent);
   border-radius: 50%;
-  color: color-mix(in srgb, var(--gh-color-text-dim) 60%, transparent);
-}
-.card-back--pickers > span {
-  color: var(--gh-color-pickers-light);
-  border-color: color-mix(in srgb, var(--gh-color-pickers) 33%, transparent);
-}
-.card-back--ironhide > span {
-  color: var(--gh-color-ironhide-light);
-  border-color: color-mix(in srgb, var(--gh-color-ironhide-dim) 33%, transparent);
+  color: var(--clan-light, color-mix(in srgb, var(--gh-color-text-dim) 60%, transparent));
 }
 .card-back svg {
   width: 25px;
@@ -690,14 +679,6 @@
   color: var(--gh-color-text-muted);
   white-space: nowrap;
 }
-.coach__status {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
 .card.card--coached {
   outline: 2px solid var(--gh-color-accent);
   outline-offset: 3px;
@@ -870,19 +851,10 @@
   padding-bottom: 12px;
   margin-bottom: 20px;
 }
-.battle-drawer,
-.card-reader {
-  color: var(--gh-color-text);
-  background: var(--gh-color-surface);
-  border: 1px solid color-mix(in srgb, var(--gh-color-trim-bright) 53%, transparent);
-  border-radius: 12px;
-  padding: 20px;
-  max-height: 90dvh;
-  box-shadow: 0 24px 70px color-mix(in srgb, var(--gh-color-shadow) 67%, transparent);
-}
 .battle-drawer {
   width: 580px;
   max-width: calc(100vw - 24px);
+  padding: 20px;
 }
 .battle-drawer .card-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -938,10 +910,6 @@
 }
 .card-reader .button {
   width: 100%;
-}
-dialog::backdrop {
-  background: color-mix(in srgb, var(--gh-color-canvas) 74%, transparent);
-  backdrop-filter: blur(4px);
 }
 
 @keyframes fighter-breathe {

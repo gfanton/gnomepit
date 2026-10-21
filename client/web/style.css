@@ -3,6 +3,7 @@
   color-scheme: dark;
   /* Primitives by material; the number is the colour's OKLab lightness in percent.
      Only the roles below and the clan materials on cards and fighters refer to them. */
+  --gh-palette-amethyst-77: #c5a0dc;
   --gh-palette-black: #000000;
   --gh-palette-brass-69: #b39866;
   --gh-palette-brass-74: #c7a46b;
@@ -29,6 +30,8 @@
   --gh-palette-iron-80: #a8bec7;
   --gh-palette-iron-86: #c4d1d2;
   --gh-palette-iron-93: #e0e8e7;
+  --gh-palette-limestone-85: #d4ccbf;
+  --gh-palette-limestone-92: #e8e3db;
   --gh-palette-mint-33: #163e34;
   --gh-palette-mint-44: #315c50;
   --gh-palette-mint-65: #6e9a8c;
@@ -43,6 +46,11 @@
   --gh-palette-parchment-90: #f0dbb2;
   --gh-palette-parchment-93: #eee7d5;
   --gh-palette-parchment-98: #fff6e3;
+  --gh-palette-pewter-53: #737679;
+  --gh-palette-pewter-80: #bfc3c2;
+  --gh-palette-plum-31: #34273d;
+  --gh-palette-plum-43: #594166;
+  --gh-palette-plum-56: #805d8e;
   --gh-palette-sage-44: #4a5641;
   --gh-palette-sage-85: #d1ceb8;
   --gh-palette-sage-92: #e8e4d2;
@@ -58,6 +66,7 @@
   --gh-palette-stone-65: #8b9374;
   --gh-palette-stone-72: #9ca99f;
   --gh-palette-stone-78: #b4bbae;
+  --gh-palette-sulfur-82: #d8c55a;
   --gh-palette-umber-29: #302c24;
   --gh-palette-umber-45: #5c5347;
   --gh-palette-umber-53: #7b6843;
@@ -121,12 +130,60 @@
   --gh-color-ironhide-light: var(--gh-palette-iron-80);
   --gh-color-ironhide-dim: var(--gh-palette-iron-66);
   --gh-color-ironhide-deep: var(--gh-palette-iron-43);
+  --gh-color-delvers: var(--gh-palette-plum-56);
+  --gh-color-delvers-light: var(--gh-palette-amethyst-77);
+  --gh-color-delvers-deep: var(--gh-palette-plum-43);
+  --gh-color-delvers-warning: var(--gh-palette-sulfur-82);
   --gh-font-display: Georgia, "Times New Roman", serif;
   --gh-font-body: "Trebuchet MS", system-ui, sans-serif;
   --gh-card-width: 188px;
   --gh-card-height: 274px;
   --gh-motion-fast: 160ms;
   --gh-motion-base: 220ms;
+}
+/* A clan-coloured element names its clan with a modifier class; these blocks turn that clan into
+   the colours the element reads. Cards carry their own fuller material below. */
+:is(
+  .clan-choice--pickers,
+  .clan-banner--pickers,
+  .fighter--pickers,
+  .card-back--pickers,
+  .portrait--pickers,
+  .challenge--pickers,
+  .pickers
+) {
+  --clan-color: var(--gh-color-pickers);
+  --clan-light: var(--gh-color-pickers-light);
+  --clan-line: var(--gh-color-pickers);
+  --clan-deep: var(--gh-color-pickers-deep);
+}
+:is(
+  .clan-choice--ironhide,
+  .clan-banner--ironhide,
+  .fighter--ironhide,
+  .card-back--ironhide,
+  .portrait--ironhide,
+  .challenge--ironhide,
+  .ironhide
+) {
+  --clan-color: var(--gh-color-ironhide);
+  --clan-light: var(--gh-color-ironhide-light);
+  --clan-line: var(--gh-color-ironhide-dim);
+  --clan-deep: var(--gh-color-ironhide-deep);
+}
+:is(
+  .clan-choice--delvers,
+  .clan-banner--delvers,
+  .fighter--delvers,
+  .card-back--delvers,
+  .portrait--delvers,
+  .challenge--delvers,
+  .delvers
+) {
+  --clan-color: var(--gh-color-delvers-light);
+  --clan-light: var(--gh-color-delvers-light);
+  --clan-line: var(--gh-color-delvers);
+  --clan-deep: var(--gh-color-delvers-deep);
 }
 * {
   box-sizing: border-box;
@@ -184,6 +241,30 @@ svg {
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+dialog {
+  max-height: 90dvh;
+  overflow: auto;
+  padding: 24px;
+  color: var(--gh-color-text);
+  background: var(--gh-color-surface);
+  border: 1px solid var(--gh-color-trim);
+  border-radius: 10px;
+  box-shadow: 0 24px 70px color-mix(in srgb, var(--gh-color-shadow) 67%, transparent);
+}
+dialog::backdrop {
+  background: color-mix(in srgb, var(--gh-color-canvas) 74%, transparent);
+  backdrop-filter: blur(4px);
+}
+.sr-only,
+.coach__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .board {
   max-width: 1240px;
@@ -252,8 +333,35 @@ svg {
   border-radius: 10px;
   padding: 20px;
 }
+/* The deck workbench: a worn timber rim around a quiet inset playing surface. */
 .frame--acting {
-  border-color: color-mix(in srgb, var(--gh-color-trim-bright) 38%, transparent);
+  border: 6px solid var(--gh-color-timber);
+  outline: 1px solid color-mix(in srgb, var(--gh-color-trim) 50%, transparent);
+  outline-offset: -2px;
+  border-radius: 5px;
+  padding: 26px;
+  background:
+    radial-gradient(
+      ellipse at 20% 0%,
+      color-mix(in srgb, var(--gh-color-ambient-warm) 12%, transparent),
+      transparent 65%
+    ),
+    var(--gh-color-canvas);
+  box-shadow:
+    inset 0 3px 14px color-mix(in srgb, var(--gh-color-shadow) 70%, transparent),
+    0 20px 48px color-mix(in srgb, var(--gh-color-shadow) 50%, transparent);
+}
+.frame--acting > .frame__head {
+  padding-bottom: 6px;
+}
+.frame--acting .card-grid {
+  padding: 16px 5px;
+  gap: 22px 18px;
+}
+.frame--acting > .button-row {
+  padding-top: 18px;
+  border-top: 1px solid color-mix(in srgb, var(--gh-color-trim) 30%, transparent);
+  justify-content: flex-end;
 }
 .frame__head {
   display: flex;
@@ -272,13 +380,15 @@ svg {
 }
 .button {
   padding: 11px 20px;
-  border: 1px solid color-mix(in srgb, var(--gh-color-highlight) 33%, transparent);
+  border: 1px solid var(--gh-color-accent);
   border-radius: 5px;
-  background: linear-gradient(var(--gh-color-accent), var(--gh-color-accent-deep));
+  background: linear-gradient(var(--gh-color-highlight), var(--gh-color-accent-deep));
   color: var(--gh-color-ink);
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 3px 10px color-mix(in srgb, var(--gh-color-shadow) 13%, transparent);
+  box-shadow:
+    inset 0 1px color-mix(in srgb, var(--gh-color-text-bright) 45%, transparent),
+    0 4px 12px color-mix(in srgb, var(--gh-color-shadow) 40%, transparent);
   transition:
     background var(--gh-motion-fast),
     transform var(--gh-motion-fast);
@@ -447,21 +557,11 @@ svg {
   align-items: center;
   gap: 18px;
   padding: 18px 20px;
-  border: 1px solid color-mix(in srgb, var(--gh-color-pickers) 33%, transparent);
-  border-radius: 7px;
-  background: linear-gradient(
-    100deg,
-    color-mix(in srgb, var(--gh-color-pickers-deep) 33%, transparent),
-    var(--gh-color-surface)
-  );
-}
-.clan-banner--ironhide {
-  border-color: color-mix(in srgb, var(--gh-color-ironhide-dim) 38%, transparent);
-  background: linear-gradient(
-    100deg,
-    color-mix(in srgb, var(--gh-color-ironhide-deep) 33%, transparent),
-    var(--gh-color-surface)
-  );
+  border: 1px solid color-mix(in srgb, var(--clan-line) 33%, transparent);
+  border-left: 3px solid var(--clan-color);
+  border-radius: 3px;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--clan-deep) 33%, transparent), var(--gh-color-surface));
+  box-shadow: inset 0 1px color-mix(in srgb, var(--gh-color-text-bright) 5%, transparent);
 }
 .clan-banner p {
   margin: 6px 0 0;
@@ -477,11 +577,8 @@ svg {
   height: 72px;
   object-fit: cover;
   flex: none;
-  border: 2px solid var(--gh-color-pickers);
+  border: 2px solid var(--clan-color);
   border-radius: 50%;
-}
-.clan-banner--ironhide .clan-banner__portrait {
-  border-color: var(--gh-color-ironhide);
 }
 .clan-banner__name {
   display: flex;
@@ -491,10 +588,7 @@ svg {
 .clan-banner__name svg {
   width: 20px;
   height: 20px;
-  color: var(--gh-color-pickers-light);
-}
-.clan-banner--ironhide .clan-banner__name svg {
-  color: var(--gh-color-ironhide-light);
+  color: var(--clan-light);
 }
 
 /* ---- Cards: clan owns the material; rarity refines that same material */
@@ -620,6 +714,10 @@ svg {
 }
 .card--ironhide.card--rare .badge--rare {
   color: var(--card-stock);
+}
+/* Pickers' rare metal is a light gold; its dark copper keeps the label readable. */
+.card--pickers.card--rare .badge--rare {
+  background: var(--card-metal-dark);
 }
 .card--rare .badge--rare span {
   color: var(--gh-color-accent-hover);
@@ -1028,6 +1126,13 @@ button.card:focus-visible {
   .clan-banner .button-row {
     margin-left: 0;
   }
+  .frame--acting {
+    padding: 16px;
+    border-width: 4px;
+  }
+  .frame--acting .card-grid {
+    gap: 16px 12px;
+  }
 }
 @media (max-width: 540px) {
   .board {
@@ -1094,10 +1199,6 @@ button.card:focus-visible {
   .collection__groups {
     padding: 8px 10px 18px;
   }
-  .clan-banner {
-    padding: 14px;
-    gap: 12px;
-  }
   .clan-banner__portrait {
     width: 54px;
     height: 54px;
@@ -1105,6 +1206,25 @@ button.card:focus-visible {
   .clan-banner > div {
     flex: 1;
     min-width: 0;
+  }
+}
+/* After the 540px block, so the workbench keeps its own padding over .frame's. */
+@media (max-width: 600px) {
+  .frame--acting {
+    padding: 12px 8px;
+  }
+  .frame--acting .card-grid {
+    gap: 14px 10px;
+  }
+  .clan-banner {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr);
+    padding: 14px 10px;
+    gap: 14px;
+  }
+  .clan-banner > .button {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -1,18 +1,4 @@
 /* Delvers material study: clan owns the frame; rarity refines it. */
-:root {
-  --gh-palette-sulfur-82: #d8c55a;
-  --gh-color-delvers-warning: var(--gh-palette-sulfur-82);
-  --gh-palette-plum-31: #34273d;
-  --gh-palette-plum-43: #594166;
-  --gh-palette-plum-56: #805d8e;
-  --gh-palette-amethyst-77: #c5a0dc;
-  --gh-palette-pewter-53: #737679;
-  --gh-palette-pewter-80: #bfc3c2;
-  --gh-palette-limestone-92: #e8e3db;
-  --gh-palette-limestone-85: #d4ccbf;
-  --gh-color-delvers: var(--gh-palette-plum-56);
-  --gh-color-delvers-light: var(--gh-palette-amethyst-77);
-}
 .card--delvers {
   --clan-edge: var(--gh-palette-plum-56);
   --card-stock: var(--gh-palette-limestone-92);

@@ -23,7 +23,9 @@
   font-size: 14px;
   color: var(--gh-color-text-muted);
 }
-.lobby button,
+.lobby button {
+  min-height: 44px;
+}
 .lobby select,
 .lobby input {
   font: inherit;
@@ -77,11 +79,14 @@
 .hall-banner {
   position: relative;
   overflow: hidden;
-  border-radius: 9px;
+  border-radius: 4px;
   padding: 30px;
   margin: 24px 0;
-  background: var(--gh-color-surface);
-  border: 1px solid var(--gh-color-border);
+  background: linear-gradient(110deg, var(--gh-color-canvas), var(--gh-color-surface));
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim) 55%, transparent);
+  box-shadow:
+    0 16px 30px color-mix(in srgb, var(--gh-color-shadow) 35%, transparent),
+    inset 3px 0 var(--gh-color-trim);
   min-height: 200px;
 }
 .hall-banner img {
@@ -93,7 +98,7 @@
   object-fit: cover;
   object-position: center 48%;
   mask-image: linear-gradient(to right, transparent, black 40%);
-  opacity: 0.68;
+  opacity: 0.8;
 }
 .hall-banner .copy {
   position: relative;
@@ -125,6 +130,8 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--gh-color-trim) 35%, transparent);
 }
 .section-head p {
   color: var(--gh-color-text-muted);
@@ -135,19 +142,28 @@
   gap: 12px;
 }
 .match {
-  background: var(--gh-color-surface);
+  background: linear-gradient(
+    125deg,
+    color-mix(in srgb, var(--gh-color-ambient-warm) 9%, var(--gh-color-surface)),
+    var(--gh-color-canvas)
+  );
   border: 1px solid var(--gh-color-border);
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 18px;
+  box-shadow:
+    inset 0 1px color-mix(in srgb, var(--gh-color-trim) 12%, transparent),
+    0 6px 12px color-mix(in srgb, var(--gh-color-shadow) 25%, transparent);
 }
 .match--turn {
   border-color: var(--gh-color-accent);
   background: linear-gradient(
-    120deg,
+    125deg,
     color-mix(in srgb, var(--gh-color-accent) 10%, var(--gh-color-surface)),
-    var(--gh-color-surface)
+    var(--gh-color-canvas)
   );
-  box-shadow: inset 3px 0 var(--gh-color-accent);
+  box-shadow:
+    inset 3px 0 var(--gh-color-accent),
+    0 0 22px color-mix(in srgb, var(--gh-color-flame) 7%, transparent);
 }
 .match-top,
 .match-bottom {
@@ -177,10 +193,7 @@
   height: 56px;
   object-fit: cover;
   border-radius: 5px;
-  border: 2px solid var(--gh-color-pickers);
-}
-.portrait--iron {
-  border-color: var(--gh-color-ironhide);
+  border: 2px solid var(--clan-color, var(--gh-color-border));
 }
 .versus {
   color: var(--gh-color-text-muted);
@@ -204,17 +217,17 @@
   cursor: pointer;
 }
 .challenge {
-  --notice-clan: var(--gh-color-pickers-deep);
-  border-radius: 5px;
+  --notice-clan: var(--clan-deep, var(--gh-color-trim));
+  border-radius: 2px 5px 5px 2px;
   border: 1px solid var(--gh-color-trim);
   border-left: 5px solid var(--notice-clan);
-  background: var(--gh-color-text-warm);
+  background: linear-gradient(120deg, var(--gh-color-text-warm), var(--gh-color-text-pale));
+  box-shadow:
+    inset 0 0 20px color-mix(in srgb, var(--notice-clan) 12%, transparent),
+    0 5px 12px color-mix(in srgb, var(--gh-color-shadow) 35%, transparent);
   color: var(--gh-color-ink);
   padding: 18px;
   position: relative;
-}
-.challenge--iron {
-  --notice-clan: var(--gh-color-ironhide-deep);
 }
 .challenge .eyebrow,
 .challenge small {
@@ -323,17 +336,7 @@
   color: var(--gh-color-damage);
 }
 .lobby dialog {
-  background: var(--gh-color-surface);
-  color: var(--gh-color-text);
-  border: 1px solid var(--gh-color-trim);
-  border-radius: 10px;
-  padding: 28px;
   width: min(520px, calc(100% - 32px));
-  max-height: 90vh;
-  overflow: auto;
-}
-.lobby dialog::backdrop {
-  background: color-mix(in srgb, var(--gh-color-shadow) 75%, transparent);
 }
 .dialog-head {
   display: flex;
@@ -423,7 +426,7 @@
   }
   .hall-banner img {
     width: 100%;
-    opacity: 0.28;
+    opacity: 0.25;
   }
   .review-bar {
     align-items: flex-start;
@@ -523,14 +526,6 @@
 }
 #app.lobby {
   display: block;
-}
-.lobby .sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
 }
 .lobby .copy-address,
 .lobby [data-action="onlineCopy"] {

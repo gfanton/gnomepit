@@ -1152,10 +1152,12 @@ const clanPresentation = [
   },
 ];
 function clanChoicesHTML(home = false): string {
+  // Home sets the clans under its own h2; clan selection sets them straight under its h1.
+  const heading = home ? "h3" : "h2";
   return `<div class="clan-choices">${clanPresentation
     .map((c) => {
       const available = Boolean(clanNamed(c.name));
-      const body = `<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="${home ? "lazy" : "eager"}"></div><div class="clan-choice__body"><span class="clan-choice__eyebrow">${c.tag}</span><h3>${emblem(c.name)}${c.name}</h3><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available ? (home ? `See the ${c.name} cards →` : `Choose ${c.name} →`) : home ? "Explore Delvers · Coming soon →" : "Coming soon"}</span></div>`;
+      const body = `<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="${home ? "lazy" : "eager"}"></div><div class="clan-choice__body"><span class="clan-choice__eyebrow">${c.tag}</span><${heading} class="clan-choice__name">${emblem(c.name)}${c.name}</${heading}><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available ? (home ? `See the ${c.name} cards →` : `Choose ${c.name} →`) : home ? "Explore Delvers · Coming soon →" : "Coming soon"}</span></div>`;
       const cls = `clan-choice clan-choice--${c.name.toLowerCase()}`;
       if (home && !available) return `<a class="${cls}" href="delvers-preview.html">${body}</a>`;
       if (home)

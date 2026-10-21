@@ -1,6 +1,3 @@
-:root {
-  --gh-color-leaderboard-delvers: var(--gh-palette-orchid-78);
-}
 /* Ranked hall: metal and parchment accents, with clan identity kept separate from rank. */
 .standings {
   max-width: 1380px;
@@ -26,16 +23,26 @@
   font-size: 14px;
   color: var(--gh-color-text-warm);
 }
+/* Champions gallery: engraved brass trim and solid slate behind the records. */
 .standings-hero {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 44px 0 30px;
+  padding: 42px 28px;
+  margin-block: 24px;
   gap: 24px;
+  border-block: 1px solid color-mix(in srgb, var(--gh-color-trim) 40%, transparent);
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--gh-color-canvas) 94%, transparent),
+    color-mix(in srgb, var(--gh-color-surface) 65%, transparent)
+  );
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--gh-color-shadow) 20%, transparent);
 }
 .standings-hero h1 {
   font: normal clamp(38px, 4.7vw, 64px)/1.05 var(--gh-font-display);
   margin: 12px 0 14px;
+  color: var(--gh-color-text-glow);
 }
 .standings-hero p {
   font-size: 16px;
@@ -57,6 +64,10 @@
   border-radius: 50%;
   font: 32px var(--gh-font-display);
   color: var(--gh-color-trim-bright);
+  background: radial-gradient(circle at 35% 25%, var(--gh-color-surface-raised), var(--gh-color-canvas));
+  box-shadow:
+    inset 0 0 18px color-mix(in srgb, var(--gh-color-shadow) 55%, transparent),
+    0 6px 18px color-mix(in srgb, var(--gh-color-shadow) 40%, transparent);
 }
 .ranking-seal span {
   font: 9px var(--gh-font-body);
@@ -122,6 +133,17 @@
 .own-standing__record .record {
   margin-top: 12px;
 }
+.player-standings {
+  align-self: start;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim) 42%, transparent);
+  border-top: 3px solid var(--gh-color-trim);
+  border-radius: 3px;
+  background: var(--gh-color-canvas);
+  box-shadow:
+    inset 0 1px color-mix(in srgb, var(--gh-color-trim) 12%, transparent),
+    0 12px 28px color-mix(in srgb, var(--gh-color-shadow) 35%, transparent);
+}
 .standings-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 310px;
@@ -159,7 +181,7 @@
   font-variant-numeric: tabular-nums;
 }
 .ranking-table thead {
-  background: var(--gh-color-surface-raised);
+  background: linear-gradient(var(--gh-color-surface-raised), var(--gh-color-surface));
   color: var(--gh-color-text-muted);
 }
 .ranking-table thead th {
@@ -205,6 +227,9 @@
 .ranking-table tbody tr:nth-child(3) .rank-number--medal {
   color: var(--gh-color-pickers);
 }
+.ranking-table tbody tr:nth-child(-n + 3):not(.is-you) {
+  background: color-mix(in srgb, var(--gh-color-trim) 5%, var(--gh-color-canvas));
+}
 .ranking-table .is-you {
   background: color-mix(in srgb, var(--gh-color-select) 8%, var(--gh-color-canvas));
   outline: 1px solid var(--gh-color-select);
@@ -219,15 +244,6 @@
   text-align: left;
   font-size: 12px;
   white-space: nowrap;
-}
-.pickers {
-  --clan-color: var(--gh-color-pickers);
-}
-.ironhide {
-  --clan-color: var(--gh-color-ironhide);
-}
-.delvers {
-  --clan-color: var(--gh-color-leaderboard-delvers);
 }
 .main-clan {
   color: var(--clan-color, var(--gh-color-text-muted));
@@ -311,10 +327,11 @@
 }
 .clan-standing {
   border: 1px solid var(--gh-color-border);
-  border-radius: 6px;
+  border-radius: 3px;
   overflow: hidden;
   margin-bottom: 18px;
   background: var(--gh-color-surface);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--gh-color-shadow) 35%, transparent);
 }
 .clan-standing__art {
   height: 104px;
@@ -337,6 +354,7 @@
   border: 1px solid var(--gh-color-trim);
   font: 20px var(--gh-font-display);
   color: var(--gh-color-highlight);
+  box-shadow: 0 2px 8px var(--gh-color-shadow);
 }
 .clan-standing__body {
   padding: 17px;
@@ -424,14 +442,6 @@
   font-size: 13px;
   color: var(--gh-color-text-muted);
 }
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
 @keyframes record-pulse {
   to {
     opacity: 0.3;
@@ -487,9 +497,6 @@
 @media (max-width: 650px) {
   .standings {
     padding: 20px 18px;
-  }
-  .standings-hero {
-    padding: 32px 0 24px;
   }
   .standings-hero h1 {
     font-size: 42px;
@@ -663,6 +670,22 @@
   .preview-notice {
     line-height: 1.5;
     font-size: 12px;
+  }
+}
+@media (max-width: 800px) {
+  .standings-hero {
+    padding: 26px 20px;
+  }
+  .player-standings {
+    padding: 14px;
+  }
+}
+@media (max-width: 600px) {
+  .standings-hero {
+    padding: 24px 16px;
+  }
+  .player-standings {
+    padding: 10px 6px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

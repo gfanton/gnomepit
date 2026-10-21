@@ -24,16 +24,26 @@
   text-decoration: underline;
 }
 .intro--home {
-  min-height: 320px;
-  padding: 0;
-  gap: 36px;
+  min-height: 390px;
+  padding: 20px 0 24px;
+  gap: 48px;
 }
 .intro--home .intro__art {
-  height: 310px;
+  height: 360px;
+  border-radius: 4px 64px 4px 4px;
+  border-color: color-mix(in srgb, var(--gh-color-trim-bright) 65%, transparent);
+  box-shadow:
+    0 24px 48px color-mix(in srgb, var(--gh-color-shadow) 55%, transparent),
+    0 0 48px color-mix(in srgb, var(--gh-color-flame) 8%, transparent);
+}
+.intro--home .intro__art img {
+  object-position: center 55%;
 }
 .intro--home h1 {
   font-size: clamp(40px, 4.1vw, 58px);
   margin: 10px 0 16px;
+  color: var(--gh-color-text-bright);
+  text-shadow: 0 3px 24px color-mix(in srgb, var(--gh-color-shadow) 65%, transparent);
 }
 .intro--home p {
   font-size: 16px;
@@ -59,14 +69,6 @@
 }
 .offer {
   max-width: min(420px, calc(100vw - 32px));
-  padding: 24px;
-  border: 1px solid var(--gh-color-trim);
-  border-radius: 10px;
-  background: var(--gh-color-surface);
-  color: var(--gh-color-text);
-}
-.offer::backdrop {
-  background: color-mix(in srgb, var(--gh-color-shadow) 60%, transparent);
 }
 .offer h2 {
   font: bold 26px var(--gh-font-display);
@@ -101,8 +103,20 @@
   font-size: 12px;
 }
 .home-clans {
-  border-top: 1px solid var(--gh-color-border);
-  padding-top: 24px;
+  position: relative;
+  border-top: 1px solid color-mix(in srgb, var(--gh-color-trim) 40%, transparent);
+  padding: 30px 0 8px;
+}
+.home-clans::before {
+  content: "◆" / "";
+  position: absolute;
+  top: -11px;
+  left: calc(50% - 18px);
+  width: 36px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--gh-color-trim);
+  background: var(--gh-color-canvas);
 }
 .clan-choices {
   display: grid;
@@ -110,7 +124,6 @@
   gap: 22px;
 }
 .clan-choice {
-  --choice-color: var(--gh-color-pickers);
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -118,27 +131,27 @@
   padding: 0;
   overflow: hidden;
   border: 1px solid var(--gh-color-border);
-  border-top: 3px solid var(--choice-color);
-  border-radius: 8px;
-  background: var(--gh-color-surface);
+  border-top: 3px solid var(--clan-color);
+  border-radius: 4px;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--clan-color) 9%, var(--gh-color-surface)),
+    var(--gh-color-canvas)
+  );
   color: var(--gh-color-text);
   font: inherit;
   text-decoration: none;
   cursor: pointer;
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--gh-color-shadow) 20%, transparent);
+  box-shadow:
+    inset 0 0 0 3px color-mix(in srgb, var(--gh-color-shadow) 16%, transparent),
+    0 12px 24px color-mix(in srgb, var(--gh-color-shadow) 35%, transparent);
   transition:
     transform var(--gh-motion-base),
     border-color var(--gh-motion-base);
 }
-.clan-choice--ironhide {
-  --choice-color: var(--gh-color-ironhide);
-}
-.clan-choice--delvers {
-  --choice-color: var(--gh-color-delvers-light);
-}
 .clan-choice:not(:disabled):hover {
   transform: translateY(-4px);
-  border-color: var(--choice-color);
+  border-color: var(--clan-color);
 }
 .clan-choice:focus-visible {
   outline: 3px solid var(--gh-color-highlight);
@@ -152,6 +165,7 @@
   width: 100%;
   overflow: hidden;
   background: var(--gh-color-surface-raised);
+  border-bottom: 1px solid color-mix(in srgb, var(--clan-color) 65%, transparent);
 }
 .clan-choice__art img {
   width: 100%;
@@ -163,7 +177,7 @@
   transform: scale(1.025);
 }
 .clan-choice__body {
-  padding: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -174,15 +188,15 @@
   letter-spacing: 0.9px;
   color: var(--gh-color-text-muted);
 }
-.clan-choice h3 {
+.clan-choice__name {
   display: flex;
   align-items: center;
   gap: 9px;
   font: bold 29px/1.1 var(--gh-font-display);
   margin: 10px 0;
 }
-.clan-choice h3 svg {
-  color: var(--choice-color);
+.clan-choice__name svg {
+  color: var(--clan-color);
   width: 26px;
   height: 26px;
 }
@@ -209,13 +223,31 @@
 .clan-choice:disabled .clan-choice__cta {
   color: var(--gh-color-text-muted);
 }
+/* Clan alcoves: separate pools of light above grounded, dark plinths. */
+.clan-selection .clan-choice {
+  position: relative;
+  border-top-width: 2px;
+  border-radius: 44px 44px 4px 4px;
+  box-shadow:
+    0 16px 32px color-mix(in srgb, var(--gh-color-shadow) 45%, transparent),
+    0 -12px 36px color-mix(in srgb, var(--clan-color) 12%, transparent);
+}
+.clan-selection .clan-choice__art {
+  aspect-ratio: 4 / 3;
+}
+.clan-selection .clan-choice__cta {
+  border-top-color: color-mix(in srgb, var(--clan-color) 40%, transparent);
+}
 .setup-steps {
   display: flex;
   gap: 24px;
   align-items: center;
   flex-wrap: wrap;
-  border-bottom: 1px solid var(--gh-color-border);
-  padding: 0 0 16px;
+  padding: 14px 18px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim) 28%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--gh-color-canvas) 92%, transparent);
+  box-shadow: inset 0 1px color-mix(in srgb, var(--gh-color-trim) 10%, transparent);
   color: var(--gh-color-text-muted);
   font-size: 14px;
 }
@@ -225,6 +257,7 @@
 }
 .clan-selection .section-intro {
   margin: 28px 0;
+  padding-block: 10px 18px;
 }
 .clan-selection__note {
   font-size: 14px;
@@ -240,17 +273,19 @@
     gap: 14px;
   }
   .clan-choice__body {
-    padding: 14px;
+    padding: 18px;
   }
-  .clan-choice h3 {
+  .clan-choice__name {
     font-size: 25px;
   }
   .intro--home {
     grid-template-columns: 1fr;
-    gap: 22px;
+    min-height: 0;
+    gap: 24px;
+    padding-top: 4px;
   }
   .intro--home .intro__art {
-    height: 240px;
+    height: 280px;
   }
   .section-intro {
     align-items: flex-start;
@@ -275,13 +310,16 @@
   .clan-choice__art {
     aspect-ratio: 16/9;
   }
-  .clan-choice__body {
-    padding: 20px;
+  .clan-selection .clan-choice {
+    border-radius: 32px 32px 4px 4px;
+  }
+  .clan-selection .clan-choice__art {
+    aspect-ratio: 16 / 9;
   }
   .clan-choice__eyebrow {
     font-size: 12px;
   }
-  .clan-choice h3 {
+  .clan-choice__name {
     font-size: 29px;
   }
   .clan-choice p {
@@ -303,7 +341,8 @@
     gap: 10px 18px;
   }
   .intro--home .intro__art {
-    height: 210px;
+    height: 230px;
+    border-top-right-radius: 40px;
   }
   .hall-footer {
     flex-wrap: wrap;
