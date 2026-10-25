@@ -7,17 +7,15 @@ Online matches run through the arena realm, `r/arena`, on a gno chain. The page 
 Every command below runs in the flake's dev shell: `direnv allow` once, or `nix develop`. It provides Go, TinyGo, Node, pnpm, and gno, gnokey and gnodev built from gno's `chain/onyx` tag.
 
 1. `make dev` starts gnodev with the engine, the gnotif registry and its trigger package, on the chain `gnomepit-dev`, then deploys the arena in a transaction from gnodev's test1 account. tx-indexer files genesis transactions at height 0, where gnotifd never reads, so the arena's triggers have to land in a block. The RPC listens on `127.0.0.1:36657` and gnoweb on `127.0.0.1:8890`. It copies the registry from the gnotif revision the flake pins, or from the checkout `GNOTIF_DIR` names. It funds four dev accounts, alice, bob, carol and dave, with 10,000 GNOT each.
-2. `make indexer` runs tx-indexer v1.3.0 on that chain, answering on `127.0.0.1:8546`. The page learns of the other player's moves from it, and gnotifd reads the chain through it.
-3. `make gnotif` runs gnotifd on `127.0.0.1:8547`, reading the chain through `make indexer`. It makes new VAPID keys and an empty database in `.gnotif/` each time.
+2. `make indexer` runs tx-indexer v1.3.0 on that chain, answering on `127.0.0.1:8546`. gnotifd reads the chain through it.
+3. `make gnotif` runs gnotifd on `127.0.0.1:8547`, reading the chain through `make indexer`. The page learns of the other player's moves and of the board's changes from it. It makes new VAPID keys and an empty database in `.gnotif/` each time.
 4. `make serve` builds `engine.wasm` with TinyGo and bundles the pages with esbuild into `dist/`, then serves `dist/` on `http://127.0.0.1:8080/`. `GNOMEPIT_NETWORK` picks the network the build targets: `local` by default, or `offline` for a page with no online play. `make e2e` and `make test` build the engine too.
 5. Open `http://127.0.0.1:8080/?dev=alice` in one browser and `?dev=bob` in another, then **Play online**: the lobby, with a dev wallet in place of Adena. Without `dev`, the lobby uses Adena.
-6. `online-dev.html?dev=alice` and `?dev=bob` open a bare console instead, which picks decks and plans at random. Add `&contract=1` to have the wallet sign every move instead of a session, and `&indexer=` with no value to poll the node instead of the indexer.
+6. `online-dev.html?dev=alice` and `?dev=bob` open a bare console instead, which picks decks and plans at random. Add `&contract=1` to have the wallet sign every move instead of a session, and `&gnotif=` with no value to poll the node instead of following gnotifd.
 7. `make e2e` plays from node, with `make indexer` running:
    - **A match through sessions.** Alice and bob each sign through a session of their own. `Locks` lists each player's lock on the match after their opening, and a second challenge signed with alice's locked session fails with `session locked to match 1`. So does a resignation signed with it in match 2, which alice's wallet posts and nobody accepts. Alice's sessions last 30 seconds, so hers expires after round 1: her match's `session` reads `expired`, and she renews it to finish.
    - **A second challenge.** Alice posts again and gets a new session, which revokes the session of the ended match. Nobody accepts it.
    - **A match the wallet signs.** Both players sign every move with the wallet, which locks no session.
-
-   It also checks that the indexer reports every call, in order.
 
 gnodev keeps the chain in memory, so a restart starts from an empty arena. gnodev also watches `deps/`, which `make deps` and `make test` rewrite: it then reloads, replaying the chain's transactions from height 0, the arena's deploy among them. Start `make indexer` again after either, since its index holds the old heights, then `make gnotif`. gnodev does not watch `r/arena`, so a change to the arena needs a new `make dev`.
 
@@ -43,9 +41,11 @@ Rejecting check 2's approval cancels its post. When Adena cannot create the sess
 
 ## Live updates
 
-The node pushes nothing, and tx-indexer refuses websockets from a page on another origin: its GraphQL websocket answers `403 unable to upgrade`, onyx's public indexer included. So the page polls the indexer's GraphQL API over HTTP every 3 s while it is visible. Each poll asks for the latest indexed height; when it moved, a second request asks for the arena's successful calls in the new blocks. A call shows up within about 3 s of its block being indexed. A poll that fails loses nothing: the next one that succeeds reads every block since the last height read.
+The node pushes nothing, so the page follows the arena through a gnotif server's live stream: one WebSocket per page, opened when the board or a match first subscribes and closed when the last stops. The arena sets three triggers in gnotif's registry: Turn and Ended name the player they notify in `to`, and Board, which names nobody, tells of a challenge posted, taken or withdrawn. The page opts in to Board as soon as it subscribes, and to Turn and Ended for the connected wallet's address. Each notification is a hint: the page reads the chain again for the match it names, or the board's lists for Board. A notification arrives once gnotifd has read its block through its indexer, which `make gnotif` has it ask every second.
 
-Without an indexer, or while it does not answer, `subscribe` polls the node instead: it reports a change every 4 s, and the page reads again what it shows.
+The stream replays nothing it sent while no connection was open, so each time the connection opens the page reads everything it shows again. While gnotifd cannot list the arena's triggers, refuses the connection, or the connection is down, `subscribe` polls the node instead: it reports a change every 4 s, and the page reads again what it shows. The page does the same with no gnotif server at all.
+
+The connection sends the gnotif server the page's opt-ins: the ids of the triggers it follows and, once a wallet is connected, the player's address. Push notifications use the same opt-ins, Turn and Ended only, once the player asks for them.
 
 ## Modules
 
@@ -55,7 +55,6 @@ Without an indexer, or while it does not answer, `subscribe` polls the node inst
 | `arena-provider.ts` | The arena the lobby (`lobby.ts`, `online-model.ts`) plays through, built from the page's query string |
 | `wallet.ts` | Connecting a wallet, the root signature, key derivation, sessions and boxes |
 | `chain.ts` | JSON-RPC to the node: queries, accounts, sessions, simulation, broadcast, and `payFor` |
-| `indexer.ts` | Polling a tx-indexer for the arena's calls |
 | `gnovalue.ts` | Decoding `vm/qeval_json` answers into plain objects |
 | `devwallet.ts` | A wallet with Adena's calls and public dev keys, for local chains only |
 | `encoding.ts` | Hex and base64 |
@@ -72,10 +71,10 @@ Without an indexer, or while it does not answer, `subscribe` polls the node inst
 ## The arena API
 
 ```js
-const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origin, storage, notifier, indexer, network, signEachMove, sessionLifetime });
+const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origin, storage, notifier, network, signEachMove, sessionLifetime });
 ```
 
-`chain` comes from `createChain({ rpc })`, `wallet` is `window.adena` or a `devWallet`, `engine` from `loadEngine`, `signer` is `signer.ts` (`import * as signer`), `storage` is `localStorage`, `notifier` a gnotif `Gnotif`, and `indexer` comes from `createIndexer({ url })` with the indexer's GraphQL URL, such as `http://127.0.0.1:8546/graphql/query`. Without `indexer`, `subscribe` polls the node. `signEachMove` skips sessions. `sessionLifetime` is how long each new session lasts, in seconds, one day unless given. `network`, `{chainName, rpcUrl}`, lets `connect()` add the chain to a wallet that does not know it; `loadArena` passes it for its default chain only, named by its chain ID, and passes none when `?chain=` or `?rpc=` names another, so an RPC address from a link never enters the wallet.
+`chain` comes from `createChain({ rpc })`, `wallet` is `window.adena` or a `devWallet`, `engine` from `loadEngine`, `signer` is `signer.ts` (`import * as signer`), `storage` is `localStorage`, and `notifier` a gnotif `Gnotif` for a gnotif server, such as `http://127.0.0.1:8547`. Without `notifier`, `subscribe` polls the node. `signEachMove` skips sessions. `sessionLifetime` is how long each new session lasts, in seconds, one day unless given. `network`, `{chainName, rpcUrl}`, lets `connect()` add the chain to a wallet that does not know it; `loadArena` passes it for its default chain only, named by its chain ID, and passes none when `?chain=` or `?rpc=` names another, so an RPC address from a link never enters the wallet.
 
 | Call | Returns or does |
 |---|---|
@@ -94,7 +93,7 @@ const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origi
 | `move(id, plan)` | Sends this player's turn: the challenger's reveal and next seal in one call, or the acceptor's plan |
 | `finish(id)` | Sends the challenger's last reveal, after round 3 or a knockout |
 | `resign(id)`, `claimForfeit(id)` | Resigns or withdraws; claims a passed deadline. With no live session for the match, the wallet signs the call. |
-| `subscribe(onChange)` | Calls `onChange({match, func, caller, height})` for each arena call, `match` being `null` for a new challenge, and `onChange({})` when anything may have changed: each time the indexer starts answering, and on every poll of the node. Returns a stop function. |
+| `subscribe(onChange)` | Calls `onChange({match, event, height})` for each notification the page follows, `event` being `Turn`, `Ended` or `Board` and `match` being `null` for `Board`, and `onChange({})` when anything may have changed: each time the live connection opens, and on every poll of the node. Returns a stop function. |
 | `watch(id, onChange)` | Calls `onChange(view)` whenever match `id` changes, reading it again on each change `subscribe` reports for it and at `sessionExpires`; returns a stop function |
 | `notify()` | Opts the browser in to the arena's Turn and Ended notifications; call it from a click |
 

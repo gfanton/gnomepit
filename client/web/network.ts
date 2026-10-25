@@ -5,8 +5,9 @@ export type Network = {
   readonly chainId: string;
   readonly rpc: string;
   readonly realm: string;
-  // null polls the node instead of subscribing through an indexer.
-  readonly indexer: string | null;
+  // The gnotif server the page follows the chain and turns on push through; null polls the
+  // node instead.
+  readonly gnotif: string | null;
 };
 
 // null is the offline build: no chain at all.
@@ -15,7 +16,7 @@ export const networks = {
     chainId: "gnomepit-dev",
     rpc: "http://127.0.0.1:36657",
     realm: "gno.land/r/gfanton/gnomepit/arena",
-    indexer: "http://127.0.0.1:8546/graphql/query",
+    gnotif: "http://127.0.0.1:8547",
   },
   offline: null,
 } as const satisfies Record<string, Network | null>;
@@ -27,14 +28,14 @@ export function networkFor(name: string): Network | null {
   return networks[name];
 }
 
-// networkFrom is base with the link's ?chain=, ?rpc=, ?realm= and ?indexer= applied; an
-// empty ?indexer= clears the indexer.
+// networkFrom is base with the link's ?chain=, ?rpc=, ?realm= and ?gnotif= applied; an
+// empty ?gnotif= clears the gnotif server.
 export function networkFrom(params: URLSearchParams, base: Network): Network {
-  const indexer = params.get("indexer");
+  const gnotif = params.get("gnotif");
   return {
     chainId: params.get("chain") ?? base.chainId,
     rpc: params.get("rpc") ?? base.rpc,
     realm: params.get("realm") ?? base.realm,
-    indexer: indexer === null ? base.indexer : indexer === "" ? null : indexer,
+    gnotif: gnotif === null ? base.gnotif : gnotif === "" ? null : gnotif,
   };
 }

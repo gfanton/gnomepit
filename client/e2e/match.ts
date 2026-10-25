@@ -1,33 +1,23 @@
 // Plays arena matches on a running `make dev`: one with a session per player and match,
-// alice's renewed mid-match, then one the wallet signs move by move. Given an indexer, it
-// also checks that the indexer's feed reports every call, in order.
+// alice's renewed mid-match, then one the wallet signs move by move.
 //
-//   [CHAIN=<chain id>] node client/e2e/match.ts [rpc url] [indexer GraphQL url]
+//   [CHAIN=<chain id>] node client/e2e/match.ts [rpc url]
 
 import assert from "node:assert/strict";
 
-import {
-  type Arena,
-  type ArenaChange,
-  type ArenaOptions,
-  type Opening,
-  createArena,
-  sessionLocks,
-} from "../web/arena.ts";
+import { type Arena, type ArenaOptions, type Opening, createArena, sessionLocks } from "../web/arena.ts";
 import { ChainError, type Session, createChain, payFor } from "../web/chain.ts";
 import { type devAccounts, devWallet } from "../web/devwallet.ts";
 import { type GameState, type Side, cardOf, startState } from "../web/engine.ts";
 import { nodeEngine } from "../web/engine-node.ts";
 import { createReader } from "../web/gnovalue.ts";
 import type { Address, MatchId } from "../web/ids.ts";
-import { createIndexer } from "../web/indexer.ts";
 import { networks } from "../web/network.ts";
 import * as signer from "../web/signer.ts";
 import { type ClanStanding, type Standing, createStandings } from "../web/standings.ts";
 import { type SessionKeys, deriveKeys, generations, rootSignature } from "../web/wallet.ts";
 
 const rpc = process.argv[2] ?? networks.local.rpc;
-const indexerURL = process.argv[3];
 const { realm } = networks.local;
 const chainId = process.env.CHAIN ?? networks.local.chainId;
 const origin = "http://e2e.local";
@@ -99,28 +89,6 @@ async function ready(name: string, arena: Arena): Promise<Address> {
   return after.address;
 }
 
-// The feed's first change, {}, comes once the indexer has taken the subscription.
-const feed: Extract<ArenaChange, { func: string }>[] = [];
-let stopFeed = () => {};
-if (indexerURL !== undefined) {
-  const watcher = createArena({
-    chain,
-    wallet: null,
-    engine,
-    signer,
-    realm,
-    chainId,
-    origin,
-    storage: memory(),
-    indexer: createIndexer({ url: indexerURL }),
-  });
-  await new Promise<void>((resolve) => {
-    stopFeed = watcher.subscribe((change) => {
-      if ("func" in change) feed.push(change);
-      else resolve();
-    });
-  });
-}
 // Every arena call that lands, as [func, match], match being null for a challenge.
 const sent: [string, MatchId | null][] = [];
 
@@ -361,12 +329,4 @@ assert.deepEqual(
 log(
   `standings: alice ${standingsAfter.alice.Rating} (#${standingsAfter.alice.Rank}), bob ${standingsAfter.bob.Rating} (#${standingsAfter.bob.Rank})`,
 );
-
-if (indexerURL !== undefined) {
-  const calls = () => feed.map((c) => [c.func, c.match]);
-  for (let waited = 0; waited < 15_000 && feed.length < sent.length; waited += 250) await sleep(250);
-  stopFeed();
-  assert.deepEqual(calls(), sent, "the indexer's feed reports every call, in order");
-  log(`the indexer reported all ${sent.length} calls`);
-}
 process.exit(0);
