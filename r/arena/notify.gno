@@ -32,6 +32,12 @@ func tell(kind string, player, caller address, id int, text string) {
 	chain.Emit(kind, "to", player.String(), "match", strconv.Itoa(id), "text", text)
 }
 
+// tellBoard emits Board about match id, whose change altered the open-challenge list. It
+// names no address, so a caller cannot aim it at one player's browser.
+func tellBoard(id int, text string) {
+	chain.Emit("Board", "match", strconv.Itoa(id), "text", text)
+}
+
 // tellEnded sends Ended to each player of the finished match m, numbered id, but caller,
 // one event each, since gnotif reads only the first value of a repeated attribute.
 func tellEnded(m record, id int, caller address) {

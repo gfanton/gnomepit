@@ -77,6 +77,7 @@ func Challenge(cur realm, clan, deckSeal, planSeal, box string, opponent address
 	join(cur.Previous().IsUser(), m.challenger, lastID)
 	saveMatch(rules, lastID, m)
 	openAdd(lastID, m.deadline)
+	tellBoard(lastID, clan+" posted a challenge.")
 	return strconv.Itoa(lastID)
 }
 

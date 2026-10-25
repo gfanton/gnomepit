@@ -1,8 +1,8 @@
 // PKGPATH: gno.land/r/demo/main
 
 // The reveal that knocks a gnome out tells the other player the match is over. A
-// player who accepts their own challenge hears nothing, since every event would name
-// the caller.
+// player who accepts their own challenge gets no Turn or Ended, since each would name
+// the caller; only the board hears of that match.
 package main
 
 import (
@@ -59,6 +59,62 @@ func main(cur realm) {
 
 // Events:
 // [
+//   {
+//     "type": "Board",
+//     "attrs": [
+//       {
+//         "key": "match",
+//         "value": "1"
+//       },
+//       {
+//         "key": "text",
+//         "value": "Pickers posted a challenge."
+//       }
+//     ],
+//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
+//   },
+//   {
+//     "type": "Board",
+//     "attrs": [
+//       {
+//         "key": "match",
+//         "value": "1"
+//       },
+//       {
+//         "key": "text",
+//         "value": "Challenge 1 was taken."
+//       }
+//     ],
+//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
+//   },
+//   {
+//     "type": "Board",
+//     "attrs": [
+//       {
+//         "key": "match",
+//         "value": "2"
+//       },
+//       {
+//         "key": "text",
+//         "value": "Pickers posted a challenge."
+//       }
+//     ],
+//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
+//   },
+//   {
+//     "type": "Board",
+//     "attrs": [
+//       {
+//         "key": "match",
+//         "value": "2"
+//       },
+//       {
+//         "key": "text",
+//         "value": "Challenge 2 was taken."
+//       }
+//     ],
+//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
+//   },
 //   {
 //     "type": "Turn",
 //     "attrs": [
