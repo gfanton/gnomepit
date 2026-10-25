@@ -61,7 +61,7 @@ Without an indexer, or while it does not answer, `subscribe` polls the node inst
 | `encoding.ts` | Hex and base64 |
 | `engine.ts` | The engine's rules, from `engine.wasm` |
 | `signer.ts` | `keyInfo`, `signTx` and `signBytes`: keys, transactions and signed documents |
-| `gnotif.js`, `sw.js` | gnotif's browser client and service worker |
+| `gnotif.js`, `gnotif.d.ts`, `sw.js` | gnotif's browser client, its types and its service worker |
 
 ## Signer
 
