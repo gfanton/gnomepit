@@ -1,7 +1,9 @@
 // Plays arena matches on a running `make dev`: one with a session per player and match,
-// alice's renewed mid-match, then one the wallet signs move by move.
+// alice's renewed mid-match, then one the wallet signs move by move. It also checks that
+// each player's live feed, through a running `make gnotif`, reports their notifications in
+// chain order.
 //
-//   [CHAIN=<chain id>] node client/e2e/match.ts [rpc url]
+//   [CHAIN=<chain id>] node client/e2e/match.ts [rpc url] [gnotif server url]
 
 import assert from "node:assert/strict";
 
@@ -10,6 +12,7 @@ import { ChainError, type Session, createChain, payFor } from "../web/chain.ts";
 import { type devAccounts, devWallet } from "../web/devwallet.ts";
 import { type GameState, type Side, cardOf, startState } from "../web/engine.ts";
 import { nodeEngine } from "../web/engine-node.ts";
+import { Gnotif } from "../web/gnotif.js";
 import { createReader } from "../web/gnovalue.ts";
 import type { Address, MatchId } from "../web/ids.ts";
 import { networks } from "../web/network.ts";
@@ -18,9 +21,12 @@ import { type ClanStanding, type Standing, createStandings } from "../web/standi
 import { type SessionKeys, deriveKeys, generations, rootSignature } from "../web/wallet.ts";
 
 const rpc = process.argv[2] ?? networks.local.rpc;
+const server = process.argv[3] ?? networks.local.gnotif;
 const { realm } = networks.local;
 const chainId = process.env.CHAIN ?? networks.local.chainId;
 const origin = "http://e2e.local";
+// The gnotif client reads location.href for every live notification, and node has none.
+Object.defineProperty(globalThis, "location", { value: new URL(`${origin}/`), configurable: true });
 // Alice's sessions last this many seconds, so one expires mid-match. Each, the renewed one
 // included, must outlast the moves that follow it.
 const shortLifetime = 30;
@@ -38,7 +44,19 @@ function player(
   options: Partial<Pick<ArenaOptions, "sessionLifetime" | "signEachMove">> = {},
 ): Arena {
   const wallet = devWallet({ name, signer, chain, chainId });
-  return createArena({ chain, wallet, engine, signer, realm, chainId, origin, storage: memory(), ...options });
+  const notifier = new Gnotif({ server });
+  return createArena({
+    chain,
+    wallet,
+    engine,
+    signer,
+    realm,
+    chainId,
+    origin,
+    storage: memory(),
+    notifier,
+    ...options,
+  });
 }
 
 const read = createReader(chain);
@@ -180,6 +198,25 @@ const alice = player("alice", { sessionLifetime: shortLifetime });
 const bob = player("bob");
 const aliceAddress = await ready("alice", alice);
 const bobAddress = await ready("bob", bob);
+
+// What each player's live feed reports, as [event, match]. Each feed's first change, {},
+// comes once gnotifd has accepted its opt-ins, so nothing is posted before both have.
+type Heard = [string, MatchId | null][];
+const heard: Record<"alice" | "bob", Heard> = { alice: [], bob: [] };
+const unsubscribe: (() => void)[] = [];
+for (const [name, arena] of [
+  ["alice", alice],
+  ["bob", bob],
+] as const) {
+  await new Promise<void>((resolve) => {
+    unsubscribe.push(
+      arena.subscribe((change) => {
+        if ("event" in change) heard[name].push([change.event, change.match]);
+        else resolve();
+      }),
+    );
+  });
+}
 
 const standings = createStandings({ chain, realm });
 const standingsBefore = {
@@ -329,4 +366,26 @@ assert.deepEqual(
 log(
   `standings: alice ${standingsAfter.alice.Rating} (#${standingsAfter.alice.Rank}), bob ${standingsAfter.bob.Rating} (#${standingsAfter.bob.Rank})`,
 );
+
+// expectedBy is what name's feed should report for the calls sent: Board for every
+// challenge posted or taken, and Turn or Ended for the player a move hands the match to,
+// alice challenging and bob accepting in every match. A match ends on alice's last reveal.
+function expectedBy(name: "alice" | "bob"): Heard {
+  const last = new Map<MatchId | null, number>();
+  sent.forEach(([, match], i) => last.set(match, i));
+  const expected: Heard = [];
+  sent.forEach(([func, match], i) => {
+    if (func === "Challenge" || func === "Accept") expected.push(["Board", null]);
+    if ((func === "Accept" || func === "Play") && name === "alice") expected.push(["Turn", match]);
+    if (func === "Reveal" && name === "bob") expected.push([last.get(match) === i ? "Ended" : "Turn", match]);
+  });
+  return expected;
+}
+for (const name of ["alice", "bob"] as const) {
+  const expected = expectedBy(name);
+  for (let waited = 0; waited < 15_000 && heard[name].length < expected.length; waited += 250) await sleep(250);
+  assert.deepEqual(heard[name], expected, `${name}'s live feed reports ${name}'s notifications, in chain order`);
+  log(`${name}'s live feed reported ${expected.length} notifications`);
+}
+for (const stop of unsubscribe) stop();
 process.exit(0);

@@ -84,8 +84,8 @@ fund: ## Send 1,000 GNOT on a running make dev to ADDRESS, such as an Adena acco
 record: $(PNPM_STAMP) ## Record the RPC answers the TypeScript tests replay, from a running make dev
 	CHAIN=$(DEV_CHAIN) node scripts/record-rpc.ts http://$(DEV_RPC)
 
-e2e: wasm $(PNPM_STAMP) ## Play two arena matches on a running make dev and make indexer, one through per-match sessions and one the wallet signs
-	CHAIN=$(DEV_CHAIN) node client/e2e/match.ts http://$(DEV_RPC) http://$(DEV_INDEXER)/graphql/query
+e2e: wasm $(PNPM_STAMP) ## Play two arena matches on a running make dev, make indexer and make gnotif, one through per-match sessions and one the wallet signs
+	CHAIN=$(DEV_CHAIN) node client/e2e/match.ts http://$(DEV_RPC) http://$(DEV_GNOTIF)
 
 test: realm-test build check ## Run the Gno tests, build the page, check the TypeScript, then run go vet, the Go tests and the TypeScript tests
 	go vet ./...

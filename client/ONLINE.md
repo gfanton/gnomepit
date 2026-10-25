@@ -12,10 +12,12 @@ Every command below runs in the flake's dev shell: `direnv allow` once, or `nix 
 4. `make serve` builds `engine.wasm` with TinyGo and bundles the pages with esbuild into `dist/`, then serves `dist/` on `http://127.0.0.1:8080/`. `GNOMEPIT_NETWORK` picks the network the build targets: `local` by default, or `offline` for a page with no online play. `make e2e` and `make test` build the engine too.
 5. Open `http://127.0.0.1:8080/?dev=alice` in one browser and `?dev=bob` in another, then **Play online**: the lobby, with a dev wallet in place of Adena. Without `dev`, the lobby uses Adena.
 6. `online-dev.html?dev=alice` and `?dev=bob` open a bare console instead, which picks decks and plans at random. Add `&contract=1` to have the wallet sign every move instead of a session, and `&gnotif=` with no value to poll the node instead of following gnotifd.
-7. `make e2e` plays from node, with `make indexer` running:
+7. `make e2e` plays from node, with `make indexer` and `make gnotif` running:
    - **A match through sessions.** Alice and bob each sign through a session of their own. `Locks` lists each player's lock on the match after their opening, and a second challenge signed with alice's locked session fails with `session locked to match 1`. So does a resignation signed with it in match 2, which alice's wallet posts and nobody accepts. Alice's sessions last 30 seconds, so hers expires after round 1: her match's `session` reads `expired`, and she renews it to finish.
    - **A second challenge.** Alice posts again and gets a new session, which revokes the session of the ended match. Nobody accepts it.
    - **A match the wallet signs.** Both players sign every move with the wallet, which locks no session.
+
+   It also checks that each player's live feed reports their Board, Turn and Ended notifications, in chain order.
 
 gnodev keeps the chain in memory, so a restart starts from an empty arena. gnodev also watches `deps/`, which `make deps` and `make test` rewrite: it then reloads, replaying the chain's transactions from height 0, the arena's deploy among them. Start `make indexer` again after either, since its index holds the old heights, then `make gnotif`. gnodev does not watch `r/arena`, so a change to the arena needs a new `make dev`.
 
@@ -208,4 +210,4 @@ Check three things in onyx's release before deploying the arena there:
 ## Tests
 
 - `make test` runs the realm's tests, builds the page, type-checks, lints and format-checks the TypeScript, then runs `go vet`, the Go tests and the TypeScript tests; the TypeScript tests run `engine.wasm`.
-- With `make dev` and `make indexer` running, `make e2e` plays its matches. With `make dev` running, `make capture` records the query answers `gnovalue.ts`'s and `arena.ts`'s tests read, and `make record` records the RPC answers the other tests replay.
+- With `make dev`, `make indexer` and `make gnotif` running, `make e2e` plays its matches and checks each player's live feed. With `make dev` running, `make capture` records the query answers `gnovalue.ts`'s and `arena.ts`'s tests read, and `make record` records the RPC answers the other tests replay.
