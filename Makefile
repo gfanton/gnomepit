@@ -4,7 +4,8 @@ PNPM_STAMP := node_modules/.modules.yaml
 GOLDEN := $(WEB)/testdata/golden-tx.json
 # GNOTIF_DIR names the gnotif checkout whose registry the arena imports; the dev shell sets it to
 # the gnotif revision the flake pins.
-REGISTRY := deps/gnotif/v0
+REGISTRY := deps/gnotif/v1
+TRIGGER := deps/gnotif/trigger/v0
 # The local chain: a chain ID and ports clear of a default gnodev, and the dev wallet's four
 # players (client/web/devwallet.ts), each funded with 10,000 GNOT.
 DEV_CHAIN := gnomepit-dev
@@ -47,7 +48,7 @@ serve: build ## Build dist/ and serve it on 127.0.0.1:8080
 dev: deps ## Run gnodev with the engine, the arena, the gnotif registry and the dev accounts
 	gnodev local -chain-id $(DEV_CHAIN) -node-rpc-listener $(DEV_RPC) -web-listener $(DEV_WEB) \
 		$(foreach a,$(DEV_ACCOUNTS),-add-account $(a)=10000000000ugnot) \
-		./p/engine ./r/arena ./$(REGISTRY)
+		./p/engine ./r/arena ./$(REGISTRY) ./$(TRIGGER)
 
 # gnodev starts every chain from height 0, so the index starts empty each time.
 indexer: ## Index a running make dev for the page's live updates; start it again after gnodev restarts or reloads
@@ -74,12 +75,14 @@ test: realm-test build check ## Run the Gno tests, build the page, check the Typ
 realm-test: deps ## Run the arena realm's tests
 	gno test ./r/...
 
-deps: ## Copy the gnotif registry from GNOTIF_DIR into deps/, without its tests
+deps: ## Copy the gnotif registry and its trigger package from GNOTIF_DIR into deps/, without their tests
 	$(if $(GNOTIF_DIR),,$(error GNOTIF_DIR is unset: enter the dev shell or set it to a gnotif checkout))
-	rm -rf $(REGISTRY)
-	mkdir -p $(REGISTRY)
-	cp -f $(GNOTIF_DIR)/gno/r/gnotif/v0/gnomod.toml $(REGISTRY)/
-	find $(GNOTIF_DIR)/gno/r/gnotif/v0 -maxdepth 1 -name '*.gno' ! -name '*_test.gno' -exec cp -f {} $(REGISTRY)/ \;
+	rm -rf deps/gnotif
+	mkdir -p $(REGISTRY) $(TRIGGER)
+	cp -f $(GNOTIF_DIR)/gno/r/gnotif/gnomod.toml $(REGISTRY)/
+	find $(GNOTIF_DIR)/gno/r/gnotif -maxdepth 1 -name '*.gno' ! -name '*_test.gno' -exec cp -f {} $(REGISTRY)/ \;
+	cp -f $(GNOTIF_DIR)/gno/p/gnotif/trigger/gnomod.toml $(TRIGGER)/
+	find $(GNOTIF_DIR)/gno/p/gnotif/trigger -maxdepth 1 -name '*.gno' ! -name '*_test.gno' -exec cp -f {} $(TRIGGER)/ \;
 
 clean: ## Remove the build outputs
 	rm -rf dist
