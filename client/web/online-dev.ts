@@ -180,6 +180,6 @@ elementById("post", HTMLButtonElement).onclick = () =>
 log(wallet === undefined ? "no Adena in this browser" : `wallet: ${devName ?? "Adena"}, chain ${chainId} at ${rpc}`);
 await refresh();
 arena.subscribe((change) => {
-  if ("event" in change) log(`chain: ${change.event}${change.match === null ? "" : ` on ${change.match}`}`);
+  if ("event" in change) log(`chain: ${change.event} on ${change.match}`);
   void refresh();
 });

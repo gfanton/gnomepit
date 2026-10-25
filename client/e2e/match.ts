@@ -107,12 +107,12 @@ async function ready(name: string, arena: Arena): Promise<Address> {
   return after.address;
 }
 
-// Every arena call that lands, as [func, match], match being null for a challenge.
-const sent: [string, MatchId | null][] = [];
+// Every arena call that lands, as [func, match].
+const sent: [string, MatchId][] = [];
 
 async function post(arena: Arena): Promise<MatchId> {
   const id = await arena.challenge(openings[0]);
-  sent.push(["Challenge", null]);
+  sent.push(["Challenge", id]);
   log(`match ${id} posted`);
   return id;
 }
@@ -201,7 +201,7 @@ const bobAddress = await ready("bob", bob);
 
 // What each player's live feed reports, as [event, match]. Each feed's first change, {},
 // comes once gnotifd has accepted its opt-ins, so nothing is posted before both have.
-type Heard = [string, MatchId | null][];
+type Heard = [string, MatchId][];
 const heard: Record<"alice" | "bob", Heard> = { alice: [], bob: [] };
 const unsubscribe: (() => void)[] = [];
 for (const [name, arena] of [
@@ -371,11 +371,11 @@ log(
 // challenge posted or taken, and Turn or Ended for the player a move hands the match to,
 // alice challenging and bob accepting in every match. A match ends on alice's last reveal.
 function expectedBy(name: "alice" | "bob"): Heard {
-  const last = new Map<MatchId | null, number>();
+  const last = new Map<MatchId, number>();
   sent.forEach(([, match], i) => last.set(match, i));
   const expected: Heard = [];
   sent.forEach(([func, match], i) => {
-    if (func === "Challenge" || func === "Accept") expected.push(["Board", null]);
+    if (func === "Challenge" || func === "Accept") expected.push(["Board", match]);
     if ((func === "Accept" || func === "Play") && name === "alice") expected.push(["Turn", match]);
     if (func === "Reveal" && name === "bob") expected.push([last.get(match) === i ? "Ended" : "Turn", match]);
   });

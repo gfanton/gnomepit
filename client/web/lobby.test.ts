@@ -577,7 +577,7 @@ test("the board reads its lists again on each change the arena reports", async (
       deadline: 9e9,
     },
   ];
-  known(arena.onChange)({ match: null, event: "Board", height: 1 });
+  known(arena.onChange)({ match: matchId("7"), event: "Board", height: 1 });
   await flush();
   assert.equal(lobby.model.challenges[0]?.id, "7");
   assert.equal(lobby.model.busy, false);

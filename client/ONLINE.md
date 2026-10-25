@@ -43,11 +43,11 @@ Rejecting check 2's approval cancels its post. When Adena cannot create the sess
 
 ## Live updates
 
-The node pushes nothing, so the page follows the arena through a gnotif server's live stream: one WebSocket per page, opened when the board or a match first subscribes and closed when the last stops. The arena sets three triggers in gnotif's registry: Turn and Ended name the player they notify in `to`, and Board, which names nobody, tells of a challenge posted, taken or withdrawn. The page opts in to Board as soon as it subscribes, and to Turn and Ended for the connected wallet's address. Each notification is a hint: the page reads the chain again for the match it names, or the board's lists for Board. A notification arrives once gnotifd has read its block through its indexer, which `make gnotif` has it ask every second.
+The node pushes nothing, so the page follows the arena through a gnotif server's live stream: one WebSocket per page, opened when the board or a match first subscribes and closed when the last stops. The arena sets three triggers in gnotif's registry: Turn and Ended name the player they notify in `to`, and Board, which names nobody, tells of a challenge posted, taken or withdrawn. The page opts in to Board as soon as it subscribes, and to Turn and Ended for the connected wallet's address. Each notification names a match and is a hint: the page reads that match again, and the board reads its lists again. A notification arrives once gnotifd has read its block through its indexer, which `make gnotif` has it ask every second.
 
 The stream replays nothing it sent while no connection was open, so each time the connection opens the page reads everything it shows again. While gnotifd cannot list the arena's triggers, refuses the connection, or the connection is down, `subscribe` polls the node instead: it reports a change every 4 s, and the page reads again what it shows. The page does the same with no gnotif server at all.
 
-The connection sends the gnotif server the page's opt-ins: the ids of the triggers it follows and, once a wallet is connected, the player's address. Push notifications use the same opt-ins, Turn and Ended only, once the player asks for them.
+The connection sends the gnotif server the page's opt-ins: the ids of the triggers it follows and, once a wallet is connected, the player's address. Push carries only Turn and Ended, for the address whose player turned it on with Notify me. The page remembers that address for its chain, and gnotif keeps one set of opt-ins for both channels, so every set the page sends keeps it: a later visit, with another wallet or none, leaves that player's push on. The connected wallet's own Turn and Ended reach the open page only, until its player turns push on.
 
 ## Modules
 
@@ -95,9 +95,9 @@ const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origi
 | `move(id, plan)` | Sends this player's turn: the challenger's reveal and next seal in one call, or the acceptor's plan |
 | `finish(id)` | Sends the challenger's last reveal, after round 3 or a knockout |
 | `resign(id)`, `claimForfeit(id)` | Resigns or withdraws; claims a passed deadline. With no live session for the match, the wallet signs the call. |
-| `subscribe(onChange)` | Calls `onChange({match, event, height})` for each notification the page follows, `event` being `Turn`, `Ended` or `Board` and `match` being `null` for `Board`, and `onChange({})` when anything may have changed: each time the live connection opens, and on every poll of the node. Returns a stop function. |
+| `subscribe(onChange)` | Calls `onChange({match, event, height})` for each notification the page follows, `event` being `Turn`, `Ended` or `Board`, for the match the event names, and `onChange({})` when anything may have changed: each time the live connection opens, and on every poll of the node. Returns a stop function. |
 | `watch(id, onChange)` | Calls `onChange(view)` whenever match `id` changes, reading it again on each change `subscribe` reports for it and at `sessionExpires`; returns a stop function |
-| `notify()` | Opts the browser in to the arena's Turn and Ended notifications; call it from a click |
+| `notify()` | Opts the browser in to the arena's Turn and Ended notifications for this wallet, by push, and remembers the address for later visits; call it from a click |
 
 `challenge`, `accept` and `move` check the deck and plan with the engine first: a deck or plan it refuses throws `illegalPlan` before anything is sealed or sent. Moves go out one at a time, so two calls in a row never sign with the same sequence.
 
