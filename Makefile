@@ -13,12 +13,16 @@ DEV_RPC := 127.0.0.1:36657
 DEV_WEB := 127.0.0.1:8890
 DEV_ACCOUNTS := g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w g1h3cka3ya6jw3yr64erpklnhvrgh5l4du6w0faw \
 	g1x79lhtyj8sef3yyv3pvy20hzmgfst0274k8jx0 g1t834akqrqg83csrq98t443larad7vnr6pp3lsd
-# The indexer that pushes the local chain's arena calls to the page.
+GNODEV_WORKSPACE := .gnodev
+# The indexer gnotifd reads the local chain through.
 DEV_INDEXER := 127.0.0.1:8546
+# gnotifd, which sends the page its live updates and push notifications.
+DEV_GNOTIF := 127.0.0.1:8547
+GNOTIF_DB := .gnotif
 TX_INDEXER := github.com/gnolang/tx-indexer/cmd@v1.3.0
 INDEXER_DB := .indexer
 
-.PHONY: all wasm golden build check serve dev indexer capture fund record e2e test realm-test deps clean fclean help
+.PHONY: all wasm golden build check serve dev indexer gnotif capture fund record e2e test realm-test deps clean fclean help
 
 all: wasm ## Build the page's engine (default)
 
@@ -45,15 +49,31 @@ check: $(PNPM_STAMP) ## Type-check, lint and format-check the TypeScript
 serve: build ## Build dist/ and serve it on 127.0.0.1:8080
 	go run ./client/serve -dir dist
 
-dev: deps ## Run gnodev with the engine, the arena, the gnotif registry and the dev accounts
-	gnodev local -chain-id $(DEV_CHAIN) -node-rpc-listener $(DEV_RPC) -web-listener $(DEV_WEB) \
+# gnodev runs from an empty workspace: from the repository's, its lazy loader would load
+# r/arena at genesis as soon as the arena's deploy transaction named it. Outside the
+# repository's workspace gnodev resolves no import from its examples, so it loads them all.
+dev: deps ## Run gnodev with the engine, the gnotif registry and the dev accounts, then deploy the arena on it
+	mkdir -p $(GNODEV_WORKSPACE)
+	touch $(GNODEV_WORKSPACE)/gnowork.toml
+	RPC=$(DEV_RPC) CHAIN=$(DEV_CHAIN) scripts/dev.sh \
+		gnodev local -C $(abspath $(GNODEV_WORKSPACE)) -extra-root "$$(gno env GNOROOT)/examples" \
+		-chain-id $(DEV_CHAIN) -node-rpc-listener $(DEV_RPC) -web-listener $(DEV_WEB) \
 		$(foreach a,$(DEV_ACCOUNTS),-add-account $(a)=10000000000ugnot) \
-		./p/engine ./r/arena ./$(REGISTRY) ./$(TRIGGER)
+		$(abspath p/engine $(REGISTRY) $(TRIGGER))
 
 # gnodev starts every chain from height 0, so the index starts empty each time.
-indexer: ## Index a running make dev for the page's live updates; start it again after gnodev restarts or reloads
+indexer: ## Index a running make dev for gnotifd; start it again after gnodev restarts or reloads
 	rm -rf $(INDEXER_DB)
 	go run $(TX_INDEXER) start -remote http://$(DEV_RPC) -db-path $(abspath $(INDEXER_DB)) -listen-address $(DEV_INDEXER)
+
+# gnodev starts every chain from height 0, so gnotifd starts on new keys and an empty database each time.
+gnotif: ## Run gnotifd on a running make indexer, for the page's live updates and push; start it again after make indexer does
+	rm -rf $(GNOTIF_DB)
+	mkdir -p $(GNOTIF_DB)
+	gnotifd keygen > $(GNOTIF_DB)/vapid.env
+	set -a && . ./$(GNOTIF_DB)/vapid.env && set +a && gnotifd -indexer http://$(DEV_INDEXER)/graphql/query \
+		-registry gno.land/r/dev/gnotif/v1 -start-height 1 -poll 1s -max-age 1h -stream-max 64 \
+		-db $(GNOTIF_DB)/gnotif.db -listen $(DEV_GNOTIF) -vapid-subject https://github.com/gfanton/gnomepit
 
 capture: ## Record the arena's query answers from a running make dev
 	RPC=$(DEV_RPC) CHAIN=$(DEV_CHAIN) scripts/capture.sh $(WEB)/testdata/qeval
