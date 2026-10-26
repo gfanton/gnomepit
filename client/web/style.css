@@ -400,6 +400,18 @@ dialog::backdrop {
   font-variant-caps: all-small-caps;
   letter-spacing: 0.15em;
 }
+.wordmark .wordmark__beta {
+  display: inline-block;
+  margin: 0 0 0 var(--gh-space-2);
+  padding: 3px 7px 4px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim) 60%, transparent);
+  border-radius: var(--gh-radius-round);
+  color: var(--gh-color-accent);
+  vertical-align: middle;
+  font: var(--gh-type-tag);
+  font-variant-caps: all-small-caps;
+  letter-spacing: var(--gh-tracking-tag);
+}
 .masthead__note {
   color: var(--gh-color-text-muted);
   font: var(--gh-type-note);

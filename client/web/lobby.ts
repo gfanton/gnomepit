@@ -3,6 +3,7 @@ import { otherSide } from "./engine.ts";
 import { type Address, type MatchId, matchId } from "./ids.ts";
 import { escapeHTML } from "./keywords.ts";
 import { type View, isSet, viewOf, shortAddress, timeLeft } from "./online-model.ts";
+import { wordmarkHTML } from "./wordmark.ts";
 const esc = (value: string | number | undefined) => escapeHTML(String(value ?? "")).replaceAll('"', "&quot;");
 const btn = (text: string, action: string, disabled = false, secondary = false, extra = "") =>
   `<button type="button" class="${secondary ? "quiet" : "button"}" data-action="online${action}" ${disabled ? "disabled" : ""} ${extra}>${esc(text)}</button>`;
@@ -378,7 +379,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
           : "";
   }
   function header() {
-    return `<header class="masthead"><a class="wordmark" href="./" data-action="onlineExit">Gnomepit<span>UNDER THE MOUNTAIN</span></a><div class="account">${btn(address() !== "" ? shortAddress(address()) + " · Account" : "Connect wallet", "Account", arena === null || model.busy, true)}${address() !== "" ? `<small>${ready() ? "Device ready" : "Approval needed"}</small>` : ""}</div></header>`;
+    return `<header class="masthead">${wordmarkHTML("./", 'data-action="onlineExit"')}<div class="account">${btn(address() !== "" ? shortAddress(address()) + " · Account" : "Connect wallet", "Account", arena === null || model.busy, true)}${address() !== "" ? `<small>${ready() ? "Device ready" : "Approval needed"}</small>` : ""}</div></header>`;
   }
   function matchCard(v: View) {
     const unwatched = decided(v) && !seen(summaryKey(v));

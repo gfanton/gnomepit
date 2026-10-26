@@ -39,6 +39,7 @@ import {
   tutorialMatch,
   tutorialMemory,
 } from "./tutorial.ts";
+import { wordmarkHTML } from "./wordmark.ts";
 
 // The build's network name, which esbuild's define writes in.
 declare const GNOMEPIT_NETWORK: string;
@@ -158,7 +159,7 @@ function collectionHTML(): string {
 }
 
 function masthead(note = "A duel beneath the mountain"): string {
-  return `<header class="masthead"><a class="wordmark" href="./">Gnomepit<span>UNDER THE MOUNTAIN</span></a><span class="masthead__note">${note}</span></header>`;
+  return `<header class="masthead">${wordmarkHTML("./")}<span class="masthead__note">${note}</span></header>`;
 }
 
 const tutorialFlag = tutorialMemory(localStorage);
@@ -1167,7 +1168,7 @@ function clanChoicesHTML(home = false): string {
     .join("")}</div>`;
 }
 function title(): string {
-  return `<header class="masthead"><a class="wordmark" href="./">Gnomepit<span>UNDER THE MOUNTAIN</span></a><nav class="home-nav" aria-label="Explore the game">${lobby !== null ? '<a href="leaderboard.html">Leaderboard</a>' : ""}<button type="button" data-action="tutorial">How to play</button><button type="button" data-action="library">Card library</button></nav></header>
+  return `<header class="masthead">${wordmarkHTML("./")}<nav class="home-nav" aria-label="Explore the game">${lobby !== null ? '<a href="leaderboard.html">Leaderboard</a>' : ""}<button type="button" data-action="tutorial">How to play</button><button type="button" data-action="library">Card library</button></nav></header>
     <section class="intro intro--home">
       <div class="intro__copy"><span class="eyebrow">A TACTICAL CARD DUEL</span>
         <h1>Small gnomes.<br>Big grudges.</h1>

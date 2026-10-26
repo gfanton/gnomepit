@@ -844,6 +844,16 @@ test("Play offline leads home to the offline row, and the wordmark home", async 
   assert.deepEqual(exits, [true, false]);
 });
 
+test("the board's wordmark marks the game as in beta and leaves online play", async () => {
+  const page = app();
+  const lobby = createLobby({ ...unusedPage, app: page, arena: followedArena(), storage: memory(), onRender() {} });
+  lobby.render();
+  assert.match(
+    page.innerHTML,
+    /class="wordmark" href="\.\/" data-action="onlineExit">Gnomepit<span class="wordmark__beta">Beta</,
+  );
+});
+
 test("a board that fits on one page shows no pager, and Notify me needs a notifier", async () => {
   const page = app();
   const lobby = createLobby({
