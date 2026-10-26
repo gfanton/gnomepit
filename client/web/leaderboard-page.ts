@@ -32,6 +32,6 @@ if (params.get("preview") === "1") {
   render({ status: "loading", preview: false });
   const board = await boardView(standings);
   render(board);
-  const account = await currentAccount(await pageWallet(params.get("dev"), { signer, chain, chainId }));
+  const account = await currentAccount(await pageWallet(params.get("dev"), { signer, chain, chainId, built }));
   render(await withOwnStanding(board, standings, account));
 }
