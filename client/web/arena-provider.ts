@@ -1,13 +1,13 @@
 // The arena the lobby plays through, built from the page's query string. ?rpc=, ?chain=,
-// ?realm= and ?indexer= name the network, defaulting to the build's network; an empty
-// ?indexer= polls the node instead. ?dev=alice or ?dev=bob plays with a dev wallet on a
+// ?realm= and ?gnotif= name the network, defaulting to the build's network; an empty
+// ?gnotif= polls the node instead. ?dev=alice or ?dev=bob plays with a dev wallet on a
 // local chain instead of Adena.
 
-import { type Arena, type ArenaOptions, createArena } from "./arena.ts";
+import { type Arena, type ArenaOptions, type Notifier, createArena } from "./arena.ts";
 import { type Chain, createChain } from "./chain.ts";
 import { devAccounts, devWallet } from "./devwallet.ts";
 import type { Engine } from "./engine.ts";
-import { createIndexer } from "./indexer.ts";
+import { Gnotif } from "./gnotif.js";
 import { type Network, networkFrom } from "./network.ts";
 import * as signer from "./signer.ts";
 import type { Signer } from "./signer.ts";
@@ -15,7 +15,7 @@ import { type Wallet, waitForAdena } from "./wallet.ts";
 
 export async function loadArena(engine: Engine, built: Network): Promise<Arena> {
   const params = new URLSearchParams(location.search);
-  const { chainId, rpc, realm, indexer } = networkFrom(params, built);
+  const { chainId, rpc, realm, gnotif } = networkFrom(params, built);
   const chain = createChain({ rpc });
   return createArena({
     chain,
@@ -26,9 +26,24 @@ export async function loadArena(engine: Engine, built: Network): Promise<Arena> 
     chainId,
     origin: location.origin,
     storage: localStorage,
-    indexer: indexer === null ? undefined : createIndexer({ url: indexer }),
+    notifier: pageNotifier(gnotif),
+    offerPush: offersPush(params),
     network: walletNetwork(params, built),
   });
+}
+
+// offersPush says whether the page may turn push on: only for the build's own realm and
+// gnotif server, since the server holds the subscription it registers and the realm's
+// triggers write what it pushes.
+export function offersPush(params: URLSearchParams): boolean {
+  return !params.has("realm") && !params.has("gnotif");
+}
+
+// pageNotifier is the gnotif client of the server at url, with the copy of sw.js served next
+// to the page, or none without a server.
+export function pageNotifier(url: string | null): Notifier | undefined {
+  if (url === null) return undefined;
+  return new Gnotif({ server: url, serviceWorker: new URL("sw.js", location.href).pathname });
 }
 
 const isDevName = (name: string): name is keyof typeof devAccounts => Object.hasOwn(devAccounts, name);

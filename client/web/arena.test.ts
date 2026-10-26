@@ -14,6 +14,7 @@ import {
   type MatchDetail,
   type MatchView,
   type Notifier,
+  type NotifierEvents,
   actionFor,
   cardIDs,
   cardNames,
@@ -29,12 +30,10 @@ import {
   walletFailure,
 } from "./arena.ts";
 import { type Chain, ChainError, type Session } from "./chain.ts";
-import { devAccounts, devWallet } from "./devwallet.ts";
 import type { GameState, Gnome, LegalPlansRequest } from "./engine.ts";
 import { nodeEngine } from "./engine-node.ts";
 import { known, unexpectedAsync, unusedPage } from "./fixture.ts";
 import { type Address, address, matchId } from "./ids.ts";
-import type { IndexedCall, Indexer } from "./indexer.ts";
 import { createLobby } from "./lobby.ts";
 import * as signer from "./signer.ts";
 import type { SignRequest } from "./signer.ts";
@@ -271,40 +270,34 @@ function memory(): Pick<Storage, "getItem" | "setItem"> {
   return { getItem: (k) => items.get(k) ?? null, setItem: (k, value) => items.set(k, String(value)) };
 }
 
-test("notify opts the wallet's address in to the arena's two triggers", async () => {
-  const sent: { trigger: string; value: Address }[][] = [];
-  const notifier: Notifier = {
-    enable: async () => ({}),
+test("notify enables push with the feed's opt-ins and counts the push triggers", async () => {
+  const fake = fakeNotifier({
     triggers: async (target) => {
       assert.equal(target, "gno.land/r/gfanton/gnomepit/arena");
-      return [
-        { id: "0000001", event: "Turn" },
-        { id: "0000002", event: "Ended" },
-        { id: "0000003", event: "Other" },
-      ];
+      return arenaTriggers;
     },
-    setOptins: async (optins) => sent.push(optins),
-  };
-  const wallet = devWallet({ name: "alice", signer, chain: arenaChain(), chainId: "dev" });
-  const arena = createArena({
-    chain: arenaChain(),
-    wallet,
-    engine,
-    signer,
-    realm: "gno.land/r/gfanton/gnomepit/arena",
-    chainId: "dev",
-    origin: "http://x",
-    storage: memory(),
-    notifier,
   });
+  const arena = liveArena(fake, walletFor(alice));
   await arena.connect();
   assert.equal(await arena.notify(), 2);
-  assert.deepEqual(sent, [
-    [
-      { trigger: "0000001", value: devAccounts.alice.address },
-      { trigger: "0000002", value: devAccounts.alice.address },
-    ],
-  ]);
+  assert.deepEqual(fake.sets.at(-1), [boardOptin, turnOptin(alice), endedOptin(alice)]);
+  // enable registers a subscription the server forgot before the set goes to it.
+  assert.deepEqual(fake.calls.slice(-2), ["enable", "setOptins"]);
+  assert.equal(fake.calls.filter((c) => c === "enable").length, 1);
+});
+
+test("notify asks the browser for push before it waits on the server", async () => {
+  let list: (triggers: Awaited<ReturnType<Notifier["triggers"]>>) => void = () => {};
+  const listed = new Promise<Awaited<ReturnType<Notifier["triggers"]>>>((resolve) => (list = resolve));
+  const fake = fakeNotifier({ triggers: () => listed });
+  const arena = liveArena(fake, walletFor(alice));
+  await arena.connect();
+  const notified = arena.notify();
+  // Browsers refuse or hide the permission prompt once the click's gesture has passed, and
+  // the trigger list can take a round trip.
+  assert.deepEqual(fake.calls, ["enable"]);
+  list(arenaTriggers);
+  assert.equal(await notified, 2);
 });
 
 test("the arena says whether it found a wallet and can send notifications", () => {
@@ -330,7 +323,7 @@ test("the arena says whether it found a wallet and can send notifications", () =
     chainId: "dev",
     origin: "http://x",
     storage: memory(),
-    notifier: { enable: async () => ({}), triggers: async () => [], setOptins: async () => ({}) },
+    notifier: fakeNotifier().notifier,
   });
   assert.equal(full.hasWallet, true);
   assert.equal(full.canNotify, true);
@@ -1477,64 +1470,342 @@ test("the board and a player's matches come 50 a page, the most the realm return
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// fakeIndexer hands the test the handlers the arena gives the indexer.
-function fakeIndexer() {
-  const unwatched = () => {
-    throw new Error("the arena watches no calls");
+// The triggers gnotifd lists for the arena, and one of another realm's events.
+const arenaTriggers = [
+  { id: "v1-0000001", event: "Turn", filter: "", param: "to" },
+  { id: "v1-0000002", event: "Ended", filter: "", param: "to" },
+  { id: "v1-0000003", event: "Board", filter: "", param: "" },
+  { id: "v1-0000004", event: "Other", filter: "", param: "" },
+];
+const boardOptin = { trigger: "v1-0000003", value: "", push: false };
+const turnOptin = (player: Address) => ({ trigger: "v1-0000001", value: player });
+const endedOptin = (player: Address) => ({ trigger: "v1-0000002", value: player });
+// liveOnly keeps optin off push: the open page alone hears it.
+const liveOnly = (optin: { trigger: string; value: string }) => ({ ...optin, push: false });
+
+type Optins = Parameters<Notifier["setOptins"]>[0];
+
+// fakeNotifier stands in for the gnotif client: it records what the arena asks of it, and
+// emit plays the server's side. triggers and connect answer at once unless given.
+function fakeNotifier({
+  triggers = async () => arenaTriggers,
+  connect = async () => {},
+  refuse = () => false,
+}: {
+  triggers?: Notifier["triggers"];
+  connect?: Notifier["connect"];
+  // refuse says whether the server refuses the nth set, from 0, as it does for a push
+  // subscription it forgot.
+  refuse?: (n: number) => boolean;
+} = {}) {
+  const handlers: { [E in keyof NotifierEvents]: Set<(arg: NotifierEvents[E]) => void> } = {
+    notification: new Set(),
+    reconnecting: new Set(),
+    reconnect: new Set(),
+    error: new Set(),
   };
-  const feed: Indexer & {
-    stopped: boolean;
-    watched?: string;
-    onCall: (call: IndexedCall) => void;
-    onState: (state: "up" | "down") => void;
-  } = {
-    stopped: false,
-    onCall: unwatched,
-    onState: unwatched,
-    watchCalls(watched, onCall, onState = unwatched) {
-      Object.assign(feed, { watched, onCall, onState });
+  const sets: Optins[] = [];
+  const calls: string[] = [];
+  const count = { triggers: 0, connects: 0, disconnects: 0 };
+  const notifier: Notifier = {
+    enable: async () => {
+      calls.push("enable");
+      return {};
+    },
+    triggers: async (target) => {
+      count.triggers++;
+      return triggers(target);
+    },
+    setOptins: async (optins) => {
+      sets.push(optins);
+      calls.push("setOptins");
+      if (refuse(sets.length - 1)) throw new Error("unknown subscription");
+    },
+    on(event, handler) {
+      handlers[event].add(handler);
       return () => {
-        feed.stopped = true;
+        handlers[event].delete(handler);
       };
     },
+    connect: async () => {
+      count.connects++;
+      return connect();
+    },
+    disconnect: () => {
+      count.disconnects++;
+    },
   };
-  return feed;
+  return {
+    notifier,
+    sets,
+    calls,
+    count,
+    handlerCount: () => Object.values(handlers).reduce((n, set) => n + set.size, 0),
+    emit<K extends keyof NotifierEvents>(event: K, arg: NotifierEvents[K]): void {
+      for (const handler of handlers[event]) handler(arg);
+    },
+  };
 }
 
-test("subscribe reports each arena call with the match it touches; a new challenge touches none", () => {
-  const indexer = fakeIndexer();
-  const arena = createArena({
+// liveArena is an arena that follows the chain through fake.
+function liveArena(fake: ReturnType<typeof fakeNotifier>, wallet: TestWallet | null = null, storage = memory()): Arena {
+  return createArena({
     chain: arenaChain(),
-    wallet: null,
+    wallet,
     engine,
     signer,
     realm,
     chainId: "dev",
     origin: "http://x",
-    storage: memory(),
-    indexer,
+    storage,
+    notifier: fake.notifier,
   });
+}
+
+test("subscribe reports each notification as a change to the match it names", async (t) => {
+  const fake = fakeNotifier();
+  const arena = liveArena(fake);
   const changes: ArenaChange[] = [];
   const stop = arena.subscribe((c) => changes.push(c));
-  assert.equal(indexer.watched, realm);
+  t.after(stop);
+  await sleep(5);
+  assert.deepEqual<ArenaChange[]>(changes, [{}]);
 
-  indexer.onCall({ height: 5, caller: alice, func: "Play", args: ["7", picks] });
-  indexer.onCall({ height: 6, caller: bob, func: "Challenge", args: ["Ironhide", "seal", "seal", "box", ""] });
-  assert.deepEqual(changes, [
-    { match: "7", func: "Play", caller: alice, height: 5 },
-    { match: null, func: "Challenge", caller: bob, height: 6 },
+  fake.emit("notification", {
+    trigger: "v1-0000001",
+    height: 5,
+    attrs: [
+      { key: "to", value: alice },
+      { key: "match", value: "7" },
+      { key: "text", value: "Your move" },
+    ],
+  });
+  fake.emit("notification", {
+    trigger: "v1-0000003",
+    height: 6,
+    attrs: [
+      { key: "match", value: "2" },
+      { key: "text", value: "Pickers posted a challenge." },
+    ],
+  });
+  fake.emit("notification", { trigger: "v1-0000004", height: 7, attrs: [{ key: "match", value: "3" }] });
+  assert.deepEqual(changes.slice(1), [
+    { match: "7", event: "Turn", height: 5 },
+    { match: "2", event: "Board", height: 6 },
   ]);
   stop();
-  assert.equal(indexer.stopped, true);
+  assert.equal(fake.count.disconnects, 1);
 });
 
-// The indexer reports only calls indexed after its first answer, so each time it starts
-// answering the feed reports a change that names no match; polling the node stands in
-// while it does not answer.
-test("each time the indexer starts answering a change is reported, and polling runs only while it does not", async () => {
-  const indexer = fakeIndexer();
+test("the feed opts in to the board alone before a wallet connects, then adds the player's turns and endings", async () => {
+  const fake = fakeNotifier();
+  const arena = liveArena(fake, walletFor(alice));
+  const stop = arena.subscribe(() => {});
+  await sleep(5);
+  await arena.connect();
+  stop();
+  assert.deepEqual(fake.sets, [[boardOptin], [boardOptin, liveOnly(turnOptin(alice)), liveOnly(endedOptin(alice))]]);
+  assert.equal(fake.count.connects, 1);
+});
+
+test("a new address sets the opt-ins again with it", async () => {
+  const fake = fakeNotifier();
+  const accounts = [alice, bob];
+  const wallet = walletFor(alice, {
+    GetAccount: async () => ({ status: "success", data: { address: accounts.shift() ?? bob } }),
+  });
+  const arena = liveArena(fake, wallet);
+  const stop = arena.subscribe(() => {});
+  await sleep(5);
+  await arena.connect();
+  await arena.connect();
+  stop();
+  assert.deepEqual(fake.sets.at(-1), [boardOptin, liveOnly(turnOptin(bob)), liveOnly(endedOptin(bob))]);
+});
+
+test("a reconnect reports a change to everything and stops the polling a drop started", async (t) => {
+  const fake = fakeNotifier();
+  const arena = liveArena(fake);
+  const changes: ArenaChange[] = [];
+  const stop = arena.subscribe((c) => changes.push(c), { interval: 5 });
+  t.after(stop);
+  await sleep(5);
+  fake.emit("reconnecting", undefined);
+  await sleep(40);
+  assert.ok(changes.length >= 4, `polled ${changes.length - 1} times`);
+
+  const dropped = changes.length;
+  fake.emit("reconnect", undefined);
+  assert.equal(changes.length, dropped + 1);
+  await sleep(30);
+  stop();
+  assert.equal(changes.length, dropped + 1);
+  assert.ok(changes.every((c) => c.match === undefined));
+});
+
+test("the feed polls the node when the server cannot list the arena's triggers, offers none, refuses the connection, or stops live updates", async (t) => {
+  const refused = async (): Promise<never> => {
+    throw new Error("refused");
+  };
+  const cases: [string, Parameters<typeof fakeNotifier>[0], boolean][] = [
+    ["the trigger list fails", { triggers: refused }, false],
+    ["no trigger", { triggers: async () => [] }, false],
+    ["no trigger of the arena's", { triggers: async () => arenaTriggers.slice(3) }, false],
+    ["the connection is refused", { connect: refused }, false],
+    ["live updates stop", {}, true],
+  ];
+  for (const [name, options, stopsLive] of cases) {
+    const fake = fakeNotifier(options);
+    const arena = liveArena(fake);
+    const changes: ArenaChange[] = [];
+    const stop = arena.subscribe((c) => changes.push(c), { interval: 5 });
+    t.after(stop);
+    await sleep(20);
+    assert.equal(fake.count.triggers, 1, `${name}: asked for the triggers`);
+    if (stopsLive) {
+      assert.deepEqual<ArenaChange[]>(changes, [{}], `${name}: no polling while live`);
+      fake.emit("error", new Error("live updates stopped"));
+    }
+    const before = changes.length;
+    await sleep(40);
+    stop();
+    assert.ok(changes.length - before >= 3, `${name}: polled ${changes.length - before} times`);
+  }
+});
+
+test("subscribers share one connection, which closes after the last stops", async (t) => {
+  const fake = fakeNotifier();
+  const arena = liveArena(fake);
+  const stopA = arena.subscribe(() => {});
+  const stopB = arena.subscribe(() => {});
+  t.after(() => {
+    stopA();
+    stopB();
+  });
+  await sleep(5);
+  assert.equal(fake.count.connects, 1);
+  stopA();
+  assert.equal(fake.count.disconnects, 0);
+  stopB();
+  assert.equal(fake.count.disconnects, 1);
+  assert.equal(fake.handlerCount(), 0);
+});
+
+test("a subscriber that stops before the connection opens leaves no connection and no polling", async (t) => {
+  let open = () => {};
+  const fake = fakeNotifier({
+    connect: () =>
+      new Promise<void>((resolve) => {
+        open = resolve;
+      }),
+  });
+  const arena = liveArena(fake);
+  const changes: ArenaChange[] = [];
+  const stop = arena.subscribe((c) => changes.push(c), { interval: 5 });
+  t.after(stop);
+  await sleep(5);
+  stop();
+  open();
+  await sleep(30);
+  assert.equal(fake.count.disconnects, 1);
+  assert.deepEqual(changes, []);
+});
+
+test("a subscriber that stops while the trigger list loads leaves no connection", async () => {
+  let list: (triggers: typeof arenaTriggers) => void = () => {};
+  const fake = fakeNotifier({
+    triggers: () =>
+      new Promise<typeof arenaTriggers>((resolve) => {
+        list = resolve;
+      }),
+  });
+  const stop = liveArena(fake).subscribe(() => {});
+  await sleep(5);
+  stop();
+  list(arenaTriggers);
+  await sleep(10);
+  assert.equal(fake.count.connects, 0);
+  assert.deepEqual(fake.sets, []);
+});
+
+test("a later visit keeps push on for the address that turned it on, with or without a wallet", async () => {
+  const storage = memory();
+  const first = liveArena(fakeNotifier(), walletFor(alice), storage);
+  await first.connect();
+  await first.notify();
+
+  const fake = fakeNotifier();
+  const later = liveArena(fake, walletFor(bob), storage);
+  const stop = later.subscribe(() => {});
+  await sleep(5);
+  await later.connect();
+  stop();
+  assert.deepEqual(fake.sets, [
+    [boardOptin, turnOptin(alice), endedOptin(alice)],
+    [boardOptin, turnOptin(alice), liveOnly(turnOptin(bob)), endedOptin(alice), liveOnly(endedOptin(bob))],
+  ]);
+});
+
+test("an arena that offers no push follows the chain live, turns no push on, and cannot notify", async (t) => {
+  const storage = memory();
+  const first = liveArena(fakeNotifier(), walletFor(alice), storage);
+  await first.connect();
+  await first.notify();
+
+  const fake = fakeNotifier();
   const arena = createArena({
     chain: arenaChain(),
+    wallet: walletFor(alice),
+    engine,
+    signer,
+    realm,
+    chainId: "dev",
+    origin: "http://x",
+    storage,
+    notifier: fake.notifier,
+    offerPush: false,
+  });
+  assert.equal(arena.canNotify, false);
+  const changes: ArenaChange[] = [];
+  t.after(arena.subscribe((c) => changes.push(c)));
+  await sleep(5);
+  await arena.connect();
+  await assert.rejects(arena.notify(), (err) => err instanceof ArenaError && err.type === "failed");
+  assert.equal(fake.count.connects, 1);
+  assert.deepEqual<ArenaChange[]>(changes, [{}]);
+  assert.equal(fake.calls.includes("enable"), false);
+  assert.deepEqual(fake.sets, [[boardOptin], [boardOptin, liveOnly(turnOptin(alice)), liveOnly(endedOptin(alice))]]);
+});
+
+test("a set the server refuses, as for a push subscription it forgot, leaves the live feed open", async (t) => {
+  for (const refused of [0, 1]) {
+    const fake = fakeNotifier({ refuse: (n) => n === refused });
+    const arena = liveArena(fake, walletFor(alice));
+    const changes: ArenaChange[] = [];
+    const stop = arena.subscribe((c) => changes.push(c), { interval: 5 });
+    t.after(stop);
+    await sleep(5);
+    await arena.connect();
+    await sleep(30);
+    stop();
+    assert.equal(fake.count.connects, 1, `set ${refused} refused`);
+    assert.deepEqual<ArenaChange[]>(changes, [{}], `set ${refused} refused: no polling`);
+  }
+});
+
+test("watch reads an open challenge again when the board says it was taken", async () => {
+  let reads = 0;
+  const chain = {
+    ...arenaChain(),
+    evalJSON: async () => {
+      reads++;
+      return recorded("match-play").results;
+    },
+    typeJSON: async () => load("qtype-MatchView"),
+  };
+  const fake = fakeNotifier();
+  const arena = createArena({
+    chain,
     wallet: null,
     engine,
     signer,
@@ -1542,31 +1813,21 @@ test("each time the indexer starts answering a change is reported, and polling r
     chainId: "dev",
     origin: "http://x",
     storage: memory(),
-    indexer,
+    notifier: fake.notifier,
   });
-  const changes: ArenaChange[] = [];
-  const stop = arena.subscribe((c) => changes.push(c), { interval: 5 });
-  await sleep(30);
-  assert.deepEqual<ArenaChange[]>(changes, []);
-
-  indexer.onState("up");
-  assert.deepEqual(changes, [{}]);
-  await sleep(30);
-  assert.equal(changes.length, 1);
-
-  indexer.onState("down");
-  await sleep(40);
-  assert.ok(changes.length >= 4, `polled ${changes.length - 1} times`);
-  assert.ok(changes.every((c) => c.match === undefined));
-
-  indexer.onState("up");
-  const reconnected = changes.length;
-  await sleep(30);
-  assert.equal(changes.length, reconnected);
+  const stop = arena.watch(matchId("1"), () => {});
+  await sleep(10);
+  assert.equal(reads, 2);
+  fake.emit("notification", { trigger: "v1-0000003", height: 9, attrs: [{ key: "match", value: "2" }] });
+  await sleep(10);
+  assert.equal(reads, 2);
+  fake.emit("notification", { trigger: "v1-0000003", height: 9, attrs: [{ key: "match", value: "1" }] });
+  await sleep(10);
+  assert.equal(reads, 3);
   stop();
 });
 
-test("without an indexer, subscribe polls every interval until stopped", async () => {
+test("without a gnotif client, subscribe polls every interval until stopped", async () => {
   const arena = createArena({
     chain: arenaChain(),
     wallet: null,
@@ -1588,7 +1849,7 @@ test("without an indexer, subscribe polls every interval until stopped", async (
   assert.equal(changes.length, polled);
 });
 
-test("watch reads a match again on a call to it, and not on a call to another match", async () => {
+test("watch reads a match again on a change to it, and not on a change to another match", async () => {
   let reads = 0;
   const chain = {
     ...arenaChain(),
@@ -1598,7 +1859,7 @@ test("watch reads a match again on a call to it, and not on a call to another ma
     },
     typeJSON: async () => load("qtype-MatchView"),
   };
-  const indexer = fakeIndexer();
+  const fake = fakeNotifier();
   const arena = createArena({
     chain,
     wallet: null,
@@ -1608,18 +1869,19 @@ test("watch reads a match again on a call to it, and not on a call to another ma
     chainId: "dev",
     origin: "http://x",
     storage: memory(),
-    indexer,
+    notifier: fake.notifier,
   });
   const stop = arena.watch(matchId("1"), () => {});
   await sleep(10);
-  assert.equal(reads, 1);
+  // One read at the start, and one when the live connection opens.
+  assert.equal(reads, 2);
 
-  indexer.onCall({ height: 9, caller: bob, func: "Play", args: ["2", picks] });
-  await sleep(10);
-  assert.equal(reads, 1);
-  indexer.onCall({ height: 9, caller: bob, func: "Play", args: ["1", picks] });
+  fake.emit("notification", { trigger: "v1-0000001", height: 9, attrs: [{ key: "match", value: "2" }] });
   await sleep(10);
   assert.equal(reads, 2);
+  fake.emit("notification", { trigger: "v1-0000001", height: 9, attrs: [{ key: "match", value: "1" }] });
+  await sleep(10);
+  assert.equal(reads, 3);
   stop();
 });
 
@@ -1639,7 +1901,7 @@ test("watch reports a listener that throws on a failed read, and reads again", a
     },
     typeJSON: async () => load("qtype-MatchView"),
   };
-  const indexer = fakeIndexer();
+  const fake = fakeNotifier();
   const arena = createArena({
     chain,
     wallet: null,
@@ -1649,7 +1911,7 @@ test("watch reports a listener that throws on a failed read, and reads again", a
     chainId: "dev",
     origin: "http://x",
     storage: memory(),
-    indexer,
+    notifier: fake.notifier,
   });
   const thrown = new Error("the listener failed");
   const views: MatchDetail[] = [];
@@ -1658,15 +1920,15 @@ test("watch reports a listener that throws on a failed read, and reads again", a
     views.push(view);
   });
   await sleep(10);
-  indexer.onCall({ height: 9, caller: bob, func: "Play", args: ["1", picks] });
+  fake.emit("notification", { trigger: "v1-0000001", height: 9, attrs: [{ key: "match", value: "1" }] });
   await sleep(10);
   stop();
   assert.equal(views.length, 1);
   assert.deepEqual(reported, [thrown]);
 });
 
-// While the indexer answers, nothing but a call to the match makes watch read it again, and
-// a session expires without one.
+// While the live connection is open, nothing but a change to the match makes watch read it
+// again, and a session expires without one.
 test("watch reads a match again when the session for it expires", async () => {
   // The arena's clock stays put until watch has seen the live session, however long the setup
   // takes, then moves past the expiry; the expiry timer still waits its real second.
@@ -1678,7 +1940,7 @@ test("watch reads a match again when the session for it expires", async () => {
     locks: [await lockOn(0, "1", expires)],
     matches: { 1: "match-play" },
   });
-  const { arena } = sessionPlayer(chain, { indexer: fakeIndexer(), now: () => clock });
+  const { arena } = sessionPlayer(chain, { notifier: fakeNotifier().notifier, now: () => clock });
   await arena.connect();
   await arena.authorize();
   const seen: (ArenaError | string)[] = [];

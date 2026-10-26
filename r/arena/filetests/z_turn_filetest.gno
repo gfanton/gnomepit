@@ -45,6 +45,34 @@ func main(cur realm) {
 // Events:
 // [
 //   {
+//     "type": "Board",
+//     "attrs": [
+//       {
+//         "key": "match",
+//         "value": "1"
+//       },
+//       {
+//         "key": "text",
+//         "value": "Pickers posted a challenge."
+//       }
+//     ],
+//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
+//   },
+//   {
+//     "type": "Board",
+//     "attrs": [
+//       {
+//         "key": "match",
+//         "value": "1"
+//       },
+//       {
+//         "key": "text",
+//         "value": "Challenge 1 was taken."
+//       }
+//     ],
+//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
+//   },
+//   {
 //     "type": "Turn",
 //     "attrs": [
 //       {

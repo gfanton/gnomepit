@@ -577,7 +577,7 @@ test("the board reads its lists again on each change the arena reports", async (
       deadline: 9e9,
     },
   ];
-  known(arena.onChange)({ match: null, func: "Challenge", caller: alice, height: 1 });
+  known(arena.onChange)({ match: matchId("7"), event: "Board", height: 1 });
   await flush();
   assert.equal(lobby.model.challenges[0]?.id, "7");
   assert.equal(lobby.model.busy, false);
@@ -598,7 +598,7 @@ test("a change that leaves the lists as they were does not redraw the board", as
   });
   await lobby.enter();
   const drawn = renders;
-  known(arena.onChange)({ match: matchId("9"), func: "Play", caller: alice, height: 1 });
+  known(arena.onChange)({ match: matchId("9"), event: "Turn", height: 1 });
   await flush();
   assert.equal(renders, drawn);
 });

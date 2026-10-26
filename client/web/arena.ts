@@ -19,7 +19,6 @@ import {
 } from "./engine.ts";
 import { createReader } from "./gnovalue.ts";
 import { type Address, type MatchId, address, matchId } from "./ids.ts";
-import type { Indexer } from "./indexer.ts";
 import type { Message, Signer } from "./signer.ts";
 import {
   type BoxContents,
@@ -172,16 +171,29 @@ export type AccountState = {
 };
 export type Connection = AccountState | { state: "noWallet" | "wrongNetwork"; reason: string };
 
-// A change subscribe reports: a call the indexer saw, match null for a new challenge, or
-// none, when the arena may have changed in any way.
-export type ArenaChange =
-  { match?: undefined } | { match: MatchId | null; func: string; caller: Address; height: number };
+// The arena's notifications the page follows.
+type FollowedEvent = "Turn" | "Ended" | "Board";
+
+// A change subscribe reports: a notification at height about match, or none, when the
+// arena may have changed in any way.
+export type ArenaChange = { match?: undefined } | { match: MatchId; event: FollowedEvent; height: number };
+
+// What the gnotif client hands the arena's handlers, by event.
+export type NotifierEvents = {
+  notification: { trigger: string; height: number; attrs: readonly { key: string; value: string }[] };
+  reconnecting: undefined;
+  reconnect: undefined;
+  error: unknown;
+};
 
 // The gnotif client calls the arena makes.
 export type Notifier = {
   enable(): Promise<unknown>;
-  triggers(target: string): Promise<readonly { id: string; event: string }[]>;
-  setOptins(optins: { trigger: string; value: Address }[]): Promise<unknown>;
+  triggers(target: string): Promise<readonly { id: string; event: string; filter: string; param: string }[]>;
+  setOptins(optins: { trigger: string; value: string; push?: false }[]): Promise<unknown>;
+  on<K extends keyof NotifierEvents>(event: K, handler: (arg: NotifierEvents[K]) => void): () => void;
+  connect(): Promise<unknown>;
+  disconnect(): void;
 };
 
 export type Opening = { clan: string; deck: number[]; plan: number[] };
@@ -401,6 +413,54 @@ function resolve(engine: Engine, state: GameState, decks: Pair<string>, [a, b]: 
   }
 }
 
+// ---- Live updates
+
+type Optin = Parameters<Notifier["setOptins"]>[0][number];
+
+// The param each followed event notifies by; none of the arena's triggers has a filter.
+const followedParams: Record<FollowedEvent, string> = { Turn: "to", Ended: "to", Board: "" };
+const followedEvents: readonly FollowedEvent[] = ["Turn", "Ended", "Board"];
+
+// followedTriggers maps the id of each listed trigger the page follows to its event. A
+// trigger is picked by event, filter and param, never by its place in the list.
+function followedTriggers(
+  triggers: readonly { id: string; event: string; filter: string; param: string }[],
+): Map<string, FollowedEvent> {
+  const picked = new Map<string, FollowedEvent>();
+  for (const t of triggers) {
+    const event = followedEvents.find((e) => e === t.event);
+    if (event !== undefined && t.filter === "" && t.param === followedParams[event]) picked.set(t.id, event);
+  }
+  return picked;
+}
+
+// optinsFor is the set the page opts in to: the board, which only the open page hears; the
+// turns and endings of pushed, whose player turned push on, which push carries too; and
+// those of player, the connected wallet, which only the open page hears. gnotif keeps one
+// set for both channels, so every set keeps pushed's items, or would turn its push off.
+function optinsFor(picked: Map<string, FollowedEvent>, player: Address | null, pushed: Address | null): Optin[] {
+  const board: Optin[] = [];
+  const own: Optin[] = [];
+  for (const [trigger, event] of picked) {
+    if (event === "Board") {
+      board.push({ trigger, value: "", push: false });
+      continue;
+    }
+    if (pushed !== null) own.push({ trigger, value: pushed });
+    if (player !== null && player !== pushed) own.push({ trigger, value: player, push: false });
+  }
+  return [...board, ...own];
+}
+
+// changeFrom is the change notification n reports, or null when picked holds none of its
+// trigger or it names no match.
+function changeFrom(picked: Map<string, FollowedEvent>, n: NotifierEvents["notification"]): ArenaChange | null {
+  const event = picked.get(n.trigger);
+  const match = n.attrs.find((a) => a.key === "match");
+  if (event === undefined || match === undefined) return null;
+  return { match: matchId(match.value), event, height: n.height };
+}
+
 // ---- The arena client
 
 // The wallet calls the arena makes.
@@ -419,10 +479,15 @@ export type ArenaOptions = {
   chainId: string;
   // The site the root signature's text names.
   origin: string;
-  // Keeps the root signature and the signing mode per wallet, like localStorage.
+  // Keeps the root signature and the signing mode per wallet, and the address push is on for
+  // per chain, like localStorage.
   storage: Pick<Storage, "getItem" | "setItem">;
+  // The gnotif client: subscribe follows the chain through its live connection, and notify
+  // turns on its push.
   notifier?: Notifier | undefined;
-  indexer?: Indexer | undefined;
+  // false keeps push off for a notifier the build did not choose: notify fails, and the
+  // feed's opt-ins turn no push on.
+  offerPush?: boolean;
   // Lets connect add chainId to a wallet that does not know it.
   network?: { chainName: string; rpcUrl: string } | undefined;
   // Skips sessions: the wallet signs every move.
@@ -435,7 +500,7 @@ export type ArenaOptions = {
 
 export type Arena = {
   hasWallet: boolean;
-  // false without a notifier, so notify can only fail.
+  // false without a notifier or with offerPush false, so notify can only fail.
   canNotify: boolean;
   // connect returns the account's state, or the reason no wallet connected on the network.
   connect(): Promise<Connection>;
@@ -468,9 +533,10 @@ export type Arena = {
   resign(id: MatchId): Promise<void>;
   claimForfeit(id: MatchId): Promise<void>;
   // subscribe calls onChange when the arena may have changed, and returns a function that
-  // stops it. Through the indexer, each call is a change, and so is each time the indexer
-  // starts answering, since it reports only calls indexed after its first answer. While no
-  // indexer answers, a change comes every interval ms the page is visible.
+  // stops it. Through the notifier, each notification the page follows is a change, and so
+  // is each time the live connection opens, since the stream replays nothing it sent while
+  // none was open. While the arena's triggers cannot be followed, or the connection is
+  // down, a change comes every interval ms the page is visible.
   subscribe(onChange: (change: ArenaChange) => void, options?: { interval?: number }): () => void;
   // watch calls onChange(view) whenever match id changes, or onChange(null, error) when
   // a read fails; subscribe says when to read it again, and so does the expiry of the
@@ -480,8 +546,9 @@ export type Arena = {
     onChange: (view: MatchDetail | null, error?: ArenaError) => void | Promise<void>,
     options?: { interval?: number },
   ): () => void;
-  // notify asks the browser for permission and opts it in to the arena's Turn and
-  // Ended notifications for this wallet. Call it from a click.
+  // notify asks the browser for permission and opts it in to the arena's Turn and Ended
+  // notifications for this wallet by push, and returns how many it opted in to. Call it
+  // from a click.
   notify(): Promise<number>;
 };
 
@@ -503,7 +570,7 @@ export function createArena({
   origin,
   storage,
   notifier,
-  indexer,
+  offerPush = true,
   network,
   signEachMove = false,
   sessionLifetime = defaultLifetime,
@@ -516,6 +583,13 @@ export function createArena({
   const storageKey = (name: Stored) => `gnomepit:${chainId}:${address}:${name}`;
   const stored = (name: Stored) => storage.getItem(storageKey(name));
   const store = (name: Stored, value: string) => storage.setItem(storageKey(name), value);
+  // The address whose player last turned push on in this browser, whatever wallet is connected.
+  const pushKey = `gnomepit:${chainId}:push`;
+  function pushed(): Address | null {
+    if (!offerPush) return null;
+    const stored = storage.getItem(pushKey);
+    return stored === null ? null : v.parse(AddressSchema, stored);
+  }
   // A stored mode this page does not know reads as session.
   function mode(): Mode {
     if (signEachMove) return "contract";
@@ -719,13 +793,90 @@ export function createArena({
     if (!/^\d{1,10}$/.test(id)) throw new ArenaError("wrongPhase", `No match ${id}`);
   }
 
+  // A subscriber of the live feed; poll(true) has it poll the node until poll(false).
+  type Listener = { onChange: (change: ArenaChange) => void; poll(on: boolean): void };
+  // The live feed, one connection that every subscriber shares while any is subscribed. It
+  // is opening until the server accepts its opt-ins, live after, and down while it polls.
+  type Feed = {
+    listeners: Set<Listener>;
+    picked: Map<string, FollowedEvent>;
+    state: "opening" | "live" | "down";
+    down(): void;
+    stop(): void;
+  };
+  let feed: Feed | null = null;
+
+  function startFeed(n: Notifier): Feed {
+    let stopped = false;
+    const f: Feed = {
+      listeners: new Set(),
+      picked: new Map(),
+      state: "opening",
+      down() {
+        f.state = "down";
+        for (const l of f.listeners) l.poll(true);
+      },
+      stop() {
+        stopped = true;
+        for (const off of offs) off();
+        n.disconnect();
+      },
+    };
+    const up = () => {
+      f.state = "live";
+      for (const l of f.listeners) {
+        l.poll(false);
+        l.onChange({});
+      }
+    };
+    const offs = [
+      n.on("notification", (note) => {
+        const change = changeFrom(f.picked, note);
+        if (change !== null) for (const l of f.listeners) l.onChange(change);
+      }),
+      n.on("reconnecting", () => f.down()),
+      n.on("reconnect", up),
+      n.on("error", () => f.down()),
+    ];
+    void (async () => {
+      try {
+        f.picked = followedTriggers(await n.triggers(realm));
+        // disconnect() does nothing before connect(), so a feed stopped by now must not connect.
+        if (stopped) return;
+        if (f.picked.size > 0) {
+          // A push subscription the server forgot refuses the set; connect() still sends it live.
+          await n.setOptins(optinsFor(f.picked, address, pushed())).catch(() => {});
+          if (stopped) return;
+          await n.connect();
+        }
+      } catch {
+        // A server that cannot be followed leaves the node to poll, as no server does.
+        f.picked = new Map();
+      }
+      if (stopped) return;
+      if (f.picked.size > 0) up();
+      else f.down();
+    })();
+    return f;
+  }
+
+  // followAddress sets the live feed's opt-ins again for the connected address.
+  function followAddress(): void {
+    const f = feed;
+    if (notifier === undefined || f === null || f.picked.size === 0) return;
+    // A push subscription the server forgot makes every set reject until notify(); the live
+    // connection takes each set all the same.
+    void notifier.setOptins(optinsFor(f.picked, address, pushed())).catch(() => {});
+  }
+
   const arena: Arena = {
     hasWallet: wallet !== null && wallet !== undefined,
-    canNotify: notifier !== undefined,
+    canNotify: notifier !== undefined && offerPush,
 
     async connect() {
       try {
         ({ address } = await connectWallet(wallet, chainId, network));
+        followAddress();
       } catch (err) {
         if (err instanceof WalletError && (err.type === "noWallet" || err.type === "wrongNetwork")) {
           return { state: err.type, reason: err.reason };
@@ -891,37 +1042,34 @@ export function createArena({
         if (globalThis.document?.visibilityState !== "hidden") onChange({});
         timer = setTimeout(poll, interval);
       };
-      const startPolling = () => {
-        if (timer === undefined) timer = setTimeout(poll, interval);
+      const listener: Listener = {
+        onChange,
+        poll(on) {
+          if (on) {
+            if (timer === undefined) timer = setTimeout(poll, interval);
+            return;
+          }
+          clearTimeout(timer);
+          timer = undefined;
+        },
       };
-      const stopPolling = () => {
-        clearTimeout(timer);
-        timer = undefined;
-      };
-      if (indexer === undefined) {
-        startPolling();
-        return stopPolling;
+      if (notifier === undefined) {
+        listener.poll(true);
+        return () => listener.poll(false);
       }
-      const stopFeed = indexer.watchCalls(
-        realm,
-        ({ height, caller, func, args }) => {
-          const [first] = args;
-          onChange({
-            match: func === "Challenge" || first === undefined ? null : matchId(first),
-            func,
-            caller,
-            height,
-          });
-        },
-        (state) => {
-          if (state === "down") return startPolling();
-          stopPolling();
-          onChange({});
-        },
-      );
+      if (feed === null) feed = startFeed(notifier);
+      const f = feed;
+      f.listeners.add(listener);
+      if (f.state === "down") listener.poll(true);
+      let subscribed = true;
       return () => {
-        stopFeed();
-        stopPolling();
+        if (!subscribed) return;
+        subscribed = false;
+        listener.poll(false);
+        f.listeners.delete(listener);
+        if (f.listeners.size > 0) return;
+        f.stop();
+        if (feed === f) feed = null;
       };
     },
 
@@ -982,11 +1130,17 @@ export function createArena({
 
     async notify() {
       const me = requireAddress();
-      if (notifier === undefined) throw new ArenaError("failed", "Notifications are not set up for this network");
+      if (notifier === undefined || !offerPush) {
+        throw new ArenaError("failed", "Notifications are not set up for this network");
+      }
+      // enable runs first, within the click's gesture. It also registers the browser again
+      // when the server forgot its subscription, which refuses any set until then.
       await notifier.enable();
-      const triggers = (await notifier.triggers(realm)).filter((t) => t.event === "Turn" || t.event === "Ended");
-      await notifier.setOptins(triggers.map((t) => ({ trigger: t.id, value: me })));
-      return triggers.length;
+      const picked =
+        feed !== null && feed.picked.size > 0 ? feed.picked : followedTriggers(await notifier.triggers(realm));
+      storage.setItem(pushKey, me);
+      await notifier.setOptins(optinsFor(picked, address, me));
+      return [...picked.values()].filter((event) => event !== "Board").length;
     },
   };
   return arena;

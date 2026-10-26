@@ -6,14 +6,15 @@ The page at <https://gfanton.github.io/gnomepit/> plays offline: against the bot
 
 ## Develop
 
-Enter the Nix dev shell with `direnv allow` or `nix develop`. It carries Go, TinyGo, Node 24, pnpm, and gno, gnokey and gnodev built from gno's `chain/onyx` tag.
+Enter the Nix dev shell with `direnv allow` or `nix develop`. It carries Go, TinyGo, Node 24, pnpm, jq, gno, gnokey and gnodev built from gno's `chain/onyx` tag, and gnotifd built from the gnotif revision the flake pins.
 
-- `make dev` runs a local chain with the engine, the arena and the dev accounts.
-- `make indexer` indexes the running chain for the page's live updates.
+- `make dev` runs a local chain with the engine, the gnotif registry and the dev accounts, then deploys the arena on it.
+- `make indexer` indexes the running chain for gnotifd.
+- `make gnotif` runs gnotifd, gnotif's notification server, on the indexed chain: the page's live updates and push notifications come from it.
 - `make serve` builds the page into `dist/` and serves it on <http://127.0.0.1:8080/>.
 - `make test` runs the realm's Gno tests, builds the page, type-checks, lints and format-checks the TypeScript, then runs `go vet`, the Go tests and the TypeScript tests.
 
-To play online locally, run `make dev`, then `make serve`, which builds for `make dev`'s chain by default. Open <http://127.0.0.1:8080/?dev=alice> in one browser and `?dev=bob` in another, then choose **Play online**. Without `?dev=`, the lobby uses Adena. With `make indexer` running, each page follows the other's moves through the indexer; without it, the page polls the node every 4 seconds.
+To play online locally, run `make dev`, `make indexer`, `make gnotif` and `make serve`, which builds for `make dev`'s chain by default. Open <http://127.0.0.1:8080/?dev=alice> in one browser and `?dev=bob` in another, then choose **Play online**. Without `?dev=`, the lobby uses Adena. With `make gnotif` running, each page follows the other's moves through gnotifd's live stream; without it, the page polls the node every 4 seconds.
 
 `make help` lists every target.
 

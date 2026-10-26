@@ -4,18 +4,23 @@ import (
 	"chain"
 	"strconv"
 
-	"gno.land/r/dev/gnotif/v0"
+	"gno.land/r/dev/gnotif/v1"
 )
 
 // self is the arena's package path; a deploy under another path changes it.
 var self string
 
-// init declares the arena's two gnotif triggers. Each event carries the address it
-// notifies in "to", so a browser opts in with its wallet's address.
+// init sets the arena's three gnotif triggers and keeps no handle, so they stay as set
+// for this deploy. A Turn or Ended event carries the address it notifies in "to", so a
+// browser opts in with its wallet's address; a Board event notifies every browser that
+// opted in.
 func init(cur realm) {
 	self = cur.PkgPath()
-	gnotif.Declare(cross(cur), self, "Turn", "", "to", "Your move in Gnomepit", "{text}", "/?match={match}")
-	gnotif.Declare(cross(cur), self, "Ended", "", "to", "Match over", "{text}", "/?match={match}")
+	me := cur.Sub(gnotif.Subpath)
+	h := gnotif.Open(cross(me))
+	h.Set(cross(me), "turn", gnotif.Trigger{Event: "Turn", Param: "to", Title: "Your move in Gnomepit", Body: "{text}", Link: "/?match={match}"})
+	h.Set(cross(me), "ended", gnotif.Trigger{Event: "Ended", Param: "to", Title: "Match over", Body: "{text}", Link: "/?match={match}"})
+	h.Set(cross(me), "board", gnotif.Trigger{Event: "Board", Title: "Gnomepit challenges", Body: "{text}", Link: "/"})
 }
 
 // tell emits kind to player about match id. It emits nothing when player made the call,
@@ -25,6 +30,12 @@ func tell(kind string, player, caller address, id int, text string) {
 		return
 	}
 	chain.Emit(kind, "to", player.String(), "match", strconv.Itoa(id), "text", text)
+}
+
+// tellBoard emits Board about match id, whose change altered the open-challenge list. It
+// names no address, so a caller cannot aim it at one player's browser.
+func tellBoard(id int, text string) {
+	chain.Emit("Board", "match", strconv.Itoa(id), "text", text)
 }
 
 // tellEnded sends Ended to each player of the finished match m, numbered id, but caller,

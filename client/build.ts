@@ -30,7 +30,6 @@ const staticFiles = [
   "art/delvers-cards-v2.json",
   "engine.wasm",
   "wasm_exec.js",
-  "gnotif.js",
   "sw.js",
 ];
 

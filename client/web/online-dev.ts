@@ -1,28 +1,26 @@
 // A bare console for arena matches on a local chain, with no lobby: decks and plans are
 // picked at random. Two browsers, one with ?dev=alice and one with ?dev=bob, play a match
 // end to end. Without dev it uses Adena; &contract=1 has the wallet sign every move;
-// &rpc=, &chain=, &realm= and &indexer= point it elsewhere, and an empty &indexer= polls.
+// &rpc=, &chain=, &realm= and &gnotif= point it elsewhere, and an empty &gnotif= polls.
 
 import { ArenaError, type Connection, type Listed, type MatchSummary, type Opening, createArena } from "./arena.ts";
-import { pageWallet } from "./arena-provider.ts";
+import { pageNotifier, pageWallet } from "./arena-provider.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
 import { ChainError, createChain, messageOf } from "./chain.ts";
 import { elementById } from "./dom.ts";
 import { type Side, loadEngine, startState } from "./engine.ts";
 import type { MatchId } from "./ids.ts";
-import { createIndexer } from "./indexer.ts";
 import { networkFrom, networks } from "./network.ts";
 import * as signer from "./signer.ts";
 import { WalletError } from "./wallet.ts";
 
 const params = new URLSearchParams(location.search);
-const { chainId, rpc, realm, indexer: indexerURL } = networkFrom(params, networks.local);
+const { chainId, rpc, realm, gnotif } = networkFrom(params, networks.local);
 const devName = params.get("dev");
 
 const engine = await loadEngine("engine.wasm", "cards.json");
 const chain = createChain({ rpc });
 const wallet = await pageWallet(devName, { signer, chain, chainId });
-const indexer = indexerURL === null ? undefined : createIndexer({ url: indexerURL });
 const arena = createArena({
   chain,
   wallet,
@@ -32,7 +30,7 @@ const arena = createArena({
   chainId,
   origin: location.origin,
   storage: localStorage,
-  indexer,
+  notifier: pageNotifier(gnotif),
   signEachMove: params.get("contract") === "1",
 });
 let connected = false;
@@ -182,7 +180,6 @@ elementById("post", HTMLButtonElement).onclick = () =>
 log(wallet === undefined ? "no Adena in this browser" : `wallet: ${devName ?? "Adena"}, chain ${chainId} at ${rpc}`);
 await refresh();
 arena.subscribe((change) => {
-  if ("func" in change)
-    log(`chain: ${short(change.caller)} called ${change.func}${change.match === null ? "" : ` on ${change.match}`}`);
+  if ("event" in change) log(`chain: ${change.event} on ${change.match}`);
   void refresh();
 });

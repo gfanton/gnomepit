@@ -46,6 +46,7 @@ func Accept(cur realm, id, clan, deck, plan string) {
 	m.deadline = now + moveWindow
 	saveMatch(rules, n, m)
 	openRemove(n)
+	tellBoard(n, "Challenge "+strconv.Itoa(n)+" was taken.")
 	tell("Turn", m.challenger, caller, n, clan+" accepted your challenge. Your move within 24 hours.")
 }
 
@@ -150,6 +151,7 @@ func Resign(cur realm, id string) {
 		}
 		openRemove(n)
 		forget(n, m.challenger)
+		tellBoard(n, "Challenge "+strconv.Itoa(n)+" was withdrawn.")
 	case phaseReveal, phasePlay:
 		switch caller {
 		case m.challenger:

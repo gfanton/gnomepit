@@ -63,11 +63,21 @@
           subPackages = [ "." ];
           vendorHash = "sha256-NCcuYcYXZ4xOY9ttAoDt5B+mLVOuf+lifouaVTg97w8=";
         };
+        # gnotif's go.mod asks for Go 1.27.
+        gnotifdPkg = (pkgs.buildGoModule.override { go = pkgs.go_1_27; }) {
+          pname = "gnotifd";
+          version = "main";
+          src = gnotif;
+          subPackages = [ "cmd/gnotifd" ];
+          vendorHash = "sha256-qsA250H3PphNgR2NbLVfirFPj/hHq+wIdvEx4NpMkTw=";
+          doCheck = false;
+        };
       in
       {
         packages = {
           gno = gnoPkg;
           gnodev = gnodevPkg;
+          gnotifd = gnotifdPkg;
         };
 
         devShells.default = pkgs.mkShell {
@@ -76,8 +86,10 @@
             pkgs.tinygo
             pkgs.nodejs_24
             pkgs.pnpm
+            pkgs.jq
             gnoPkg
             gnodevPkg
+            gnotifdPkg
           ];
           shellHook = ''
             export GNOTIF_DIR="''${GNOTIF_DIR:-${gnotif}}"

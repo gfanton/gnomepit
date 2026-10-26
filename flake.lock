@@ -38,11 +38,11 @@
     "gnotif": {
       "flake": false,
       "locked": {
-        "lastModified": 1792010527,
-        "narHash": "sha256-TCTysgsr9UWR/qiES95xd0DyRxiTfsPolQlpLjd74YI=",
+        "lastModified": 1792963585,
+        "narHash": "sha256-1xxozRKYh6RVoRQNMz4OofkUet+csvsdpdt+h/ywlKQ=",
         "owner": "gfanton",
         "repo": "gnotif",
-        "rev": "756bab40efe20af4ac406dfc99f1e284c6ef85b6",
+        "rev": "78335041231d1d1e94bcc7a44dacae778c3cc31e",
         "type": "github"
       },
       "original": {

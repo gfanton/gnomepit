@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import * as v from "valibot";
 
-import { pageWallet, walletNetwork } from "./arena-provider.ts";
+import { offersPush, pageWallet, walletNetwork } from "./arena-provider.ts";
 import { createChain } from "./chain.ts";
 import { devAccounts } from "./devwallet.ts";
 import { known } from "./fixture.ts";
@@ -22,6 +22,15 @@ test("Adena is offered the page's own network, never one a link names", () => {
   });
   assert.equal(walletNetwork(new URLSearchParams("?rpc=https://rpc.example"), networks.local), undefined);
   assert.equal(walletNetwork(new URLSearchParams("?chain=other-1"), networks.local), undefined);
+});
+
+// A gnotif server holds the push subscription it registers, and a realm's triggers write
+// the pushed text, so a link may name neither for push.
+test("push is offered for the page's own realm and gnotif server, never one a link names", () => {
+  assert.equal(offersPush(new URLSearchParams("")), true);
+  assert.equal(offersPush(new URLSearchParams("?rpc=https://rpc.example&chain=other-1")), true);
+  assert.equal(offersPush(new URLSearchParams("?gnotif=https://gnotif.example")), false);
+  assert.equal(offersPush(new URLSearchParams("?realm=gno.land/r/demo/other")), false);
 });
 
 test("a ?dev= link plays with that dev account's wallet, and another name fails naming the dev accounts", async () => {

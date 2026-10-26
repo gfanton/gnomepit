@@ -24,6 +24,10 @@ client/mockups/
 deps/
 # The local indexer's database, written by make indexer.
 .indexer/
+# gnotifd's keys and database, written by make gnotif.
+.gnotif/
+# The empty gno workspace make dev runs gnodev from.
+.gnodev/
 # The toolchain and bundled libraries, installed by pnpm.
 node_modules/
 # The built site, written by make build.
