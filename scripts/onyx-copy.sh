@@ -9,6 +9,8 @@ readonly ADDRESS="${1:?${USAGE}}"
 readonly OUT="${2:?${USAGE}}"
 readonly REGISTRY="gno.land/r/nym-gfanton001/gnotif/v1"
 readonly PAGE_PATH="/gnomepit/"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly ROOT
 
 if [[ ! "${ADDRESS}" =~ ^g1[0-9a-z]{38}$ ]]; then
   echo "Error: ${ADDRESS} is not a g1 address" >&2
@@ -21,11 +23,11 @@ fi
 
 for pkg in p/engine r/arena r/arena/filetests; do
   mkdir -p "${OUT}/${pkg}"
-  for f in "${pkg}"/*.gno "${pkg}"/gnomod.toml; do
+  for f in "${ROOT}/${pkg}"/*.gno "${ROOT}/${pkg}"/gnomod.toml; do
     [[ -e "${f}" ]] || continue
     sed -e "s#/gfanton/gnomepit/#/${ADDRESS}/gnomepit/#g" \
       -e "s#gno.land/r/dev/gnotif/v1#${REGISTRY}#g" \
-      -e "s#^const pagePath = \"/\"\$#const pagePath = \"${PAGE_PATH}\"#" "${f}" >"${OUT}/${f}"
+      -e "s#^const pagePath = \"/\"\$#const pagePath = \"${PAGE_PATH}\"#" "${f}" >"${OUT}/${pkg}/${f##*/}"
   done
 done
 : >"${OUT}/gnowork.toml"
