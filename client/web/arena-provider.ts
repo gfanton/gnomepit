@@ -27,8 +27,16 @@ export async function loadArena(engine: Engine, built: Network): Promise<Arena> 
     origin: location.origin,
     storage: localStorage,
     notifier: pageNotifier(gnotif),
+    offerPush: offersPush(params),
     network: walletNetwork(params, built),
   });
+}
+
+// offersPush says whether the page may turn push on: only for the build's own realm and
+// gnotif server, since the server holds the subscription it registers and the realm's
+// triggers write what it pushes.
+export function offersPush(params: URLSearchParams): boolean {
+  return !params.has("realm") && !params.has("gnotif");
 }
 
 // pageNotifier is the gnotif client of the server at url, with the copy of sw.js served next

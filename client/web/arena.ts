@@ -479,11 +479,15 @@ export type ArenaOptions = {
   chainId: string;
   // The site the root signature's text names.
   origin: string;
-  // Keeps the root signature and the signing mode per wallet, like localStorage.
+  // Keeps the root signature and the signing mode per wallet, and the address push is on for
+  // per chain, like localStorage.
   storage: Pick<Storage, "getItem" | "setItem">;
   // The gnotif client: subscribe follows the chain through its live connection, and notify
   // turns on its push.
   notifier?: Notifier | undefined;
+  // false keeps push off for a notifier the build did not choose: notify fails, and the
+  // feed's opt-ins turn no push on.
+  offerPush?: boolean;
   // Lets connect add chainId to a wallet that does not know it.
   network?: { chainName: string; rpcUrl: string } | undefined;
   // Skips sessions: the wallet signs every move.
@@ -496,7 +500,7 @@ export type ArenaOptions = {
 
 export type Arena = {
   hasWallet: boolean;
-  // false without a notifier, so notify can only fail.
+  // false without a notifier or with offerPush false, so notify can only fail.
   canNotify: boolean;
   // connect returns the account's state, or the reason no wallet connected on the network.
   connect(): Promise<Connection>;
@@ -566,6 +570,7 @@ export function createArena({
   origin,
   storage,
   notifier,
+  offerPush = true,
   network,
   signEachMove = false,
   sessionLifetime = defaultLifetime,
@@ -581,6 +586,7 @@ export function createArena({
   // The address whose player last turned push on in this browser, whatever wallet is connected.
   const pushKey = `gnomepit:${chainId}:push`;
   function pushed(): Address | null {
+    if (!offerPush) return null;
     const stored = storage.getItem(pushKey);
     return stored === null ? null : v.parse(AddressSchema, stored);
   }
@@ -835,8 +841,7 @@ export function createArena({
     void (async () => {
       try {
         f.picked = followedTriggers(await n.triggers(realm));
-        // The client defers disconnect() to a connect() it has not seen, so a stopped feed
-        // must not connect.
+        // disconnect() does nothing before connect(), so a feed stopped by now must not connect.
         if (stopped) return;
         if (f.picked.size > 0) {
           // A push subscription the server forgot refuses the set; connect() still sends it live.
@@ -859,14 +864,14 @@ export function createArena({
   function followAddress(): void {
     const f = feed;
     if (notifier === undefined || f === null || f.picked.size === 0) return;
-    // A refused set leaves the live connection on the set before, which still follows the
-    // board; a push subscription the server forgot refuses every set until notify().
+    // A push subscription the server forgot makes every set reject until notify(); the live
+    // connection takes each set all the same.
     void notifier.setOptins(optinsFor(f.picked, address, pushed())).catch(() => {});
   }
 
   const arena: Arena = {
     hasWallet: wallet !== null && wallet !== undefined,
-    canNotify: notifier !== undefined,
+    canNotify: notifier !== undefined && offerPush,
 
     async connect() {
       try {
@@ -1125,12 +1130,14 @@ export function createArena({
 
     async notify() {
       const me = requireAddress();
-      if (notifier === undefined) throw new ArenaError("failed", "Notifications are not set up for this network");
+      if (notifier === undefined || !offerPush) {
+        throw new ArenaError("failed", "Notifications are not set up for this network");
+      }
+      // enable runs first, within the click's gesture. It also registers the browser again
+      // when the server forgot its subscription, which refuses any set until then.
+      await notifier.enable();
       const picked =
         feed !== null && feed.picked.size > 0 ? feed.picked : followedTriggers(await notifier.triggers(realm));
-      // enable registers the browser again when the server forgot its subscription, which
-      // refuses any set until then.
-      await notifier.enable();
       storage.setItem(pushKey, me);
       await notifier.setOptins(optinsFor(picked, address, me));
       return [...picked.values()].filter((event) => event !== "Board").length;

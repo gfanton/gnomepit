@@ -286,6 +286,20 @@ test("notify enables push with the feed's opt-ins and counts the push triggers",
   assert.equal(fake.calls.filter((c) => c === "enable").length, 1);
 });
 
+test("notify asks the browser for push before it waits on the server", async () => {
+  let list: (triggers: Awaited<ReturnType<Notifier["triggers"]>>) => void = () => {};
+  const listed = new Promise<Awaited<ReturnType<Notifier["triggers"]>>>((resolve) => (list = resolve));
+  const fake = fakeNotifier({ triggers: () => listed });
+  const arena = liveArena(fake, walletFor(alice));
+  await arena.connect();
+  const notified = arena.notify();
+  // Browsers refuse or hide the permission prompt once the click's gesture has passed, and
+  // the trigger list can take a round trip.
+  assert.deepEqual(fake.calls, ["enable"]);
+  list(arenaTriggers);
+  assert.equal(await notified, 2);
+});
+
 test("the arena says whether it found a wallet and can send notifications", () => {
   const realm = "gno.land/r/gfanton/gnomepit/arena";
   const bare = createArena({
@@ -1730,6 +1744,37 @@ test("a later visit keeps push on for the address that turned it on, with or wit
     [boardOptin, turnOptin(alice), endedOptin(alice)],
     [boardOptin, turnOptin(alice), liveOnly(turnOptin(bob)), endedOptin(alice), liveOnly(endedOptin(bob))],
   ]);
+});
+
+test("an arena that offers no push follows the chain live, turns no push on, and cannot notify", async (t) => {
+  const storage = memory();
+  const first = liveArena(fakeNotifier(), walletFor(alice), storage);
+  await first.connect();
+  await first.notify();
+
+  const fake = fakeNotifier();
+  const arena = createArena({
+    chain: arenaChain(),
+    wallet: walletFor(alice),
+    engine,
+    signer,
+    realm,
+    chainId: "dev",
+    origin: "http://x",
+    storage,
+    notifier: fake.notifier,
+    offerPush: false,
+  });
+  assert.equal(arena.canNotify, false);
+  const changes: ArenaChange[] = [];
+  t.after(arena.subscribe((c) => changes.push(c)));
+  await sleep(5);
+  await arena.connect();
+  await assert.rejects(arena.notify(), (err) => err instanceof ArenaError && err.type === "failed");
+  assert.equal(fake.count.connects, 1);
+  assert.deepEqual<ArenaChange[]>(changes, [{}]);
+  assert.equal(fake.calls.includes("enable"), false);
+  assert.deepEqual(fake.sets, [[boardOptin], [boardOptin, liveOnly(turnOptin(alice)), liveOnly(endedOptin(alice))]]);
 });
 
 test("a set the server refuses, as for a push subscription it forgot, leaves the live feed open", async (t) => {
