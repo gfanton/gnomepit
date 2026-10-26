@@ -15,6 +15,17 @@ const waitsFor = (context: DraftContext, v: View) => v.action === (context.inten
 const perMatch =
   "Each match you post or accept asks your wallet once, for a one-day session that only plays that match.";
 const unreachable = "Can't reach the hall right now. Check your connection and try again.";
+// linkedMatch is the match a #match= fragment names, the form of the lobby's match links and
+// of the arena's notification links; undefined for any other fragment or a malformed one.
+export function linkedMatch(hash: string): string | undefined {
+  const encoded = /^#match=(.+)$/.exec(hash)?.[1];
+  if (encoded === undefined) return undefined;
+  try {
+    return decodeURIComponent(encoded);
+  } catch {
+    return undefined;
+  }
+}
 // setupStep is the first thing a device still lacks to play online: 1 a wallet, 2 a connection
 // on the game's network, 3 the root signature; null once it is ready.
 export function setupStep({

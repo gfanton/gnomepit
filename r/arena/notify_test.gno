@@ -14,9 +14,10 @@ func TestInitSetsTriggers(cur realm, t *testing.T) {
 	ids := strings.Split(gnotif.Active(self), ",")
 	urequire.Equal(t, 3, len(ids))
 	want := [][6]string{ // name, event, param, title, body, link
-		{"turn", "Turn", "to", "Your move in Gnomepit", "{text}", "/?match={match}"},
-		{"ended", "Ended", "to", "Match over", "{text}", "/?match={match}"},
-		{"board", "Board", "", "Gnomepit challenges", "{text}", "/"},
+		// The page opens the match a #match= fragment names.
+		{"turn", "Turn", "to", "Your move in Gnomepit", "{text}", pagePath + "#match={match}"},
+		{"ended", "Ended", "to", "Match over", "{text}", pagePath + "#match={match}"},
+		{"board", "Board", "", "Gnomepit challenges", "{text}", pagePath},
 	}
 	for i, w := range want {
 		page := gnotif.Render("trigger/" + ids[i])

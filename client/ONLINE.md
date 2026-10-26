@@ -9,7 +9,7 @@ Every command below runs in the flake's dev shell: `direnv allow` once, or `nix 
 1. `make dev` starts gnodev with the engine, the gnotif registry and its trigger package, on the chain `gnomepit-dev`, then deploys the arena in a transaction from gnodev's test1 account. tx-indexer files genesis transactions at height 0, where gnotifd never reads, so the arena's triggers have to land in a block. The RPC listens on `127.0.0.1:36657` and gnoweb on `127.0.0.1:8890`. It copies the registry from the gnotif revision the flake pins, or from the checkout `GNOTIF_DIR` names. It funds four dev accounts, alice, bob, carol and dave, with 10,000 GNOT each.
 2. `make indexer` runs tx-indexer v1.3.0 on that chain, answering on `127.0.0.1:8546`. gnotifd reads the chain through it.
 3. `make gnotif` runs gnotifd on `127.0.0.1:8547`, reading the chain through `make indexer`. The page learns of the other player's moves and of the board's changes from it. It makes new VAPID keys and an empty database in `.gnotif/` each time.
-4. `make serve` builds `engine.wasm` with TinyGo and bundles the pages with esbuild into `dist/`, then serves `dist/` on `http://127.0.0.1:8080/`. `GNOMEPIT_NETWORK` picks the network the build targets: `local` by default, or `offline` for a page with no online play. `make e2e` and `make test` build the engine too.
+4. `make serve` builds `engine.wasm` with TinyGo and bundles the pages with esbuild into `dist/`, then serves `dist/` on `http://127.0.0.1:8080/`. `GNOMEPIT_NETWORK` picks the network the build targets: `local` by default, `onyx` for the arena on onyx, or `offline` for a page with no online play. `make e2e` and `make test` build the engine too.
 5. Open `http://127.0.0.1:8080/?dev=alice` in one browser and `?dev=bob` in another, then **Play online**: the lobby, with a dev wallet in place of Adena. Without `dev`, the lobby uses Adena.
 6. `online-dev.html?dev=alice` and `?dev=bob` open a bare console instead, which picks decks and plans at random. Add `&contract=1` to have the wallet sign every move instead of a session, and `&gnotif=` with no value to poll the node instead of following gnotifd.
 7. `make e2e` plays from node, with `make indexer` and `make gnotif` running:
@@ -17,7 +17,7 @@ Every command below runs in the flake's dev shell: `direnv allow` once, or `nix 
    - **A second challenge.** Alice posts again and gets a new session, which revokes the session of the ended match. Nobody accepts it.
    - **A match the wallet signs.** Both players sign every move with the wallet, which locks no session.
 
-   It also checks that each player's live feed reports their Board, Turn and Ended notifications, in chain order.
+   It also checks that each player's live feed reports their Board, Turn and Ended notifications, in chain order, then has alice withdraw the two challenges nobody accepted.
 
 gnodev keeps the chain in memory, so a restart starts from an empty arena. Start `make indexer` again after one, since its index holds the old heights, then `make gnotif`. gnodev watches no files: a reload would replay the chain's transactions at genesis, the arena's deploy among them, where gnotifd never sees its triggers. A change to the engine, the gnotif registry or the arena needs a new `make dev`.
 
@@ -200,12 +200,20 @@ A session with less left than the costliest move it may still pay counts as used
 - **An unlocked session** may still pay an opening: 264,113 ugnot for the challenger and 248,206 for the acceptor.
 - **A session locked to a match** pays only its side's later moves and its ending. Their reserve is the costlier of the side's ending and its costliest later move in any measured match, plus a tenth, rounded up to the ugnot, since moves cost more as a chunk fills: 503,159 ugnot for the challenger, from the 457,417 ending, and 463,316 for the acceptor, from the 421,196 ending.
 
-## Before onyx
+## On onyx
 
-Check three things in onyx's release before deploying the arena there:
-- **`runtime.GetSessionInfo` and session accounts.** The realm calls `GetSessionInfo` to lock each session to its match. Without it the lock has to go, and a session is held only to its per-match budget.
-- **Restricted ugnot transfers.** On a chain that restricts them, freed storage deposits go to the storage fee collector (`gno.land/pkg/sdk/vm/keeper.go`) instead of the caller. A call that frees storage then gets nothing back: a reveal that drops a seal, a withdrawn challenge, or a challenge that clears expired ones.
-- **The gas price and the storage price.** A budget prices gas at the gas price of the session's creation, so a price that keeps rising through a match makes its players renew. The deposits assume gnodev's storage price, the `vm` parameter `storage_price` of 100 ugnot per byte, which the page never reads. Compare onyx's `auth/gasprice` over a few days, and its `storage_price`, with these, and measure again on onyx if the storage price differs.
+The `onyx` build plays on the arena at `gno.land/r/g188vafzutzvlfw6wt7u3s62xtuvm0epmu8ufmfz/gnomepit/arena`, deployed under a gnomcp test key with its engine at `gno.land/p/g188vafzutzvlfw6wt7u3s62xtuvm0epmu8ufmfz/gnomepit/engine`, and follows the chain through `https://gnotif.xyz/onyx`. CI builds the page for it when the repository variable `GNOMEPIT_NETWORK` is `onyx`. A player connects Adena on `onyx-1` and pays their sessions in onyx GNOT. The onyx build ignores `?dev=` and uses Adena: the dev accounts' keys ship in the page, and on a public chain anyone could play as them.
+
+`scripts/onyx-copy.sh <address> <dir>` writes the engine and the arena, tests included, for a deploy under that address's namespace: their package paths move to it, the arena imports gnotif's registry at `gno.land/r/nym-gfanton001/gnotif/v1`, and `pagePath` becomes `/gnomepit/`, the page's path on GitHub Pages, so a notification's click opens the page there. Onyx parks every deploy until its approver type-checks it, and a deploy that fails stays parked with no error, so lint and test the copy with the gno release the node's `/status` names, v1.6.0-rc.1 on 2026-10-26, against dependencies fetched from onyx (`gno mod download -remote-overrides gno.land=https://rpc.onyx.testnets.gno.land:443`). The flake's gno, the `chain/onyx` tag, is an older release.
+
+The approver charges the storage deposit to the deployer when it enables the package, up to the maximum deposit the deploy named. On gnodev the arena's deploy stores 127,627 bytes, 12.76 GNOT at 100 ugnot per byte, so a deploy capped at 10 GNOT, as gnomcp caps them before v0.12.3, never goes live.
+
+Three things in onyx's release decide whether the arena works there. Each held on 2026-10-26; check them again after an onyx upgrade:
+- **`runtime.GetSessionInfo` and session accounts.** The realm calls `GetSessionInfo` to lock each session to its match. Without it the lock has to go, and a session is held only to its per-match budget. The realm's tests pass on v1.6.0-rc.1.
+- **Restricted ugnot transfers.** On a chain that restricts them, freed storage deposits go to the storage fee collector (`gno.land/pkg/sdk/vm/keeper.go`) instead of the caller. A call that frees storage then gets nothing back: a reveal that drops a seal, a withdrawn challenge, or a challenge that clears expired ones. Onyx's `bank` parameter `restricted_denoms` is empty.
+- **The gas price and the storage price.** A budget prices gas at the gas price of the session's creation, so a price that keeps rising through a match makes its players renew. The deposits assume gnodev's storage price, the `vm` parameter `storage_price` of 100 ugnot per byte, which the page never reads. Onyx's `auth/gasprice` is 1 ugnot per 1,000 gas and its `storage_price` 100 ugnot per byte, the prices the budgets above were measured at.
+
+`NETWORK=onyx SESSION_SECONDS=120 node client/e2e/match.ts` plays the end-to-end matches on onyx as alice and bob, who need onyx GNOT first. A 30-second session would expire before alice's first reveal at onyx's pace of a block every few seconds.
 
 ## Tests
 

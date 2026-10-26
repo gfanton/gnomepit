@@ -34,7 +34,7 @@ golden: ## Sign the signer tests' golden transactions with the chain's own Go ty
 	go -C client/golden run . > $(GOLDEN).tmp
 	mv -f $(GOLDEN).tmp $(GOLDEN)
 
-build: wasm $(PNPM_STAMP) ## Build engine.wasm and bundle the pages into dist/ for GNOMEPIT_NETWORK: local (the default) or offline
+build: wasm $(PNPM_STAMP) ## Build engine.wasm and bundle the pages into dist/ for GNOMEPIT_NETWORK: local (the default), onyx or offline
 	pnpm run build
 
 $(PNPM_STAMP): package.json pnpm-lock.yaml pnpm-workspace.yaml

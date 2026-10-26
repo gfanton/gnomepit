@@ -1,14 +1,14 @@
 // The arena the lobby plays through, built from the page's query string. ?rpc=, ?chain=,
 // ?realm= and ?gnotif= name the network, defaulting to the build's network; an empty
-// ?gnotif= polls the node instead. ?dev=alice or ?dev=bob plays with a dev wallet on a
-// local chain instead of Adena.
+// ?gnotif= polls the node instead. On a page built for make dev's chain, ?dev=alice or
+// ?dev=bob plays with a dev wallet instead of Adena.
 
 import { type Arena, type ArenaOptions, type Notifier, createArena } from "./arena.ts";
 import { type Chain, createChain } from "./chain.ts";
 import { devAccounts, devWallet } from "./devwallet.ts";
 import type { Engine } from "./engine.ts";
 import { Gnotif } from "./gnotif.js";
-import { type Network, networkFrom } from "./network.ts";
+import { type Network, networkFrom, networks } from "./network.ts";
 import * as signer from "./signer.ts";
 import type { Signer } from "./signer.ts";
 import { type Wallet, waitForAdena } from "./wallet.ts";
@@ -19,7 +19,7 @@ export async function loadArena(engine: Engine, built: Network): Promise<Arena> 
   const chain = createChain({ rpc });
   return createArena({
     chain,
-    wallet: await pageWallet(params.get("dev"), { signer, chain, chainId }),
+    wallet: await pageWallet(params.get("dev"), { signer, chain, chainId, built }),
     engine,
     signer,
     realm,
@@ -48,13 +48,14 @@ export function pageNotifier(url: string | null): Notifier | undefined {
 
 const isDevName = (name: string): name is keyof typeof devAccounts => Object.hasOwn(devAccounts, name);
 
-// pageWallet is the wallet a page plays with: Adena, or, for a ?dev= value, that dev
-// account's wallet on chain. A value that names no dev account fails.
+// pageWallet is the wallet a page plays with: Adena, or, for a ?dev= value on a page built
+// for make dev's chain, that dev account's wallet on chain. A page built for another chain
+// ignores ?dev=, since the dev keys ship in the page. A value that names no dev account fails.
 export async function pageWallet(
   dev: string | null,
-  { signer, chain, chainId }: { signer: Signer; chain: Chain; chainId: string },
+  { signer, chain, chainId, built }: { signer: Signer; chain: Chain; chainId: string; built: Network },
 ): Promise<Wallet | undefined> {
-  if (dev === null) return waitForAdena();
+  if (dev === null || built.chainId !== networks.local.chainId) return waitForAdena();
   if (!isDevName(dev)) throw new Error(`unknown dev account "${dev}"; known: ${Object.keys(devAccounts).join(", ")}`);
   return devWallet({ name: dev, signer, chain, chainId });
 }

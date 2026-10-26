@@ -2,7 +2,7 @@
 
 Gnomepit is a two-player card duel between gnome clans beneath a mountain. Each player builds a deck of eight special cards from a clan's pool, plans three beats per round in secret, and both plans resolve together. Play against a bot, share one screen, or play online, where the Gno realm `r/arena` holds the match and checks every move with the same engine the page runs.
 
-The page at <https://gfanton.github.io/gnomepit/> plays offline: against the bot, two players on one device, or the guided match. Online play needs the arena on a chain the page is built for; `make serve` builds the page for the local chain `make dev` runs.
+The page at <https://gfanton.github.io/gnomepit/> plays against the bot, two players on one device, the guided match, and online on the onyx testnet with Adena, where the arena runs under a test address. `make serve` builds the page for the local chain `make dev` runs instead.
 
 ## Develop
 
@@ -31,8 +31,8 @@ To play online locally, run `make dev`, `make indexer`, `make gnotif` and `make 
 | `client/serve`  | A static file server for the page during development                             |
 | `client/golden` | Signs fixed requests with the chain's own Go types, for the signer tests         |
 | `client/web`    | The page: TypeScript, styles, card art and their tests                           |
-| `client/e2e`    | Plays arena matches against a running `make dev`                                 |
-| `scripts`       | Records chain answers for the tests, funds an account and measures storage costs |
+| `client/e2e`    | Plays arena matches against a running `make dev`, or on onyx                     |
+| `scripts`       | Records chain answers, funds an account, measures storage, writes the onyx copy  |
 
 ## Documents
 

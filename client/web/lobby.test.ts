@@ -11,7 +11,7 @@ import {
 } from "./arena.ts";
 import { known, unexpected, unexpectedAsync, unusedPage } from "./fixture.ts";
 import { type Address, type MatchId, address, matchId } from "./ids.ts";
-import { type Lobby, type LobbyArena, type LobbyOptions, createLobby, setupStep } from "./lobby.ts";
+import { type Lobby, type LobbyArena, type LobbyOptions, createLobby, linkedMatch, setupStep } from "./lobby.ts";
 import { type View, viewOf } from "./online-model.ts";
 
 const app = () => ({
@@ -841,4 +841,10 @@ test("a board the page cannot reach says so in plain words", async () => {
   await lobby.enter();
   assert.match(page.innerHTML, /Can't reach the hall right now\. Check your connection and try again\./);
   assert.doesNotMatch(page.innerHTML, /Failed to fetch/);
+});
+
+test("a #match= fragment names its match, decoded, and any other fragment names none", () => {
+  assert.equal(linkedMatch("#match=12"), "12");
+  assert.equal(linkedMatch("#match=a%2Fb"), "a/b");
+  for (const hash of ["", "#", "#match=", "#other=1", "#match=%E0"]) assert.equal(linkedMatch(hash), undefined, hash);
 });

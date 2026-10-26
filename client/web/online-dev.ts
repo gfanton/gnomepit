@@ -20,7 +20,7 @@ const devName = params.get("dev");
 
 const engine = await loadEngine("engine.wasm", "cards.json");
 const chain = createChain({ rpc });
-const wallet = await pageWallet(devName, { signer, chain, chainId });
+const wallet = await pageWallet(devName, { signer, chain, chainId, built: networks.local });
 const arena = createArena({
   chain,
   wallet,

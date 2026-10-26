@@ -10,6 +10,10 @@ import (
 // self is the arena's package path; a deploy under another path changes it.
 var self string
 
+// pagePath is where the page lives on its origin, the start of every trigger's link; the
+// registry accepts only a link that starts with "/".
+const pagePath = "/"
+
 // init sets the arena's three gnotif triggers and keeps no handle, so they stay as set
 // for this deploy. A Turn or Ended event carries the address it notifies in "to", so a
 // browser opts in with its wallet's address; a Board event notifies every browser that
@@ -18,9 +22,9 @@ func init(cur realm) {
 	self = cur.PkgPath()
 	me := cur.Sub(gnotif.Subpath)
 	h := gnotif.Open(cross(me))
-	h.Set(cross(me), "turn", gnotif.Trigger{Event: "Turn", Param: "to", Title: "Your move in Gnomepit", Body: "{text}", Link: "/?match={match}"})
-	h.Set(cross(me), "ended", gnotif.Trigger{Event: "Ended", Param: "to", Title: "Match over", Body: "{text}", Link: "/?match={match}"})
-	h.Set(cross(me), "board", gnotif.Trigger{Event: "Board", Title: "Gnomepit challenges", Body: "{text}", Link: "/"})
+	h.Set(cross(me), "turn", gnotif.Trigger{Event: "Turn", Param: "to", Title: "Your move in Gnomepit", Body: "{text}", Link: pagePath + "#match={match}"})
+	h.Set(cross(me), "ended", gnotif.Trigger{Event: "Ended", Param: "to", Title: "Match over", Body: "{text}", Link: pagePath + "#match={match}"})
+	h.Set(cross(me), "board", gnotif.Trigger{Event: "Board", Title: "Gnomepit challenges", Body: "{text}", Link: pagePath})
 }
 
 // tell emits kind to player about match id. It emits nothing when player made the call,

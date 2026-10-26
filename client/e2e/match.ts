@@ -1,9 +1,9 @@
-// Plays arena matches on a running `make dev`: one with a session per player and match,
-// alice's renewed mid-match, then one the wallet signs move by move. It also checks that
-// each player's live feed, through a running `make gnotif`, reports their notifications in
-// chain order.
+// Plays arena matches on a running `make dev`, or on the network NETWORK names: one with a
+// session per player and match, alice's renewed mid-match, then one the wallet signs move
+// by move. It also checks that each player's live feed, through a running `make gnotif` or
+// the network's gnotif server, reports their notifications in chain order.
 //
-//   [CHAIN=<chain id>] node client/e2e/match.ts [rpc url] [gnotif server url]
+//   [NETWORK=<name>] [CHAIN=<chain id>] [SESSION_SECONDS=<n>] node client/e2e/match.ts [rpc url] [gnotif server url]
 
 import assert from "node:assert/strict";
 
@@ -15,21 +15,24 @@ import { nodeEngine } from "../web/engine-node.ts";
 import { Gnotif } from "../web/gnotif.js";
 import { createReader } from "../web/gnovalue.ts";
 import type { Address, MatchId } from "../web/ids.ts";
-import { networks } from "../web/network.ts";
+import { networkFor, networks } from "../web/network.ts";
 import * as signer from "../web/signer.ts";
 import { type ClanStanding, type Standing, createStandings } from "../web/standings.ts";
 import { type SessionKeys, deriveKeys, generations, rootSignature } from "../web/wallet.ts";
 
-const rpc = process.argv[2] ?? networks.local.rpc;
-const server = process.argv[3] ?? networks.local.gnotif;
-const { realm } = networks.local;
-const chainId = process.env.CHAIN ?? networks.local.chainId;
+const network =
+  networkFor(process.env.NETWORK ?? "local") ?? assert.fail("the end-to-end test needs a network with a chain");
+const rpc = process.argv[2] ?? network.rpc;
+const server = process.argv[3] ?? network.gnotif ?? assert.fail("the end-to-end test needs a gnotif server");
+const { realm } = network;
+const chainId = process.env.CHAIN ?? network.chainId;
 const origin = "http://e2e.local";
 // The gnotif client reads location.href for every live notification, and node has none.
 Object.defineProperty(globalThis, "location", { value: new URL(`${origin}/`), configurable: true });
 // Alice's sessions last this many seconds, so one expires mid-match. Each, the renewed one
-// included, must outlast the moves that follow it.
-const shortLifetime = 30;
+// included, must outlast the moves that follow it, so a chain with slower blocks needs more.
+const shortLifetime = Number(process.env.SESSION_SECONDS ?? 30);
+assert.ok(Number.isInteger(shortLifetime) && shortLifetime > 0, "SESSION_SECONDS is a whole number of seconds");
 
 const engine = await nodeEngine();
 const chain = createChain({ rpc });
@@ -349,20 +352,23 @@ if ((await standings.ratedPlayers()) === 2) {
   assert.equal(standingsAfter.alice.MainClan, "Pickers");
   assert.equal(standingsAfter.bob.MainClan, "Ironhide");
 }
-for (const [clan, player] of [
-  ["Pickers", "alice"],
-  ["Ironhide", "bob"],
-] as const)
+// On a shared arena, other players' matches move the clan records too.
+if (network === networks.local) {
+  for (const [clan, player] of [
+    ["Pickers", "alice"],
+    ["Ironhide", "bob"],
+  ] as const)
+    assert.deepEqual(
+      moved(clanIn(standingsAfter.clans, clan), clanIn(standingsBefore.clans, clan)),
+      moved(standingsAfter[player], standingsBefore[player]),
+      `${clan}'s record moved with ${player}'s`,
+    );
   assert.deepEqual(
-    moved(clanIn(standingsAfter.clans, clan), clanIn(standingsBefore.clans, clan)),
-    moved(standingsAfter[player], standingsBefore[player]),
-    `${clan}'s record moved with ${player}'s`,
+    record(clanIn(standingsAfter.clans, "Delvers")),
+    record(clanIn(standingsBefore.clans, "Delvers")),
+    "Delvers played no match",
   );
-assert.deepEqual(
-  record(clanIn(standingsAfter.clans, "Delvers")),
-  record(clanIn(standingsBefore.clans, "Delvers")),
-  "Delvers played no match",
-);
+}
 log(
   `standings: alice ${standingsAfter.alice.Rating} (#${standingsAfter.alice.Rank}), bob ${standingsAfter.bob.Rating} (#${standingsAfter.bob.Rank})`,
 );
@@ -383,9 +389,22 @@ function expectedBy(name: "alice" | "bob"): Heard {
 }
 for (const name of ["alice", "bob"] as const) {
   const expected = expectedBy(name);
-  for (let waited = 0; waited < 15_000 && heard[name].length < expected.length; waited += 250) await sleep(250);
-  assert.deepEqual(heard[name], expected, `${name}'s live feed reports ${name}'s notifications, in chain order`);
+  // Board reaches every page that follows the arena, so on a shared arena it also tells of
+  // other players' challenges.
+  const ours = () => heard[name].filter(([, match]) => sent.some(([, m]) => m === match));
+  // A hosted gnotif server reads new blocks every few seconds, behind its indexer.
+  for (let waited = 0; waited < 60_000 && ours().length < expected.length; waited += 250) await sleep(250);
+  assert.deepEqual(ours(), expected, `${name}'s live feed reports ${name}'s notifications, in chain order`);
   log(`${name}'s live feed reported ${expected.length} notifications`);
 }
 for (const stop of unsubscribe) stop();
+
+// Nobody accepts these two, so on a shared arena they would stay on the board for a week.
+for (const open of [second, elsewhere]) await alice.resign(open);
+assert.deepEqual(
+  (await alice.openChallenges()).filter((c) => [second, elsewhere].includes(c.ID)),
+  [],
+  `alice withdrew matches ${second} and ${elsewhere}`,
+);
+log(`alice withdrew matches ${second} and ${elsewhere}`);
 process.exit(0);

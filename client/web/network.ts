@@ -18,6 +18,13 @@ export const networks = {
     realm: "gno.land/r/gfanton/gnomepit/arena",
     gnotif: "http://127.0.0.1:8547",
   },
+  // The arena deployed from scripts/onyx-copy.sh under a gnomcp test key.
+  onyx: {
+    chainId: "onyx-1",
+    rpc: "https://rpc.onyx.testnets.gno.land",
+    realm: "gno.land/r/g188vafzutzvlfw6wt7u3s62xtuvm0epmu8ufmfz/gnomepit/arena",
+    gnotif: "https://gnotif.xyz/onyx",
+  },
   offline: null,
 } as const satisfies Record<string, Network | null>;
 

@@ -27,7 +27,7 @@ import { loadArena } from "./arena-provider.ts";
 import { messageOf } from "./chain.ts";
 import { elementById } from "./dom.ts";
 import type { Address } from "./ids.ts";
-import { type Lobby, createLobby } from "./lobby.ts";
+import { type Lobby, createLobby, linkedMatch } from "./lobby.ts";
 import { networkFor } from "./network.ts";
 import { type View, matchBarText, replayView } from "./online-model.ts";
 import {
@@ -1693,8 +1693,15 @@ function clanNamed(name: string | undefined): Clan | undefined {
   return engine.clans.find((c) => c.name === name);
 }
 
-const matchLink = lobby === null ? undefined : location.hash.match(/^#match=(.+)$/)?.[1];
-if (lobby !== null && matchLink !== undefined) {
+// openLinkedMatch opens the match the page's #match= fragment names, and says whether it named one.
+async function openLinkedMatch(): Promise<boolean> {
+  const id = linkedMatch(location.hash);
+  if (lobby === null || id === undefined) return false;
   flow = { ...initial, screen: "lobby" };
-  await lobby.enter(decodeURIComponent(matchLink));
-} else render();
+  await lobby.enter(id);
+  return true;
+}
+
+if (!(await openLinkedMatch())) render();
+// A notification's click on an open page changes only its fragment, which loads nothing.
+addEventListener("hashchange", () => void openLinkedMatch());
