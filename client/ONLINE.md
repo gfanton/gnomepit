@@ -17,7 +17,7 @@ Every command below runs in the flake's dev shell: `direnv allow` once, or `nix 
    - **A second challenge.** Alice posts again and gets a new session, which revokes the session of the ended match. Nobody accepts it.
    - **A match the wallet signs.** Both players sign every move with the wallet, which locks no session.
 
-   It also checks that each player's live feed reports their Board, Turn and Ended notifications, in chain order.
+   It also checks that each player's live feed reports their Board, Turn and Ended notifications, in chain order, then has alice withdraw the two challenges nobody accepted.
 
 gnodev keeps the chain in memory, so a restart starts from an empty arena. Start `make indexer` again after one, since its index holds the old heights, then `make gnotif`. gnodev watches no files: a reload would replay the chain's transactions at genesis, the arena's deploy among them, where gnotifd never sees its triggers. A change to the engine, the gnotif registry or the arena needs a new `make dev`.
 
