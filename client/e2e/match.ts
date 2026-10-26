@@ -15,7 +15,7 @@ import { nodeEngine } from "../web/engine-node.ts";
 import { Gnotif } from "../web/gnotif.js";
 import { createReader } from "../web/gnovalue.ts";
 import type { Address, MatchId } from "../web/ids.ts";
-import { networkFor } from "../web/network.ts";
+import { networkFor, networks } from "../web/network.ts";
 import * as signer from "../web/signer.ts";
 import { type ClanStanding, type Standing, createStandings } from "../web/standings.ts";
 import { type SessionKeys, deriveKeys, generations, rootSignature } from "../web/wallet.ts";
@@ -32,6 +32,7 @@ Object.defineProperty(globalThis, "location", { value: new URL(`${origin}/`), co
 // Alice's sessions last this many seconds, so one expires mid-match. Each, the renewed one
 // included, must outlast the moves that follow it, so a chain with slower blocks needs more.
 const shortLifetime = Number(process.env.SESSION_SECONDS ?? 30);
+assert.ok(Number.isInteger(shortLifetime) && shortLifetime > 0, "SESSION_SECONDS is a whole number of seconds");
 
 const engine = await nodeEngine();
 const chain = createChain({ rpc });
@@ -351,20 +352,23 @@ if ((await standings.ratedPlayers()) === 2) {
   assert.equal(standingsAfter.alice.MainClan, "Pickers");
   assert.equal(standingsAfter.bob.MainClan, "Ironhide");
 }
-for (const [clan, player] of [
-  ["Pickers", "alice"],
-  ["Ironhide", "bob"],
-] as const)
+// On a shared arena, other players' matches move the clan records too.
+if (network === networks.local) {
+  for (const [clan, player] of [
+    ["Pickers", "alice"],
+    ["Ironhide", "bob"],
+  ] as const)
+    assert.deepEqual(
+      moved(clanIn(standingsAfter.clans, clan), clanIn(standingsBefore.clans, clan)),
+      moved(standingsAfter[player], standingsBefore[player]),
+      `${clan}'s record moved with ${player}'s`,
+    );
   assert.deepEqual(
-    moved(clanIn(standingsAfter.clans, clan), clanIn(standingsBefore.clans, clan)),
-    moved(standingsAfter[player], standingsBefore[player]),
-    `${clan}'s record moved with ${player}'s`,
+    record(clanIn(standingsAfter.clans, "Delvers")),
+    record(clanIn(standingsBefore.clans, "Delvers")),
+    "Delvers played no match",
   );
-assert.deepEqual(
-  record(clanIn(standingsAfter.clans, "Delvers")),
-  record(clanIn(standingsBefore.clans, "Delvers")),
-  "Delvers played no match",
-);
+}
 log(
   `standings: alice ${standingsAfter.alice.Rating} (#${standingsAfter.alice.Rank}), bob ${standingsAfter.bob.Rating} (#${standingsAfter.bob.Rank})`,
 );
@@ -385,9 +389,12 @@ function expectedBy(name: "alice" | "bob"): Heard {
 }
 for (const name of ["alice", "bob"] as const) {
   const expected = expectedBy(name);
+  // Board reaches every page that follows the arena, so on a shared arena it also tells of
+  // other players' challenges.
+  const ours = () => heard[name].filter(([, match]) => sent.some(([, m]) => m === match));
   // A hosted gnotif server reads new blocks every few seconds, behind its indexer.
-  for (let waited = 0; waited < 60_000 && heard[name].length < expected.length; waited += 250) await sleep(250);
-  assert.deepEqual(heard[name], expected, `${name}'s live feed reports ${name}'s notifications, in chain order`);
+  for (let waited = 0; waited < 60_000 && ours().length < expected.length; waited += 250) await sleep(250);
+  assert.deepEqual(ours(), expected, `${name}'s live feed reports ${name}'s notifications, in chain order`);
   log(`${name}'s live feed reported ${expected.length} notifications`);
 }
 for (const stop of unsubscribe) stop();
