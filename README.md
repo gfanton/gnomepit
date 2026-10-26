@@ -6,7 +6,7 @@ The page at <https://gfanton.github.io/gnomepit/> plays offline: against the bot
 
 ## Develop
 
-Enter the Nix dev shell with `direnv allow` or `nix develop`. It carries Go, TinyGo, Node 24, pnpm, and gno, gnokey and gnodev built from gno's `chain/onyx` tag.
+Enter the Nix dev shell with `direnv allow` or `nix develop`. It carries Go, TinyGo, Node 24, pnpm, jq, gno, gnokey and gnodev built from gno's `chain/onyx` tag, and gnotifd built from the gnotif revision the flake pins.
 
 - `make dev` runs a local chain with the engine, the gnotif registry and the dev accounts, then deploys the arena on it.
 - `make indexer` indexes the running chain for gnotifd.

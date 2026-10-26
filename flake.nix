@@ -86,6 +86,7 @@
             pkgs.tinygo
             pkgs.nodejs_24
             pkgs.pnpm
+            pkgs.jq
             gnoPkg
             gnodevPkg
             gnotifdPkg

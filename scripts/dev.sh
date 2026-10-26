@@ -21,7 +21,7 @@ fi
 work="$(mktemp -d)"
 "$@" &
 readonly GNODEV_PID="$!"
-trap 'kill "${GNODEV_PID}" 2>/dev/null || true; rm -rf "${work}"' EXIT
+trap 'kill "${GNODEV_PID}" 2>/dev/null || true; wait "${GNODEV_PID}" 2>/dev/null || true; rm -rf "${work}"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 

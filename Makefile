@@ -52,17 +52,20 @@ serve: build ## Build dist/ and serve it on 127.0.0.1:8080
 # gnodev runs from an empty workspace: from the repository's, its lazy loader would load
 # r/arena at genesis as soon as the arena's deploy transaction named it. Outside the
 # repository's workspace gnodev resolves no import from its examples, so it loads them all.
+# gnodev runs in the background, where its terminal keys find no terminal. It must never
+# reload: a reload moves every transaction to genesis, the arena's triggers with them.
 dev: deps ## Run gnodev with the engine, the gnotif registry and the dev accounts, then deploy the arena on it
 	mkdir -p $(GNODEV_WORKSPACE)
 	touch $(GNODEV_WORKSPACE)/gnowork.toml
 	RPC=$(DEV_RPC) CHAIN=$(DEV_CHAIN) scripts/dev.sh \
-		gnodev local -C $(abspath $(GNODEV_WORKSPACE)) -extra-root "$$(gno env GNOROOT)/examples" \
+		gnodev local -interactive=false -no-watch \
+		-C $(abspath $(GNODEV_WORKSPACE)) -extra-root "$$(gno env GNOROOT)/examples" \
 		-chain-id $(DEV_CHAIN) -node-rpc-listener $(DEV_RPC) -web-listener $(DEV_WEB) \
 		$(foreach a,$(DEV_ACCOUNTS),-add-account $(a)=10000000000ugnot) \
 		$(abspath p/engine $(REGISTRY) $(TRIGGER))
 
 # gnodev starts every chain from height 0, so the index starts empty each time.
-indexer: ## Index a running make dev for gnotifd; start it again after gnodev restarts or reloads
+indexer: ## Index a running make dev for gnotifd; start it again after make dev restarts
 	rm -rf $(INDEXER_DB)
 	go run $(TX_INDEXER) start -remote http://$(DEV_RPC) -db-path $(abspath $(INDEXER_DB)) -listen-address $(DEV_INDEXER)
 
