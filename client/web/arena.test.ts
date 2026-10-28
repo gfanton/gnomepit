@@ -329,6 +329,72 @@ test("the arena says whether it found a wallet and can send notifications", () =
   assert.equal(full.canNotify, true);
 });
 
+test("a wallet the page is still looking for counts as found, and connect waits for it", async () => {
+  let found = (_wallet: TestWallet) => {};
+  const arena = createArena({
+    chain: arenaChain(),
+    wallet: new Promise<TestWallet>((resolve) => {
+      found = resolve;
+    }),
+    engine,
+    signer,
+    realm,
+    chainId: "dev",
+    origin: "http://x",
+    storage: memory(),
+  });
+  assert.equal(arena.hasWallet, true);
+  const connecting = arena.connect();
+  found(walletFor(address("g1alice")));
+  assert.equal(accountOf(await connecting).address, "g1alice");
+});
+
+test("the arena has no wallet once the page's search for one ends empty", async () => {
+  const search = Promise.resolve(undefined);
+  const arena = createArena({
+    chain: arenaChain(),
+    wallet: search,
+    engine,
+    signer,
+    realm,
+    chainId: "dev",
+    origin: "http://x",
+    storage: memory(),
+  });
+  await search;
+  assert.equal(arena.hasWallet, false);
+  assert.equal((await arena.connect()).state, "noWallet");
+});
+
+test("walletSearch settles once the page's search for a wallet ends, or at once without one", async () => {
+  let found = (_wallet: TestWallet | undefined) => {};
+  const options = {
+    chain: arenaChain(),
+    engine,
+    signer,
+    realm,
+    chainId: "dev",
+    origin: "http://x",
+    storage: memory(),
+  };
+  const searching = createArena({
+    ...options,
+    wallet: new Promise<TestWallet | undefined>((resolve) => {
+      found = resolve;
+    }),
+  });
+  let ended = false;
+  void searching.walletSearch.then(() => {
+    ended = true;
+  });
+  await Promise.resolve();
+  assert.equal(ended, false);
+  found(undefined);
+  await searching.walletSearch;
+  assert.equal(ended, true);
+  await createArena({ ...options, wallet: null }).walletSearch;
+});
+
 test("watch reports a match when it changes, and stops", async () => {
   const answers = ["match-play", "match-play", "match-ended"];
   const chain = {

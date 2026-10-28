@@ -93,12 +93,13 @@
   margin: 8px 0 0;
   font: var(--gh-type-body);
 }
-.home-clans {
+.home-library {
   position: relative;
   border-top: 1px solid color-mix(in srgb, var(--gh-color-trim) 40%, transparent);
-  padding: 30px 0 8px;
+  padding: 20px 0 8px;
+  text-align: center;
 }
-.home-clans::before {
+.home-library::before {
   content: "◆" / "";
   position: absolute;
   top: -11px;

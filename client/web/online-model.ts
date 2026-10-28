@@ -115,6 +115,13 @@ export function matchBarText(intent: "challenge" | "accept" | "move", deadline: 
   return isSet(deadline) ? `Your move deadline: ${new Date(deadline * 1000).toLocaleString()}` : "Your move";
 }
 
+// sendingText is the match bar's status while a plan of intent is sent.
+export function sendingText(intent: "challenge" | "accept" | "move"): string {
+  return intent === "move"
+    ? "Sending your move… Waiting for confirmation."
+    : "Approve the request in Adena if it asks, then wait for the chain to confirm.";
+}
+
 export function shortAddress(address: string | undefined): string {
   if (address === undefined || address === "") return "Awaiting a rival";
   return address.length > 15 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address;

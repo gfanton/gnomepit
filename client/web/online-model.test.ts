@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { GameState, Gnome, ResolveRequest, Resolution } from "./engine.ts";
 import { event } from "./fixture.ts";
 import { address, matchId } from "./ids.ts";
-import { type ArenaView, viewOf, timeLeft, cardIds, replayView, matchBarText } from "./online-model.ts";
+import { type ArenaView, viewOf, timeLeft, cardIds, replayView, matchBarText, sendingText } from "./online-model.ts";
 const account = address("g1player");
 const other = address("g1other");
 const gnome = (hp: number): Gnome => ({ hp, vulnerable: 0, strength: 0, spent: [] });
@@ -101,6 +101,15 @@ test("the match bar gives the deadline only for a move", () => {
   assert.equal(matchBarText("challenge", 200), "Posting a challenge · Round 1");
   assert.equal(matchBarText("move", 200), `Your move deadline: ${new Date(200_000).toLocaleString()}`);
   assert.equal(matchBarText("move", 0), "Your move");
+});
+// Posting or accepting asks Adena unless a live unlocked session already has the role's budget.
+test("while a plan is sent, the match bar names the wallet's part in posting or accepting", () => {
+  assert.equal(
+    sendingText("challenge"),
+    "Approve the request in Adena if it asks, then wait for the chain to confirm.",
+  );
+  assert.equal(sendingText("accept"), "Approve the request in Adena if it asks, then wait for the chain to confirm.");
+  assert.equal(sendingText("move"), "Sending your move… Waiting for confirmation.");
 });
 test("deadline labels never round a still-active deadline to expired", () => {
   assert.equal(timeLeft(100, 99), "0h 1m left");

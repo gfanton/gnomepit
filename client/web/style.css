@@ -529,12 +529,50 @@ dialog::backdrop {
 .button--secondary:hover:not(:disabled) {
   background: var(--gh-color-surface-strong);
 }
-.button:disabled {
+.button:disabled:not([aria-busy="true"]) {
   background: var(--gh-color-surface-strong);
   color: var(--gh-color-text-dim);
   border-color: var(--gh-color-border);
   box-shadow: none;
   cursor: default;
+}
+
+/* ---- Pending requests */
+.button[aria-busy="true"],
+.quiet[aria-busy="true"] {
+  cursor: progress;
+}
+.button[aria-busy="true"]::before,
+.quiet[aria-busy="true"]::before,
+.busy-note::before {
+  content: "";
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-inline-end: var(--gh-space-2);
+  vertical-align: -0.15em;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+  border-radius: var(--gh-radius-round);
+  animation: busy-spin 0.9s linear infinite;
+}
+.busy-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gh-space-2);
+  color: var(--gh-color-text-muted);
+}
+.busy-note::before {
+  flex: none;
+  margin: 0.2em 0 0;
+}
+.busy-note:empty {
+  display: none;
+}
+@keyframes busy-spin {
+  to {
+    transform: rotate(1turn);
+  }
 }
 
 /* ---- Title */
@@ -876,6 +914,15 @@ button.card:focus-visible {
 }
 .card--locked {
   cursor: default;
+}
+/* A card left out of a deck fades but stays enabled, so a tap puts it back. Its rules text
+   keeps 4.5:1 contrast at this opacity. */
+.card[aria-pressed="false"] {
+  opacity: 0.65;
+}
+.card[aria-pressed="false"]:hover,
+.card[aria-pressed="false"]:focus-visible {
+  opacity: 0.8;
 }
 .card--acting {
   outline: 2px solid var(--gh-color-highlight);
@@ -1357,5 +1404,10 @@ button.card:focus-visible {
   *::after {
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+  .button[aria-busy="true"]::before,
+  .quiet[aria-busy="true"]::before,
+  .busy-note::before {
+    animation: none;
   }
 }

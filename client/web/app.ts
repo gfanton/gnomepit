@@ -15,7 +15,7 @@ import {
   startState,
 } from "./engine.ts";
 import { type Action, type Flow, type Round, initial, reduce, botTurn } from "./flow.ts";
-import { type Deck, deckSize, newDeck, toggle, rareOf } from "./deck.ts";
+import { type Deck, deckSize, newDeck, readiness, toggle, rareOf } from "./deck.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
 import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.ts";
 import { sentences, matchLog, resultLine, sideNames, possessive } from "./log.ts";
@@ -29,7 +29,7 @@ import { elementById } from "./dom.ts";
 import type { Address } from "./ids.ts";
 import { type Lobby, createLobby, linkedMatch } from "./lobby.ts";
 import { networkFor } from "./network.ts";
-import { type View, matchBarText, replayView } from "./online-model.ts";
+import { type View, matchBarText, replayView, sendingText } from "./online-model.ts";
 import {
   type TutorialMatch,
   afterFiniteAnimations,
@@ -154,7 +154,7 @@ function collectionHTML(): string {
     { name: "Shared", ids: basics },
   ];
   return `<details class="collection"><summary>Browse all ${engine.cards.length} cards<span>${engine.clans.map((clan) => clan.name).join(", ")} & shared techniques</span></summary>
-    <div class="collection__groups">${groups.map(({ name, ids }) => `<section class="stack" id="library-${name.toLowerCase()}"><div class="frame__head"><h2 class="heading">${name === "Shared" ? "Shared techniques" : name}</h2><span class="label">${ids.length} cards</span></div><div class="card-grid">${ids.map((id) => cardHTML(cardOf(engine.cards, id))).join("")}</div></section>`).join("")}</div>
+    <div class="collection__groups">${groups.map(({ name, ids }) => `<section class="stack"><div class="frame__head"><h2 class="heading">${name === "Shared" ? "Shared techniques" : name}</h2><span class="label">${ids.length} cards</span></div><div class="card-grid">${ids.map((id) => cardHTML(cardOf(engine.cards, id))).join("")}</div></section>`).join("")}</div>
   </details>`;
 }
 
@@ -164,7 +164,7 @@ function masthead(note = "A duel beneath the mountain"): string {
 
 const tutorialFlag = tutorialMemory(localStorage);
 const built = networkFor(GNOMEPIT_NETWORK);
-const arena = built === null ? null : await loadArena(engine, built);
+const arena = built === null ? null : loadArena(engine, built);
 const lobby: Lobby<Draft> | null =
   arena === null
     ? null
@@ -211,7 +211,7 @@ const lobby: Lobby<Draft> | null =
             state: startState(engine.hp),
           };
           choosingClan = true;
-          deck = newDeck(firstClan(), engine.cards);
+          deck = newDeck(firstClan());
           render();
         },
         onPlay: (raw, address, review) => {
@@ -297,7 +297,7 @@ function battleNames(): Pair<string> {
 function onlineBar(): string {
   return flow.mode !== "online"
     ? ""
-    : `<section class="online-match-bar"><button class="button button--secondary" data-action="onlineBack" ${onlineSending ? "disabled" : ""}>Back to board</button><span>${escapeHTML(matchBarText(onlineMatch().intent, onlineMatch().view?.deadline))}</span><p role="status">${escapeHTML(onlineError !== "" ? onlineError : onlineSending ? "Sending your move… Waiting for confirmation." : "")}</p></section>`;
+    : `<section class="online-match-bar"><button class="button button--secondary" data-action="onlineBack" ${onlineSending ? "disabled" : ""}>Back to board</button><span>${escapeHTML(matchBarText(onlineMatch().intent, onlineMatch().view?.deadline))}</span><p role="status"${onlineSending ? ' class="busy-note"' : ""}>${escapeHTML(onlineError !== "" ? onlineError : onlineSending ? sendingText(onlineMatch().intent) : "")}</p></section>`;
 }
 async function sendOnlinePlan(): Promise<void> {
   if (onlineSending || !isSealable(plan, legalPlans)) return;
@@ -346,7 +346,7 @@ function enter(before: Flow): void {
       return;
     }
     choosingClan = true;
-    deck = newDeck(firstClan(), engine.cards);
+    deck = newDeck(firstClan());
   }
   if (flow.screen === "plan") {
     const { state, decks } = underway();
@@ -454,11 +454,9 @@ const handlers = {
       onlineLobby().model.draft = { flow, deck, plan, legalPlans, onlineContext, choosingClan };
     void onlineLobby().returnToBoard();
   },
-  library: ({ clan }: DOMStringMap) => {
+  library: () => {
     flow = { ...initial, screen: "library" };
     render();
-    if (clan !== undefined && clan !== "")
-      elementById(`library-${clan.toLowerCase()}`, HTMLElement).scrollIntoView({ block: "start" });
   },
   // playMode enters a mode from home, offering the guided match first to a browser that has
   // neither played nor skipped it.
@@ -493,7 +491,7 @@ const handlers = {
   clan: ({ name }: DOMStringMap) => {
     const clan = clanNamed(name);
     if (clan === undefined) return;
-    if (deck?.clan !== name) deck = newDeck(clan, engine.cards);
+    if (deck?.clan !== name) deck = newDeck(clan);
     choosingClan = false;
     render();
   },
@@ -1152,18 +1150,12 @@ const clanPresentation = [
     style: "Risk · Big payoffs · Retaliation",
   },
 ];
-function clanChoicesHTML(home = false): string {
-  // Home sets the clans under its own h2; clan selection sets them straight under its h1.
-  const heading = home ? "h3" : "h2";
+function clanChoicesHTML(): string {
   return `<div class="clan-choices">${clanPresentation
     .map((c) => {
       const available = Boolean(clanNamed(c.name));
-      const body = `<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="${home ? "lazy" : "eager"}"></div><div class="clan-choice__body"><span class="clan-choice__eyebrow">${c.tag}</span><${heading} class="clan-choice__name">${emblem(c.name)}${c.name}</${heading}><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available ? (home ? `See the ${c.name} cards →` : `Choose ${c.name} →`) : home ? "Explore Delvers · Coming soon →" : "Coming soon"}</span></div>`;
-      const cls = `clan-choice clan-choice--${c.name.toLowerCase()}`;
-      if (home && !available) return `<a class="${cls}" href="delvers-preview.html">${body}</a>`;
-      if (home)
-        return `<button class="${cls}" type="button" data-action="library" data-clan="${c.name}">${body}</button>`;
-      return `<button class="${cls}" type="button" data-action="clan" data-name="${c.name}" ${available ? "" : "disabled"}>${body}</button>`;
+      const body = `<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="eager"></div><div class="clan-choice__body"><span class="clan-choice__eyebrow">${c.tag}</span><h2 class="clan-choice__name">${emblem(c.name)}${c.name}</h2><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available ? `Choose ${c.name} →` : "Coming soon"}</span></div>`;
+      return `<button class="clan-choice clan-choice--${c.name.toLowerCase()}" type="button" data-action="clan" data-name="${c.name}" ${available ? "" : "disabled"}>${body}</button>`;
     })
     .join("")}</div>`;
 }
@@ -1178,7 +1170,7 @@ function title(): string {
       </div>
       <div class="intro__art"><img src="art/hall-hero-v2.jpg" alt="Gnomes gather around a card table in the underground hall"><span class="intro__art-label">WELCOME TO GNOMEPIT<span>Different clans. Shared grudges.</span></span></div>
     </section>
-    <section class="home-clans" aria-labelledby="home-clans-title"><div class="section-intro"><div><span class="eyebrow">FIND YOUR WAY TO FIGHT</span><h2 id="home-clans-title">Which clan calls to you?</h2></div><p>Three personalities. One table.</p></div>${clanChoicesHTML(true)}</section>
+    <section class="home-library"><button type="button" class="text-button" data-action="library">Meet the clans and every card in the card library <span aria-hidden="true">→</span></button></section>
     <footer class="hall-footer"><span>Forged below. Settled at the table.</span><nav class="offline-row" aria-label="Play offline"><span>Play offline:</span><button type="button" class="text-button" data-action="playMode" data-mode="bot">Bot</button><button type="button" class="text-button" data-action="playMode" data-mode="hotseat">Two players</button><button type="button" class="text-button" data-action="library">Card library</button></nav></footer>
     <dialog class="offer" id="tutorial-offer" aria-labelledby="offer-title"><h2 id="offer-title">${coach.offer.title}</h2><p>${coach.offer.body}</p>
       <div class="button-row"><button class="button" type="button" data-action="tutorial">${coach.offer.start}</button><button class="button button--secondary" type="button" data-action="tutorialSkip">${coach.offer.skip}</button></div></dialog>`;
@@ -1197,19 +1189,16 @@ function deckScreen(): string {
   const clan = clanNamed(deck.clan);
   if (clan === undefined) throw new Error(`No clan ${deck.clan}`);
   const rare = rareOf(clan, engine.cards);
-  const picked = deck.picks.length - 1;
   const legal = engine.legalDeck({ clan: deck.clan, deck: deck.picks });
   const heading =
     flow.mode === "bot" || flow.mode === "online" ? "Pick your deck" : `Player ${flow.acting + 1} picks a deck`;
-  const full = deck.picks.length >= deckSize;
   const pool = clan.cards
     .map((id) => {
-      const picked = deck.picks.includes(id);
+      const kept = deck.picks.includes(id);
       return cardHTML(cardOf(engine.cards, id), {
-        selected: picked,
-        pressed: picked,
+        selected: kept,
+        pressed: kept,
         locked: id === rare,
-        dimmed: full && !picked,
         action: "toggle",
       });
     })
@@ -1218,10 +1207,10 @@ function deckScreen(): string {
     ${masthead()}
     <nav class="setup-steps" aria-label="Match setup"><button class="text-button" data-action="changeClan">1 · Choose clan</button><span aria-current="step">2 · Build deck</span><span>3 · Plan your round</span></nav>
     <section class="frame frame--acting stack">
-      <div class="frame__head"><h2 class="heading">${heading}</h2><span class="hint">The Rare stays in. Pick 7 more.</span></div>
+      <div class="frame__head"><h2 class="heading">${heading}</h2><span class="hint">Every card starts in. Leave out ${clan.cards.length - deckSize}; the Rare stays.</span></div>
       <div class="clan-banner clan-banner--${deck.clan.toLowerCase()}">${portraitHTML(deck.clan, `class="clan-banner__portrait"`)}<div><span class="eyebrow">CHOOSE YOUR ALLEGIANCE</span><h3 class="heading clan-banner__name">${emblem(deck.clan)}${deck.clan}</h3><p>${clanLook[deck.clan]?.blurb ?? ""}</p></div><button class="button button--secondary" type="button" data-action="changeClan">Change clan</button></div>
       <div class="card-grid">${pool}</div>
-      <div class="button-row"><button class="button" type="button" data-action="deckReady" ${legal ? "" : "disabled"}>Ready ${picked} / 7</button></div>
+      <div class="button-row"><button class="button" type="button" data-action="deckReady" ${legal ? "" : "disabled"}>${readiness(deck)}</button></div>
     </section>`;
 }
 
@@ -1333,7 +1322,7 @@ function planScreen(): string {
     <section class="hand-zone" aria-label="Your hand"><div class="hand-zone__heading">
       ${title}
       <div class="hand-zone__hint"><span class="label">Your hand <span>${handIds.length} cards</span></span><span class="muted">Lift a card to read · click to play · tap to inspect</span></div>
-      <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length > 0 ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}>${flow.mode === "online" ? (onlineMatch().intent === "challenge" ? "Post challenge" : onlineMatch().intent === "accept" ? "Accept challenge" : "Send plan") : "Seal plan"}</button></div></div>
+      <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length > 0 ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}${onlineSending ? ' aria-busy="true"' : ""}>${flow.mode === "online" ? (onlineMatch().intent === "challenge" ? "Post challenge" : onlineMatch().intent === "accept" ? "Accept challenge" : "Send plan") : "Seal plan"}</button></div></div>
       <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount > 0 ? "" : "disabled"} aria-label="Open played cards, ${playedCount} cards"><span class="pile-back card-back card-back--${(clans[me] === "" ? "shared" : clans[me]).toLowerCase()}"><span>${emblem(clans[me])}</span></span><span class="label">Played cards</span><span class="muted">${playedCount} cards · inspect</span></button></div></section>
     ${battleDialogsHTML(me)}`;
 }

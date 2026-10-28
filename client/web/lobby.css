@@ -514,7 +514,7 @@
     margin-top: 18px;
   }
 }
-.lobby button:disabled {
+.lobby button:disabled:not([aria-busy="true"]) {
   opacity: 0.55;
   cursor: not-allowed;
 }

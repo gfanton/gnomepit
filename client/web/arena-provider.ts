@@ -13,13 +13,13 @@ import * as signer from "./signer.ts";
 import type { Signer } from "./signer.ts";
 import { type Wallet, waitForAdena } from "./wallet.ts";
 
-export async function loadArena(engine: Engine, built: Network): Promise<Arena> {
+export function loadArena(engine: Engine, built: Network): Arena {
   const params = new URLSearchParams(location.search);
   const { chainId, rpc, realm, gnotif } = networkFrom(params, built);
   const chain = createChain({ rpc });
   return createArena({
     chain,
-    wallet: await pageWallet(params.get("dev"), { signer, chain, chainId, built }),
+    wallet: pageWallet(params.get("dev"), { signer, chain, chainId, built }),
     engine,
     signer,
     realm,
