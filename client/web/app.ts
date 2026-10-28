@@ -154,7 +154,7 @@ function collectionHTML(): string {
     { name: "Shared", ids: basics },
   ];
   return `<details class="collection"><summary>Browse all ${engine.cards.length} cards<span>${engine.clans.map((clan) => clan.name).join(", ")} & shared techniques</span></summary>
-    <div class="collection__groups">${groups.map(({ name, ids }) => `<section class="stack" id="library-${name.toLowerCase()}"><div class="frame__head"><h2 class="heading">${name === "Shared" ? "Shared techniques" : name}</h2><span class="label">${ids.length} cards</span></div><div class="card-grid">${ids.map((id) => cardHTML(cardOf(engine.cards, id))).join("")}</div></section>`).join("")}</div>
+    <div class="collection__groups">${groups.map(({ name, ids }) => `<section class="stack"><div class="frame__head"><h2 class="heading">${name === "Shared" ? "Shared techniques" : name}</h2><span class="label">${ids.length} cards</span></div><div class="card-grid">${ids.map((id) => cardHTML(cardOf(engine.cards, id))).join("")}</div></section>`).join("")}</div>
   </details>`;
 }
 
@@ -454,11 +454,9 @@ const handlers = {
       onlineLobby().model.draft = { flow, deck, plan, legalPlans, onlineContext, choosingClan };
     void onlineLobby().returnToBoard();
   },
-  library: ({ clan }: DOMStringMap) => {
+  library: () => {
     flow = { ...initial, screen: "library" };
     render();
-    if (clan !== undefined && clan !== "")
-      elementById(`library-${clan.toLowerCase()}`, HTMLElement).scrollIntoView({ block: "start" });
   },
   // playMode enters a mode from home, offering the guided match first to a browser that has
   // neither played nor skipped it.
@@ -1152,18 +1150,12 @@ const clanPresentation = [
     style: "Risk · Big payoffs · Retaliation",
   },
 ];
-function clanChoicesHTML(home = false): string {
-  // Home sets the clans under its own h2; clan selection sets them straight under its h1.
-  const heading = home ? "h3" : "h2";
+function clanChoicesHTML(): string {
   return `<div class="clan-choices">${clanPresentation
     .map((c) => {
       const available = Boolean(clanNamed(c.name));
-      const body = `<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="${home ? "lazy" : "eager"}"></div><div class="clan-choice__body"><span class="clan-choice__eyebrow">${c.tag}</span><${heading} class="clan-choice__name">${emblem(c.name)}${c.name}</${heading}><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available ? (home ? `See the ${c.name} cards →` : `Choose ${c.name} →`) : home ? "Explore Delvers · Coming soon →" : "Coming soon"}</span></div>`;
-      const cls = `clan-choice clan-choice--${c.name.toLowerCase()}`;
-      if (home && !available) return `<a class="${cls}" href="delvers-preview.html">${body}</a>`;
-      if (home)
-        return `<button class="${cls}" type="button" data-action="library" data-clan="${c.name}">${body}</button>`;
-      return `<button class="${cls}" type="button" data-action="clan" data-name="${c.name}" ${available ? "" : "disabled"}>${body}</button>`;
+      const body = `<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="eager"></div><div class="clan-choice__body"><span class="clan-choice__eyebrow">${c.tag}</span><h2 class="clan-choice__name">${emblem(c.name)}${c.name}</h2><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available ? `Choose ${c.name} →` : "Coming soon"}</span></div>`;
+      return `<button class="clan-choice clan-choice--${c.name.toLowerCase()}" type="button" data-action="clan" data-name="${c.name}" ${available ? "" : "disabled"}>${body}</button>`;
     })
     .join("")}</div>`;
 }
@@ -1178,7 +1170,7 @@ function title(): string {
       </div>
       <div class="intro__art"><img src="art/hall-hero-v2.jpg" alt="Gnomes gather around a card table in the underground hall"><span class="intro__art-label">WELCOME TO GNOMEPIT<span>Different clans. Shared grudges.</span></span></div>
     </section>
-    <section class="home-clans" aria-labelledby="home-clans-title"><div class="section-intro"><div><span class="eyebrow">FIND YOUR WAY TO FIGHT</span><h2 id="home-clans-title">Which clan calls to you?</h2></div><p>Three personalities. One table.</p></div>${clanChoicesHTML(true)}</section>
+    <section class="home-library"><button type="button" class="text-button" data-action="library">Meet the clans and every card in the card library <span aria-hidden="true">→</span></button></section>
     <footer class="hall-footer"><span>Forged below. Settled at the table.</span><nav class="offline-row" aria-label="Play offline"><span>Play offline:</span><button type="button" class="text-button" data-action="playMode" data-mode="bot">Bot</button><button type="button" class="text-button" data-action="playMode" data-mode="hotseat">Two players</button><button type="button" class="text-button" data-action="library">Card library</button></nav></footer>
     <dialog class="offer" id="tutorial-offer" aria-labelledby="offer-title"><h2 id="offer-title">${coach.offer.title}</h2><p>${coach.offer.body}</p>
       <div class="button-row"><button class="button" type="button" data-action="tutorial">${coach.offer.start}</button><button class="button button--secondary" type="button" data-action="tutorialSkip">${coach.offer.skip}</button></div></dialog>`;
