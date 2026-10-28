@@ -1164,6 +1164,33 @@ test("the wallet search ending leaves an open dialog alone, and redraws once it 
   assert.equal(draws, before + 1);
 });
 
+test("leaving the board mid-request frees it for the next visit", async (t) => {
+  stubPage(t);
+  const page = app();
+  const arena = followedArena();
+  let answer = () => {};
+  arena.openChallenges = () =>
+    new Promise((resolve) => {
+      answer = () => resolve([]);
+    });
+  const lobby = createLobby({
+    ...unusedPage,
+    app: page,
+    arena,
+    storage: memory(),
+    onRender: () => lobby.render(),
+    onExit() {},
+  });
+  const first = lobby.enter();
+  await lobby.action("Exit");
+  answer();
+  await first;
+  arena.openChallenges = async () => [];
+  await lobby.enter();
+  assert.equal(lobby.model.busy, false);
+  assert.doesNotMatch(page.innerHTML, /aria-busy/);
+});
+
 test("an arena that does not say it found a wallet starts the setup at installing Adena", async () => {
   const page = app();
   const { hasWallet: _hasWallet, ...arena } = followedArena();

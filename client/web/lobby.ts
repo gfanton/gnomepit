@@ -738,6 +738,9 @@ export function createLobby<Draft extends Drafted = Drafted>({
     ready,
     async enter(id) {
       epoch++;
+      // A request from an earlier visit no longer clears busy once it ends.
+      model.busy = false;
+      pending = null;
       model.active = true;
       model.inGame = false;
       model.error = "";
