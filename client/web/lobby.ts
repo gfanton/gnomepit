@@ -5,8 +5,20 @@ import { escapeHTML } from "./keywords.ts";
 import { type ArenaView, type View, isSet, viewOf, shortAddress, timeLeft } from "./online-model.ts";
 import { wordmarkHTML } from "./wordmark.ts";
 const esc = (value: string | number | undefined) => escapeHTML(String(value ?? "")).replaceAll('"', "&quot;");
-const btn = (text: string, action: string, disabled = false, secondary = false, extra = "") =>
-  `<button type="button" class="${secondary ? "quiet" : "button"}" data-action="online${action}" ${disabled ? "disabled" : ""} ${extra}>${esc(text)}</button>`;
+const buttonHTML = (
+  text: string,
+  action: string,
+  disabled: boolean,
+  secondary: boolean,
+  extra: string,
+  busy: boolean,
+) =>
+  `<button type="button" class="${secondary ? "quiet" : "button"}" data-action="online${action}" ${disabled ? "disabled" : ""}${busy ? ' aria-busy="true"' : ""} ${extra}>${esc(text)}</button>`;
+// carried holds when a button's extra attributes include every data attribute a click on it carried.
+const carried = (data: ActionData, extra: string) =>
+  Object.entries(data).every(
+    ([key, value]) => key === "action" || value === undefined || extra.includes(`data-${key}="${esc(value)}"`),
+  );
 const filled = (text: string | null | undefined): text is string => text !== null && text !== undefined && text !== "";
 const textOr = (text: string, fallback: string) => (text === "" ? fallback : text);
 // clanClass is the block's class list plus, for a clan named in plain letters, its clan modifier,
@@ -62,8 +74,8 @@ export function setupStep({
 }
 // The arena the lobby plays through. One that does not say it found a wallet counts as having
 // none, and without subscribe or watch the lobby neither follows the board nor watches a match.
-export type LobbyArena = Omit<Arena, "hasWallet" | "subscribe" | "watch"> &
-  Partial<Pick<Arena, "hasWallet" | "subscribe" | "watch">>;
+export type LobbyArena = Omit<Arena, "hasWallet" | "walletSearch" | "subscribe" | "watch"> &
+  Partial<Pick<Arena, "hasWallet" | "walletSearch" | "subscribe" | "watch">>;
 type Dialog = Pick<HTMLDialogElement, "innerHTML" | "open" | "showModal" | "close" | "addEventListener" | "append">;
 // The element the lobby draws into, and the dialog and opponent field its markup holds.
 export type LobbyPage = Pick<HTMLElement, "innerHTML" | "dataset"> & {
@@ -117,6 +129,7 @@ export type LobbyModel<Draft> = {
 };
 // An action's data: the clicked button's dataset.
 type ActionData = Readonly<Record<string, string | undefined>>;
+type Pressed = { name: string; data: ActionData };
 export type Lobby<Draft> = {
   model: LobbyModel<Draft>;
   render(): void;
@@ -165,6 +178,47 @@ export function createLobby<Draft extends Drafted = Drafted>({
   // The turn each match was on when the chain confirmed this page's plan for it. A read at or
   // before that turn comes from a node the plan's block has not reached yet.
   const sent = new Map<MatchId, number>();
+  // pending is the click whose request run is waiting on; pressing holds a click only while
+  // action hands it to run.
+  let pending: Pressed | null = null,
+    pressing: Pressed | null = null,
+    searching = arena?.walletSearch !== undefined;
+  void arena?.walletSearch?.then(() => {
+    searching = false;
+    if (model.active && !model.inGame) changed();
+  });
+  const btn = (text: string, action: string, disabled = false, secondary = false, extra = "") =>
+    buttonHTML(
+      text,
+      action,
+      disabled,
+      secondary,
+      extra,
+      model.busy && pending !== null && pending.name === action && carried(pending.data, extra),
+    );
+  // waitingFor says what the player waits on while the pending request runs; nothing for a
+  // read of the board, which ends before a line could be read.
+  function waitingFor(): string {
+    switch (pending?.name ?? "") {
+      case "Authorize":
+      case "Renew":
+        return "Waiting for Adena. Approve the request in its window.";
+      case "Open":
+      case "Play":
+      case "Review":
+        return "Opening the match…";
+      case "Claim":
+        return "Claiming the win…";
+      case "Finish":
+        return "Finishing the match…";
+      case "ResignConfirm":
+        return model.view?.phase === "open" ? "Withdrawing the challenge…" : "Resigning…";
+      case "Notify":
+        return "Turning on notifications…";
+      default:
+        return "";
+    }
+  }
   const status = (): AccountState | undefined =>
     model.account !== null && "mode" in model.account ? model.account : undefined;
   const address = () => status()?.address ?? "";
@@ -239,6 +293,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
     if (model.busy) return;
     const token = epoch;
     model.busy = true;
+    pending = pressing;
     model.error = "";
     model.notice = "";
     changed();
@@ -249,6 +304,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
     } finally {
       if (token === epoch) {
         model.busy = false;
+        pending = null;
         changed();
       }
     }
@@ -355,7 +411,9 @@ export function createLobby<Draft extends Drafted = Drafted>({
       ],
       [
         "Connect Adena",
-        "Connecting adds this game's network to Adena if it is missing, then switches to it.",
+        searching
+          ? "Looking for Adena in this browser…"
+          : "Connecting adds this game's network to Adena if it is missing, then switches to it.",
         btn("Connect wallet", "Authorize", arena === null || model.busy) +
           (accountState() === "wrongNetwork"
             ? `<p class="wallet-setup__problem">Adena did not add the network${filled(reason) ? `: ${esc(reason)}` : ""}. Connect again to retry.</p>`
@@ -408,7 +466,11 @@ export function createLobby<Draft extends Drafted = Drafted>({
         ? `<section class="notice notice--danger" role="alert"><div><strong>${model.blocked ? "The game needs an update" : "That didn’t go through"}</strong><p>${esc(model.error)}</p></div>${btn(model.blocked ? "Reload page" : "Refresh", "Refresh", model.busy, true)}</section>`
         : model.notice !== ""
           ? `<section class="notice" role="status">${esc(model.notice)}</section>`
-          : "";
+          : model.busy && model.view === null
+            ? waitingFor() !== ""
+              ? `<p class="busy-note" role="status">${esc(waitingFor())}</p>`
+              : '<p class="sr-only" role="status">Loading…</p>'
+            : "";
   }
   function header() {
     return `<header class="masthead">${wordmarkHTML("./", 'data-action="onlineExit"')}<div class="account">${btn(address() !== "" ? shortAddress(address()) + " · Account" : "Connect wallet", "Account", arena === null || model.busy, true)}${address() !== "" ? `<small>${ready() ? "Device ready" : "Approval needed"}</small>` : ""}</div></header>`;
@@ -459,7 +521,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
     const other = v.side === 0 ? 1 : 0;
     const due = dueOf(v);
     const latest = v.hp?.at(-1);
-    return `${header()}${notice()}<section class="match"><div class="section-head"><h1>${esc(v.phase === "open" ? "A challenge awaits" : v.phase === "ended" ? resultText(v) : expired ? `Challenge ${v.phase}` : v.action === "move" || early(v) ? "Your move" : v.action === "finish" ? "Ready to finish" : v.action === "claimForfeit" ? "Opponent missed the deadline" : `Waiting for ${textOr(v.clans[other], "a rival")}`)}</h1>${btn("Back to board", "Board", model.busy, true)}</div><div class="fighters">${portrait(v.clans[0], `class="${clanClass("portrait", v.clans[0])}"`)}<strong>${esc(v.clans[0])}</strong><span class="versus">vs</span>${portrait(v.clans[1], `class="${clanClass("portrait", v.clans[1])}"`)}<strong>${esc(textOr(v.clans[1], "Rival to come"))}</strong></div><p>Posted by ${copyButton(v.challenger)}</p>${filled(v.acceptor) ? `<p>Opponent ${copyButton(v.acceptor)}</p>` : ""}<p>${esc(v.phase === "ended" ? reasonText(v) : timeLeft(due))}</p>${isSet(due) ? `<p><small>Deadline: ${esc(new Date(due * 1000).toLocaleString())}</small></p>` : ""}${latest !== undefined ? `<p>Latest clash: ${esc(v.clans[0])} ${esc(latest[0])} HP · ${esc(v.clans[1])} ${esc(latest[1])} HP</p>` : ""}${v.phase === "open" ? `<p>Choose a clan, build eight cards, and plan round 1 before accepting. Their deck stays hidden until round 2.</p>${!filled(v.opponent) ? "" : v.opponent === address() ? "<p>Reserved for you.</p>" : `<p>Reserved for ${copyButton(v.opponent)}.${mine ? " Share the link to invite them; reservations do not send notifications." : ""}</p>`}` : v.action === "wait" && mine ? "<p>Your plan is sealed: they can’t see it until they’ve played theirs.</p>" : ""}<div class="banner-actions">${v.action === "accept" ? btn(ready() ? "Accept challenge" : "Connect to accept", ready() ? "Accept" : "Account", model.busy || model.blocked) : ""}${v.session === "expired" && (v.action === "move" || v.action === "finish") ? btn("Renew session to play", "Renew", model.busy || model.blocked) : v.action === "move" || early(v) ? btn(ready() ? "Watch clash & plan" : "Connect to play", ready() ? (early(v) ? "Finish" : "Play") : "Account", model.busy || model.blocked) : v.action === "finish" ? btn("Finish match", "Finish", model.busy || model.blocked) : ""}${v.action === "claimForfeit" ? btn("Claim win", "Claim", model.busy) : ""}${(v.plans ?? []).some((p) => filled(p[0]) && filled(p[1])) ? btn("Review last clash", "Review", model.busy || model.blocked, true) : ""}${mine && v.phase === "open" ? btn("Withdraw challenge", "Resign", model.busy, true) : mine && (v.phase === "play" || v.phase === "reveal") ? btn("Resign match", "Resign", model.busy, true) : ""}${v.phase === "ended" && mine ? btn("Challenge them again", "Rematch", model.busy || model.blocked) : ""}${btn("Copy match link", "Link", false, true)}</div><div role="status">${model.busy ? "Waiting for confirmation…" : ""}</div></section><dialog id="online-dialog" aria-labelledby="online-dialog-title"></dialog>`;
+    return `${header()}${notice()}<section class="match"><div class="section-head"><h1>${esc(v.phase === "open" ? "A challenge awaits" : v.phase === "ended" ? resultText(v) : expired ? `Challenge ${v.phase}` : v.action === "move" || early(v) ? "Your move" : v.action === "finish" ? "Ready to finish" : v.action === "claimForfeit" ? "Opponent missed the deadline" : `Waiting for ${textOr(v.clans[other], "a rival")}`)}</h1>${btn("Back to board", "Board", model.busy, true)}</div><div class="fighters">${portrait(v.clans[0], `class="${clanClass("portrait", v.clans[0])}"`)}<strong>${esc(v.clans[0])}</strong><span class="versus">vs</span>${portrait(v.clans[1], `class="${clanClass("portrait", v.clans[1])}"`)}<strong>${esc(textOr(v.clans[1], "Rival to come"))}</strong></div><p>Posted by ${copyButton(v.challenger)}</p>${filled(v.acceptor) ? `<p>Opponent ${copyButton(v.acceptor)}</p>` : ""}<p>${esc(v.phase === "ended" ? reasonText(v) : timeLeft(due))}</p>${isSet(due) ? `<p><small>Deadline: ${esc(new Date(due * 1000).toLocaleString())}</small></p>` : ""}${latest !== undefined ? `<p>Latest clash: ${esc(v.clans[0])} ${esc(latest[0])} HP · ${esc(v.clans[1])} ${esc(latest[1])} HP</p>` : ""}${v.phase === "open" ? `<p>Choose a clan, build eight cards, and plan round 1 before accepting. Their deck stays hidden until round 2.</p>${!filled(v.opponent) ? "" : v.opponent === address() ? "<p>Reserved for you.</p>" : `<p>Reserved for ${copyButton(v.opponent)}.${mine ? " Share the link to invite them; reservations do not send notifications." : ""}</p>`}` : v.action === "wait" && mine ? "<p>Your plan is sealed: they can’t see it until they’ve played theirs.</p>" : ""}<div class="banner-actions">${v.action === "accept" ? btn(ready() ? "Accept challenge" : "Connect to accept", ready() ? "Accept" : "Account", model.busy || model.blocked) : ""}${v.session === "expired" && (v.action === "move" || v.action === "finish") ? btn("Renew session to play", "Renew", model.busy || model.blocked) : v.action === "move" || early(v) ? btn(ready() ? "Watch clash & plan" : "Connect to play", ready() ? (early(v) ? "Finish" : "Play") : "Account", model.busy || model.blocked) : v.action === "finish" ? btn("Finish match", "Finish", model.busy || model.blocked) : ""}${v.action === "claimForfeit" ? btn("Claim win", "Claim", model.busy) : ""}${(v.plans ?? []).some((p) => filled(p[0]) && filled(p[1])) ? btn("Review last clash", "Review", model.busy || model.blocked, true) : ""}${mine && v.phase === "open" ? btn("Withdraw challenge", "Resign", model.busy, true) : mine && (v.phase === "play" || v.phase === "reveal") ? btn("Resign match", "Resign", model.busy, true) : ""}${v.phase === "ended" && mine ? btn("Challenge them again", "Rematch", model.busy || model.blocked) : ""}${btn("Copy match link", "Link", false, true)}</div><p class="busy-note" role="status">${model.busy ? esc(textOr(waitingFor(), "Loading…")) : ""}</p></section><dialog id="online-dialog" aria-labelledby="online-dialog-title"></dialog>`;
   }
   function render() {
     app.classList.remove("board--battle");
@@ -468,7 +530,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
     app.innerHTML =
       model.view !== null
         ? detail(model.view)
-        : `${header()}${notice()}${step() !== null ? `<section class="wallet-setup" aria-labelledby="wallet-setup-title"><h2 id="wallet-setup-title">Get ready to play online</h2>${stepsHTML()}</section>` : ""}<section class="hall-banner"><img src="art/hall-hero-v2.jpg" alt=""><div class="copy"><span class="eyebrow">THE CHALLENGE BOARD</span><h1>A rival awaits.</h1><p>Settle a grudge in three rounds. Play together tonight, or take turns over a few days. Each move has a 24-hour deadline.</p><div class="banner-actions">${btn("Post a challenge", "Post", arena === null || model.busy || model.blocked)}${arena?.canNotify === true ? btn(model.notifications === "on" ? "Notifications on" : "Notify me", "Notify", model.busy, true) : ""}</div></div></section>${model.draft !== null ? `<section class="notice"><div><strong>Your unsent plan is saved in this tab</strong><p>Resume it after renewing your session or checking the board.</p></div>${btn("Resume draft", "ResumeDraft", model.busy)}</section>` : ""}<div class="lobby-columns"><section aria-labelledby="matches-title"><div class="section-head"><div><h2 id="matches-title">My matches</h2><p>Your next move starts here.</p></div>${btn("Refresh", "Refresh", arena === null || model.busy, true)}</div><div class="match-list">${textOr(model.matches.map(matchCard).join(""), `<div class="empty"><h3>${model.busy ? "Looking for matches…" : address() !== "" ? "Your first grudge starts here." : "Your matches live here."}</h3><p>${address() !== "" ? "Accept a challenge or post one of your own." : "Connect your wallet to find and resume matches."}</p></div>`)}</div>${pager("Matches", model.matchPage, model.matches.length)}</section><section aria-labelledby="challenges-title"><div class="section-head"><div><h2 id="challenges-title">Open challenges</h2><p>Choose a rival. Bring your own deck.</p></div><small>Newest first</small></div><div class="challenge-list">${textOr(model.challenges.map(challengeCard).join(""), `<div class="empty"><h3>${model.busy ? "Reading the board…" : arena !== null ? "The board is quiet." : "The board is not connected."}</h3><p>${arena !== null ? "Leave a challenge for the next gnome through the door." : "Online challenges will appear when the arena is connected."}</p></div>`)}</div>${pager("Challenges", model.page, model.challenges.length)}</section></div><footer class="footer"><span>No stakes. Just grudges.</span>${btn("Play offline", "Offline", model.busy, true)}</footer><dialog id="online-dialog" aria-labelledby="online-dialog-title"></dialog><p class="sr-only" role="status">${model.busy ? "Loading…" : ""}</p>`;
+        : `${header()}${notice()}${step() !== null ? `<section class="wallet-setup" aria-labelledby="wallet-setup-title"><h2 id="wallet-setup-title">Get ready to play online</h2>${stepsHTML()}</section>` : ""}<section class="hall-banner"><img src="art/hall-hero-v2.jpg" alt=""><div class="copy"><span class="eyebrow">THE CHALLENGE BOARD</span><h1>A rival awaits.</h1><p>Settle a grudge in three rounds. Play together tonight, or take turns over a few days. Each move has a 24-hour deadline.</p><div class="banner-actions">${btn("Post a challenge", "Post", arena === null || model.busy || model.blocked)}${arena?.canNotify === true ? btn(model.notifications === "on" ? "Notifications on" : "Notify me", "Notify", model.busy, true) : ""}</div></div></section>${model.draft !== null ? `<section class="notice"><div><strong>Your unsent plan is saved in this tab</strong><p>Resume it after renewing your session or checking the board.</p></div>${btn("Resume draft", "ResumeDraft", model.busy)}</section>` : ""}<div class="lobby-columns"><section aria-labelledby="matches-title"><div class="section-head"><div><h2 id="matches-title">My matches</h2><p>Your next move starts here.</p></div>${btn("Refresh", "Refresh", arena === null || model.busy, true)}</div><div class="match-list">${textOr(model.matches.map(matchCard).join(""), `<div class="empty"><h3>${model.busy ? "Looking for matches…" : address() !== "" ? "Your first grudge starts here." : "Your matches live here."}</h3><p>${address() !== "" ? "Accept a challenge or post one of your own." : "Connect your wallet to find and resume matches."}</p></div>`)}</div>${pager("Matches", model.matchPage, model.matches.length)}</section><section aria-labelledby="challenges-title"><div class="section-head"><div><h2 id="challenges-title">Open challenges</h2><p>Choose a rival. Bring your own deck.</p></div><small>Newest first</small></div><div class="challenge-list">${textOr(model.challenges.map(challengeCard).join(""), `<div class="empty"><h3>${model.busy ? "Reading the board…" : arena !== null ? "The board is quiet." : "The board is not connected."}</h3><p>${arena !== null ? "Leave a challenge for the next gnome through the door." : "Online challenges will appear when the arena is connected."}</p></div>`)}</div>${pager("Challenges", model.page, model.challenges.length)}</section></div><footer class="footer"><span>No stakes. Just grudges.</span>${btn("Play offline", "Offline", model.busy, true)}</footer><dialog id="online-dialog" aria-labelledby="online-dialog-title"></dialog>`;
   }
   function pager(kind: string, page: number, count: number) {
     return arena !== null && (page > 0 || count >= 50)
@@ -497,7 +559,14 @@ export function createLobby<Draft extends Drafted = Drafted>({
       changed();
     }
   }
+  // A request's button shows as pending only if its action reaches run before its first await.
   async function action(name: string, data: ActionData = {}) {
+    pressing = { name, data };
+    const handled = dispatch(name, data);
+    pressing = null;
+    await handled;
+  }
+  async function dispatch(name: string, data: ActionData) {
     if (name === "Close") {
       close();
       return;

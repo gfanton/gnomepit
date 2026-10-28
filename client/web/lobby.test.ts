@@ -4,6 +4,7 @@ import {
   type AccountState,
   type ArenaChange,
   ArenaError,
+  type Connection,
   type Listed,
   type MatchDetail,
   type Mode,
@@ -430,6 +431,21 @@ test("a link to a removed challenge says so and stays on the board", async (t) =
   assert.match(page, /This challenge was withdrawn or has expired\./);
   assert.match(page, /Open challenges/);
   assert.doesNotMatch(page, /didn’t go through/);
+});
+
+test("while it runs, a withdrawal or a resignation is named as the button named it", async (t) => {
+  stubPage(t);
+  for (const [view, text] of [
+    [detail({ Challenger: alice }), "Withdrawing the challenge…"],
+    [bobsMove, "Resigning…"],
+  ] as const) {
+    const arena = endingArena(view);
+    arena.resign = () => new Promise(() => {});
+    const { lobby, shown } = lobbyOf(arena, view === bobsMove ? bob : alice);
+    await lobby.action("Open", { id: "4" });
+    void lobby.action("ResignConfirm");
+    assert.match(shown(), new RegExp(`role="status">${text}<`));
+  }
 });
 
 test("resigning a running match shows its result", async (t) => {
@@ -976,6 +992,95 @@ test("without Adena the board leads with installing it", async () => {
   assert.match(page.innerHTML, /Get ready to play online/);
   assert.match(page.innerHTML, /href="https:\/\/adena\.app"/);
   assert.doesNotMatch(page.innerHTML, /Online play needs Adena/);
+});
+
+test("the pressed button and a status line show a request under way until it ends", async () => {
+  const page = app();
+  let connected = (_connection: Connection) => {};
+  const arena = {
+    ...followedArena(),
+    connect: () =>
+      new Promise<Connection>((resolve) => {
+        connected = resolve;
+      }),
+  };
+  const lobby = createLobby({ ...unusedPage, app: page, arena, storage: memory(), onRender: () => lobby.render() });
+  await lobby.enter();
+  const pressing = lobby.action("Authorize", { action: "onlineAuthorize" });
+  assert.match(page.innerHTML, /<button[^>]*data-action="onlineAuthorize"[^>]*aria-busy="true"/);
+  assert.match(page.innerHTML, /role="status"[^>]*>Waiting for Adena\. Approve the request in its window\.</);
+  assert.doesNotMatch(page.innerHTML, /data-action="onlineAccount"[^>]*aria-busy/);
+  connected({ state: "noWallet", reason: "No Adena wallet in this browser" });
+  await pressing;
+  assert.doesNotMatch(page.innerHTML, /aria-busy/);
+  assert.doesNotMatch(page.innerHTML, /Waiting for Adena/);
+});
+
+test("a board read spins its button and tells only screen readers it is loading", async () => {
+  const page = app();
+  const arena = followedArena();
+  const lobby = createLobby({ ...unusedPage, app: page, arena, storage: memory(), onRender: () => lobby.render() });
+  await lobby.enter();
+  arena.openChallenges = () => new Promise(() => {});
+  void lobby.action("Refresh", { action: "onlineRefresh" });
+  assert.match(page.innerHTML, /<button[^>]*data-action="onlineRefresh"[^>]*aria-busy="true"/);
+  assert.match(page.innerHTML, /<p class="sr-only" role="status">Loading…<\/p>/);
+  assert.doesNotMatch(page.innerHTML, /busy-note/);
+});
+
+test("a match's Open button shows its match opening, and no other", async (t) => {
+  stubPage(t);
+  const page = app();
+  const arena = followedArena();
+  const challenge = (id: string): Listed<OpenChallenge> => ({
+    ID: matchId(id),
+    Challenger: bob,
+    Clan: "Pickers",
+    Opponent: "",
+    Posted: 0,
+    Expires: 9e9,
+    action: "accept",
+    deadline: 9e9,
+  });
+  arena.board = [challenge("1"), challenge("2")];
+  arena.match = () => new Promise(() => {});
+  const lobby = createLobby({
+    ...unusedPage,
+    app: page,
+    arena,
+    storage: memory(),
+    onRender: () => lobby.render(),
+    portrait: () => "",
+    emblem: () => "",
+  });
+  await lobby.enter();
+  void lobby.action("Open", { action: "onlineOpen", id: "2" });
+  assert.match(page.innerHTML, /<button[^>]*aria-busy="true"[^>]*data-id="2"/);
+  assert.doesNotMatch(page.innerHTML, /<button[^>]*aria-busy="true"[^>]*data-id="1"/);
+  assert.match(page.innerHTML, /role="status"[^>]*>Opening the match…</);
+});
+
+test("while the page looks for Adena the board says so, and redraws when the search ends", async () => {
+  const page = app();
+  let ended = () => {};
+  let found = true;
+  const arena = {
+    ...followedArena(),
+    get hasWallet() {
+      return found;
+    },
+    walletSearch: new Promise<void>((resolve) => {
+      ended = resolve;
+    }),
+  };
+  const lobby = createLobby({ ...unusedPage, app: page, arena, storage: memory(), onRender: () => lobby.render() });
+  await lobby.enter();
+  assert.match(page.innerHTML, /Looking for Adena in this browser…/);
+  found = false;
+  ended();
+  await flush();
+  assert.match(page.innerHTML, /aria-current="step"><strong>1 · Install Adena/);
+  assert.doesNotMatch(page.innerHTML, /Looking for Adena/);
 });
 
 test("an arena that does not say it found a wallet starts the setup at installing Adena", async () => {

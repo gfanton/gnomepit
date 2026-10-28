@@ -502,6 +502,8 @@ export type ArenaOptions = {
 export type Arena = {
   // true while the page is still looking for a wallet, since connect waits for it.
   hasWallet: boolean;
+  // Settles when the page's search for a wallet ends, whatever it found.
+  walletSearch: Promise<void>;
   // false without a notifier or with offerPush false, so notify can only fail.
   canNotify: boolean;
   // connect returns the account's state, or the reason no wallet connected on the network.
@@ -881,6 +883,13 @@ export function createArena({
     get hasWallet() {
       return current instanceof Promise || (current !== null && current !== undefined);
     },
+    walletSearch:
+      wallet instanceof Promise
+        ? wallet.then(
+            () => undefined,
+            () => undefined,
+          )
+        : Promise.resolve(),
     canNotify: notifier !== undefined && offerPush,
 
     async connect() {

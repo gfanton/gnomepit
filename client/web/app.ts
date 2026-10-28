@@ -29,7 +29,7 @@ import { elementById } from "./dom.ts";
 import type { Address } from "./ids.ts";
 import { type Lobby, createLobby, linkedMatch } from "./lobby.ts";
 import { networkFor } from "./network.ts";
-import { type View, matchBarText, replayView } from "./online-model.ts";
+import { type View, matchBarText, replayView, sendingText } from "./online-model.ts";
 import {
   type TutorialMatch,
   afterFiniteAnimations,
@@ -297,7 +297,7 @@ function battleNames(): Pair<string> {
 function onlineBar(): string {
   return flow.mode !== "online"
     ? ""
-    : `<section class="online-match-bar"><button class="button button--secondary" data-action="onlineBack" ${onlineSending ? "disabled" : ""}>Back to board</button><span>${escapeHTML(matchBarText(onlineMatch().intent, onlineMatch().view?.deadline))}</span><p role="status">${escapeHTML(onlineError !== "" ? onlineError : onlineSending ? "Sending your move… Waiting for confirmation." : "")}</p></section>`;
+    : `<section class="online-match-bar"><button class="button button--secondary" data-action="onlineBack" ${onlineSending ? "disabled" : ""}>Back to board</button><span>${escapeHTML(matchBarText(onlineMatch().intent, onlineMatch().view?.deadline))}</span><p role="status"${onlineSending ? ' class="busy-note"' : ""}>${escapeHTML(onlineError !== "" ? onlineError : onlineSending ? sendingText(onlineMatch().intent) : "")}</p></section>`;
 }
 async function sendOnlinePlan(): Promise<void> {
   if (onlineSending || !isSealable(plan, legalPlans)) return;
@@ -1333,7 +1333,7 @@ function planScreen(): string {
     <section class="hand-zone" aria-label="Your hand"><div class="hand-zone__heading">
       ${title}
       <div class="hand-zone__hint"><span class="label">Your hand <span>${handIds.length} cards</span></span><span class="muted">Lift a card to read · click to play · tap to inspect</span></div>
-      <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length > 0 ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}>${flow.mode === "online" ? (onlineMatch().intent === "challenge" ? "Post challenge" : onlineMatch().intent === "accept" ? "Accept challenge" : "Send plan") : "Seal plan"}</button></div></div>
+      <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length > 0 ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}${onlineSending ? ' aria-busy="true"' : ""}>${flow.mode === "online" ? (onlineMatch().intent === "challenge" ? "Post challenge" : onlineMatch().intent === "accept" ? "Accept challenge" : "Send plan") : "Seal plan"}</button></div></div>
       <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount > 0 ? "" : "disabled"} aria-label="Open played cards, ${playedCount} cards"><span class="pile-back card-back card-back--${(clans[me] === "" ? "shared" : clans[me]).toLowerCase()}"><span>${emblem(clans[me])}</span></span><span class="label">Played cards</span><span class="muted">${playedCount} cards · inspect</span></button></div></section>
     ${battleDialogsHTML(me)}`;
 }
