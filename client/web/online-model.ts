@@ -119,7 +119,7 @@ export function matchBarText(intent: "challenge" | "accept" | "move", deadline: 
 export function sendingText(intent: "challenge" | "accept" | "move"): string {
   return intent === "move"
     ? "Sending your move… Waiting for confirmation."
-    : "Approve the request in Adena, then wait for the chain to confirm.";
+    : "Approve the request in Adena if it asks, then wait for the chain to confirm.";
 }
 
 export function shortAddress(address: string | undefined): string {

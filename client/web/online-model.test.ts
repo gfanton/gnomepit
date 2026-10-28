@@ -102,10 +102,13 @@ test("the match bar gives the deadline only for a move", () => {
   assert.equal(matchBarText("move", 200), `Your move deadline: ${new Date(200_000).toLocaleString()}`);
   assert.equal(matchBarText("move", 0), "Your move");
 });
-// Posting or accepting always asks Adena: for the match's session, or to sign the plan.
+// Posting or accepting asks Adena unless a live unlocked session already has the role's budget.
 test("while a plan is sent, the match bar names the wallet's part in posting or accepting", () => {
-  assert.equal(sendingText("challenge"), "Approve the request in Adena, then wait for the chain to confirm.");
-  assert.equal(sendingText("accept"), "Approve the request in Adena, then wait for the chain to confirm.");
+  assert.equal(
+    sendingText("challenge"),
+    "Approve the request in Adena if it asks, then wait for the chain to confirm.",
+  );
+  assert.equal(sendingText("accept"), "Approve the request in Adena if it asks, then wait for the chain to confirm.");
   assert.equal(sendingText("move"), "Sending your move… Waiting for confirmation.");
 });
 test("deadline labels never round a still-active deadline to expired", () => {

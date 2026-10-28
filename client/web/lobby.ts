@@ -45,6 +45,8 @@ const turnOf = (v: View) =>
 const perMatch =
   "Each match you post or accept asks your wallet once, for a one-day session that only plays that match.";
 const unreachable = "Can't reach the hall right now. Check your connection and try again.";
+const lookingForAdena = "Looking for Adena in this browser…";
+const askingAdena = "Waiting for Adena. Approve the request in its window.";
 // linkedMatch is the match a #match= fragment names, the form of the lobby's match links and
 // of the arena's notification links; undefined for any other fragment or a malformed one.
 export function linkedMatch(hash: string): string | undefined {
@@ -185,7 +187,11 @@ export function createLobby<Draft extends Drafted = Drafted>({
     searching = arena?.walletSearch !== undefined;
   void arena?.walletSearch?.then(() => {
     searching = false;
-    if (model.active && !model.inGame) changed();
+    if (!model.active || model.inGame) return;
+    // A redraw replaces the dialog, so an open one keeps the page as it is until it closes.
+    const d = app.querySelector("#online-dialog");
+    if (d?.open === true) d.addEventListener("close", changed, { once: true });
+    else changed();
   });
   const btn = (text: string, action: string, disabled = false, secondary = false, extra = "") =>
     buttonHTML(
@@ -201,8 +207,9 @@ export function createLobby<Draft extends Drafted = Drafted>({
   function waitingFor(): string {
     switch (pending?.name ?? "") {
       case "Authorize":
+        return searching ? lookingForAdena : askingAdena;
       case "Renew":
-        return "Waiting for Adena. Approve the request in its window.";
+        return askingAdena;
       case "Open":
       case "Play":
       case "Review":
@@ -412,7 +419,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
       [
         "Connect Adena",
         searching
-          ? "Looking for Adena in this browser…"
+          ? lookingForAdena
           : "Connecting adds this game's network to Adena if it is missing, then switches to it.",
         btn("Connect wallet", "Authorize", arena === null || model.busy) +
           (accountState() === "wrongNetwork"
@@ -640,9 +647,12 @@ export function createLobby<Draft extends Drafted = Drafted>({
       }
       await run(async () => (model.view !== null ? refreshView(model.view.id) : lists()));
     } else if (name === "Page") {
-      if (data.kind === "Matches") model.matchPage = Number(data.page);
-      else model.page = Number(data.page);
-      await run(lists);
+      // The page changes inside the request, so the pressed button still matches while it spins.
+      await run(async () => {
+        if (data.kind === "Matches") model.matchPage = Number(data.page);
+        else model.page = Number(data.page);
+        await lists();
+      });
     } else if (name === "Open") await open(matchId(data.id ?? ""));
     else if (name === "Board") {
       leaveMatch();

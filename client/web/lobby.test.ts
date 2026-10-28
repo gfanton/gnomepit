@@ -1083,6 +1083,87 @@ test("while the page looks for Adena the board says so, and redraws when the sea
   assert.doesNotMatch(page.innerHTML, /Looking for Adena/);
 });
 
+test("Connect pressed while the page still looks for Adena says it is looking, not waiting on Adena", async () => {
+  const page = app();
+  const arena = {
+    ...followedArena(),
+    walletSearch: new Promise<void>(() => {}),
+    connect: () => new Promise<Connection>(() => {}),
+  };
+  const lobby = createLobby({ ...unusedPage, app: page, arena, storage: memory(), onRender: () => lobby.render() });
+  await lobby.enter();
+  void lobby.action("Authorize", { action: "onlineAuthorize" });
+  assert.match(page.innerHTML, /role="status">Looking for Adena in this browser…</);
+  assert.doesNotMatch(page.innerHTML, /Approve the request/);
+});
+
+test("a pager button spins while its page loads", async () => {
+  const page = app();
+  const arena = followedArena();
+  arena.board = Array.from({ length: 50 }, (_, i) => ({
+    ID: matchId(String(i + 1)),
+    Challenger: bob,
+    Clan: "Pickers",
+    Opponent: "" as const,
+    Posted: 0,
+    Expires: 9e9,
+    action: "accept" as const,
+    deadline: 9e9,
+  }));
+  const lobby = createLobby({
+    ...unusedPage,
+    app: page,
+    arena,
+    storage: memory(),
+    onRender: () => lobby.render(),
+    portrait: () => "",
+    emblem: () => "",
+  });
+  await lobby.enter();
+  arena.openChallenges = () => new Promise(() => {});
+  void lobby.action("Page", { action: "onlinePage", kind: "Challenges", page: "1" });
+  assert.match(page.innerHTML, /<button[^>]*aria-busy="true"[^>]*data-kind="Challenges" data-page="1"/);
+});
+
+test("the wallet search ending leaves an open dialog alone, and redraws once it closes", async () => {
+  let ended = () => {};
+  const closers: EventListener[] = [];
+  const dialog = {
+    innerHTML: "",
+    value: "",
+    open: true,
+    showModal() {},
+    close() {},
+    addEventListener(type: string, listener: EventListener) {
+      if (type === "close") closers.push(listener);
+    },
+    append() {},
+  };
+  const arena = {
+    ...followedArena(),
+    walletSearch: new Promise<void>((resolve) => {
+      ended = resolve;
+    }),
+  };
+  let draws = 0;
+  const lobby = createLobby({
+    ...unusedPage,
+    app: { ...app(), querySelector: () => dialog },
+    arena,
+    storage: memory(),
+    onRender: () => {
+      draws++;
+    },
+  });
+  await lobby.enter();
+  const before = draws;
+  ended();
+  await flush();
+  assert.equal(draws, before, "a redraw would replace the open dialog");
+  for (const close of closers) close(new Event("close"));
+  assert.equal(draws, before + 1);
+});
+
 test("an arena that does not say it found a wallet starts the setup at installing Adena", async () => {
   const page = app();
   const { hasWallet: _hasWallet, ...arena } = followedArena();
