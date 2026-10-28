@@ -156,7 +156,14 @@ export async function connect(
   network: { chainName?: string; rpcUrl?: string } = {},
 ): Promise<{ address: Address }> {
   if (typeof wallet?.AddEstablish !== "function") throw new WalletError("noWallet", "No Adena wallet in this browser");
-  answer(await wallet.AddEstablish("Gnomepit"), v.unknown(), ["ALREADY_CONNECTED"]);
+  const established = await wallet.AddEstablish("Gnomepit");
+  // Adena checks the node of the network it is on before it connects a site.
+  if (replyOf(established)?.type === "NETWORK_TIMEOUT")
+    throw new WalletError(
+      "refused",
+      `Adena cannot reach the network it is on. Switch Adena to ${chainId}, then connect again.`,
+    );
+  answer(established, v.unknown(), ["ALREADY_CONNECTED"]);
   const current = answer(await wallet.GetNetwork(), NetworkSchema);
   if (current.chainId !== chainId) {
     let switched = await wallet.SwitchNetwork(chainId);
