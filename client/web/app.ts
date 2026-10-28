@@ -15,7 +15,7 @@ import {
   startState,
 } from "./engine.ts";
 import { type Action, type Flow, type Round, initial, reduce, botTurn } from "./flow.ts";
-import { type Deck, deckSize, newDeck, toggle, rareOf } from "./deck.ts";
+import { type Deck, deckSize, newDeck, readiness, toggle, rareOf } from "./deck.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
 import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.ts";
 import { sentences, matchLog, resultLine, sideNames, possessive } from "./log.ts";
@@ -211,7 +211,7 @@ const lobby: Lobby<Draft> | null =
             state: startState(engine.hp),
           };
           choosingClan = true;
-          deck = newDeck(firstClan(), engine.cards);
+          deck = newDeck(firstClan());
           render();
         },
         onPlay: (raw, address, review) => {
@@ -346,7 +346,7 @@ function enter(before: Flow): void {
       return;
     }
     choosingClan = true;
-    deck = newDeck(firstClan(), engine.cards);
+    deck = newDeck(firstClan());
   }
   if (flow.screen === "plan") {
     const { state, decks } = underway();
@@ -491,7 +491,7 @@ const handlers = {
   clan: ({ name }: DOMStringMap) => {
     const clan = clanNamed(name);
     if (clan === undefined) return;
-    if (deck?.clan !== name) deck = newDeck(clan, engine.cards);
+    if (deck?.clan !== name) deck = newDeck(clan);
     choosingClan = false;
     render();
   },
@@ -1189,19 +1189,16 @@ function deckScreen(): string {
   const clan = clanNamed(deck.clan);
   if (clan === undefined) throw new Error(`No clan ${deck.clan}`);
   const rare = rareOf(clan, engine.cards);
-  const picked = deck.picks.length - 1;
   const legal = engine.legalDeck({ clan: deck.clan, deck: deck.picks });
   const heading =
     flow.mode === "bot" || flow.mode === "online" ? "Pick your deck" : `Player ${flow.acting + 1} picks a deck`;
-  const full = deck.picks.length >= deckSize;
   const pool = clan.cards
     .map((id) => {
-      const picked = deck.picks.includes(id);
+      const kept = deck.picks.includes(id);
       return cardHTML(cardOf(engine.cards, id), {
-        selected: picked,
-        pressed: picked,
+        selected: kept,
+        pressed: kept,
         locked: id === rare,
-        dimmed: full && !picked,
         action: "toggle",
       });
     })
@@ -1210,10 +1207,10 @@ function deckScreen(): string {
     ${masthead()}
     <nav class="setup-steps" aria-label="Match setup"><button class="text-button" data-action="changeClan">1 · Choose clan</button><span aria-current="step">2 · Build deck</span><span>3 · Plan your round</span></nav>
     <section class="frame frame--acting stack">
-      <div class="frame__head"><h2 class="heading">${heading}</h2><span class="hint">The Rare stays in. Pick 7 more.</span></div>
+      <div class="frame__head"><h2 class="heading">${heading}</h2><span class="hint">Every card starts in. Leave out ${clan.cards.length - deckSize}; the Rare stays.</span></div>
       <div class="clan-banner clan-banner--${deck.clan.toLowerCase()}">${portraitHTML(deck.clan, `class="clan-banner__portrait"`)}<div><span class="eyebrow">CHOOSE YOUR ALLEGIANCE</span><h3 class="heading clan-banner__name">${emblem(deck.clan)}${deck.clan}</h3><p>${clanLook[deck.clan]?.blurb ?? ""}</p></div><button class="button button--secondary" type="button" data-action="changeClan">Change clan</button></div>
       <div class="card-grid">${pool}</div>
-      <div class="button-row"><button class="button" type="button" data-action="deckReady" ${legal ? "" : "disabled"}>Ready ${picked} / 7</button></div>
+      <div class="button-row"><button class="button" type="button" data-action="deckReady" ${legal ? "" : "disabled"}>${readiness(deck)}</button></div>
     </section>`;
 }
 
