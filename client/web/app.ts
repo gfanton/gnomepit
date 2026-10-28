@@ -39,6 +39,7 @@ import {
   tutorialMatch,
   tutorialMemory,
 } from "./tutorial.ts";
+import { wordmarkHTML } from "./wordmark.ts";
 
 // The build's network name, which esbuild's define writes in.
 declare const GNOMEPIT_NETWORK: string;
@@ -158,7 +159,7 @@ function collectionHTML(): string {
 }
 
 function masthead(note = "A duel beneath the mountain"): string {
-  return `<header class="masthead"><a class="wordmark" href="./">Gnomepit<span>UNDER THE MOUNTAIN</span></a><span class="masthead__note">${note}</span></header>`;
+  return `<header class="masthead">${wordmarkHTML("./")}<span class="masthead__note">${note}</span></header>`;
 }
 
 const tutorialFlag = tutorialMemory(localStorage);
@@ -1152,10 +1153,12 @@ const clanPresentation = [
   },
 ];
 function clanChoicesHTML(home = false): string {
+  // Home sets the clans under its own h2; clan selection sets them straight under its h1.
+  const heading = home ? "h3" : "h2";
   return `<div class="clan-choices">${clanPresentation
     .map((c) => {
       const available = Boolean(clanNamed(c.name));
-      const body = `<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="${home ? "lazy" : "eager"}"></div><div class="clan-choice__body"><span class="clan-choice__eyebrow">${c.tag}</span><h3>${emblem(c.name)}${c.name}</h3><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available ? (home ? `See the ${c.name} cards →` : `Choose ${c.name} →`) : home ? "Explore Delvers · Coming soon →" : "Coming soon"}</span></div>`;
+      const body = `<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="${home ? "lazy" : "eager"}"></div><div class="clan-choice__body"><span class="clan-choice__eyebrow">${c.tag}</span><${heading} class="clan-choice__name">${emblem(c.name)}${c.name}</${heading}><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available ? (home ? `See the ${c.name} cards →` : `Choose ${c.name} →`) : home ? "Explore Delvers · Coming soon →" : "Coming soon"}</span></div>`;
       const cls = `clan-choice clan-choice--${c.name.toLowerCase()}`;
       if (home && !available) return `<a class="${cls}" href="delvers-preview.html">${body}</a>`;
       if (home)
@@ -1165,7 +1168,7 @@ function clanChoicesHTML(home = false): string {
     .join("")}</div>`;
 }
 function title(): string {
-  return `<header class="masthead"><a class="wordmark" href="./">Gnomepit<span>UNDER THE MOUNTAIN</span></a><nav class="home-nav" aria-label="Explore the game">${lobby !== null ? '<a href="leaderboard.html">Leaderboard</a>' : ""}<button type="button" data-action="tutorial">How to play</button><button type="button" data-action="library">Card library</button></nav></header>
+  return `<header class="masthead">${wordmarkHTML("./")}<nav class="home-nav" aria-label="Explore the game">${lobby !== null ? '<a href="leaderboard.html">Leaderboard</a>' : ""}<button type="button" data-action="tutorial">How to play</button><button type="button" data-action="library">Card library</button></nav></header>
     <section class="intro intro--home">
       <div class="intro__copy"><span class="eyebrow">A TACTICAL CARD DUEL</span>
         <h1>Small gnomes.<br>Big grudges.</h1>
@@ -1246,7 +1249,7 @@ function roundHTML(round: number, phase: string): string {
 }
 
 function beatMarkersHTML(): string {
-  return `<div class="beat-markers">${[1, 2, 3].map((n) => `<span class="timeline__beat" id="beat-${n}"><span class="beat-marker__gem" aria-hidden="true"></span>Beat ${n}</span>`).join("")}</div>`;
+  return `<div class="beat-markers">${[1, 2, 3].map((n) => `<span class="timeline__beat" id="beat-${n}"><span class="beat-marker__gem" aria-hidden="true"></span><span><span class="beat-marker__word">Beat </span>${n}</span></span>`).join("")}</div>`;
 }
 
 function battleDialogsHTML(viewer: Side): string {
@@ -1342,7 +1345,7 @@ function slotsHTML(): string {
     const c = cardOf(engine.cards, id);
     const from = beat;
     beat += c.cost;
-    return `<div class="slot" data-plan-index="${index}" style="grid-column:span ${c.cost}">${cardHTML(c, { track: true, action: "clearFrom", data: `data-beat="${from}"` })}<span class="track-note">${c.parry > 0 ? `Guards ${c.cost === 1 ? `beat ${beat}` : `beats ${from + 1}–${beat}`}` : c.cost > 1 ? `Lands on beat ${beat}` : "Click to remove"}</span></div>`;
+    return `<div class="slot" data-plan-index="${index}" style="--beats:${c.cost}">${cardHTML(c, { track: true, action: "clearFrom", data: `data-beat="${from}"` })}<span class="track-note">${c.parry > 0 ? `Guards ${c.cost === 1 ? `beat ${beat}` : `beats ${from + 1}–${beat}`}` : c.cost > 1 ? `Lands on beat ${beat}` : "Click to remove"}</span></div>`;
   });
   const coached = coachedCard();
   const empty = Array.from(
@@ -1359,7 +1362,8 @@ function trackNote(c: Card, from: number, to: number): string {
   return c.cost > 1 ? `Lands on beat ${to}` : `Beat ${to}`;
 }
 
-// practiceTrackHTML lays out the guided match opponent's plan face up.
+// practiceTrackHTML lays out the guided match opponent's plan face up, as small cards that show
+// the full card on hover or focus, so the row stays as short as the hidden backs it stands for.
 function practiceTrackHTML(ids: number[]): string {
   let beat = 0;
   return ids
@@ -1367,7 +1371,7 @@ function practiceTrackHTML(ids: number[]): string {
       const c = cardOf(engine.cards, id);
       const from = beat + 1;
       beat += c.cost;
-      return `<div class="slot" style="grid-column:span ${c.cost}">${cardHTML(c, { track: true })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
+      return `<div class="slot" style="--beats:${c.cost}">${cardHTML(c, { small: true })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
     })
     .join("");
 }
@@ -1403,7 +1407,7 @@ function playbackScreen(): string {
         const c = cardOf(engine.cards, id);
         const from = beat + 1;
         beat += c.cost;
-        return `<div class="slot card-reveal" style="grid-column:span ${c.cost};--reveal-delay:${index * 120}ms">${cardHTML(c, { track: true, action: "inspectCard", data: `data-side="${side}" data-index="${index}"` })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
+        return `<div class="slot card-reveal" style="--beats:${c.cost};--reveal-delay:${index * 120}ms">${cardHTML(c, { track: true, action: "inspectCard", data: `data-side="${side}" data-index="${index}"` })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
       })
       .join("")}</div></div>`;
   };

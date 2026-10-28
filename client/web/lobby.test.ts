@@ -182,7 +182,12 @@ function endingArena(view: MatchDetail | null): Ending {
 
 // lobbyOf is a lobby for the player at address, which records each clash it plays;
 // shown draws it and returns the page.
-function lobbyOf(arena: LobbyArena, player: Address | "", storage = memory()) {
+function lobbyOf(
+  arena: LobbyArena,
+  player: Address | "",
+  storage = memory(),
+  portrait: LobbyOptions["portrait"] = () => "",
+) {
   const played: { phase: string; review: boolean }[] = [],
     page = app();
   const lobby = createLobby({
@@ -194,7 +199,7 @@ function lobbyOf(arena: LobbyArena, player: Address | "", storage = memory()) {
     onPlay(raw, _who, review) {
       played.push({ phase: raw.Phase, review });
     },
-    portrait: () => "",
+    portrait,
     emblem: () => "",
   });
   if (player !== "") lobby.model.account = { address: player, state: "active", mode: "session", fallback: null };
@@ -538,6 +543,32 @@ test("My matches names the opponent a posted challenge is reserved for", async (
   const board = shown();
   assert.equal(board.match(/Reserved for/g)?.length, 1);
   assert.equal(board.match(/Anyone can accept/g)?.length, 1);
+});
+
+test("portraits and notices wear their own clan's colours, whichever side the clan plays", async (t) => {
+  stubPage(t);
+  const arena = followedArena();
+  arena.myMatches = async () => [
+    detail({ ID: matchId("6"), Phase: "play", Acceptor: bob, ChallengerClan: "Ironhide", AcceptorClan: "Pickers" }),
+  ];
+  arena.board = [
+    {
+      ID: matchId("7"),
+      Challenger: bob,
+      Clan: "Delvers",
+      Opponent: "",
+      Posted: 0,
+      Expires: 9e9,
+      action: "accept",
+      deadline: 9e9,
+    },
+  ];
+  const { lobby, shown } = lobbyOf(arena, alice, memory(), (clan, attributes) => `<img ${attributes} alt="${clan}">`);
+  await lobby.enter();
+  const board = shown();
+  assert.match(board, /<img class="portrait portrait--ironhide" alt="Ironhide">/);
+  assert.match(board, /<img class="portrait portrait--pickers" alt="Pickers">/);
+  assert.match(board, /<article class="challenge challenge--delvers">/);
 });
 
 test("a match opened from its link is watched", async (t) => {
@@ -975,6 +1006,16 @@ test("Play offline leads home to the offline row, and the wordmark home", async 
     Reflect.deleteProperty(globalThis, "location");
   }
   assert.deepEqual(exits, [true, false]);
+});
+
+test("the board's wordmark marks the game as in beta and leaves online play", async () => {
+  const page = app();
+  const lobby = createLobby({ ...unusedPage, app: page, arena: followedArena(), storage: memory(), onRender() {} });
+  lobby.render();
+  assert.match(
+    page.innerHTML,
+    /class="wordmark" href="\.\/" data-action="onlineExit">Gnomepit<span class="wordmark__beta">Beta</,
+  );
 });
 
 test("a board that fits on one page shows no pager, and Notify me needs a notifier", async () => {

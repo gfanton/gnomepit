@@ -67,7 +67,7 @@ test("loading, error and empty views say so", () => {
 
 test("the masthead names Gnomepit and the seal carries its initials", () => {
   const html = leaderboardHTML(ready({}));
-  assert.match(html, /class="wordmark"[^>]*>Gnomepit</);
+  assert.match(html, /class="wordmark"[^>]*>Gnomepit<span class="wordmark__beta">Beta</);
   assert.match(html, /class="ranking-seal" aria-hidden="true">GP</);
 });
 
