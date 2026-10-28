@@ -164,7 +164,7 @@ function masthead(note = "A duel beneath the mountain"): string {
 
 const tutorialFlag = tutorialMemory(localStorage);
 const built = networkFor(GNOMEPIT_NETWORK);
-const arena = built === null ? null : await loadArena(engine, built);
+const arena = built === null ? null : loadArena(engine, built);
 const lobby: Lobby<Draft> | null =
   arena === null
     ? null

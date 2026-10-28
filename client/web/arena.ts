@@ -471,8 +471,9 @@ type ArenaWallet = Pick<
 
 export type ArenaOptions = {
   chain: Pick<Chain, "evalJSON" | "typeJSON" | "sessions" | "gasPrice" | "simulate" | "broadcast">;
-  // Adena itself, devWallet, or nothing when the browser has no wallet.
-  wallet: ArenaWallet | null | undefined;
+  // Adena itself, devWallet, or nothing when the browser has no wallet; a promise of one
+  // while the page is still looking for it.
+  wallet: ArenaWallet | null | undefined | Promise<ArenaWallet | null | undefined>;
   engine: Engine;
   signer: Pick<Signer, "keyInfo" | "signTx">;
   realm: string;
@@ -499,6 +500,7 @@ export type ArenaOptions = {
 };
 
 export type Arena = {
+  // true while the page is still looking for a wallet, since connect waits for it.
   hasWallet: boolean;
   // false without a notifier or with offerPush false, so notify can only fail.
   canNotify: boolean;
@@ -577,6 +579,11 @@ export function createArena({
   now = () => Math.floor(Date.now() / 1000),
 }: ArenaOptions): Arena {
   let address: Address | null = null;
+  let current = wallet;
+  if (current instanceof Promise)
+    void current.then((found) => {
+      current = found;
+    });
   const readValue = createReader(chain);
   const keyCache = new Map<string, Promise<SessionKeys>>();
 
@@ -603,8 +610,9 @@ export function createArena({
   }
 
   function signingWallet(): ArenaWallet {
-    if (wallet === null || wallet === undefined) throw new ArenaError("noWallet", "Connect a wallet first");
-    return wallet;
+    if (current === null || current === undefined || current instanceof Promise)
+      throw new ArenaError("noWallet", "Connect a wallet first");
+    return current;
   }
 
   function keysFor(generation: number): Promise<SessionKeys> {
@@ -870,12 +878,14 @@ export function createArena({
   }
 
   const arena: Arena = {
-    hasWallet: wallet !== null && wallet !== undefined,
+    get hasWallet() {
+      return current instanceof Promise || (current !== null && current !== undefined);
+    },
     canNotify: notifier !== undefined && offerPush,
 
     async connect() {
       try {
-        ({ address } = await connectWallet(wallet, chainId, network));
+        ({ address } = await connectWallet(await current, chainId, network));
         followAddress();
       } catch (err) {
         if (err instanceof WalletError && (err.type === "noWallet" || err.type === "wrongNetwork")) {

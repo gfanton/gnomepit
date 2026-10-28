@@ -329,6 +329,43 @@ test("the arena says whether it found a wallet and can send notifications", () =
   assert.equal(full.canNotify, true);
 });
 
+test("a wallet the page is still looking for counts as found, and connect waits for it", async () => {
+  let found = (_wallet: TestWallet) => {};
+  const arena = createArena({
+    chain: arenaChain(),
+    wallet: new Promise<TestWallet>((resolve) => {
+      found = resolve;
+    }),
+    engine,
+    signer,
+    realm,
+    chainId: "dev",
+    origin: "http://x",
+    storage: memory(),
+  });
+  assert.equal(arena.hasWallet, true);
+  const connecting = arena.connect();
+  found(walletFor(address("g1alice")));
+  assert.equal(accountOf(await connecting).address, "g1alice");
+});
+
+test("the arena has no wallet once the page's search for one ends empty", async () => {
+  const search = Promise.resolve(undefined);
+  const arena = createArena({
+    chain: arenaChain(),
+    wallet: search,
+    engine,
+    signer,
+    realm,
+    chainId: "dev",
+    origin: "http://x",
+    storage: memory(),
+  });
+  await search;
+  assert.equal(arena.hasWallet, false);
+  assert.equal((await arena.connect()).state, "noWallet");
+});
+
 test("watch reports a match when it changes, and stops", async () => {
   const answers = ["match-play", "match-play", "match-ended"];
   const chain = {
