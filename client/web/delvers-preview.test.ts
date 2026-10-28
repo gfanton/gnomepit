@@ -8,6 +8,7 @@ import * as v from "valibot";
 import { cardOf } from "./engine.ts";
 import { nodeEngine } from "./engine-node.ts";
 import { known } from "./fixture.ts";
+import { wordmarkHTML } from "./wordmark.ts";
 
 const PreviewSchema = v.object({
   cards: v.array(
@@ -27,4 +28,9 @@ test("the Delvers preview shows each Delvers card as the engine deals it", () =>
     preview.map((c) => ({ name: c.name, cost: c.cost, tier: c.tier, rare: c.rarity === "Rare", text: c.text })),
     delvers.map((c) => ({ name: c.name, cost: c.cost, tier: c.tier, rare: c.rare, text: c.text })),
   );
+});
+
+test("the Delvers preview's masthead is the shared wordmark", () => {
+  const page = readFileSync(new URL("./delvers-preview.html", import.meta.url), "utf8");
+  assert.ok(page.includes(wordmarkHTML("index.html")), "delvers-preview.html does not carry wordmarkHTML's markup");
 });
