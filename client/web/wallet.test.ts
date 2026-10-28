@@ -479,6 +479,21 @@ test("connecting without a wallet, or when the player refuses, fails with its re
   );
 });
 
+// Adena checks the node of the network it is on before it connects a site.
+test("an Adena that cannot reach the network it is on is told to switch to the game's", async () => {
+  const stranded = adena({
+    AddEstablish: async () => ({
+      status: "failure",
+      type: "NETWORK_TIMEOUT",
+      message: "The network response has timed out.",
+    }),
+  });
+  await assert.rejects(
+    connect(stranded, "onyx-1"),
+    (err) => err instanceof WalletError && err.type === "refused" && /Switch Adena to onyx-1/.test(err.reason),
+  );
+});
+
 test("an account reply without an address is refused", async () => {
   await assert.rejects(
     connect(adena({ GetAccount: async () => ({ status: "success", data: {} }) }), "dev"),

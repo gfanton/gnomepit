@@ -638,6 +638,170 @@ test("after a move is sent, the match it was sent in is watched", async () => {
   assert.equal(arena.watched, "5");
 });
 
+// A node behind the one that took the move still answers with the turn it was sent for.
+test("a confirmed move stays sent while the chain still reads its turn", async (t) => {
+  stubPage(t);
+  const arena = endingArena(bobsMove);
+  arena.move = async () => {};
+  const { Plans: _plans, HP: _hp, ...summary } = bobsMove;
+  arena.myMatches = async () => [summary];
+  const { lobby, shown } = lobbyOf(arena, bob);
+  await lobby.enter();
+  const move = () => lobby.sendDraft({ intent: "move", view: { id: matchId("4") } }, "Ironhide", [0], [0, 0, 0]);
+  await move();
+  assert.match(shown(), /<h1>Waiting for/);
+  assert.doesNotMatch(shown(), /Watch clash &amp; plan/);
+  await assert.rejects(move(), /moved on/);
+  await lobby.action("Board");
+  assert.doesNotMatch(shown(), /Your move/);
+  arena.view = { ...bobsMove, Round: 3 };
+  await lobby.action("Open", { id: "4" });
+  assert.match(shown(), /Watch clash &amp; plan/);
+});
+
+test("an accepted challenge the chain still reads as open is neither listed nor offered again", async (t) => {
+  stubPage(t);
+  const arena = endingArena(detail({ action: "accept" }));
+  arena.board = [
+    {
+      ID: matchId("4"),
+      Challenger: alice,
+      Clan: "",
+      Opponent: "",
+      Posted: 0,
+      Expires: 9e9,
+      action: "accept",
+      deadline: 9e9,
+    },
+  ];
+  arena.accept = async () => {};
+  arena.account = () => ({ address: bob, state: "active", mode: "session", fallback: null });
+  const { lobby, shown } = lobbyOf(arena, bob);
+  await lobby.enter();
+  assert.match(shown(), /View challenge/);
+  await lobby.sendDraft({ intent: "accept", view: { id: matchId("4") } }, "Pickers", [0], [0, 0, 0]);
+  assert.doesNotMatch(shown(), /Accept challenge/);
+  await lobby.action("Board");
+  assert.doesNotMatch(shown(), /View challenge/);
+});
+
+test("a confirmed move the page cannot read back says it was confirmed, not that it failed", async (t) => {
+  stubPage(t);
+  const arena = endingArena(bobsMove);
+  let moved = false;
+  arena.move = async () => {
+    moved = true;
+  };
+  arena.match = async () => {
+    if (moved) throw new ArenaError("network", "Failed to fetch");
+    return bobsMove;
+  };
+  const { Plans: _plans, HP: _hp, ...summary } = bobsMove;
+  arena.myMatches = async () => [summary];
+  const { lobby, shown } = lobbyOf(arena, bob);
+  await lobby.enter();
+  await lobby.sendDraft({ intent: "move", view: { id: matchId("4") } }, "Ironhide", [0], [0, 0, 0]);
+  assert.match(shown(), /Your move was confirmed\..*do not send it again/);
+  assert.doesNotMatch(shown(), /didn’t go through/);
+  assert.doesNotMatch(shown(), /Your move</);
+});
+
+// Each read can come from another node, so one without the move's block can answer after
+// one with it.
+test("a confirmed move stays sent through reads from nodes on either side of its block", async (t) => {
+  stubPage(t);
+  const arena = endingArena(bobsMove);
+  arena.move = async () => {
+    arena.view = { ...bobsMove, Phase: "reveal", ToMove: alice, action: "wait" };
+  };
+  const { Plans: _plans, HP: _hp, ...summary } = bobsMove;
+  arena.myMatches = async () => [summary];
+  const { lobby, shown } = lobbyOf(arena, bob);
+  await lobby.enter();
+  await lobby.sendDraft({ intent: "move", view: { id: matchId("4") } }, "Ironhide", [0], [0, 0, 0]);
+  await arena.onView?.({ ...bobsMove, Phase: "reveal", Round: 1, ToMove: alice, action: "wait" });
+  await arena.onView?.(bobsMove);
+  assert.match(shown(), /<h1>Waiting for/);
+  assert.doesNotMatch(shown(), /Watch clash &amp; plan/);
+  await lobby.action("Board");
+  assert.doesNotMatch(shown(), /Your move/);
+});
+
+test("an accepted challenge stays taken after the page reads it accepted", async (t) => {
+  stubPage(t);
+  const open = detail({ action: "accept" });
+  const arena = endingArena(open);
+  arena.board = [
+    {
+      ID: matchId("4"),
+      Challenger: alice,
+      Clan: "",
+      Opponent: "",
+      Posted: 0,
+      Expires: 9e9,
+      action: "accept",
+      deadline: 9e9,
+    },
+  ];
+  arena.accept = async () => {
+    arena.view = detail({ Phase: "reveal", Acceptor: bob, ToMove: alice, action: "wait" });
+  };
+  arena.account = () => ({ address: bob, state: "active", mode: "session", fallback: null });
+  const { lobby, shown } = lobbyOf(arena, bob);
+  await lobby.enter();
+  await lobby.sendDraft({ intent: "accept", view: { id: matchId("4") } }, "Pickers", [0], [0, 0, 0]);
+  await lobby.action("Board");
+  assert.doesNotMatch(shown(), /View challenge/);
+  arena.view = open;
+  await lobby.action("Open", { id: "4" });
+  assert.doesNotMatch(shown(), /Accept challenge/);
+});
+
+test("a confirmed move whose board cannot be read stops following its match", async (t) => {
+  stubPage(t);
+  const arena = endingArena(bobsMove);
+  let moved = false;
+  arena.move = async () => {
+    moved = true;
+    arena.view = { ...bobsMove, Phase: "reveal", ToMove: alice, action: "wait" };
+  };
+  arena.myMatches = async () => {
+    if (moved) throw new ArenaError("network", "Failed to fetch");
+    return [];
+  };
+  const { lobby, shown } = lobbyOf(arena, bob);
+  await lobby.enter();
+  await lobby.sendDraft({ intent: "move", view: { id: matchId("4") } }, "Ironhide", [0], [0, 0, 0]);
+  assert.equal(arena.onView, null);
+  assert.match(shown(), /Your move was confirmed\./);
+});
+
+test("a confirmed send replaces an error left on screen before it", async (t) => {
+  stubPage(t);
+  const open = detail({ action: "accept" });
+  const arena = endingArena(open);
+  let down = false;
+  arena.match = async () => {
+    if (down) throw new ArenaError("network", "Failed to fetch");
+    assert.ok(arena.view !== null, "the test serves no match");
+    return arena.view;
+  };
+  arena.accept = async () => {
+    arena.view = detail({ Phase: "reveal", Acceptor: bob, ToMove: alice, action: "wait" });
+  };
+  arena.account = () => ({ address: bob, state: "active", mode: "session", fallback: null });
+  const { lobby, shown } = lobbyOf(arena, bob);
+  await lobby.enter();
+  await lobby.action("Open", { id: "4" });
+  down = true;
+  await arena.onView?.(null);
+  assert.match(shown(), /didn’t go through/);
+  down = false;
+  await lobby.sendDraft({ intent: "accept", view: { id: matchId("4") } }, "Pickers", [0], [0, 0, 0]);
+  assert.match(shown(), /Your move is confirmed\./);
+  assert.doesNotMatch(shown(), /didn’t go through/);
+});
+
 // dialogLobby is a lobby whose page answers every query with one dialog, which the test
 // reads; the dialog doubles as the opponent field.
 function dialogLobby(t: TestContext, arena: LobbyArena, options: Partial<LobbyOptions> = {}) {
@@ -841,6 +1005,24 @@ test("a board the page cannot reach says so in plain words", async () => {
   await lobby.enter();
   assert.match(page.innerHTML, /Can't reach the hall right now\. Check your connection and try again\./);
   assert.doesNotMatch(page.innerHTML, /Failed to fetch/);
+});
+
+// The banner fills a laptop screen, so a message below it goes unseen.
+// On a phone the setup steps fill the first screen.
+test("the board says what went wrong above its setup steps and its banner", async () => {
+  const page = app();
+  const arena = {
+    ...followedArena(),
+    connect: async () => {
+      throw new ArenaError("refused", "Switch Adena to onyx-1, then connect again.");
+    },
+  };
+  const lobby = createLobby({ ...unusedPage, app: page, arena, storage: memory(), onRender: () => lobby.render() });
+  await lobby.enter();
+  await lobby.action("Authorize");
+  const said = page.innerHTML.indexOf("Switch Adena to onyx-1");
+  assert.ok(said !== -1 && said < page.innerHTML.indexOf("hall-banner"), "the reason shows before the banner");
+  assert.ok(said < page.innerHTML.indexOf("wallet-setup"), "the reason shows before the setup steps");
 });
 
 test("a #match= fragment names its match, decoded, and any other fragment names none", () => {
