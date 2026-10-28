@@ -2,7 +2,7 @@ import { type AccountState, type Arena, ArenaError, type Connection, type MatchD
 import { otherSide } from "./engine.ts";
 import { type Address, type MatchId, matchId } from "./ids.ts";
 import { escapeHTML } from "./keywords.ts";
-import { type View, isSet, viewOf, shortAddress, timeLeft } from "./online-model.ts";
+import { type ArenaView, type View, isSet, viewOf, shortAddress, timeLeft } from "./online-model.ts";
 const esc = (value: string | number | undefined) => escapeHTML(String(value ?? "")).replaceAll('"', "&quot;");
 const btn = (text: string, action: string, disabled = false, secondary = false, extra = "") =>
   `<button type="button" class="${secondary ? "quiet" : "button"}" data-action="online${action}" ${disabled ? "disabled" : ""} ${extra}>${esc(text)}</button>`;
@@ -12,6 +12,16 @@ const textOr = (text: string, fallback: string) => (text === "" ? fallback : tex
 const dueOf = (v: View) => (isSet(v.deadline) ? v.deadline : v.expires);
 // waitsFor says whether v's match still waits for a plan sent as context.
 const waitsFor = (context: DraftContext, v: View) => v.action === (context.intent === "move" ? "move" : "accept");
+// turnOf numbers a match's turns in order: open, reveal 1, play 2, reveal 2, play 3, reveal 3,
+// then its end. Each confirmed plan moves its match to the next one.
+const turnOf = (v: View) =>
+  v.phase === "open"
+    ? 0
+    : v.phase === "play"
+      ? 2 * (v.round ?? 1) - 2
+      : v.phase === "reveal"
+        ? 2 * (v.round ?? 1) - 1
+        : Infinity;
 const perMatch =
   "Each match you post or accept asks your wallet once, for a one-day session that only plays that match.";
 const unreachable = "Can't reach the hall right now. Check your connection and try again.";
@@ -144,6 +154,9 @@ export function createLobby<Draft extends Drafted = Drafted>({
     unwatch: (() => void) | null = null,
     unfollow: (() => void) | null = null,
     focusReturn: Element | null = null;
+  // The turn each match was on when the chain confirmed this page's plan for it. A read at or
+  // before that turn comes from a node the plan's block has not reached yet.
+  const sent = new Map<MatchId, number>();
   const status = (): AccountState | undefined =>
     model.account !== null && "mode" in model.account ? model.account : undefined;
   const address = () => status()?.address ?? "";
@@ -165,6 +178,14 @@ export function createLobby<Draft extends Drafted = Drafted>({
     if (model.view === null) throw new Error("No match is open.");
     return model.view;
   }
+  // reconciled is v with this page's sent plans: a match read at or before the turn it sent a
+  // plan in waits for the opponent.
+  function reconciled(v: View): View {
+    const turn = sent.get(v.id);
+    if (turn === undefined || turnOf(v) > turn) return v;
+    return v.action === "accept" || v.action === "move" ? { ...v, action: "wait" } : v;
+  }
+  const viewFor = (raw: ArenaView) => reconciled(viewOf(raw, address()));
   function cancelWatch() {
     unwatch?.();
     unwatch = null;
@@ -230,13 +251,13 @@ export function createLobby<Draft extends Drafted = Drafted>({
       arena.openChallenges(model.page),
       address() !== "" ? arena.myMatches(model.matchPage) : Promise.resolve([]),
     ]);
-    model.challenges = challenges.map((v) => viewOf({ ...v, Phase: "open" }, address()));
-    model.matches = matches.map((v) => viewOf(v, address()));
+    model.challenges = challenges.filter((c) => !sent.has(c.ID)).map((c) => viewOf({ ...c, Phase: "open" }, address()));
+    model.matches = matches.map(viewFor);
     model.matches.forEach(dropStaleDraft);
   }
   async function refreshView(id: MatchId) {
     const raw = await online().match(id);
-    model.view = viewOf(raw, address());
+    model.view = viewFor(raw);
     dropStaleDraft(model.view);
     return raw;
   }
@@ -278,7 +299,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
         if (token !== epoch || !model.active) return;
         try {
           const raw = value ?? (await online().match(id));
-          const next = viewOf(raw, address());
+          const next = viewFor(raw);
           // A match that moved on outdates the notice about the last thing done in it.
           if (model.view !== null && (next.phase !== model.view.phase || next.action !== model.view.action))
             model.notice = "";
@@ -573,7 +594,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
     else if (name === "Play" || name === "Review") {
       await run(async () => {
         const raw = await online().match(openView().id);
-        model.view = viewOf(raw, address());
+        model.view = viewFor(raw);
         if (name === "Play" && model.view.action !== "move")
           throw new Error("This match moved on. Refresh to see its current state.");
         await onPlay(raw, address(), name === "Review");
@@ -645,9 +666,11 @@ export function createLobby<Draft extends Drafted = Drafted>({
       if (!ready())
         throw new Error("This device needs approval. Return to the board and approve it; your plan is preserved.");
       const id = context.view?.id ?? matchId("");
+      let turn: number | undefined;
       if (id !== "") {
-        if (!waitsFor(context, viewOf(await arena.match(id), address())))
-          throw new Error("This match moved on. Refresh it before sending.");
+        const before = viewFor(await arena.match(id));
+        if (!waitsFor(context, before)) throw new Error("This match moved on. Refresh it before sending.");
+        turn = turnOf(before);
       }
       if (context.intent === "move") await arena.move(id, plan);
       else
@@ -660,8 +683,10 @@ export function createLobby<Draft extends Drafted = Drafted>({
         } finally {
           model.account = arena.account();
         }
+      if (turn !== undefined) sent.set(id, turn);
       model.inGame = false;
       model.draft = null;
+      model.error = "";
       model.notice = "Your move is confirmed.";
       try {
         const sentIn = id !== "" ? id : model.view?.id;
@@ -670,9 +695,10 @@ export function createLobby<Draft extends Drafted = Drafted>({
           watchView(sentIn);
         }
         await lists();
-      } catch (e) {
-        model.view = null;
-        fail(e);
+      } catch {
+        leaveMatch();
+        model.matches = model.matches.map(reconciled);
+        model.challenges = model.challenges.filter((v) => !sent.has(v.id));
         model.notice = "Your move was confirmed. Refresh the board to see it; do not send it again.";
       }
     },
