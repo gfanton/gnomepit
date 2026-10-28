@@ -1007,6 +1007,24 @@ test("a board the page cannot reach says so in plain words", async () => {
   assert.doesNotMatch(page.innerHTML, /Failed to fetch/);
 });
 
+// The banner fills a laptop screen, so a message below it goes unseen.
+// On a phone the setup steps fill the first screen.
+test("the board says what went wrong above its setup steps and its banner", async () => {
+  const page = app();
+  const arena = {
+    ...followedArena(),
+    connect: async () => {
+      throw new ArenaError("refused", "Switch Adena to onyx-1, then connect again.");
+    },
+  };
+  const lobby = createLobby({ ...unusedPage, app: page, arena, storage: memory(), onRender: () => lobby.render() });
+  await lobby.enter();
+  await lobby.action("Authorize");
+  const said = page.innerHTML.indexOf("Switch Adena to onyx-1");
+  assert.ok(said !== -1 && said < page.innerHTML.indexOf("hall-banner"), "the reason shows before the banner");
+  assert.ok(said < page.innerHTML.indexOf("wallet-setup"), "the reason shows before the setup steps");
+});
+
 test("a #match= fragment names its match, decoded, and any other fragment names none", () => {
   assert.equal(linkedMatch("#match=12"), "12");
   assert.equal(linkedMatch("#match=a%2Fb"), "a/b");
