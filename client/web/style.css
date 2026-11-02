@@ -1317,7 +1317,7 @@ button.card:active:not(:disabled, .card--locked, .card--dimmed) {
   border: 2px solid var(--clan-color);
   border-radius: 50%;
   background: var(--gh-color-surface);
-  box-shadow: 0 0 28px color-mix(in srgb, var(--clan-light) 30%, transparent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--gh-color-shadow) 45%, transparent);
 }
 .handoff__crest .sprite {
   width: 96px;

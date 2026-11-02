@@ -136,7 +136,6 @@
   align-self: start;
   padding: 20px;
   border: 1px solid color-mix(in srgb, var(--gh-color-trim) 42%, transparent);
-  border-top: 3px solid var(--gh-color-trim);
   border-radius: 3px;
   background: var(--gh-color-canvas);
   box-shadow:
