@@ -30,8 +30,6 @@ func reset() {
 	lastID = 0
 	chunks = avl.Tree{}
 	players = avl.Tree{}
-	ladder = nil
-	clanRecords = ""
 	openList = ""
 }
 

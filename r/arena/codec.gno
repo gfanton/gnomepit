@@ -16,8 +16,6 @@ const (
 	sealSize    = 32 // bytes in a raw sha256 seal
 	lockSize    = addressSize + 4 + 4
 	openSize    = 4 + 4
-	standingFix = 2 + 2 + 2 + 2 + 1 // a standing's bytes before its per-clan counts
-	clanSize    = 2 + 4 + 4 + 4
 
 	planBits   = 20 // bits per round in a side's plans: 2 for the length, 6 per card
 	cardBits   = 6
@@ -433,20 +431,10 @@ func withChunkRecord(chunk string, slot int, rec string) string {
 // ---- Players
 
 // playerRecord is what the arena keeps per player: the ids of their matches, oldest
-// first, their standing, nil until their first rated match, and the session locks that
-// bind a session key to one match.
+// first, and the session locks that bind a session key to one match.
 type playerRecord struct {
-	ids      []int
-	standing *standing
-	locks    []sessionLock
-}
-
-// standing is a player's rated record. lastClan is the clan number, index plus one, of
-// their last rated match; perClan[i] counts their rated matches with clan number i + 1.
-type standing struct {
-	rating, wins, losses, draws int
-	lastClan                    int
-	perClan                     []int
+	ids   []int
+	locks []sessionLock
 }
 
 type sessionLock struct {
@@ -455,9 +443,7 @@ type sessionLock struct {
 	expires int64
 }
 
-// A player's bytes are a 2-byte id count, the ids at 4 bytes each, a 1-byte standing
-// length, 0 for none, the standing, then the locks. A standing is the rating, wins, losses
-// and draws at 2 bytes each, the last clan at 1, then a 2-byte count per clan.
+// A player's bytes are a 2-byte id count, the ids at 4 bytes each, then the locks.
 // ceiling: joining a match or changing a lock rewrites all of a player's ids, up to 65,535, so
 // gas grows with their matches; an avl index of ids per player if some play thousands.
 func decodePlayer(s string) playerRecord {
@@ -469,7 +455,6 @@ func decodePlayer(s string) playerRecord {
 	for n := r.u16(); n > 0; n-- {
 		p.ids = append(p.ids, int(r.u32()))
 	}
-	p.standing = readStanding(r)
 	if r.left()%lockSize != 0 {
 		panic("malformed player")
 	}
@@ -477,49 +462,6 @@ func decodePlayer(s string) playerRecord {
 		p.locks = append(p.locks, sessionLock{session: r.addr(), id: int(r.u32()), expires: int64(r.u32())})
 	}
 	return p
-}
-
-// decodeStanding reads only the standing of a player's bytes, skipping their ids, so
-// its cost does not grow with the player's matches; nil when they have none.
-func decodeStanding(s string) *standing {
-	if s == "" {
-		return nil
-	}
-	r := &reader{s: s}
-	r.text(4 * int(r.u16()))
-	return readStanding(r)
-}
-
-// withStanding returns a player's bytes s with their standing replaced by st. It copies the
-// ids and locks without reading them, so its cost does not grow with the player's matches.
-func withStanding(s string, st *standing) string {
-	if s == "" {
-		return encodePlayer(playerRecord{standing: st})
-	}
-	r := &reader{s: s}
-	r.text(4 * int(r.u16()))
-	head := r.at
-	readStanding(r)
-	w := &writer{}
-	w.text(s[:head])
-	writeStanding(w, st)
-	w.text(s[r.at:])
-	return w.String()
-}
-
-func readStanding(r *reader) *standing {
-	n := int(r.u8())
-	if n == 0 {
-		return nil
-	}
-	if n < standingFix || (n-standingFix)%2 != 0 {
-		panic("malformed player")
-	}
-	st := &standing{rating: int(r.u16()), wins: int(r.u16()), losses: int(r.u16()), draws: int(r.u16()), lastClan: int(r.u8())}
-	for i := standingFix; i < n; i += 2 {
-		st.perClan = append(st.perClan, int(r.u16()))
-	}
-	return st
 }
 
 func encodePlayer(p playerRecord) string {
@@ -531,72 +473,10 @@ func encodePlayer(p playerRecord) string {
 	for _, id := range p.ids {
 		w.u32(uint64(id))
 	}
-	writeStanding(w, p.standing)
 	for _, l := range p.locks {
 		w.addr(l.session)
 		w.u32(uint64(l.id))
 		w.u32(uint64(l.expires))
-	}
-	return w.String()
-}
-
-func writeStanding(w *writer, st *standing) {
-	if st == nil {
-		w.u8(0)
-		return
-	}
-	w.u8(uint64(standingFix + 2*len(st.perClan)))
-	w.u16(uint64(st.rating))
-	w.u16(uint64(st.wins))
-	w.u16(uint64(st.losses))
-	w.u16(uint64(st.draws))
-	w.u8(uint64(st.lastClan))
-	for _, n := range st.perClan {
-		w.u16(uint64(n))
-	}
-}
-
-// ladderKey orders the ladder: highest rating first, then address order.
-func ladderKey(rating int, player address) string {
-	w := &writer{}
-	w.u16(uint64(maxRating - rating))
-	w.text(string(player))
-	return w.String()
-}
-
-// ---- Clan records
-
-// clanRecord is a clan's rating and its record in rated matches against other clans.
-type clanRecord struct {
-	rating, wins, losses, draws int
-}
-
-// The clan records are one string holding, per clan in ruleset order, the rating at 2
-// bytes and the wins, losses and draws at 4 each. decodeClans returns n clans; a clan
-// past the end of s has no rated match yet.
-func decodeClans(s string, n int) []clanRecord {
-	if len(s)%clanSize != 0 {
-		panic("malformed clans")
-	}
-	r := &reader{s: s}
-	c := make([]clanRecord, n)
-	for i := range c {
-		if r.left() == 0 {
-			c[i] = clanRecord{rating: startRating}
-			continue
-		}
-		c[i] = clanRecord{rating: int(r.u16()), wins: int(r.u32()), losses: int(r.u32()), draws: int(r.u32())}
-	}
-	return c
-}
-
-func encodeClans(c []clanRecord) string {
-	w := &writer{}
-	for _, x := range c {
-		w.u16(uint64(x.rating))
-		w.u32(uint64(x.wins))
-		w.u32(uint64(x.losses))
-		w.u32(uint64(x.draws))
 	}
 	return w.String()
 }
