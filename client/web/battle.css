@@ -1639,6 +1639,13 @@
     transform: translateY(var(--hand-rise)) rotate(var(--hand-tilt));
   }
 }
+/* On a short window the fan tilts and drops half as far, so its outermost cost stays in view. */
+@media (min-width: 1001px) and (max-height: 700px) {
+  .hand-entry,
+  [data-screen="plan"] .hand-entry.hand-entry--resting {
+    transform: translateY(calc(var(--hand-rise) / 2)) rotate(calc(var(--hand-tilt) / 2));
+  }
+}
 /* Touch: cards stay still, and Details is always shown. */
 @media (hover: none) {
   .hand-entry,
@@ -1652,13 +1659,12 @@
   }
 }
 
-/* ---- Hand rows: a hand the fan cannot hold rests as rows of compact cards */
+/* ---- Hand rows: a window too narrow for the fan rests the hand as rows of compact cards */
 .board--battle .battle-hand.battle-hand--rows {
   display: grid;
-  grid-template-columns: repeat(var(--hand-cols), minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   justify-self: center;
   width: 100%;
-  max-width: calc(var(--hand-cols) * 260px);
   align-items: stretch;
   gap: var(--gh-space-2);
   padding: var(--gh-space-1) 0 var(--gh-space-2);
@@ -1668,35 +1674,53 @@
   margin: 0;
   transform: none;
 }
-/* The badges share the name's line while both fit, and drop under the name otherwise. */
+/* Name, a band of the art, then the rules; the badges sit on the art's corner so each name keeps
+   its line and the bands of one row line up. */
 .board.board--battle .battle-hand--rows .card--hand {
   width: 100%;
   height: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  align-content: flex-start;
-  gap: var(--gh-space-1) var(--gh-space-2);
+  display: grid;
+  grid-template: "head" auto "art" 52px "text" 1fr / minmax(0, 1fr);
+  align-content: start;
+  gap: var(--gh-space-1);
   padding: 5px 8px 6px;
   border-width: 1px;
   border-radius: 5px;
 }
 /* The Rare badge goes: a rare card's gold stock already marks it. */
-.battle-hand--rows :is(.card__ornament, .card__art, .card__clan, .badge--rare) {
+.battle-hand--rows :is(.card__ornament, .card__clan, .badge--rare, .card__art--pending span) {
   display: none;
 }
+/* A player comes to know a card by its picture sooner than by its rules. */
+.battle-hand--rows .card__art {
+  grid-area: art;
+  height: auto;
+}
+/* Out of flow, the picture fills its band without sizing the card. */
+.battle-hand--rows .card__art {
+  position: relative;
+}
+.battle-hand--rows .card__art img {
+  position: absolute;
+  inset: 0;
+  object-position: 50% 35%;
+}
 .battle-hand--rows .card__head {
-  flex: 1 1 auto;
+  grid-area: head;
   min-width: 0;
   padding: 0;
 }
 .battle-hand--rows .card__foot {
+  grid-area: art;
+  z-index: 1;
+  align-self: start;
+  justify-self: end;
+  margin: 4px;
   border: 0;
   padding: 0;
 }
 .battle-hand--rows .card__text {
-  order: 1;
-  flex: 1 0 100%;
+  grid-area: text;
   padding: 0 2px;
 }
 .battle-hand--rows .hand-entry button.card:hover:not(:disabled, .card--dimmed),
@@ -1719,30 +1743,7 @@
   width: 60px;
   height: 86px;
 }
-@media (min-width: 1001px) and (min-height: 600px) {
-  /* The table takes the height the rows leave, so the hand rests at the window's foot. */
-  [data-screen="plan"]:has(.battle-hand--rows) > .duel-table {
-    flex-grow: 1;
-  }
-  [data-screen="plan"]:has(.battle-hand--rows) > .hand-zone {
-    flex-grow: 0;
-  }
-  [data-screen="plan"] .hand-layout:has(> .battle-hand--rows) {
-    flex: 0 0 auto;
-    container-type: normal;
-  }
-  /* The hint gives way where it would cost the table a line: beside the guided match's coach,
-     which says what to play, and below beside the title and buttons on a narrow window. */
-  .hand-zone:has(.battle-hand--rows):has(.coach) .hand-zone__hint {
-    display: none;
-  }
-}
-@media (min-width: 1001px) and (max-width: 1279px) and (min-height: 600px) {
-  .hand-zone:has(.battle-hand--rows) .hand-zone__hint {
-    display: none;
-  }
-}
-/* Phones: four names to a row, with the played pile as the last cell. */
+/* Phones: four cards to a row, each name laid over its art, with the played pile as the last cell. */
 @media (max-width: 700px) {
   .hand-layout:has(> .battle-hand--rows) {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1754,14 +1755,22 @@
     display: contents;
   }
   .board.board--battle .battle-hand--rows .card--hand {
-    align-content: center;
-    padding: 5px 6px;
+    grid-template: "art" minmax(44px, 1fr) / minmax(0, 1fr);
+    padding: 2px;
   }
   .battle-hand--rows :is(.card__text, .card__foot) {
     display: none;
   }
+  /* The scrim under the name keeps it legible over any painting. */
   .battle-hand--rows .card__head {
+    grid-area: art;
+    z-index: 1;
+    align-self: end;
     display: flow-root;
+    padding: 6px 4px 3px;
+    border-radius: 0 0 3px 3px;
+    background: linear-gradient(transparent, color-mix(in srgb, var(--gh-color-shadow) 82%, transparent) 6px);
+    color: var(--gh-color-text-bright);
     font: 700 13px / 15px var(--gh-font-display);
   }
   /* The cost's float stops at the first line's foot, so a second line runs the card's full width. */
@@ -1785,6 +1794,12 @@
   }
   .hand-layout:has(> .battle-hand--rows) .played-pile :is(.label, .muted) {
     display: none;
+  }
+}
+/* A short phone gives the guided match's coach the height: a card is no taller than its name. */
+@media (max-width: 700px) and (max-height: 700px) {
+  .board.board--battle .battle-hand--rows .card--hand {
+    grid-template-rows: minmax(40px, 1fr);
   }
 }
 @media (prefers-reduced-motion: reduce) {

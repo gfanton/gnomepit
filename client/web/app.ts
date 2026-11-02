@@ -103,10 +103,8 @@ document.body.insertAdjacentHTML("beforeend", rulesHTML());
 const basics = engine.cards.filter((c) => !c.special).map((c) => c.id);
 const stepMs = 1050;
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-// The fan needs a wide window tall enough to show its cards' art, and covers the names of a
-// hand bigger than fanLimit.
-const fanRoom = matchMedia("(min-width: 1001px) and (min-height: 800px)");
-const fanLimit = 7;
+// A window narrower than this rests the hand as compact cards instead of the fan.
+const fanRoom = matchMedia("(min-width: 1001px)");
 const flights = new Set<HTMLElement>();
 
 let flow: Flow = initial;
@@ -772,15 +770,23 @@ function showTip(anchor: HTMLElement | null): void {
 }
 
 // placeTip puts the tip under the anchor, or above it when the viewport ends first, and keeps
-// it inside the viewport sideways.
+// it inside the viewport sideways. A hand card's tip goes above it, else below, else beside it.
 function placeTip(anchor: HTMLElement): void {
   const gap = 8;
   const at = anchor.getBoundingClientRect();
-  let top = anchor.closest(".battle-hand") !== null ? at.top - gap - tip.offsetHeight : at.bottom + gap;
-  if (top + tip.offsetHeight > window.innerHeight && at.top - gap - tip.offsetHeight >= 0)
-    top = at.top - gap - tip.offsetHeight;
+  const above = at.top - gap - tip.offsetHeight;
+  const below = at.bottom + gap;
+  const fitsBelow = below + tip.offsetHeight <= innerHeight - gap;
+  const hand = anchor.closest(".battle-hand") !== null;
+  let top = hand && (above >= gap || !fitsBelow) ? above : below;
+  if (top + tip.offsetHeight > window.innerHeight && above >= 0) top = above;
+  let left = at.left;
+  if (hand && above < gap && !fitsBelow) {
+    top = at.top + at.height / 2 - tip.offsetHeight / 2;
+    left = at.right + gap + tip.offsetWidth <= innerWidth - gap ? at.right + gap : at.left - gap - tip.offsetWidth;
+  }
   top = Math.max(gap, Math.min(top, window.innerHeight - tip.offsetHeight - gap));
-  const left = Math.max(gap, Math.min(at.left, window.innerWidth - tip.offsetWidth - gap));
+  left = Math.max(gap, Math.min(left, window.innerWidth - tip.offsetWidth - gap));
   tip.style.top = `${top}px`;
   tip.style.left = `${left}px`;
 }
@@ -1622,9 +1628,7 @@ function planScreen(): string {
   const sealable = isSealable(plan, legalPlans);
   const unspent = decks[me].filter((id) => !state.gnomes[me].spent.includes(id));
   const handIds = [...basics, ...unspent.filter((id) => !plan.includes(id))];
-  // The cards held at the turn's start pick the layout, so it holds while the plan fills.
-  const held = basics.length + unspent.length;
-  const rows = held > fanLimit || !fanRoom.matches;
+  const rows = !fanRoom.matches;
   const touch = matchMedia("(hover: none)").matches;
   const playedCount = flow.rounds.reduce((n, round) => n + round.plans[me].length, 0);
   const coached = coachedCard();
@@ -1660,7 +1664,7 @@ function planScreen(): string {
       ${title}
       <div class="hand-zone__hint"><span class="label">Your hand <span>${counted(handIds.length, "card")}</span></span><span class="muted">${rows ? "Hover a card to see it whole" : "Lift a card to read"} · click to play · tap to inspect</span></div>
       <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length > 0 ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}${onlineSending ? ' aria-busy="true"' : ""}>${sealLabel()}</button></div></div>
-      <div class="hand-layout"><div class="battle-hand card-grid${rows ? " battle-hand--rows" : ""}" style="--hand-count:${handIds.length};--hand-cols:${Math.ceil(held / 2)}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount > 0 ? "" : "disabled"} aria-label="Open played cards, ${counted(playedCount, "card")}">${cardBackHTML(clans[me], "pile-back")}<span class="label">Played cards</span><span class="muted">${counted(playedCount, "card")} · inspect</span></button></div></section>
+      <div class="hand-layout"><div class="battle-hand card-grid${rows ? " battle-hand--rows" : ""}" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount > 0 ? "" : "disabled"} aria-label="Open played cards, ${counted(playedCount, "card")}">${cardBackHTML(clans[me], "pile-back")}<span class="label">Played cards</span><span class="muted">${counted(playedCount, "card")} · inspect</span></button></div></section>
     ${battleDialogsHTML(me)}`;
 }
 
