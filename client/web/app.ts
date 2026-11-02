@@ -1283,7 +1283,8 @@ function draw(): void {
   if (flow.screen === "playback") {
     patchPlayback();
     const session = playing();
-    queueReveal(session, reducedMotion.matches ? 450 : 1050);
+    // The opponent's cards finish turning by about 1s; the rest of the wait lets them be read.
+    queueReveal(session, reducedMotion.matches ? 450 : 1800);
   }
   if (arrived) arrive();
   dropStaleTip();
@@ -1914,7 +1915,7 @@ function gnomeHTML(side: Side, vitals: ShownVitals, name: string): string {
   const clan = named === null || named === "" ? "Shared" : named;
   return `<div class="fighter fighter--${clan.toLowerCase()}" id="fighter-${side}">
     <div class="fighter__portrait" id="portrait-frame-${side}">${portraitHTML(clan, `class="sprite" id="sprite-${side}"`)}<span class="fighter__crest">${emblem(clan)}</span><div class="combat-floats" id="float-${side}" aria-hidden="true"></div></div>
-    <div class="fighter__vitals"><div class="fighter__name"><h2>${name}</h2><span class="label">${clan}</span></div><div class="hp__row"><span class="fighter__health-label">Health</span><span class="number" id="hp-num-${side}">${vitals.hp} / ${flow.hp}</span></div>
+    <div class="fighter__vitals"><div class="fighter__name"><h2>${name}</h2><span class="label">${named === null || named === "" ? "Clan unknown" : clan}</span></div><div class="hp__row"><span class="fighter__health-label">Health</span><span class="number" id="hp-num-${side}">${vitals.hp} / ${flow.hp}</span></div>
     <div class="hp__bar"><div class="hp__ghost" id="hp-ghost-${side}" style="width:${hpWidth(vitals.hp)}"></div><div class="hp__fill" id="hp-fill-${side}" style="width:${hpWidth(vitals.hp)}"></div></div><div class="chips" id="chips-${side}">${chipsHTML(vitals)}</div></div></div>`;
 }
 
