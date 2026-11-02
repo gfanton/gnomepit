@@ -12,21 +12,21 @@ const round = (n: number, hp: [number, number], events: BattleEvent[] = []): Rou
   state: { round: n + 1, gnomes: [gnome(hp[0]), gnome(hp[1])] },
 });
 const vitals = (hp: number) => ({ hp, block: 0, counter: 0, vulnerable: 0, strength: 0 });
-const hit = (side: Side, card: string, n: number, after: [number, number]) =>
-  event({ kind: "HitLanded", side, card: id(card), n, after: [vitals(after[0]), vitals(after[1])] });
+const hit = (side: Side, card: string, n: number, after: [number, number], beat = 1) =>
+  event({ kind: "HitLanded", side, card: id(card), n, beat, after: [vitals(after[0]), vitals(after[1])] });
 
 test("a win on health is the player's, with the winner's score first", () => {
   const v = verdict([round(1, [15, 15]), round(2, [12, 10]), round(3, [9, 4])], "a", ["You", "Ironhide"]);
   assert.equal(v.winner, 0);
   assert.equal(v.title, "You won");
-  assert.equal(v.detail, "On health after three rounds, 9 to 4.");
+  assert.equal(v.detail, "On health after three rounds: You 9, Ironhide 4.");
 });
 
 test("a loss reads from the player's side", () => {
   const v = verdict([round(1, [12, 15]), round(2, [8, 13]), round(3, [4, 9])], "b", ["You", "Bot"]);
   assert.equal(v.winner, 1);
   assert.equal(v.title, "You lost");
-  assert.equal(v.detail, "On health after three rounds, 9 to 4.");
+  assert.equal(v.detail, "On health after three rounds: Bot 9, You 4.");
 });
 
 test("two players at one screen see the winner's name", () => {
@@ -61,20 +61,72 @@ test("a knockout is decided by the hit that brought the loser down", () => {
     "a",
     ["You", "Pickers"],
   );
-  assert.deepEqual(v.blow, { card: id("Feint"), damage: 6, round: 2, finishing: true });
+  assert.deepEqual(v.blow, { card: id("Feint"), damage: 6, round: 2, kind: "finishing" });
 });
 
-test("a win on health is decided by the winner's hardest hit, the later of a tie", () => {
+// A close match is explained by the swing that settled it, not by its biggest number.
+test("a win on health turns on the hit that put the winner ahead for good", () => {
   const v = verdict(
     [
-      round(1, [15, 11], [hit(0, "Cobble Throw", 2, [15, 13]), hit(1, "Hammer Blow", 5, [10, 13])]),
-      round(2, [10, 9], [hit(0, "Feint", 2, [10, 11])]),
-      round(3, [10, 7], [hit(0, "Pick", 1, [10, 8])]),
+      round(1, [10, 13], [hit(0, "Cobble Throw", 2, [15, 13], 1), hit(1, "Hammer Blow", 5, [10, 13], 2)]),
+      round(2, [10, 9], [hit(0, "Feint", 4, [10, 9], 1)]),
+      round(3, [10, 8], [hit(0, "Pick", 1, [10, 8], 3)]),
     ],
     "a",
     ["You", "Ironhide"],
   );
-  assert.deepEqual(v.blow, { card: id("Feint"), damage: 2, round: 2, finishing: false });
+  assert.deepEqual(v.blow, { card: id("Feint"), damage: 4, round: 2, kind: "lead" });
+});
+
+// Every event of a step carries the vitals after the whole step, the loser's hit included.
+test("a step that puts the winner ahead turns on the winner's hit in it", () => {
+  const v = verdict(
+    [
+      round(1, [14, 13], [hit(1, "Pick", 1, [14, 13]), hit(0, "Hammer Blow", 2, [14, 13])]),
+      round(2, [14, 13]),
+      round(3, [14, 13]),
+    ],
+    "a",
+    ["You", "Pickers"],
+  );
+  assert.deepEqual(v.blow, { card: id("Hammer Blow"), damage: 2, round: 1, kind: "lead" });
+});
+
+test("a lead taken by a Counter falls back to the winner's hardest hit", () => {
+  const counter = event({
+    kind: "CounterHit",
+    side: 1,
+    card: id("Pick"),
+    n: 1,
+    beat: 3,
+    after: [vitals(13), vitals(12)],
+  });
+  const v = verdict(
+    [
+      round(1, [13, 13], [hit(0, "Cobble Throw", 2, [15, 13], 1), hit(1, "Hammer Blow", 2, [13, 13], 2)]),
+      round(2, [13, 12], [counter]),
+      round(3, [13, 12]),
+    ],
+    "a",
+    ["You", "Pickers"],
+  );
+  assert.deepEqual(v.blow, { card: id("Cobble Throw"), damage: 2, round: 1, kind: "hardest" });
+});
+
+test("a knockout dealt by a Counter falls back to the winner's hardest hit", () => {
+  const counter = event({
+    kind: "CounterHit",
+    side: 1,
+    card: id("Pick"),
+    n: 1,
+    beat: 2,
+    after: [vitals(9), vitals(0)],
+  });
+  const v = verdict([round(1, [9, 1], [hit(0, "Feint", 6, [15, 1])]), round(2, [9, 0], [counter])], "a", [
+    "You",
+    "Pickers",
+  ]);
+  assert.deepEqual(v.blow, { card: id("Feint"), damage: 6, round: 1, kind: "hardest" });
 });
 
 test("a winner who dealt no damage has no deciding blow", () => {

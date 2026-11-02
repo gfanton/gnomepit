@@ -19,7 +19,7 @@ import { type Deck, deckSize, newDeck, readiness, sitOutText, toggle, rareOf } f
 import { randomDeck, randomPlan } from "./bot.ts";
 import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.ts";
 import { sentences, matchLog, sideNames, possessive } from "./log.ts";
-import { type Verdict, verdict } from "./result.ts";
+import { type Blow, type Verdict, verdict } from "./result.ts";
 import { counted, glossary, markKeywords, escapeHTML, ruleRefs, rulesHTML } from "./keywords.ts";
 import { type KnownCards, knownCards } from "./table.ts";
 import { type StepFeedback, cardBehind, heavyHit, impact, stepFeedback } from "./battle-feedback.ts";
@@ -1881,6 +1881,12 @@ function finishHTML(): string {
     <div class="button-row"><button class="button" type="button" data-action="playbackDone">Continue</button></div>`;
 }
 
+const blowLabel: Record<Blow["kind"], string> = {
+  finishing: "finishing blow",
+  lead: "turning point",
+  hardest: "hardest hit",
+};
+
 function resultScreen(): string {
   if (flow.mode === "tutorial") return guidedResultHTML();
   const names = battleNames();
@@ -1938,7 +1944,7 @@ function resultStageHTML(v: Verdict, body: string, actions: string): string {
   const blow =
     v.blow === null || v.winner === null
       ? ""
-      : `<p class="result-blow"><span class="label">${possessive(names[v.winner])} ${v.blow.finishing ? "finishing blow" : "hardest hit"}</span>${cardHTML(cardOf(engine.cards, v.blow.card), { small: true })}<span>${v.blow.damage} damage in round ${v.blow.round}</span></p>`;
+      : `<p class="result-blow"><span class="label">${possessive(names[v.winner])} ${blowLabel[v.blow.kind]}</span>${cardHTML(cardOf(engine.cards, v.blow.card), { small: true })}<span>${v.blow.damage} damage in round ${v.blow.round}${v.blow.kind === "lead" ? ", ahead for good" : ""}</span></p>`;
   return `<section class="duel-stage" aria-labelledby="result-title">
       <div class="duel-stage__duel">
         <div class="duel-stage__headline"><h1 id="result-title">${v.title}</h1><p>${v.detail}</p>${blow}</div>
