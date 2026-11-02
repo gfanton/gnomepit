@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "gnomcp": {
+      "type": "stdio",
+      "command": "go",
+      "args": [
+        "run",
+        "github.com/gnoverse/gno-mcp/cmd/gnomcp"
+      ],
+      "env": {}
+    }
+  }
+}
