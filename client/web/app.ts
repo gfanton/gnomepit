@@ -1533,7 +1533,7 @@ function battleHeaderHTML(round: number, phase: string): string {
 
 function roundHTML(round: number, phase: string): string {
   return `<div class="round-medallion"><span class="eyebrow">${phase}</span><span class="round-medallion__number">${round}<small> / 3</small></span>
-    ${roundPipsHTML(round, `aria-label="Round ${round} of 3"`)}</div>`;
+    ${roundPipsHTML(round, `role="img" aria-label="Round ${round} of 3"`)}</div>`;
 }
 
 function beatMarkersHTML(): string {
@@ -1879,7 +1879,7 @@ function guidedResultHTML(): string {
     ${masthead()}
     ${resultStageHTML(
       verdict(flow.rounds, flow.result, battleNames()),
-      `<p class="result-stage__note">${coach.result.real}</p>`,
+      `<p class="duel-stage__note">${coach.result.real}</p>`,
       `<button class="button" type="button" data-action="tutorialOnward">${coach.result.onward[onward ?? "home"]}</button>
       <button class="button button--secondary" type="button" data-action="tutorial"${onward === null ? "" : ` data-mode="${onward}"`}>${coach.result.again}</button>`,
     )}`;
@@ -1892,16 +1892,16 @@ function resultStageHTML(v: Verdict, body: string, actions: string): string {
   const names = battleNames();
   const { state, clans } = underway();
   const champion = (side: Side, place: "near" | "far") => {
-    const outcome = v.winner === null ? "" : v.winner === side ? "result-champion--winner" : "result-champion--loser";
-    return `<figure class="result-champion result-champion--${place} fighter--${clans[side].toLowerCase()} ${outcome}"><div class="result-champion__portrait">${portraitHTML(clans[side], 'class="sprite"')}</div><figcaption><span class="result-champion__name">${names[side]}</span><span class="label">${clans[side]}</span><span class="result-champion__hp">${Math.max(0, state.gnomes[side].hp)} HP</span></figcaption></figure>`;
+    const outcome = v.winner === null ? "" : v.winner === side ? "duel-champion--winner" : "duel-champion--loser";
+    return `<figure class="duel-champion duel-champion--${place} fighter--${clans[side].toLowerCase()} ${outcome}"><div class="duel-champion__portrait">${portraitHTML(clans[side], 'class="sprite"')}</div><figcaption><span class="duel-champion__name">${names[side]}</span><span class="label">${clans[side]}</span><span class="duel-champion__hp">${Math.max(0, state.gnomes[side].hp)} HP</span></figcaption></figure>`;
   };
   const blow =
     v.blow === null || v.winner === null
       ? ""
       : `<p class="result-blow"><span class="label">${possessive(names[v.winner])} ${v.blow.finishing ? "finishing blow" : "hardest hit"}</span>${cardHTML(cardOf(engine.cards, v.blow.card), { small: true })}<span>${v.blow.damage} damage in round ${v.blow.round}</span></p>`;
-  return `<section class="result-stage" aria-labelledby="result-title">
-      <div class="result-stage__duel">
-        <div class="result-verdict"><h1 id="result-title">${v.title}</h1><p>${v.detail}</p>${blow}</div>
+  return `<section class="duel-stage" aria-labelledby="result-title">
+      <div class="duel-stage__duel">
+        <div class="duel-stage__headline"><h1 id="result-title">${v.title}</h1><p>${v.detail}</p>${blow}</div>
         ${champion(viewer, "near")}${champion(otherSide(viewer), "far")}
       </div>
       ${body}

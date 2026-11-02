@@ -21,13 +21,16 @@ const carried = (data: ActionData, extra: string) =>
   );
 const filled = (text: string | null | undefined): text is string => text !== null && text !== undefined && text !== "";
 const textOr = (text: string, fallback: string) => (text === "" ? fallback : text);
-// clanClass is the block's class list plus, for a clan named in plain letters, its clan modifier,
-// which picks that clan's colours. Clan names come from the chain, so nothing else reaches the
-// attribute.
-const clanClass = (block: string, clan: string) => {
+// clanSlug is a clan's name as a class modifier, or "" for a clan still to come or a name not in
+// plain letters. Clan names come from the chain, so nothing else reaches a class attribute.
+const clanSlug = (clan: string) => {
   const slug = clan.toLowerCase();
-  return /^[a-z]+$/.test(slug) ? `${block} ${block}--${slug}` : block;
+  return /^[a-z]+$/.test(slug) ? slug : "";
 };
+// clanClass is the block's class list plus, for a clan with a slug, its clan modifier, which picks
+// that clan's colours.
+const clanClass = (block: string, clan: string) =>
+  clanSlug(clan) === "" ? block : `${block} ${block}--${clanSlug(clan)}`;
 // dueOf is the time a view's deadline or, without one, its expiry falls on.
 const dueOf = (v: View) => (isSet(v.deadline) ? v.deadline : v.expires);
 // waitsFor says whether v's match still waits for a plan sent as context.
@@ -60,8 +63,9 @@ export function linkedMatch(hash: string): string | undefined {
 }
 // roundPipsHTML is a match's three rounds as diamonds: played ones filled, the current one lit;
 // attributes is raw markup on the wrapper, to name the pips for assistive technology or hide them.
+// The wrapper is a span, so the pips sit inside a line of text.
 export function roundPipsHTML(round: number, attributes: string): string {
-  return `<div class="round-pips" ${attributes}>${[1, 2, 3].map((n) => `<span class="${n === round ? "round-pip--current" : n < round ? "round-pip--done" : ""}"></span>`).join("")}</div>`;
+  return `<span class="round-pips" ${attributes}>${[1, 2, 3].map((n) => `<span class="${n === round ? "round-pip--current" : n < round ? "round-pip--done" : ""}"></span>`).join("")}</span>`;
 }
 // setupStep is the first thing a device still lacks to play online: 1 a wallet, 2 a connection
 // on the game's network, 3 the root signature; null once it is ready.
@@ -583,7 +587,25 @@ export function createLobby<Draft extends Drafted = Drafted>({
     const other = v.side === 0 ? 1 : 0;
     const due = dueOf(v);
     const latest = v.hp?.at(-1);
-    return `${header()}${notice()}${notifyOffer(v)}<section class="match"><div class="section-head"><h1>${esc(v.phase === "open" ? (mine ? "Your challenge is up" : "A challenge awaits") : v.phase === "ended" ? resultText(v) : expired ? `Challenge ${v.phase}` : v.action === "move" || early(v) ? "Your move" : v.action === "finish" ? "Ready to finish" : v.action === "claimForfeit" ? "Opponent missed the deadline" : `Waiting for ${textOr(v.clans[other], "a rival")}`)}</h1>${btn("Back to board", "Board", model.busy, true)}</div><div class="fighters">${portrait(v.clans[0], `class="${clanClass("portrait", v.clans[0])}"`)}<strong>${esc(v.clans[0])}</strong><span class="versus">vs</span>${portrait(v.clans[1], `class="${clanClass("portrait", v.clans[1])}"`)}<strong>${esc(textOr(v.clans[1], "Any rival"))}</strong></div><p>Posted by ${v.side === 0 ? "you" : copyButton(v.challenger)}</p>${filled(v.acceptor) ? `<p>Opponent ${copyButton(v.acceptor)}</p>` : ""}<p>${esc(v.phase === "ended" ? reasonText(v) : timeLeft(due))}</p>${isSet(due) ? `<p><small>Deadline: ${esc(deadlineText(due))}</small></p>` : ""}${latest !== undefined ? `<p>Latest clash: ${esc(v.clans[0])} ${esc(latest[0])} HP · ${esc(v.clans[1])} ${esc(latest[1])} HP</p>` : ""}${v.phase === "open" ? `${mine ? "" : "<p>Choose a clan, build eight cards, and plan round 1 before accepting. Their deck stays hidden until round 2.</p>"}${!filled(v.opponent) ? "" : v.opponent === address() ? "<p>Reserved for you.</p>" : `<p>Reserved for ${copyButton(v.opponent)}.${mine ? " Share the link to invite them; reservations do not send notifications." : ""}</p>`}` : v.action === "wait" && mine ? "<p>Your plan is sealed: they can’t see it until they’ve played theirs.</p>" : ""}<div class="banner-actions">${v.action === "accept" ? btn(ready() ? "Accept challenge" : "Connect to accept", ready() ? "Accept" : "Account", model.busy || model.blocked) : ""}${v.session === "expired" && (v.action === "move" || v.action === "finish") ? btn("Renew session to play", "Renew", model.busy || model.blocked) : v.action === "move" || early(v) ? btn(ready() ? "Watch clash & plan" : "Connect to play", ready() ? (early(v) ? "Finish" : "Play") : "Account", model.busy || model.blocked) : v.action === "finish" ? btn("Finish match", "Finish", model.busy || model.blocked) : ""}${v.action === "claimForfeit" ? btn("Claim win", "Claim", model.busy) : ""}${(v.plans ?? []).some((p) => filled(p[0]) && filled(p[1])) ? btn("Review last clash", "Review", model.busy || model.blocked, true) : ""}${mine && v.phase === "open" ? btn("Withdraw challenge", "Resign", model.busy, true) : mine && (v.phase === "play" || v.phase === "reveal") ? btn("Resign match", "Resign", model.busy, true) : ""}${v.phase === "ended" && mine ? btn("Challenge them again", "Rematch", model.busy || model.blocked) : ""}${btn("Copy match link", "Link", false, true)}</div><p class="busy-note" role="status">${model.busy ? esc(textOr(waitingFor(), "Loading…")) : ""}</p></section><dialog id="online-dialog" aria-labelledby="online-dialog-title"></dialog>`;
+    const round = v.round ?? 1;
+    const winner = v.phase !== "ended" ? null : v.result === "a" ? 0 : v.result === "b" ? 1 : null;
+    // The player's champion stands near; a match the player watches puts the challenger there.
+    const champion = (side: 0 | 1) => {
+      const clan = v.clans[side];
+      const seat = filled(v.opponent)
+        ? v.opponent === address()
+          ? "Reserved for you"
+          : "Reserved"
+        : "Anyone can accept";
+      const classes = [
+        "duel-champion",
+        `duel-champion--${side === (v.side === 1 ? 1 : 0) ? "near" : "far"}`,
+        clanSlug(clan) === "" ? "" : `fighter--${clanSlug(clan)}`,
+        winner === null ? "" : winner === side ? "duel-champion--winner" : "duel-champion--loser",
+      ];
+      return `<figure class="${classes.filter(filled).join(" ")}"><div class="duel-champion__portrait">${portrait(clan, 'class="sprite"')}</div><figcaption><span class="duel-champion__name">${esc(side === v.side ? "You" : textOr(clan, "Any rival"))}</span><span class="label">${esc(textOr(clan, seat))}</span>${latest?.[side] !== undefined ? `<span class="duel-champion__hp">${esc(latest[side])} HP</span>` : ""}</figcaption></figure>`;
+    };
+    return `${header()}${notice()}${notifyOffer(v)}<div class="match-nav">${btn("Back to board", "Board", model.busy, true)}</div><section class="duel-stage"><div class="duel-stage__duel"><div class="duel-stage__headline"><h1>${esc(v.phase === "open" ? (mine ? "Your challenge is up" : "A challenge awaits") : v.phase === "ended" ? resultText(v) : expired ? `Challenge ${v.phase}` : v.action === "move" || early(v) ? "Your move" : v.action === "finish" ? "Ready to finish" : v.action === "claimForfeit" ? "Opponent missed the deadline" : `Waiting for ${textOr(v.clans[other], "a rival")}`)}</h1>${v.phase === "play" || v.phase === "reveal" ? `<p class="duel-stage__round">Round ${round} of 3${roundPipsHTML(round, 'aria-hidden="true"')}</p>` : ""}<p>${esc(v.phase === "ended" ? reasonText(v) : timeLeft(due))}</p>${isSet(due) ? `<small>Deadline: ${esc(deadlineText(due))}</small>` : ""}</div>${champion(0)}${champion(1)}</div><p class="duel-stage__note">Posted by ${v.side === 0 ? "you" : copyButton(v.challenger)}${filled(v.acceptor) && v.side !== 1 ? ` · Opponent ${copyButton(v.acceptor)}` : ""}</p>${v.phase === "open" ? `${mine ? "" : '<p class="duel-stage__note">Choose a clan, build eight cards, and plan round 1 before accepting. Their deck stays hidden until round 2.</p>'}${!filled(v.opponent) ? "" : v.opponent === address() ? '<p class="duel-stage__note">Reserved for you.</p>' : `<p class="duel-stage__note">Reserved for ${copyButton(v.opponent)}.${mine ? " Share the link to invite them; reservations do not send notifications." : ""}</p>`}` : v.action === "wait" && mine ? '<p class="duel-stage__note">Your plan is sealed: they can’t see it until they’ve played theirs.</p>' : ""}<div class="banner-actions">${v.action === "accept" ? btn(ready() ? "Accept challenge" : "Connect to accept", ready() ? "Accept" : "Account", model.busy || model.blocked) : ""}${v.session === "expired" && (v.action === "move" || v.action === "finish") ? btn("Renew session to play", "Renew", model.busy || model.blocked) : v.action === "move" || early(v) ? btn(ready() ? "Watch clash & plan" : "Connect to play", ready() ? (early(v) ? "Finish" : "Play") : "Account", model.busy || model.blocked) : v.action === "finish" ? btn("Finish match", "Finish", model.busy || model.blocked) : ""}${v.action === "claimForfeit" ? btn("Claim win", "Claim", model.busy) : ""}${(v.plans ?? []).some((p) => filled(p[0]) && filled(p[1])) ? btn("Review last clash", "Review", model.busy || model.blocked, true) : ""}${mine && v.phase === "open" ? btn("Withdraw challenge", "Resign", model.busy, true) : mine && (v.phase === "play" || v.phase === "reveal") ? btn("Resign match", "Resign", model.busy, true) : ""}${v.phase === "ended" && mine ? btn("Challenge them again", "Rematch", model.busy || model.blocked) : ""}${btn("Copy match link", "Link", false, true)}</div><p class="busy-note" role="status">${model.busy ? esc(textOr(waitingFor(), "Loading…")) : ""}</p></section><dialog id="online-dialog" aria-labelledby="online-dialog-title"></dialog>`;
   }
   function render() {
     app.classList.remove("board--battle");

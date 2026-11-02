@@ -1286,9 +1286,8 @@ button.card:active:not(:disabled, .card--locked) {
   border: 0;
 }
 
-/* ---- Result: the verdict staged on the duel table between the two champions. The winner's
-   ring lights in their clan's colour and the loser's portrait greys, after a beat. */
-.result-stage {
+/* ---- Duel stage: a result or an online match, set between two champions */
+.duel-stage {
   display: grid;
   justify-items: center;
   gap: 28px;
@@ -1306,7 +1305,7 @@ button.card:active:not(:disabled, .card--locked) {
     inset 0 1px 0 color-mix(in srgb, var(--gh-color-trim-bright) 20%, transparent),
     0 14px 36px color-mix(in srgb, var(--gh-color-shadow) 27%, transparent);
 }
-.result-stage__duel {
+.duel-stage__duel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
   grid-template-areas: "near verdict far";
@@ -1315,21 +1314,21 @@ button.card:active:not(:disabled, .card--locked) {
   width: 100%;
   max-width: 980px;
 }
-.result-verdict {
+.duel-stage__headline {
   grid-area: verdict;
   display: grid;
   justify-items: center;
   gap: 10px;
   text-align: center;
 }
-.result-verdict h1 {
+.duel-stage__headline h1 {
   margin: 0;
   color: var(--gh-color-text-bright);
   font: var(--gh-type-display);
   letter-spacing: var(--gh-tracking-display);
   text-shadow: 0 3px 24px color-mix(in srgb, var(--gh-color-shadow) 65%, transparent);
 }
-.result-verdict > p {
+.duel-stage__headline > p {
   margin: 0;
   color: var(--gh-color-text-warm);
   font: var(--gh-type-note);
@@ -1344,28 +1343,28 @@ button.card:active:not(:disabled, .card--locked) {
   color: var(--gh-color-text-muted);
   font: var(--gh-type-caption);
 }
-.result-champion {
+.duel-champion {
   margin: 0;
   display: grid;
   justify-items: center;
   gap: 12px;
   text-align: center;
 }
-.result-champion--near {
+.duel-champion--near {
   grid-area: near;
 }
-.result-champion--far {
+.duel-champion--far {
   grid-area: far;
 }
-.result-champion figcaption {
+.duel-champion figcaption {
   display: grid;
   justify-items: center;
   gap: 2px;
 }
-.result-champion .label {
+.duel-champion .label {
   color: var(--clan-light);
 }
-.result-champion__portrait {
+.duel-champion__portrait {
   padding: 6px;
   border: 3px solid var(--clan-color);
   border-radius: 50%;
@@ -1374,37 +1373,37 @@ button.card:active:not(:disabled, .card--locked) {
     0 0 0 4px color-mix(in srgb, var(--gh-color-canvas) 73%, transparent),
     0 10px 24px color-mix(in srgb, var(--gh-color-shadow) 40%, transparent);
 }
-.result-champion__portrait .sprite {
+.duel-champion__portrait .sprite {
   width: 132px;
   height: 132px;
   border: 0;
 }
-.result-champion__name {
+.duel-champion__name {
   font: var(--gh-type-heading);
 }
-.result-champion__hp {
+.duel-champion__hp {
   color: var(--gh-color-text-glow);
   font: var(--gh-type-subheading);
   font-variant-numeric: var(--gh-numerals);
 }
-.result-champion--winner .result-champion__portrait {
+.duel-champion--winner .duel-champion__portrait {
   scale: 1.06;
   box-shadow:
     0 0 0 4px color-mix(in srgb, var(--gh-color-canvas) 73%, transparent),
     0 0 40px 8px color-mix(in srgb, var(--clan-light) 40%, transparent);
   animation: champion-lit 900ms 250ms var(--gh-ease-out) backwards;
 }
-.result-champion--loser .result-champion__portrait {
+.duel-champion--loser .duel-champion__portrait {
   border-color: var(--gh-color-border);
 }
-.result-champion--loser .sprite {
+.duel-champion--loser .sprite {
   filter: grayscale(0.85) brightness(0.6);
   animation: champion-greyed 900ms 250ms ease-out backwards;
 }
-.result-champion--loser figcaption {
+.duel-champion--loser figcaption {
   opacity: 0.7;
 }
-.result-stage__note {
+.duel-stage__note {
   max-width: 60ch;
   margin: 0;
   color: var(--gh-color-text-muted);
@@ -1586,21 +1585,21 @@ button.card:active:not(:disabled, .card--locked) {
   }
 }
 @media (max-width: 700px) {
-  .result-stage {
+  .duel-stage {
     padding: 28px 14px 20px;
   }
-  .result-stage__duel {
+  .duel-stage__duel {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
       "verdict verdict"
       "near far";
     row-gap: 20px;
   }
-  .result-champion__portrait .sprite {
+  .duel-champion__portrait .sprite {
     width: 88px;
     height: 88px;
   }
-  .result-champion__name {
+  .duel-champion__name {
     font: var(--gh-type-subheading);
   }
 }
@@ -1639,11 +1638,11 @@ button.card:active:not(:disabled, .card--locked) {
 .fighter:first-child .fighter__portrait {
   view-transition-name: champion-near;
 }
-.result-champion--near .result-champion__portrait {
+.duel-champion--near .duel-champion__portrait {
   view-transition-name: champion-near;
 }
 .fighter:last-child .fighter__portrait,
-.result-champion--far .result-champion__portrait {
+.duel-champion--far .duel-champion__portrait {
   view-transition-name: champion-far;
 }
 ::view-transition-group(*) {

@@ -256,38 +256,12 @@
   padding: 0;
   list-style: none;
 }
-.match {
-  background: linear-gradient(
-    125deg,
-    color-mix(in srgb, var(--gh-color-ambient-warm) 9%, var(--gh-color-surface)),
-    var(--gh-color-canvas)
-  );
-  border: 1px solid var(--gh-color-border);
-  border-radius: 4px;
-  padding: 18px;
-  box-shadow:
-    inset 0 1px color-mix(in srgb, var(--gh-color-trim) 12%, transparent),
-    0 6px 12px color-mix(in srgb, var(--gh-color-shadow) 25%, transparent);
-}
-.fighters {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 14px 0;
-}
 .portrait {
   width: 50px;
   height: 56px;
   object-fit: cover;
   border-radius: 5px;
   border: 2px solid var(--clan-color, var(--gh-color-border));
-}
-.versus {
-  color: var(--gh-color-text-muted);
-  font: var(--gh-type-note);
-}
-.opponent {
-  min-width: 0;
 }
 .address {
   white-space: nowrap;
@@ -384,6 +358,46 @@
 }
 .challenge p {
   margin: 8px 0 12px;
+}
+/* A match's page: a back row above the duel stage, which the offline result shares. */
+.match-nav {
+  display: flex;
+  margin: 8px 0 16px;
+}
+.lobby .duel-stage__headline h1 {
+  font: 800 clamp(36px, 3.4vw, 48px) / 1.05 var(--gh-font-display);
+  text-wrap: balance;
+}
+.lobby .duel-stage__headline > p {
+  margin: 0;
+}
+.duel-stage__round {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gh-space-2);
+}
+/* A seat with no clan yet renders an empty portrait: a dashed ring, open until a rival sits. It
+   takes the sprite's size inside the ring's padding, so it matches a filled portrait. */
+.duel-champion__portrait:empty {
+  width: 132px;
+  height: 132px;
+  box-sizing: content-box;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--gh-color-trim) 70%, transparent);
+  background: transparent;
+}
+@media (max-width: 700px) {
+  .duel-champion__portrait:empty {
+    width: 88px;
+    height: 88px;
+  }
+}
+.lobby .duel-stage__note {
+  margin: 0;
+}
+.duel-stage .banner-actions {
+  justify-content: center;
+  margin: 0;
 }
 .footer {
   display: flex;
@@ -544,7 +558,6 @@
   max-width: calc(100% - 32px);
   z-index: 5;
 }
-.match,
 .grudge,
 .challenge {
   animation: notice-in var(--gh-motion-base) ease-out both;
@@ -606,9 +619,6 @@
     align-items: flex-start;
     flex-direction: column;
   }
-  .match {
-    padding: 16px;
-  }
   .grudge {
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas:
@@ -626,15 +636,11 @@
   .footer {
     flex-wrap: wrap;
   }
-  .fighters {
-    gap: 8px;
-  }
   .hall-banner .copy {
     max-width: 100%;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .match,
   .grudge,
   .grudge--turn,
   .challenge {
@@ -665,16 +671,6 @@
     min-height: 127px;
     overflow-y: auto;
     scrollbar-color: var(--gh-color-border) var(--gh-color-surface);
-  }
-  .match {
-    padding: 14px;
-  }
-  .fighters {
-    margin: 10px 0;
-  }
-  .portrait {
-    width: 44px;
-    height: 48px;
   }
   .footer {
     margin-top: 18px;

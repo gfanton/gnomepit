@@ -638,6 +638,45 @@ test("open challenges hang as notices on the board, each read without a copy but
   assert.doesNotMatch(board, /data-action="onlineCopy"/);
 });
 
+test("a match page stages both champions on the table, with their health and addresses", async (t) => {
+  stubPage(t);
+  const arena = endingArena(
+    detail({
+      Phase: "play",
+      Round: 2,
+      Acceptor: bob,
+      ChallengerClan: "Pickers",
+      AcceptorClan: "Ironhide",
+      ToMove: alice,
+      HP: [
+        [15, 15],
+        [12, 9],
+      ],
+      action: "move",
+    }),
+  );
+  const { lobby, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  await lobby.action("Open", { id: "4" });
+  const page = shown();
+  assert.match(page, /<section class="duel-stage">/);
+  assert.match(page, /<figure class="duel-champion duel-champion--near fighter--pickers">.*?>You<.*?>12 HP</s);
+  assert.match(page, /<figure class="duel-champion duel-champion--far fighter--ironhide">.*?>Ironhide<.*?>9 HP</s);
+  assert.match(page, /Round 2 of 3/);
+  assert.match(page, /Posted by you/);
+  assert.equal(page.match(/data-address="g1bob"/g)?.length, 1);
+});
+
+test("an ended match page lights the winner and greys the loser", async (t) => {
+  stubPage(t);
+  const won = detail({ ...ended, ChallengerClan: "Pickers", AcceptorClan: "Ironhide" });
+  const { lobby, shown } = lobbyOf(endingArena(won), bob);
+  await lobby.enter();
+  await lobby.action("Open", { id: "4" });
+  assert.match(shown(), /class="duel-champion duel-champion--near fighter--ironhide duel-champion--winner"/);
+  assert.match(shown(), /class="duel-champion duel-champion--far fighter--pickers duel-champion--loser"/);
+});
+
 test("a match opened from its link is watched", async (t) => {
   stubPage(t);
   const arena = endingArena({ ...lastTurn, action: "wait" });
