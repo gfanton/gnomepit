@@ -385,8 +385,27 @@
   background: var(--gh-color-accent);
   border-color: var(--gh-color-accent);
 }
-.beat-markers .timeline__beat--past {
+.beat-markers .timeline__beat--past > :not(.beat-marker__outcome) {
   opacity: 0.5;
+}
+.beat-marker__outcome {
+  padding-left: 8px;
+  border-left: 1px solid color-mix(in srgb, var(--gh-color-trim) 45%, transparent);
+  color: var(--gh-color-text);
+  font: var(--gh-type-caption);
+  font-variant-caps: normal;
+  font-variant-numeric: var(--gh-numerals);
+  letter-spacing: normal;
+  white-space: nowrap;
+  animation: outcome-in var(--gh-motion-base) var(--gh-ease-out);
+}
+.beat-marker__outcome:empty {
+  display: none;
+}
+@keyframes outcome-in {
+  from {
+    opacity: 0;
+  }
 }
 .board--battle .card--track {
   width: 188px;
@@ -1304,6 +1323,10 @@
     padding: 6px 7px;
     font: var(--gh-type-title-compact);
     font-variant-numeric: var(--gh-numerals);
+  }
+  /* ceiling: the beat column is a gem wide here; Round details keeps each beat's damage. */
+  .beat-marker__outcome {
+    display: none;
   }
   .beat-marker__word,
   .hand-zone__title .muted {

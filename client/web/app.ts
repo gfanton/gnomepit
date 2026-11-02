@@ -22,7 +22,7 @@ import { sentences, matchLog, sideNames, possessive } from "./log.ts";
 import { type Blow, type Verdict, verdict } from "./result.ts";
 import { counted, glossary, markKeywords, escapeHTML, ruleRefs, rulesHTML } from "./keywords.ts";
 import { type KnownCards, knownCards } from "./table.ts";
-import { type StepFeedback, cardBehind, heavyHit, impact, stepFeedback } from "./battle-feedback.ts";
+import { type StepFeedback, beatOutcome, cardBehind, heavyHit, impact, stepFeedback } from "./battle-feedback.ts";
 import { artIndex } from "./art.ts";
 import { loadArena } from "./arena-provider.ts";
 import { messageOf } from "./chain.ts";
@@ -1570,7 +1570,7 @@ function roundHTML(round: number, phase: string): string {
 }
 
 function beatMarkersHTML(): string {
-  return `<div class="beat-markers">${[1, 2, 3].map((n) => `<span class="timeline__beat" id="beat-${n}"><span class="beat-marker__gem" aria-hidden="true"></span><span><span class="beat-marker__word">Beat </span>${n}</span></span>`).join("")}</div>`;
+  return `<div class="beat-markers">${[1, 2, 3].map((n) => `<span class="timeline__beat" id="beat-${n}"><span class="beat-marker__gem" aria-hidden="true"></span><span><span class="beat-marker__word">Beat </span>${n}</span><span class="beat-marker__outcome" id="beat-outcome-${n}"></span></span>`).join("")}</div>`;
 }
 
 function battleDialogsHTML(viewer: Side): string {
@@ -1784,9 +1784,15 @@ function patchPlayback(): void {
       .filter((ev) => ev.kind === "Cancelled")
       .map((ev) => `${ev.side}:${laid[ev.side]?.[ev.beat - 1]?.index}`),
   );
+  const done = shown >= steps.length;
+  const names = battleNames();
   for (const b of [1, 2, 3]) {
+    const resolved = done || (current?.beat ?? 0) > b;
     elementById(`beat-${b}`, HTMLSpanElement).classList.toggle("timeline__beat--current", current?.beat === b);
     elementById(`beat-${b}`, HTMLSpanElement).classList.toggle("timeline__beat--past", (current?.beat ?? 0) > b);
+    elementById(`beat-outcome-${b}`, HTMLSpanElement).textContent = resolved
+      ? beatOutcome(round.events.slice(0, until), b, names, playback.viewer)
+      : "";
   }
   for (const el of app.querySelectorAll(".card--track[data-side][data-index]")) {
     if (!(el instanceof HTMLElement)) continue;
@@ -1799,8 +1805,6 @@ function patchPlayback(): void {
     );
   }
   elementById("log", HTMLDivElement).innerHTML = logHTML(round, steps, shown, lines);
-  const done = shown >= steps.length;
-  const names = battleNames();
   const caption = done
     ? `Round complete. ${names[playback.viewer]}: ${vitals[playback.viewer].hp} HP · ${names[otherSide(playback.viewer)]}: ${vitals[otherSide(playback.viewer)].hp} HP.`
     : current !== undefined

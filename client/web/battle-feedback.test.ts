@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { cards, event, id } from "./fixture.ts";
-import { stepFeedback, cardBehind, heavyHit, impact } from "./battle-feedback.ts";
+import { stepFeedback, cardBehind, heavyHit, impact, beatOutcome } from "./battle-feedback.ts";
 
 test("a fully blocked hit has shield feedback without HP damage", () => {
   const f = stepFeedback([event({ kind: "HitLanded", side: 0, n: 0, blocked: 3 })]);
@@ -82,4 +82,19 @@ test("a hit's impact grows with its damage up to a heavy hit", () => {
 
 test("a heal or a negative tally has no impact", () => {
   assert.equal(impact(-3), 0);
+});
+
+// The caption replaces itself each step, so a resolved beat keeps what it cost each gnome.
+test("beatOutcome is the HP each gnome lost on a beat, the viewer first", () => {
+  const events = [
+    event({ kind: "HitLanded", side: 1, n: 5, beat: 1 }),
+    event({ kind: "HitLanded", side: 0, n: 2, beat: 1 }),
+    event({ kind: "CounterHit", side: 0, n: 1, beat: 1 }),
+    event({ kind: "BlockGained", side: 1, n: 3, beat: 2 }),
+    event({ kind: "HitLanded", side: 1, n: 2, beat: 3 }),
+  ];
+  assert.equal(beatOutcome(events, 1, ["You", "Ironhide"], 0), "You −6 · Ironhide −2");
+  assert.equal(beatOutcome(events, 1, ["Pickers", "You"], 1), "You −2 · Pickers −6");
+  assert.equal(beatOutcome(events, 2, ["You", "Ironhide"], 0), "No damage");
+  assert.equal(beatOutcome(events, 3, ["You", "Ironhide"], 0), "You −2");
 });

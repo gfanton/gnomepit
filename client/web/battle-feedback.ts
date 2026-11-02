@@ -32,6 +32,16 @@ export function stepFeedback(events: BattleEvent[]): StepFeedback {
   return { sides, cancelled };
 }
 
+// beatOutcome sums the HP each gnome lost on beat, the viewer named first, gnomes that lost none
+// left out.
+export function beatOutcome(events: BattleEvent[], beat: number, names: [string, string], viewer: Side): string {
+  const { sides } = stepFeedback(events.filter((e) => e.beat === beat));
+  const lost = [viewer, otherSide(viewer)]
+    .filter((side) => sides[side].damage > 0)
+    .map((side) => `${names[side]} −${sides[side].damage}`);
+  return lost.length > 0 ? lost.join(" · ") : "No damage";
+}
+
 // A hit of heavyHit HP or more lands with full force.
 export const heavyHit = 5;
 
