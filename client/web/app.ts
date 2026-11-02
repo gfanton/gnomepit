@@ -189,8 +189,9 @@ const lobby: Lobby<Draft> | null =
           playback = null;
           onlineContext = null;
           flow = initial;
-          render();
-          if (offline) app.querySelector(".offline-row")?.scrollIntoView({ block: "center" });
+          render(() => {
+            if (offline) app.querySelector(".offline-row")?.scrollIntoView({ block: "center" });
+          });
         },
         onCompose: (context) => {
           onlineContext = context;
@@ -493,6 +494,9 @@ const handlers = {
     if (clan === undefined) return;
     if (deck?.clan !== name) deck = newDeck(clan);
     choosingClan = false;
+    // The chosen clan's picture carries over into the deck banner's portrait.
+    const art = app.querySelector(`.clan-choice[data-name="${clan.name}"] .clan-choice__art`);
+    if (art instanceof HTMLElement) art.style.viewTransitionName = "champion-near";
     render();
   },
   toggle: ({ id }: DOMStringMap) => {
@@ -1042,7 +1046,42 @@ function copyMatchLog(): void {
 
 // ---- Rendering
 
-function render(): void {
+// pageOf is the page the state calls for: one per screen, one per deck stage, and the lobby's
+// board or one of its matches. A move between two pages runs a view transition.
+function pageOf(): string {
+  if (lobby !== null && lobby.model.active && !lobby.model.inGame) return `lobby:${lobby.model.view?.id ?? ""}`;
+  return flow.screen === "deck" ? `deck:${choosingClan ? "clan" : "cards"}` : flow.screen;
+}
+let drawnPage = "";
+// The callbacks waiting on a draw the browser has deferred to capture the page it leaves; null
+// while none is deferred.
+let deferred: (() => void)[] | null = null;
+
+// render draws the state. A move to another page lets the browser capture the page it leaves
+// first, so the draw runs a frame later; after runs once the state is drawn. A render while a draw
+// is deferred joins it, since that draw shows the state as it is by then.
+function render(after?: () => void): void {
+  if (deferred !== null) {
+    if (after !== undefined) deferred.push(after);
+    return;
+  }
+  const leaving = drawnPage !== "" && pageOf() !== drawnPage;
+  if (!leaving || reducedMotion.matches || document.hidden || !("startViewTransition" in document)) {
+    draw();
+    after?.();
+    return;
+  }
+  const waiting = after === undefined ? [] : [after];
+  deferred = waiting;
+  document.startViewTransition(() => {
+    deferred = null;
+    draw();
+    for (const run of waiting) run();
+  });
+}
+
+function draw(): void {
+  drawnPage = pageOf();
   if (lobby !== null && lobby.model.active && !lobby.model.inGame) {
     if (app.contains(tip)) document.body.append(tip);
     tip.hidden = true;
@@ -1120,15 +1159,6 @@ function render(): void {
     const session = playing();
     queueReveal(session, reducedMotion.matches ? 450 : 1050);
   }
-  if (previousScreen !== flow.screen)
-    animateElement(
-      app.querySelector(".duel-table"),
-      [
-        { opacity: 0.2, transform: "translateY(7px)" },
-        { opacity: 1, transform: "translateY(0)" },
-      ],
-      { duration: 360 },
-    );
   dropStaleTip();
 }
 

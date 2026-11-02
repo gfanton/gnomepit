@@ -238,6 +238,8 @@
   --gh-radius-round: 999px;
   --gh-motion-fast: 160ms;
   --gh-motion-base: 220ms;
+  --gh-motion-page: 420ms;
+  --gh-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 /* A clan-coloured element names its clan with a modifier class; these blocks turn that clan into
    the colours the element reads. Cards carry their own fuller material below. */
@@ -1396,6 +1398,46 @@ button.card:focus-visible {
   .clan-banner > .button {
     grid-column: 1 / -1;
     justify-self: start;
+  }
+}
+/* ---- Screen transitions: the page fades through to the next, the wordmark holds its place, and the
+   player's champion carries over from clan choice to the deck banner to the near fighter. Pages
+   of the site fade the same way. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
+.masthead .wordmark,
+.battle-header .wordmark {
+  view-transition-name: wordmark;
+}
+.clan-banner__portrait,
+.fighter:first-child .fighter__portrait {
+  view-transition-name: champion-near;
+}
+.fighter:last-child .fighter__portrait {
+  view-transition-name: champion-far;
+}
+::view-transition-group(*) {
+  animation-duration: var(--gh-motion-page);
+  animation-timing-function: var(--gh-ease-out);
+}
+::view-transition-old(root) {
+  animation: page-out var(--gh-motion-fast) ease-in both;
+}
+::view-transition-new(root) {
+  animation: page-in var(--gh-motion-page) var(--gh-ease-out) both;
+}
+@keyframes page-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
 }
 @media (prefers-reduced-motion: reduce) {
