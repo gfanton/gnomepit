@@ -13,6 +13,7 @@ import (
 // Accept answers open challenge id as clan, with deck and the round-1 plan in plain
 // text. When the challenge names an opponent, only that address may accept.
 func Accept(cur realm, id, clan, deck, plan string) {
+	mustBeOpen()
 	rules := engine.ProofOfConcept()
 	n, m := find(rules, id)
 	now := time.Now().Unix()

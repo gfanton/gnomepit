@@ -44,6 +44,7 @@ type OpenChallenge struct {
 // It returns the new match's id. It first deletes up to 8 expired challenges, whoever
 // posted them.
 func Challenge(cur realm, clan, deckSeal, planSeal, box string, opponent address) string {
+	mustBeOpen()
 	rules := engine.ProofOfConcept()
 	c := clanNumber(rules, clan)
 	if c == 0 {

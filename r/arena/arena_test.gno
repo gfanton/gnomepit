@@ -31,6 +31,7 @@ func reset() {
 	chunks = avl.Tree{}
 	players = avl.Tree{}
 	openList = ""
+	retired = false
 }
 
 func sealOf(salt, text string) string {
