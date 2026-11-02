@@ -16,7 +16,7 @@ export const coach = {
     {
       title: "Timing beats strength.",
       steps: [
-        "Hammer Blow takes two beats, so on beat 1 it is only winding up. Kneecap is Quick and Interrupts: play it on beat 1 and the blow never lands.",
+        "A card's number is how many beats it fills. Hammer Blow takes two, so on beat 1 it is only winding up. Kneecap is Quick and Interrupts: play it on beat 1 and the blow never lands.",
         "Chalk Dust makes Ironhide Vulnerable: the next hit against it deals double. Play it on beat 2.",
         "Now Sling Stone on beat 3. Its 2 damage lands doubled.",
       ],

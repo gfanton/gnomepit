@@ -327,6 +327,10 @@
 .match-list > .empty {
   border: 0;
 }
+.challenge :focus-visible,
+.challenge-list > .empty :focus-visible {
+  outline-color: var(--gh-color-ink);
+}
 .challenge .label,
 .challenge small,
 .challenge-list > .empty p {

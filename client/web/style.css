@@ -329,6 +329,10 @@ summary {
   outline: 2px solid var(--gh-color-highlight);
   outline-offset: 4px;
 }
+/* Brass is 1.3:1 against parchment, too faint to find focus inside a card. */
+.card :focus-visible {
+  outline-color: var(--gh-color-ink);
+}
 /* A heading or line a new screen focuses only to start the reader there; nothing on it acts. */
 :is(h1, h2, h3, p)[tabindex="-1"]:focus-visible {
   outline: none;
@@ -706,6 +710,42 @@ dialog::backdrop {
 }
 .showcase--roster .card:nth-child(n) {
   transform: none;
+}
+.rules {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 28px 40px;
+  margin-bottom: 24px;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-border-pale) 31%, transparent);
+  border-radius: 7px;
+  background: var(--gh-color-surface);
+}
+.rules__steps {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding-left: 20px;
+  font: var(--gh-type-body);
+}
+.rules__steps li::marker {
+  color: var(--gh-color-trim);
+}
+.rule-words {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 28px;
+  margin: 14px 0 0;
+}
+.rule-words dt {
+  color: var(--gh-color-text-bright);
+  font: var(--gh-type-title);
+  text-transform: capitalize;
+}
+.rule-words dd {
+  margin: 4px 0 0;
+  color: var(--gh-color-text-muted);
+  font: var(--gh-type-rules);
 }
 .collection {
   display: grid;
@@ -1464,6 +1504,9 @@ button.card:active:not(:disabled, .card--locked) {
 }
 
 @media (max-width: 1050px) {
+  .rules {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .board {
     padding: 20px;
   }
@@ -1570,6 +1613,12 @@ button.card:active:not(:disabled, .card--locked) {
   .hall-footer {
     gap: 12px;
     flex-wrap: wrap;
+  }
+  .rules {
+    padding: 14px 12px 18px;
+  }
+  .rule-words {
+    grid-template-columns: minmax(0, 1fr);
   }
   .collection {
     padding: 14px 10px 18px;

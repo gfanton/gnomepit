@@ -112,6 +112,11 @@ test("each rails round has one coach step per rails card", () => {
   });
 });
 
+// Nothing on a card says its corner number counts beats, so the first step a player reads says so.
+test("the first coach step says a card's number is the beats it fills", () => {
+  assert.match(known(coach.rounds[0]?.steps?.[0]), /^A card's number is how many beats it fills\./);
+});
+
 test("round 3's hint leaves Ironhide's plan for the player to work out", () => {
   const m = tutorialMatch(engine);
   const hint = known(coach.rounds[2]?.hint);

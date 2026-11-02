@@ -20,7 +20,7 @@ import { randomDeck, randomPlan } from "./bot.ts";
 import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.ts";
 import { sentences, matchLog, sideNames, possessive } from "./log.ts";
 import { type Verdict, verdict } from "./result.ts";
-import { counted, glossary, markKeywords, escapeHTML } from "./keywords.ts";
+import { counted, glossary, markKeywords, escapeHTML, ruleRefs, rulesHTML } from "./keywords.ts";
 import { type KnownCards, knownCards } from "./table.ts";
 import { type StepFeedback, cardBehind, heavyHit, impact, stepFeedback } from "./battle-feedback.ts";
 import { artIndex } from "./art.ts";
@@ -98,6 +98,7 @@ const engine = await loadEngine("engine.wasm", "cards.json");
 const art = artIndex(await (await fetch("art/assets.json")).json());
 const app = elementById("app", HTMLElement);
 const tip = elementById("tip", HTMLDivElement);
+document.body.insertAdjacentHTML("beforeend", rulesHTML());
 const basics = engine.cards.filter((c) => !c.special).map((c) => c.id);
 const stepMs = 1050;
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
@@ -1457,7 +1458,7 @@ function clanChoicesHTML(): string {
     .join("")}</div>`;
 }
 function title(): string {
-  return `<header class="masthead">${wordmarkHTML("./")}<nav class="home-nav" aria-label="Explore the game">${lobby !== null ? '<a href="leaderboard.html">Leaderboard</a>' : ""}<button type="button" data-action="tutorial">How to play</button><button type="button" data-action="library">Card library</button></nav></header>
+  return `<header class="masthead">${wordmarkHTML("./")}<nav class="home-nav" aria-label="Explore the game">${lobby !== null ? '<a href="leaderboard.html">Leaderboard</a>' : ""}<button type="button" data-action="tutorial">How to play</button><button type="button" data-action="library">Rules and cards</button></nav></header>
     ${
       lobby === null && linkedMatch(location.hash) !== undefined
         ? `<section class="notice" role="status"><div><strong>That link opens an online match</strong><p>This copy of Gnomepit plays offline only, so it can’t open the match. Play the bot, or two players on one screen, here.</p></div></section>`
@@ -1476,13 +1477,30 @@ function title(): string {
       </div>
       <div class="intro__art"><img src="art/hall-hero-v2.jpg" alt="Gnomes gather around a card table in the underground hall"><span class="intro__art-label">WELCOME TO GNOMEPIT<span>Different clans. Shared grudges.</span></span></div>
     </section>
-    <section class="home-library"><button type="button" class="text-button" data-action="library">Meet the clans and every card in the card library <span aria-hidden="true">→</span></button></section>
-    <footer class="hall-footer"><span>Forged below. Settled at the table.</span><nav class="offline-row" aria-label="Play offline"><span>Play offline:</span><button type="button" class="text-button" data-action="playMode" data-mode="bot">Bot</button><button type="button" class="text-button" data-action="playMode" data-mode="hotseat">Two players</button><button type="button" class="text-button" data-action="library">Card library</button></nav></footer>
+    <section class="home-library"><button type="button" class="text-button" data-action="library">Meet the clans and read every card <span aria-hidden="true">→</span></button></section>
+    <footer class="hall-footer"><span>Forged below. Settled at the table.</span><nav class="offline-row" aria-label="Play offline"><span>Play offline:</span><button type="button" class="text-button" data-action="playMode" data-mode="bot">Bot</button><button type="button" class="text-button" data-action="playMode" data-mode="hotseat">Two players</button><button type="button" class="text-button" data-action="library">Rules and cards</button></nav></footer>
     <dialog class="offer" id="tutorial-offer" aria-labelledby="offer-title"><h2 id="offer-title">${coach.offer.title}</h2><p>${coach.offer.body}</p>
       <div class="button-row"><button class="button" type="button" data-action="tutorial">${coach.offer.start}</button><button class="button button--secondary" type="button" data-action="tutorialSkip">${coach.offer.skip}</button></div></dialog>`;
 }
 function libraryScreen(): string {
-  return `${masthead("Know your tools. Read your rival.")}<div class="section-intro"><div><h1 class="heading">Card library</h1><p>Every card available in this build. Read the rules and find your favorites.</p></div><button class="button button--secondary" data-action="home">Back to the hall</button></div>${collectionHTML()}`;
+  return `${masthead("Know your tools. Read your rival.")}<div class="section-intro"><div><h1 class="heading">Rules and cards</h1><p>How a match plays out, what each rule word means, and every card in this build.</p></div><button class="button button--secondary" data-action="home">Back to the hall</button></div>${rulesSectionHTML()}${collectionHTML()}`;
+}
+
+function rulesSectionHTML(): string {
+  const shared = engine.cards.filter((c) => !c.special).map((c) => c.name);
+  const steps = [
+    `Each gnome starts with ${engine.hp} HP. A match lasts three rounds.`,
+    `Before the match, build a deck: ${deckSize} of your clan's cards, with the Rare always in.`,
+    "Each round, both players plan three beats in secret. Then both plans are revealed and play out beat by beat.",
+    "The number in a card's corner is how many beats it fills. The card lands on its last beat; on the beats before, it is winding up.",
+    "On each beat, cancels come first, then Block, then damage. Quick cards act before Normal cards, and Slow cards after.",
+    `A clan card plays once per match. ${shared.join(" and ")}, the shared techniques, never run out.`,
+    "A gnome that drops to 0 HP loses on the spot. Otherwise the higher HP after round 3 wins, and equal HP is a draw.",
+  ];
+  const words = Object.entries(glossary).map(
+    ([key, rule]) => `<div><dt>${tipTitles[key] ?? key}</dt><dd>${rule}</dd></div>`,
+  );
+  return `<section class="rules"><div><h2 class="heading">How a match works</h2><ul class="rules__steps">${steps.map((step) => `<li>${step}</li>`).join("")}</ul></div><div><h2 class="heading">Rule words</h2><dl class="rule-words">${words.join("")}</dl></div></section>`;
 }
 function clanSelectionScreen(): string {
   const heading = flow.mode === "hotseat" ? `Player ${flow.acting + 1}, choose your clan` : "Choose your clan";
@@ -1943,7 +1961,8 @@ function chipsHTML(vitals: ShownVitals): string {
   )
     .filter(([key]) => (vitals[key] ?? 0) > 0)
     .map(
-      ([key, label]) => `<span class="chip chip--${key}" data-kw="${key}" tabindex="0">${label} ${vitals[key]}</span>`,
+      ([key, label]) =>
+        `<span class="chip chip--${key}" data-kw="${key}" tabindex="0" aria-describedby="rule-${key}">${label} ${vitals[key]}</span>`,
     )
     .join("");
 }
@@ -1997,13 +2016,13 @@ function cardHTML(
   ].join(" ");
   // A plain full card lets keyboard and touch reach the rules behind its words and badges.
   const tips = action === null && !small;
-  const tipStop = tips ? ' tabindex="0"' : "";
+  const tipStop = (key: string) => (tips ? ` tabindex="0" aria-describedby="rule-${key}"` : "");
   const badges = [
     c.tier !== "Normal"
-      ? `<span class="badge badge--${c.tier.toLowerCase()}" data-kw="${c.tier.toLowerCase()}"${tipStop}>${c.tier}</span>`
+      ? `<span class="badge badge--${c.tier.toLowerCase()}" data-kw="${c.tier.toLowerCase()}"${tipStop(c.tier.toLowerCase())}>${c.tier}</span>`
       : "",
     c.rare
-      ? `<span class="badge badge--rare" data-kw="rare"${tipStop}><span aria-hidden="true">✦</span> Rare</span>`
+      ? `<span class="badge badge--rare" data-kw="rare"${tipStop("rare")}><span aria-hidden="true">✦</span> Rare</span>`
       : "",
     spentRound > 0 ? `<span class="badge badge--spent">Spent R${spentRound}</span>` : "",
   ].join("");
@@ -2016,7 +2035,8 @@ function cardHTML(
     <div class="card__text">${markKeywords(c.text, { focusable: tips })}</div>
     <div class="card__foot"><span class="card__clan">${emblem(clan)}${clan}</span>${badges}</div>${sealed !== "" ? cardBackHTML(sealed, "card__back") : ""}`;
   if (action === null) return `<div class="${classes}" ${state} ${small ? `tabindex="0"` : ""} ${data}>${body}</div>`;
-  return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${hand ? `aria-label="${escapeHTML(`${c.name}, ${counted(c.cost, "beat")}. ${c.text}`).replaceAll('"', "&quot;")}"` : ""} ${state} ${data} ${dimmed ? "disabled" : ""}>${body}</button>`;
+  const rules = ruleRefs(c);
+  return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${hand ? `aria-label="${escapeHTML(`${c.name}, ${counted(c.cost, "beat")}. ${c.text}`).replaceAll('"', "&quot;")}"${rules === "" ? "" : ` aria-describedby="${rules}"`}` : ""} ${state} ${data} ${dimmed ? "disabled" : ""}>${body}</button>`;
 }
 
 // cardBackHTML is the back of a card of clan, hidden from assistive technology; an empty clan, a
