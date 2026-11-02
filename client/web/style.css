@@ -1130,7 +1130,7 @@ button.card:focus-visible {
 }
 .hp__ghost {
   background: var(--gh-color-hp-ghost);
-  transition: width var(--gh-motion-base) var(--gh-motion-base);
+  transition: width var(--gh-motion-base) calc(var(--gh-motion-base) + 500ms * var(--impact, 0));
 }
 .chips {
   display: flex;

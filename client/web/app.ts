@@ -21,7 +21,7 @@ import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan
 import { sentences, matchLog, resultLine, sideNames, possessive } from "./log.ts";
 import { glossary, markKeywords, escapeHTML } from "./keywords.ts";
 import { type KnownCards, knownCards } from "./table.ts";
-import { stepFeedback, cardBehind } from "./battle-feedback.ts";
+import { type StepFeedback, cardBehind, heavyHit, impact, stepFeedback } from "./battle-feedback.ts";
 import { artIndex } from "./art.ts";
 import { loadArena } from "./arena-provider.ts";
 import { messageOf } from "./chain.ts";
@@ -90,6 +90,7 @@ type CardOptions = {
   hand?: boolean;
   track?: boolean;
   coached?: boolean;
+  sealed?: string;
 };
 
 const engine = await loadEngine("engine.wasm", "cards.json");
@@ -579,7 +580,7 @@ const handlers = {
   },
   skip: () => {
     stopPlaying();
-    for (const card of app.querySelectorAll(".card-reveal")) card.classList.remove("card-reveal");
+    for (const card of app.querySelectorAll(".card--sealed")) card.classList.remove("card--sealed");
     const session = playing();
     const lesson = session.lessons.find((l) => !l.shown);
     if (lesson === undefined) return showStep(session.steps.length, false);
@@ -779,10 +780,18 @@ function showStep(n: number, animate = true): void {
     clearInterval(playback.timer);
     playback.timer = null;
   }
-  patchPlayback();
   const step = playback.steps[target - 1];
-  if (animate && sequential && step !== undefined) {
-    animateStep(shownRound().events.slice(step.from, step.to));
+  const events = animate && sequential && step !== undefined ? shownRound().events.slice(step.from, step.to) : null;
+  const feedback = events === null ? null : stepFeedback(events);
+  // The HP bar's trailing drain lingers in proportion to the hit; it takes its pace before the bar moves.
+  for (const side of [0, 1] as const)
+    elementById(`hp-ghost-${side}`, HTMLDivElement).style.setProperty(
+      "--impact",
+      String(impact(feedback?.sides[side].damage ?? 0)),
+    );
+  patchPlayback();
+  if (events !== null && feedback !== null && step !== undefined) {
+    animateStep(events, feedback);
     pauseForLesson(step);
   } else for (const side of [0, 1]) elementById(`float-${side}`, HTMLDivElement).replaceChildren();
 }
@@ -913,14 +922,19 @@ function flyCard(source: Element | null, from: DOMRect | undefined, destination:
   );
 }
 
-function animateStep(events: BattleEvent[]): void {
-  const feedback = stepFeedback(events);
+// animateStep plays one step's feedback. A hit's force, from impact, sets how far the struck
+// portrait recoils, how large its number rises and how far the striking card lunges; a heavy
+// hit also jolts the table.
+function animateStep(events: BattleEvent[], feedback: StepFeedback): void {
   const round = shownRound();
   const laid = round.plans.map((p) => slots(p, engine.cards));
   for (const side of [0, 1] as const) {
     const f = feedback.sides[side];
+    const force = impact(f.damage);
     const labels = [
-      f.damage > 0 ? `<span class="combat-float combat-float--damage">−${f.damage} HP</span>` : "",
+      f.damage > 0
+        ? `<span class="combat-float combat-float--damage" style="--impact:${force}">−${f.damage} HP</span>`
+        : "",
       f.blocked > 0 ? `<span class="combat-float combat-float--block">Blocked ${f.blocked}</span>` : "",
       f.block > 0 ? `<span class="combat-float combat-float--block">+${f.block} Block</span>` : "",
       f.block < 0 ? `<span class="combat-float combat-float--debuff">−${-f.block} Block</span>` : "",
@@ -930,18 +944,25 @@ function animateStep(events: BattleEvent[]): void {
       f.vulnerable < 0 ? `<span class="combat-float combat-float--buff">Vulnerable −${-f.vulnerable}</span>` : "",
     ].join("");
     elementById(`float-${side}`, HTMLDivElement).innerHTML = labels;
-    const portrait = elementById(`sprite-${side}`, HTMLImageElement);
-    if (f.damage > 0)
+    if (f.damage > 0) {
+      // Away from the table: the near fighter is pushed left, the far one right.
+      const away = elementById(`fighter-${side}`, HTMLDivElement).matches(":first-child") ? -1 : 1;
+      const reach = away * (5 + 11 * force);
       animateElement(
-        portrait,
+        elementById(`sprite-${side}`, HTMLImageElement),
         [
-          { transform: "translateX(0)", filter: "brightness(1)" },
-          { transform: "translateX(-7px)", filter: "brightness(1.5)" },
-          { transform: "translateX(5px)" },
-          { transform: "translateX(0)", filter: "brightness(1)" },
+          { transform: "translateX(0) rotate(0)", filter: "brightness(1)" },
+          {
+            transform: `translateX(${reach}px) rotate(${away * 7 * force}deg)`,
+            filter: `brightness(${1.4 + 0.5 * force})`,
+            offset: 0.25,
+          },
+          { transform: `translateX(${-0.4 * reach}px) rotate(0)`, offset: 0.6 },
+          { transform: "translateX(0) rotate(0)", filter: "brightness(1)" },
         ],
-        { duration: 320 },
+        { duration: 320 + 260 * force },
       );
+    }
     if (f.blocked > 0 || f.block > 0)
       animateElement(
         elementById(`portrait-frame-${side}`, HTMLDivElement),
@@ -962,14 +983,31 @@ function animateStep(events: BattleEvent[]): void {
   for (const event of events) {
     const { side, index } = cardBehind(event, round.plans, engine.cards);
     const key = `${side}:${index}`;
-    if (!active.has(key))
+    if (active.has(key)) continue;
+    active.add(key);
+    const card = app.querySelector(`.card--track[data-side="${side}"][data-index="${index}"]`);
+    if (event.kind === "HitLanded")
+      lunge(card, elementById(`portrait-frame-${otherSide(side)}`, HTMLDivElement), impact(event.n + event.blocked));
+    else
       animateElement(
-        app.querySelector(`.card--track[data-side="${side}"][data-index="${index}"]`),
+        card,
         [{ transform: "translateY(0)" }, { transform: "translateY(-7px) scale(1.03)" }, { transform: "translateY(0)" }],
         { duration: 500 },
       );
-    active.add(key);
   }
+  if (Math.max(feedback.sides[0].damage, feedback.sides[1].damage) >= heavyHit)
+    animateElement(
+      app.querySelector(".duel-table"),
+      [
+        { translate: "0 0" },
+        { translate: "-5px 2px" },
+        { translate: "5px -2px" },
+        { translate: "-3px 1px" },
+        { translate: "2px 0" },
+        { translate: "0 0" },
+      ],
+      { duration: 420, delay: 80, easing: "linear" },
+    );
   for (const cancelled of feedback.cancelled) {
     const index = laid[cancelled.side]?.[cancelled.beat - 1]?.index;
     const card = app.querySelector(`.card--track[data-side="${cancelled.side}"][data-index="${index}"]`);
@@ -984,6 +1022,29 @@ function animateStep(events: BattleEvent[]): void {
       { duration: 350 },
     );
   }
+}
+
+// lunge drives a striking card toward the portrait it hits and back, further the harder the hit.
+function lunge(card: Element | null, target: Element, force: number): void {
+  if (card === null) return;
+  const from = card.getBoundingClientRect();
+  const to = target.getBoundingClientRect();
+  const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+  const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+  const reach = (10 + 16 * force) / Math.max(1, Math.hypot(dx, dy));
+  animateElement(
+    card,
+    [
+      { transform: "translate(0, 0) scale(1)", easing: "cubic-bezier(0.5, 0, 0.75, 0)" },
+      {
+        transform: `translate(${dx * reach}px, ${dy * reach}px) scale(${1.04 + 0.04 * force})`,
+        offset: 0.35,
+        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+      },
+      { transform: "translate(0, 0) scale(1)" },
+    ],
+    { duration: 520, easing: "linear" },
+  );
 }
 
 function openDialog(dialog: HTMLDialogElement): void {
@@ -1388,12 +1449,7 @@ function planScreen(): string {
       <button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Details: ${c.name}">Details</button></div>`;
     })
     .join("");
-  const backs = [1, 2, 3]
-    .map(
-      () =>
-        `<div class="card-back card-back--${(clans[opponent] === "" ? "shared" : clans[opponent]).toLowerCase()}" aria-hidden="true"><span>${emblem(clans[opponent])}</span></div>`,
-    )
-    .join("");
+  const backs = [1, 2, 3].map(() => cardBackHTML(clans[opponent])).join("");
   const practice = flow.mode === "tutorial" && guidedRound().rails !== null ? guidedRound().opponent : null;
   const opponentTrack =
     practice === null
@@ -1417,7 +1473,7 @@ function planScreen(): string {
       ${title}
       <div class="hand-zone__hint"><span class="label">Your hand <span>${handIds.length} cards</span></span><span class="muted">Lift a card to read · click to play · tap to inspect</span></div>
       <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length > 0 ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}${onlineSending ? ' aria-busy="true"' : ""}>${flow.mode === "online" ? (onlineMatch().intent === "challenge" ? "Post challenge" : onlineMatch().intent === "accept" ? "Accept challenge" : "Send plan") : "Seal plan"}</button></div></div>
-      <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount > 0 ? "" : "disabled"} aria-label="Open played cards, ${playedCount} cards"><span class="pile-back card-back card-back--${(clans[me] === "" ? "shared" : clans[me]).toLowerCase()}"><span>${emblem(clans[me])}</span></span><span class="label">Played cards</span><span class="muted">${playedCount} cards · inspect</span></button></div></section>
+      <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount > 0 ? "" : "disabled"} aria-label="Open played cards, ${playedCount} cards">${cardBackHTML(clans[me], "pile-back")}<span class="label">Played cards</span><span class="muted">${playedCount} cards · inspect</span></button></div></section>
     ${battleDialogsHTML(me)}`;
 }
 
@@ -1478,6 +1534,7 @@ function coachHTML(sealable: boolean): string {
 function playbackScreen(): string {
   const round = shownRound();
   const names = battleNames();
+  const { clans } = underway();
   const session = playing();
   const me = session.viewer,
     opponent = otherSide(me);
@@ -1490,7 +1547,7 @@ function playbackScreen(): string {
         const c = cardOf(engine.cards, id);
         const from = beat + 1;
         beat += c.cost;
-        return `<div class="slot card-reveal" style="--beats:${c.cost};--reveal-delay:${index * 120}ms">${cardHTML(c, { track: true, action: "inspectCard", data: `data-side="${side}" data-index="${index}"` })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
+        return `<div class="slot" style="--beats:${c.cost};--reveal-delay:${index * 140}ms">${cardHTML(c, { track: true, action: "inspectCard", data: `data-side="${side}" data-index="${index}"`, sealed: side === me ? "" : clans[side] })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
       })
       .join("")}</div></div>`;
   };
@@ -1717,6 +1774,7 @@ function hpWidth(hp: number): string {
 // pressed marks a toggle's state, locked a toggle that does nothing, coached the card the
 // guided match asks for next. A small card shows cost, name and badges and peeks the full
 // card on hover or focus. spentRound, when above 0, marks the round the card was played in.
+// sealed names the clan whose back the card shows until it turns over.
 function cardHTML(
   c: Card,
   {
@@ -1731,6 +1789,7 @@ function cardHTML(
     hand = false,
     track = false,
     coached = false,
+    sealed = "",
   }: CardOptions = {},
 ): string {
   const clan = cardClan(c);
@@ -1746,6 +1805,7 @@ function cardHTML(
     small ? "card--small" : "",
     locked ? "card--locked" : "",
     coached ? "card--coached" : "",
+    sealed !== "" ? "card--sealed" : "",
     spentRound > 0 ? "card--spent" : "",
   ].join(" ");
   const state = [
@@ -1767,9 +1827,15 @@ function cardHTML(
     <div class="card__head"><span class="card__cost" aria-label="${c.cost} beats">${c.cost}</span><span class="card__name">${c.name}</span></div>
     ${artHTML(c)}
     <div class="card__text">${markKeywords(c.text)}</div>
-    <div class="card__foot"><span class="card__clan">${emblem(clan)}${clan}</span>${badges}</div>`;
+    <div class="card__foot"><span class="card__clan">${emblem(clan)}${clan}</span>${badges}</div>${sealed !== "" ? cardBackHTML(sealed, "card__back") : ""}`;
   if (action === null) return `<div class="${classes}" ${state} ${small ? `tabindex="0"` : ""} ${data}>${body}</div>`;
   return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${hand ? `aria-label="${escapeHTML(`${c.name}, ${c.cost} beats. ${c.text}`).replaceAll('"', "&quot;")}"` : ""} ${state} ${data} ${dimmed ? "disabled" : ""}>${body}</button>`;
+}
+
+// cardBackHTML is the back of a card of clan, hidden from assistive technology; an empty clan, a
+// rival still to come, shows the shared back.
+function cardBackHTML(clan: string, extra = ""): string {
+  return `<span class="card-back card-back--${(clan === "" ? "shared" : clan).toLowerCase()}${extra === "" ? "" : ` ${extra}`}" aria-hidden="true"><span>${emblem(clan)}</span></span>`;
 }
 
 function smallCards(ids: number[]): string {

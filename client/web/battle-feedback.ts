@@ -32,6 +32,15 @@ export function stepFeedback(events: BattleEvent[]): StepFeedback {
   return { sides, cancelled };
 }
 
+// A hit of heavyHit HP or more lands with full force.
+export const heavyHit = 5;
+
+// impact is how hard damage HP lands, from 0 for none to 1 for a heavy hit; the page scales a
+// hit's recoil, number and drain by it.
+export function impact(damage: number): number {
+  return Math.min(1, Math.max(0, damage) / heavyHit);
+}
+
 // cardBehind is the side and plan index of the card that produced an event. A Cancelled
 // event names the cancelled card, so the card behind it is the opponent's card on that beat.
 export function cardBehind(
