@@ -110,6 +110,7 @@ const flights = new Set<HTMLElement>();
 let flow: Flow = initial;
 let choosingClan = true;
 let deck: Deck | null = null; // the deck being picked on the deck screen
+let rareHeld: Deck | null = null; // the deck a press on its Rare left as it was
 let plan: number[] = []; // the plan being built on the plan screen
 let legalPlans: number[][] = []; // the acting player's legal plans this round
 let onlineContext: OnlineContext | null = null;
@@ -508,6 +509,8 @@ const handlers = {
     const clan = clanNamed(picked.clan);
     if (clan === undefined) throw new Error(`No clan ${picked.clan}`);
     deck = toggle(picked, Number(id), clan, engine.cards);
+    // Only the Rare leaves a deck unchanged, so the count then says why it stays.
+    rareHeld = deck === picked ? deck : null;
     render();
   },
   deckReady: (): void => {
@@ -1359,7 +1362,8 @@ function patchPlan(): void {
 }
 
 // patchDeck carries a pick onto the deck screen in place: each card takes its new state, so its fade
-// runs and keyboard focus stays on it, and the tray takes the new count.
+// runs and keyboard focus stays on it, and the tray's count and Ready take their new words in place,
+// so the count is announced.
 function patchDeck(): void {
   const fresh = document.createElement("template");
   fresh.innerHTML = onlineBar() + deckScreen();
@@ -1369,14 +1373,23 @@ function patchDeck(): void {
     now.className = next.className;
     now.setAttribute("aria-pressed", next.getAttribute("aria-pressed") ?? "false");
   }
-  const tray = app.querySelector(".deck-tray");
-  const next = fresh.content.querySelector(".deck-tray");
-  if (tray === null || next === null) throw new Error("The deck screen has no tray.");
-  const count = next.querySelector(".deck-count strong");
-  const changed = tray.querySelector(".deck-count strong")?.textContent !== count?.textContent;
-  tray.replaceWith(next);
+  const count = app.querySelector(".deck-count");
+  const nextCount = fresh.content.querySelector(".deck-count");
+  const ready = app.querySelector('[data-action="deckReady"]');
+  const nextReady = fresh.content.querySelector('[data-action="deckReady"]');
+  if (
+    count === null ||
+    nextCount === null ||
+    !(ready instanceof HTMLButtonElement) ||
+    !(nextReady instanceof HTMLButtonElement)
+  )
+    throw new Error("The deck screen has no tray.");
+  const changed = count.querySelector("strong")?.textContent !== nextCount.querySelector("strong")?.textContent;
+  if (count.innerHTML !== nextCount.innerHTML) count.innerHTML = nextCount.innerHTML;
+  ready.disabled = nextReady.disabled;
+  ready.textContent = nextReady.textContent;
   if (changed)
-    animateElement(count, [{ scale: 1.5, color: "var(--gh-color-highlight)" }, { scale: 1 }], {
+    animateElement(count.querySelector("strong"), [{ scale: 1.5, color: "var(--gh-color-highlight)" }, { scale: 1 }], {
       duration: 360,
       easing: "cubic-bezier(0.16, 1, 0.3, 1)",
     });
@@ -1503,7 +1516,7 @@ function deckScreen(): string {
       <div class="frame__head"><h2 class="heading">${heading}</h2><span class="hint">Every card starts in. Leave out ${clan.cards.length - deckSize}; the Rare stays.</span></div>
       <div class="clan-banner clan-banner--${deck.clan.toLowerCase()}">${portraitHTML(deck.clan, `class="clan-banner__portrait"`)}<div><h3 class="heading clan-banner__name">${emblem(deck.clan)}${deck.clan}</h3><p>${clanLook[deck.clan]?.blurb ?? ""}</p></div><button class="button button--secondary" type="button" data-action="changeClan">Change clan</button></div>
       <div class="card-grid">${pool}</div>
-      <div class="deck-tray"><span class="deck-count"><strong>${deck.picks.length}</strong> of ${clan.cards.length} cards kept</span><button class="button" type="button" data-action="deckReady" ${legal ? "" : "disabled"}>${readiness(deck)}</button></div>
+      <div class="deck-tray"><span class="deck-count" role="status">${rareHeld === deck ? "The Rare stays in. " : ""}<strong>${deck.picks.length}</strong> of ${clan.cards.length} cards kept</span><button class="button" type="button" data-action="deckReady" ${legal ? "" : "disabled"}>${readiness(deck)}</button></div>
     </section>`;
 }
 
