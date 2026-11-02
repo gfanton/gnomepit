@@ -6,8 +6,9 @@
 // costs, two new players, a new chunk, both players' first standings and ladder entries and
 // the clan records, all but the chunk in its last Reveal; the second gives what a match
 // between known players locks, the result each rated ending logs in the standings realm
-// included, and the third what a resignation costs. The fourth ends two players' first rated match on a ladder that already
-// holds players, which adds more ladder nodes than the first match's ending did.
+// included, and the third what a resignation costs. The fourth ends two players' first
+// rated match on a ladder that already holds players, which adds more ladder nodes than
+// the first match's ending did.
 //
 //   [CHAIN=<chain id>] node scripts/measure-storage.ts [rpc url]
 

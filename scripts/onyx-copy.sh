@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Writes the engine, the standings realm and the arena, tests included, into the new
-# directory given as $2 with their onyx paths: the namespace given as $1, a registered name
-# such as nym-gfanton001 or a g1 address, gnotif's registry on onyx, and the page's GitHub
-# Pages path at the start of every notification link. The standings realm's first writer,
-# the arena, moves to that namespace with the rest.
+# directory given as $2 with their onyx paths: the namespace given as $1 (a registered
+# name such as nym-gfanton001, or a g1 address), gnotif's registry on onyx, and the page's
+# GitHub Pages path at the start of every notification link. The standings realm's first
+# writer, the arena, moves to that namespace with the rest.
 set -o errexit -o nounset -o pipefail
 
 readonly USAGE="usage: onyx-copy.sh <namespace or g1 address> <dir>"

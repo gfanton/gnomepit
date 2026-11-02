@@ -85,11 +85,10 @@ query vm/qeval_json "${STANDINGS}.StandingOf(\"${ALICE}\")" standing-rated
 query vm/qeval_json "${STANDINGS}.StandingOf(\"${PLAYER}\")" standing-unrated
 query vm/qeval_json "${STANDINGS}.RatedPlayers()" rated-players
 query vm/qeval_json "${STANDINGS}.ClanStandings()" clan-standings
-query vm/qeval_json "${STANDINGS}.Results(0, 50)" results
 
 for type in OpenChallenge MatchSummary MatchView; do
   query vm/qtype_json "${ARENA}.${type}" "qtype-${type}"
 done
-for type in Standing ClanStanding Result; do
+for type in Standing ClanStanding; do
   query vm/qtype_json "${STANDINGS}.${type}" "qtype-${type}"
 done

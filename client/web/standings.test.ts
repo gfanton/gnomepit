@@ -145,7 +145,7 @@ test("withMissingClans puts every clan of an empty answer at 1000, sharing rank 
   ]);
 });
 
-test("withMissingClans ranks a clan the store never rated between the rated ones", () => {
+test("withMissingClans ranks a clan the standings realm never rated between the rated ones", () => {
   const answer = [clanOf("Pickers", 1, 1008, 1, 0), clanOf("Ironhide", 2, 992, 0, 1)];
   assert.deepEqual(withMissingClans(answer, clanNames), [
     clanOf("Pickers", 1, 1008, 1, 0),

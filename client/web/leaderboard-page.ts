@@ -1,7 +1,7 @@
 // The leaderboard page. ?preview=1 shows illustrative standings, with ?state=empty,
-// loading or error. Otherwise it reads the build's network, overridden by ?rpc=, ?chain=,
-// ?realm= and ?standings=, shows the board, then adds the viewer's own standing once the
-// wallet names an account; ?dev=alice or ?dev=bob names a dev account instead of Adena's.
+// loading or error. Otherwise it reads the build's network, overridden by ?rpc=, ?chain= and
+// ?standings=, shows the board, then adds the viewer's own standing once the wallet names an
+// account; ?dev=alice or ?dev=bob names a dev account instead of Adena's.
 
 import { pageWallet } from "./arena-provider.ts";
 import { createChain } from "./chain.ts";

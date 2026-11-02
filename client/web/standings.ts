@@ -85,8 +85,8 @@ export function clanNamesOf(cards: unknown): string[] {
 }
 
 // withMissingClans is clans plus every clan of names it lacks, at 1000 and 0-0-0, highest
-// rating first; equal ratings keep their order and share a rank. The store lists only
-// clans with a rated cross-clan match.
+// rating first; equal ratings keep their order and share a rank. The standings realm lists
+// only clans with a rated cross-clan match.
 export function withMissingClans(clans: readonly ClanStanding[], names: readonly string[]): ClanStanding[] {
   const listed = new Set(clans.map((c) => c.Clan));
   const missing = names
