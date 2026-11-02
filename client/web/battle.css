@@ -654,6 +654,13 @@
   white-space: nowrap;
   font: var(--gh-type-caption);
 }
+.coach .coach__skip {
+  flex: none;
+  min-height: 0;
+  padding: var(--gh-space-1) 0;
+  white-space: nowrap;
+  font: var(--gh-type-caption);
+}
 .card.card--coached {
   outline: 2px solid var(--gh-color-accent);
   outline-offset: 3px;

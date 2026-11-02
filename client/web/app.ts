@@ -614,6 +614,11 @@ const handlers = {
     plan = [];
     render();
   },
+  // tutorialLeave ends the guided match early, as a skip if the browser had not finished it.
+  tutorialLeave: () => {
+    if (!tutorialFlag.seen()) tutorialFlag.remember("skipped");
+    handlers.tutorialOnward();
+  },
   tutorialOnward: () => {
     const mode = onward;
     guided = null;
@@ -1343,12 +1348,21 @@ function clanChoicesHTML(): string {
 }
 function title(): string {
   return `<header class="masthead">${wordmarkHTML("./")}<nav class="home-nav" aria-label="Explore the game">${lobby !== null ? '<a href="leaderboard.html">Leaderboard</a>' : ""}<button type="button" data-action="tutorial">How to play</button><button type="button" data-action="library">Card library</button></nav></header>
+    ${
+      lobby === null && linkedMatch(location.hash) !== undefined
+        ? `<section class="notice" role="status"><div><strong>That link opens an online match</strong><p>This copy of Gnomepit plays offline only, so it can’t open the match. Play the bot, or two players on one screen, here.</p></div></section>`
+        : ""
+    }
     <section class="intro intro--home">
       <div class="intro__copy"><span class="eyebrow">A TACTICAL CARD DUEL</span>
         <h1>Small gnomes.<br>Big grudges.</h1>
         <p>Choose a clan. Plot three beats. Settle your grudge beneath the mountain.</p>
-        <div class="home-play">${lobby !== null ? `<button class="button" type="button" data-action="playMode" data-mode="online">Play online <span aria-hidden="true">→</span></button>` : ""}<button class="button button--secondary" type="button" data-action="tutorial">How to play</button></div>
-        ${lobby !== null ? `<p class="home-play__note">24 hours per move · needs the Adena wallet</p>` : ""}
+        <div class="home-play">${
+          lobby !== null
+            ? `<button class="button" type="button" data-action="playMode" data-mode="online">Play online <span aria-hidden="true">→</span></button><button class="button button--secondary" type="button" data-action="playMode" data-mode="bot">Play the bot</button>`
+            : `<button class="button" type="button" data-action="playMode" data-mode="bot">Play the bot <span aria-hidden="true">→</span></button><button class="button button--secondary" type="button" data-action="tutorial">How to play</button>`
+        }</div>
+        <p class="home-play__note">${lobby !== null ? "Online: 24 hours per move · needs the Adena wallet" : "Plays in this browser · no wallet needed"}</p>
       </div>
       <div class="intro__art"><img src="art/hall-hero-v2.jpg" alt="Gnomes gather around a card table in the underground hall"><span class="intro__art-label">WELCOME TO GNOMEPIT<span>Different clans. Shared grudges.</span></span></div>
     </section>
@@ -1561,6 +1575,7 @@ function coachHTML(sealable: boolean): string {
       ? `<button class="button button--secondary" type="button" data-action="intel">${words.look}</button>`
       : `<span class="coach__step">Round ${round} · step ${plan.length + 1} of ${(words.steps?.length ?? 0) + 1}</span>`;
   return `<div class="coach">${portraitHTML("Pickers", 'class="coach__portrait"')}<p class="coach__words"><strong>${words.title}</strong> ${line}</p>${step}
+    <button class="text-button coach__skip" type="button" data-action="tutorialLeave">Skip the guide</button>
     <span class="coach__status" id="plan-status" role="status">${sealable ? "Your plan is ready. Confirm it when you're sure." : "Play cards to fill all three beats."}</span></div>`;
 }
 
