@@ -75,6 +75,11 @@ test("an offline build ships the game and no dev page; a local build adds the de
   }
 });
 
+test("the home page links its source repository", async (t) => {
+  const offline = await built(t, "offline");
+  assert.match(await readFile(join(offline, "app.js"), "utf8"), /href="https:\/\/github\.com\/gfanton\/gnomepit"/);
+});
+
 test("every font a stylesheet loads ships, with its licence", async (t) => {
   const offline = await built(t, "offline");
   const fonts = new Set<string>();
