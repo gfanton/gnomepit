@@ -101,7 +101,10 @@ const tip = elementById("tip", HTMLDivElement);
 const basics = engine.cards.filter((c) => !c.special).map((c) => c.id);
 const stepMs = 1050;
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-let handScroll = 0;
+// The fan needs a wide window tall enough to show its cards' art, and covers the names of a
+// hand bigger than fanLimit.
+const fanRoom = matchMedia("(min-width: 1001px) and (min-height: 800px)");
+const fanLimit = 7;
 const flights = new Set<HTMLElement>();
 
 let flow: Flow = initial;
@@ -651,6 +654,9 @@ app.addEventListener("pointerout", (event) => {
 document.addEventListener("keydown", () =>
   app.querySelectorAll(".hand-entry--resting").forEach((el) => el.classList.remove("hand-entry--resting")),
 );
+fanRoom.addEventListener("change", () => {
+  if (flow.screen === "plan") render();
+});
 // The wordmark leads home, which would throw away a match or a deck under way, so it asks first.
 // Online, the match lives on the chain and the draft is kept, so it leads back to the board.
 app.addEventListener("click", (event) => {
@@ -1237,7 +1243,6 @@ function draw(): void {
           slot: [...app.querySelectorAll('.battle-hand [data-action="addCard"]')].indexOf(focus),
         }
       : null;
-  handScroll = app.querySelector(".battle-hand")?.scrollLeft ?? 0;
   if (!replanning) {
     for (const ghost of flights) ghost.remove();
     flights.clear();
@@ -1250,16 +1255,6 @@ function draw(): void {
   app.dataset.stage = flow.screen === "deck" ? (choosingClan ? "clan" : "cards") : "";
   app.classList.toggle("board--battle", ["plan", "playback"].includes(flow.screen));
   if (flow.screen === "plan") {
-    const hand = app.querySelector(".battle-hand");
-    if (hand === null) throw new Error("The plan screen has no hand.");
-    hand.scrollLeft = previousScreen === "plan" ? handScroll : 0;
-    // A phone's hand scrolls sideways; bring the card the guided match asks for into view.
-    const coached = hand.querySelector(".card--coached")?.closest(".hand-entry");
-    if (coached instanceof HTMLElement)
-      hand.scrollLeft +=
-        coached.getBoundingClientRect().left -
-        hand.getBoundingClientRect().left -
-        (hand.clientWidth - coached.offsetWidth) / 2;
     if (previousScreen === "plan" && key !== null) {
       let target: Element | null | undefined = [...app.querySelectorAll("[data-action]")].find(
         (el) =>
@@ -1387,24 +1382,24 @@ function patchDeck(): void {
     });
 }
 
-// handPlaces is each hand card's entry and its offset in the fan, by card id.
-function handPlaces(): Map<string, { entry: HTMLElement; left: number }> {
-  const places = new Map<string, { entry: HTMLElement; left: number }>();
+// handPlaces is each hand card's entry and its offset in the hand, by card id.
+function handPlaces(): Map<string, { entry: HTMLElement; left: number; top: number }> {
+  const places = new Map<string, { entry: HTMLElement; left: number; top: number }>();
   for (const entry of app.querySelectorAll(".battle-hand .hand-entry")) {
     const id = entry.querySelector("[data-id]")?.getAttribute("data-id");
     if (entry instanceof HTMLElement && id !== null && id !== undefined)
-      places.set(id, { entry, left: entry.offsetLeft });
+      places.set(id, { entry, left: entry.offsetLeft, top: entry.offsetTop });
   }
   return places;
 }
 
-// slideHand moves each card still in the hand from its place before to its place now, so the fan
+// slideHand moves each card still in the hand from its place before to its place now, so the hand
 // closes over a played card and opens for a returned one.
 function slideHand(before: ReturnType<typeof handPlaces>): void {
-  for (const [id, { entry, left }] of handPlaces()) {
-    const was = before.get(id)?.left;
-    if (was === undefined || Math.abs(was - left) < 1) continue;
-    animateElement(entry, [{ translate: `${was - left}px 0` }, { translate: "0 0" }], {
+  for (const [id, { entry, left, top }] of handPlaces()) {
+    const was = before.get(id);
+    if (was === undefined || (Math.abs(was.left - left) < 1 && Math.abs(was.top - top) < 1)) continue;
+    animateElement(entry, [{ translate: `${was.left - left}px ${was.top - top}px` }, { translate: "0 0" }], {
       duration: 320,
       easing: "cubic-bezier(0.16, 1, 0.3, 1)",
     });
@@ -1587,15 +1582,20 @@ function planScreen(): string {
   const names = battleNames();
   const used = beatsUsed(plan, engine.cards);
   const sealable = isSealable(plan, legalPlans);
-  const handIds = [...basics, ...decks[me].filter((id) => !state.gnomes[me].spent.includes(id) && !plan.includes(id))];
+  const unspent = decks[me].filter((id) => !state.gnomes[me].spent.includes(id));
+  const handIds = [...basics, ...unspent.filter((id) => !plan.includes(id))];
+  // The cards held at the turn's start pick the layout, so it holds while the plan fills.
+  const held = basics.length + unspent.length;
+  const rows = held > fanLimit || !fanRoom.matches;
+  const touch = matchMedia("(hover: none)").matches;
   const playedCount = flow.rounds.reduce((n, round) => n + round.plans[me].length, 0);
   const coached = coachedCard();
   const hand = handIds
     .map((id, index) => {
       const c = cardOf(engine.cards, id);
       return `<div class="hand-entry" style="--hand-order:${index};--hand-tilt:${(index - (handIds.length - 1) / 2) * 4}deg;--hand-rise:${Math.pow(index - (handIds.length - 1) / 2, 2) * 2}px">
-      ${cardHTML(c, { action: matchMedia("(hover: none)").matches ? "inspectCard" : "addCard", hand: true, dimmed: !canAdd(plan, id, engine.cards, available()), coached: id === coached })}
-      <button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Details: ${c.name}" tabindex="-1">Details</button></div>`;
+      ${cardHTML(c, { action: touch ? "inspectCard" : "addCard", hand: true, dimmed: !canAdd(plan, id, engine.cards, available()), coached: id === coached, data: rows && !touch ? `data-peek="${id}"` : "" })}
+      ${rows ? "" : `<button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Details: ${c.name}" tabindex="-1">Details</button>`}</div>`;
     })
     .join("");
   const backs = [1, 2, 3].map(() => cardBackHTML(clans[opponent])).join("");
@@ -1620,9 +1620,9 @@ function planScreen(): string {
     </section>
     <section class="hand-zone" aria-label="Your hand"><div class="hand-zone__heading">
       ${title}
-      <div class="hand-zone__hint"><span class="label">Your hand <span>${counted(handIds.length, "card")}</span></span><span class="muted">Lift a card to read · click to play · tap to inspect</span></div>
+      <div class="hand-zone__hint"><span class="label">Your hand <span>${counted(handIds.length, "card")}</span></span><span class="muted">${rows ? "Hover a card to see it whole" : "Lift a card to read"} · click to play · tap to inspect</span></div>
       <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length > 0 ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}${onlineSending ? ' aria-busy="true"' : ""}>${flow.mode === "online" ? (onlineMatch().intent === "challenge" ? "Post challenge" : onlineMatch().intent === "accept" ? "Accept challenge" : "Send plan") : "Seal plan"}</button></div></div>
-      <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount > 0 ? "" : "disabled"} aria-label="Open played cards, ${counted(playedCount, "card")}">${cardBackHTML(clans[me], "pile-back")}<span class="label">Played cards</span><span class="muted">${counted(playedCount, "card")} · inspect</span></button></div></section>
+      <div class="hand-layout"><div class="battle-hand card-grid${rows ? " battle-hand--rows" : ""}" style="--hand-count:${handIds.length};--hand-cols:${Math.ceil(held / 2)}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount > 0 ? "" : "disabled"} aria-label="Open played cards, ${counted(playedCount, "card")}">${cardBackHTML(clans[me], "pile-back")}<span class="label">Played cards</span><span class="muted">${counted(playedCount, "card")} · inspect</span></button></div></section>
     ${battleDialogsHTML(me)}`;
 }
 
