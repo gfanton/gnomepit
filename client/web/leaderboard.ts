@@ -82,7 +82,7 @@ function clanStandings(items: ClanRow[]): string {
       return `<article class="clan-standing ${clanClass(c.clan)}"><div class="clan-standing__art">${art !== undefined ? `<img src="art/${art.image}" alt="">` : ""}<span class="clan-place">#${number(c.rank)}</span></div><div class="clan-standing__body"><div class="clan-standing__heading"><h3>${esc(c.clan)}</h3><span><strong>${number(c.rating)}</strong><span class="stat-label">CLAN RATING</span></span></div>${record(c)}</div></article>`;
     })
     .join("");
-  return `<aside class="clan-standings" aria-labelledby="clan-title"><div class="standings-section-title"><div><span class="eyebrow">THREE CLANS. ONE HALL.</span><h2 id="clan-title">Clan standings</h2></div></div>${items.length > 0 ? cards : '<div class="empty-panel"><h3>The clans await their challengers.</h3><p>Clan ratings and match records will appear here when standings are available.</p></div>'}</aside>`;
+  return `<aside class="clan-standings" aria-labelledby="clan-title"><div class="standings-section-title"><div><h2 id="clan-title">Clan standings</h2></div></div>${items.length > 0 ? cards : '<div class="empty-panel"><h3>The clans await their challengers.</h3><p>Clan ratings and match records will appear here when standings are available.</p></div>'}</aside>`;
 }
 
 function rankings(view: LeaderboardView): string {

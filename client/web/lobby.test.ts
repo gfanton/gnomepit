@@ -971,7 +971,7 @@ test("a rematch posted without its match's id returns to the board, not to the m
   assert.equal(lobby.model.view, null);
   assert.equal(arena.onView, null);
   assert.match(shown(), /Your challenge is posted\./);
-  assert.match(shown(), /THE CHALLENGE BOARD/);
+  assert.match(shown(), /<h1>A rival awaits\.<\/h1>/);
 });
 
 // dialogLobby is a lobby whose page answers every query with one dialog, which the test

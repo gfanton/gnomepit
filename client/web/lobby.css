@@ -239,7 +239,7 @@
   padding: 18px;
   position: relative;
 }
-.challenge .eyebrow,
+.challenge .label,
 .challenge small {
   color: var(--gh-color-ink);
 }

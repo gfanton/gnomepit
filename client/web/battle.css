@@ -1567,6 +1567,16 @@
   [data-screen="playback"] > .duel-table {
     flex: 1 0 auto;
   }
+  /* Each side's numbers rise over its own portrait, clear of the tracks and their labels. */
+  .combat-floats,
+  .fighter:last-child .combat-floats {
+    top: 18%;
+    left: 50%;
+    right: auto;
+    translate: -50% 0;
+    justify-items: center;
+    text-align: center;
+  }
 }
 /* Tall enough for the board: the header, the table and the hand (or the playback controls) fill
    the window, and the page never scrolls. Only the table gives way: its track cards shrink, then

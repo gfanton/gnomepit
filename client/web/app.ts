@@ -1404,7 +1404,7 @@ function clanChoicesHTML(): string {
   return `<div class="clan-choices">${clanPresentation
     .map((c) => {
       const available = Boolean(clanNamed(c.name));
-      const body = `<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="eager"></div><div class="clan-choice__body"><span class="clan-choice__eyebrow">${c.tag}</span><h2 class="clan-choice__name">${emblem(c.name)}${c.name}</h2><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available ? `Choose ${c.name} →` : "Coming soon"}</span></div>`;
+      const body = `<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="eager"></div><div class="clan-choice__body"><h2 class="clan-choice__name">${emblem(c.name)}${c.name}</h2><span class="clan-choice__tag">${c.tag}</span><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available ? `Choose ${c.name} →` : "Coming soon"}</span></div>`;
       return `<button class="clan-choice clan-choice--${c.name.toLowerCase()}" type="button" data-action="clan" data-name="${c.name}" ${available ? "" : "disabled"}>${body}</button>`;
     })
     .join("")}</div>`;
@@ -1417,7 +1417,7 @@ function title(): string {
         : ""
     }
     <section class="intro intro--home">
-      <div class="intro__copy"><span class="eyebrow">A TACTICAL CARD DUEL</span>
+      <div class="intro__copy">
         <h1>Small gnomes.<br>Big grudges.</h1>
         <p>Choose a clan. Plot three beats. Settle your grudge beneath the mountain.</p>
         <div class="home-play">${
@@ -1435,11 +1435,11 @@ function title(): string {
       <div class="button-row"><button class="button" type="button" data-action="tutorial">${coach.offer.start}</button><button class="button button--secondary" type="button" data-action="tutorialSkip">${coach.offer.skip}</button></div></dialog>`;
 }
 function libraryScreen(): string {
-  return `${masthead("Know your tools. Read your rival.")}<div class="section-intro"><div><span class="eyebrow">THE CLAN ARCHIVES</span><h1 class="heading">Card library</h1><p>Every card available in this build. Read the rules and find your favorites.</p></div><button class="button button--secondary" data-action="home">Back to the hall</button></div>${collectionHTML()}`;
+  return `${masthead("Know your tools. Read your rival.")}<div class="section-intro"><div><h1 class="heading">Card library</h1><p>Every card available in this build. Read the rules and find your favorites.</p></div><button class="button button--secondary" data-action="home">Back to the hall</button></div>${collectionHTML()}`;
 }
 function clanSelectionScreen(): string {
   const heading = flow.mode === "hotseat" ? `Player ${flow.acting + 1}, choose your clan` : "Choose your clan";
-  return `${masthead("Different clans. Shared grudges.")}<section class="clan-selection" aria-labelledby="clan-select-title"><nav class="setup-steps" aria-label="Match setup"><span aria-current="step">1 · Choose clan</span><span>2 · Build deck</span><span>3 · Plan your round</span></nav><div class="section-intro"><div><span class="eyebrow">CHOOSE YOUR ALLEGIANCE</span><h1 id="clan-select-title">${heading}</h1><p>Find your fighting style. You’ll choose your cards next.</p></div>${flow.mode === "online" ? "" : '<button class="button button--secondary" data-action="home">Back to the hall</button>'}</div>${clanChoicesHTML()}<p class="clan-selection__note">${engine.clans.some((c) => c.name === "Delvers") ? "Every clan brings its own tools. Your timing makes the difference." : "The Delvers are preparing their tools. Choose Pickers or Ironhide to play now."}</p></section>`;
+  return `${masthead("Different clans. Shared grudges.")}<section class="clan-selection" aria-labelledby="clan-select-title"><nav class="setup-steps" aria-label="Match setup"><span aria-current="step">1 · Choose clan</span><span>2 · Build deck</span><span>3 · Plan your round</span></nav><div class="section-intro"><div><h1 id="clan-select-title">${heading}</h1><p>Find your fighting style. You’ll choose your cards next.</p></div>${flow.mode === "online" ? "" : '<button class="button button--secondary" data-action="home">Back to the hall</button>'}</div>${clanChoicesHTML()}<p class="clan-selection__note">${engine.clans.some((c) => c.name === "Delvers") ? "Every clan brings its own tools. Your timing makes the difference." : "The Delvers are preparing their tools. Choose Pickers or Ironhide to play now."}</p></section>`;
 }
 
 function deckScreen(): string {
@@ -1467,7 +1467,7 @@ function deckScreen(): string {
     <nav class="setup-steps" aria-label="Match setup"><button class="text-button" data-action="changeClan">1 · Choose clan</button><span aria-current="step">2 · Build deck</span><span>3 · Plan your round</span></nav>
     <section class="frame frame--acting stack">
       <div class="frame__head"><h2 class="heading">${heading}</h2><span class="hint">Every card starts in. Leave out ${clan.cards.length - deckSize}; the Rare stays.</span></div>
-      <div class="clan-banner clan-banner--${deck.clan.toLowerCase()}">${portraitHTML(deck.clan, `class="clan-banner__portrait"`)}<div><span class="eyebrow">CHOOSE YOUR ALLEGIANCE</span><h3 class="heading clan-banner__name">${emblem(deck.clan)}${deck.clan}</h3><p>${clanLook[deck.clan]?.blurb ?? ""}</p></div><button class="button button--secondary" type="button" data-action="changeClan">Change clan</button></div>
+      <div class="clan-banner clan-banner--${deck.clan.toLowerCase()}">${portraitHTML(deck.clan, `class="clan-banner__portrait"`)}<div><h3 class="heading clan-banner__name">${emblem(deck.clan)}${deck.clan}</h3><p>${clanLook[deck.clan]?.blurb ?? ""}</p></div><button class="button button--secondary" type="button" data-action="changeClan">Change clan</button></div>
       <div class="card-grid">${pool}</div>
       <div class="deck-tray"><span class="deck-count"><strong>${deck.picks.length}</strong> of ${clan.cards.length} cards kept</span><button class="button" type="button" data-action="deckReady" ${legal ? "" : "disabled"}>${readiness(deck)}</button></div>
     </section>`;
