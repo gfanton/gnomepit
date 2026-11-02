@@ -1164,6 +1164,7 @@ function draw(): void {
   const previousScreen = app.dataset.screen;
   const previousStage = app.dataset.stage;
   const replanning = flow.screen === "plan" && previousScreen === "plan";
+  const repicking = flow.screen === "deck" && !choosingClan && previousScreen === "deck" && previousStage === "cards";
   const focus = document.activeElement;
   const key =
     focus instanceof HTMLElement && focus.matches(":focus-visible") && (focus.dataset.action ?? "") !== ""
@@ -1176,6 +1177,7 @@ function draw(): void {
   }
   if (app.contains(tip)) document.body.append(tip);
   if (replanning) patchPlan();
+  else if (repicking) patchDeck();
   else app.innerHTML = onlineBar() + screens[flow.screen]();
   app.dataset.screen = flow.screen;
   app.dataset.stage = flow.screen === "deck" ? (choosingClan ? "clan" : "cards") : "";
@@ -1252,6 +1254,30 @@ function patchPlan(): void {
     else now.replaceWith(next);
   }
   slideHand(before);
+}
+
+// patchDeck carries a pick onto the deck screen in place: each card takes its new state, so its fade
+// runs and keyboard focus stays on it, and the tray takes the new count.
+function patchDeck(): void {
+  const fresh = document.createElement("template");
+  fresh.innerHTML = onlineBar() + deckScreen();
+  for (const next of fresh.content.querySelectorAll(".card-grid > .card[data-id]")) {
+    const now = app.querySelector(`.card-grid > .card[data-id="${next.getAttribute("data-id")}"]`);
+    if (now === null) throw new Error("The deck screen lost a card.");
+    now.className = next.className;
+    now.setAttribute("aria-pressed", next.getAttribute("aria-pressed") ?? "false");
+  }
+  const tray = app.querySelector(".deck-tray");
+  const next = fresh.content.querySelector(".deck-tray");
+  if (tray === null || next === null) throw new Error("The deck screen has no tray.");
+  const count = next.querySelector(".deck-count strong");
+  const changed = tray.querySelector(".deck-count strong")?.textContent !== count?.textContent;
+  tray.replaceWith(next);
+  if (changed)
+    animateElement(count, [{ scale: 1.5, color: "var(--gh-color-highlight)" }, { scale: 1 }], {
+      duration: 360,
+      easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+    });
 }
 
 // handPlaces is each hand card's entry and its offset in the fan, by card id.
@@ -1366,7 +1392,7 @@ function deckScreen(): string {
       <div class="frame__head"><h2 class="heading">${heading}</h2><span class="hint">Every card starts in. Leave out ${clan.cards.length - deckSize}; the Rare stays.</span></div>
       <div class="clan-banner clan-banner--${deck.clan.toLowerCase()}">${portraitHTML(deck.clan, `class="clan-banner__portrait"`)}<div><span class="eyebrow">CHOOSE YOUR ALLEGIANCE</span><h3 class="heading clan-banner__name">${emblem(deck.clan)}${deck.clan}</h3><p>${clanLook[deck.clan]?.blurb ?? ""}</p></div><button class="button button--secondary" type="button" data-action="changeClan">Change clan</button></div>
       <div class="card-grid">${pool}</div>
-      <div class="button-row"><button class="button" type="button" data-action="deckReady" ${legal ? "" : "disabled"}>${readiness(deck)}</button></div>
+      <div class="deck-tray"><span class="deck-count"><strong>${deck.picks.length}</strong> of ${clan.cards.length} cards kept</span><button class="button" type="button" data-action="deckReady" ${legal ? "" : "disabled"}>${readiness(deck)}</button></div>
     </section>`;
 }
 

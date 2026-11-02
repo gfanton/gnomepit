@@ -71,6 +71,9 @@
   padding: 8px 12px;
   cursor: pointer;
 }
+.quiet:active:not(:disabled) {
+  transform: translateY(1px);
+}
 .hall-banner {
   position: relative;
   overflow: hidden;
@@ -176,6 +179,19 @@
 }
 .match--turn .status {
   color: var(--gh-color-highlight);
+}
+/* A match waiting on the player glows like a lantern until they act. */
+.match.match--turn {
+  animation:
+    notice-in var(--gh-motion-base) ease-out both,
+    turn-glow 3.2s ease-in-out infinite alternate;
+}
+@keyframes turn-glow {
+  to {
+    box-shadow:
+      inset 3px 0 var(--gh-color-accent),
+      0 0 34px color-mix(in srgb, var(--gh-color-flame) 24%, transparent);
+  }
 }
 .fighters {
   display: flex;
@@ -467,6 +483,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .match,
+  .match.match--turn,
   .challenge {
     animation: none;
   }
