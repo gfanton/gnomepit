@@ -652,6 +652,59 @@ app.addEventListener("pointerout", (event) => {
 document.addEventListener("keydown", () =>
   app.querySelectorAll(".hand-entry--resting").forEach((el) => el.classList.remove("hand-entry--resting")),
 );
+// The wordmark leads home, which would throw away a match or a deck under way, so it asks first.
+// Online, the match lives on the chain and the draft is kept, so it leads back to the board.
+app.addEventListener("click", (event) => {
+  const mark = event.target instanceof Element ? event.target.closest("a.wordmark:not([data-action])") : null;
+  if (mark === null || !atStake()) return;
+  event.preventDefault();
+  if (flow.mode === "online") handlers.onlineBack();
+  else confirmLeave();
+});
+
+// atStake holds while leaving would lose something: a match under way or a deck being built.
+function atStake(): boolean {
+  if (flow.screen === "plan" || flow.screen === "playback" || flow.screen === "handoff") return true;
+  return flow.screen === "deck" && (!choosingClan || flow.decks[0] !== null);
+}
+
+const leaveDialog = document.createElement("dialog");
+leaveDialog.className = "offer";
+leaveDialog.setAttribute("aria-labelledby", "leave-title");
+document.body.append(leaveDialog);
+leaveDialog.addEventListener("click", (event) => {
+  const choice = event.target instanceof Element ? event.target.closest("[data-leave]") : null;
+  if (event.target === leaveDialog || choice?.getAttribute("data-leave") === "stay") leaveDialog.close();
+  else if (choice?.getAttribute("data-leave") === "go") {
+    leaveDialog.close();
+    leaveMatch();
+  }
+});
+
+function confirmLeave(): void {
+  const [title, text] =
+    flow.mode === "tutorial"
+      ? ["Leave the guided match?", "You can play it again from How to play."]
+      : flow.screen === "deck" && flow.decks[0] === null
+        ? ["Leave this deck?", "The cards you chose are not kept."]
+        : ["Leave this match?", "The match ends here and cannot be picked up again."];
+  leaveDialog.innerHTML = `<h2 id="leave-title">${title}</h2><p>${text}</p><div class="button-row"><button class="button" type="button" data-leave="stay">Keep playing</button><button class="button button--secondary" type="button" data-leave="go">Leave</button></div>`;
+  leaveDialog.showModal();
+}
+
+// leaveMatch drops the match under way and goes home; leaving the guided match counts as skipping
+// it for a browser that never finished it.
+function leaveMatch(): void {
+  if (flow.mode === "tutorial" && !tutorialFlag.seen()) tutorialFlag.remember("skipped");
+  closeBattleDialogs();
+  stopPlaying();
+  playback = null;
+  guided = null;
+  onward = null;
+  flow = initial;
+  render();
+}
+
 const isHandled = (action: string): action is keyof typeof handlers => Object.hasOwn(handlers, action);
 
 app.addEventListener("click", (event) => {
@@ -1148,11 +1201,14 @@ function render(after?: () => void): void {
 }
 
 function draw(): void {
+  const arrived = drawnPage !== "" && drawnPage !== pageOf();
   drawnPage = pageOf();
   if (lobby !== null && lobby.model.active && !lobby.model.inGame) {
     if (app.contains(tip)) document.body.append(tip);
     tip.hidden = true;
-    return lobby.render();
+    lobby.render();
+    if (arrived) arrive();
+    return;
   }
   app.classList.remove("lobby");
   const screens = {
@@ -1186,17 +1242,6 @@ function draw(): void {
   else app.innerHTML = onlineBar() + screens[flow.screen]();
   app.dataset.screen = flow.screen;
   app.dataset.stage = flow.screen === "deck" ? (choosingClan ? "clan" : "cards") : "";
-  if (
-    (flow.screen === "deck" && (previousStage !== app.dataset.stage || previousScreen !== flow.screen)) ||
-    flow.screen === "library"
-  ) {
-    const heading = app.querySelector("h1,h2");
-    if (heading instanceof HTMLElement) {
-      heading.setAttribute("tabindex", "-1");
-      heading.focus({ preventScroll: true });
-    }
-    app.scrollIntoView({ block: "start" });
-  }
   app.classList.toggle("board--battle", ["plan", "playback"].includes(flow.screen));
   if (flow.screen === "plan") {
     const hand = app.querySelector(".battle-hand");
@@ -1228,7 +1273,26 @@ function draw(): void {
     const session = playing();
     queueReveal(session, reducedMotion.matches ? 450 : 1050);
   }
+  if (arrived) arrive();
   dropStaleTip();
+}
+
+// arrive starts a new page at its top, with keyboard focus on what the page is about: its
+// heading, the plan's heading or the coach's words, or the clash's Pause. The next Tab then starts
+// inside the page instead of on its wordmark.
+function arrive(): void {
+  const landmark =
+    app.dataset.screen === "plan"
+      ? ".hand-zone__title .heading, .coach__words"
+      : app.dataset.screen === "playback"
+        ? "#play"
+        : "h1, h2";
+  const target = app.querySelector(landmark);
+  if (target instanceof HTMLElement) {
+    if (!(target instanceof HTMLButtonElement)) target.tabIndex = -1;
+    target.focus({ preventScroll: true });
+  }
+  scrollTo(0, 0);
 }
 
 // The parts of the plan screen a pick, a clear or a send can change. The rest of the table stays
@@ -1493,7 +1557,7 @@ function planScreen(): string {
       const c = cardOf(engine.cards, id);
       return `<div class="hand-entry" style="--hand-order:${index};--hand-tilt:${(index - (handIds.length - 1) / 2) * 4}deg;--hand-rise:${Math.pow(index - (handIds.length - 1) / 2, 2) * 2}px">
       ${cardHTML(c, { action: matchMedia("(hover: none)").matches ? "inspectCard" : "addCard", hand: true, dimmed: !canAdd(plan, id, engine.cards, available()), coached: id === coached })}
-      <button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Details: ${c.name}">Details</button></div>`;
+      <button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Details: ${c.name}" tabindex="-1">Details</button></div>`;
     })
     .join("");
   const backs = [1, 2, 3].map(() => cardBackHTML(clans[opponent])).join("");
@@ -1684,6 +1748,11 @@ function patchPlayback(): void {
       ? `Beat ${current.beat} · ${current.phase}`
       : "Plans revealed";
   elementById("finish", HTMLDivElement).innerHTML = done && !held ? finishHTML() : "";
+  // A control that just turned off would strand keyboard focus; the round's way on takes it.
+  const active = document.activeElement;
+  const wayOn = app.querySelector("#finish .button");
+  if (done && !held && active instanceof HTMLButtonElement && active.disabled && wayOn instanceof HTMLElement)
+    wayOn.focus({ preventScroll: true });
   dropStaleTip();
 }
 
