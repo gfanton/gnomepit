@@ -942,12 +942,12 @@ dialog::backdrop {
 button.card {
   cursor: pointer;
 }
-button.card:hover:not(:disabled),
+button.card:hover:not(:disabled, .card--dimmed),
 button.card:focus-visible {
   transform: translateY(-5px);
   box-shadow: 0 12px 20px color-mix(in srgb, var(--gh-color-shadow) 33%, transparent);
 }
-button.card:active:not(:disabled, .card--locked) {
+button.card:active:not(:disabled, .card--locked, .card--dimmed) {
   transform: translateY(-2px) scale(0.98);
 }
 .card--selected {

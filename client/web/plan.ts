@@ -3,6 +3,7 @@
 // play, the two basics and the deck's unspent specials.
 
 import { cardOf, type Card } from "./engine.ts";
+import { counted } from "./keywords.ts";
 
 const beats = 3;
 
@@ -19,6 +20,14 @@ export function canAdd(plan: number[], cardId: number, cards: Card[], available:
   if (beatsUsed(plan, cards) + card.cost > beats) return false;
   if (!available.includes(cardId)) return false;
   return !card.special || !plan.includes(cardId);
+}
+
+// fitText says why the card overruns the beats left, or is empty when it fits them.
+export function fitText(plan: number[], cardId: number, cards: Card[]): string {
+  const left = beats - beatsUsed(plan, cards);
+  const cost = cardOf(cards, cardId).cost;
+  if (cost <= left) return "";
+  return left === 0 ? "All three beats are filled." : `Needs ${counted(cost, "beat")}; ${counted(left, "beat")} left.`;
 }
 
 export function addCard(plan: number[], cardId: number, cards: Card[], available: number[]): number[] {

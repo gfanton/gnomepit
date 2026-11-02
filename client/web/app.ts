@@ -17,7 +17,7 @@ import {
 import { type Action, type Flow, type Round, initial, reduce, botTurn } from "./flow.ts";
 import { type Deck, deckSize, newDeck, readiness, sitOutText, toggle, rareOf } from "./deck.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
-import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.ts";
+import { addCard, beatsUsed, canAdd, clearFrom, fitText, isSealable, slots } from "./plan.ts";
 import { sentences, matchLog, sideNames, possessive } from "./log.ts";
 import { type Blow, type Verdict, verdict } from "./result.ts";
 import { counted, glossary, markKeywords, escapeHTML, ruleRefs, rulesHTML } from "./keywords.ts";
@@ -81,7 +81,8 @@ type Playback = {
 type ShownVitals = Pick<Vitals, "hp"> & Partial<Vitals>;
 type CardOptions = {
   selected?: boolean;
-  dimmed?: boolean;
+  // Why a hand card cannot be played now; empty while it can.
+  why?: string;
   small?: boolean;
   locked?: boolean;
   pressed?: boolean | null;
@@ -830,9 +831,9 @@ function unplayable(c: Card): string {
   if (flow.screen === "playback") return "Committed this round.";
   if (underway().state.gnomes[flow.acting].spent.includes(c.id)) return "Already spent this match.";
   const coached = coachedCard();
-  return coached === undefined
-    ? "This card does not fit your current plan."
-    : `The guided match asks for ${cardOf(engine.cards, coached).name} now.`;
+  if (coached !== undefined) return `The guided match asks for ${cardOf(engine.cards, coached).name} now.`;
+  const fit = fitText(plan, c.id, engine.cards);
+  return fit !== "" ? fit : "This card does not fit your current plan.";
 }
 
 // ---- Playback
@@ -1267,12 +1268,15 @@ function draw(): void {
           el.dataset.action === key.action &&
           el.dataset.id === key.id &&
           el.dataset.beat === key.beat &&
-          !el.disabled,
+          !el.disabled &&
+          el.getAttribute("aria-disabled") !== "true",
       );
       // A card played from the hand hands focus to Seal once the plan is full, or else to the card
       // that slid into its place.
       const seal = elementById("seal", HTMLButtonElement);
-      const playable = [...app.querySelectorAll('.battle-hand [data-action="addCard"]:not(:disabled)')];
+      const playable = [
+        ...app.querySelectorAll('.battle-hand [data-action="addCard"]:not(:disabled, [aria-disabled="true"])'),
+      ];
       const hand = [...app.querySelectorAll('.battle-hand [data-action="addCard"]')];
       target ??= !seal.disabled
         ? seal
@@ -1627,7 +1631,7 @@ function planScreen(): string {
     .map((id, index) => {
       const c = cardOf(engine.cards, id);
       return `<div class="hand-entry" style="--hand-order:${index};--hand-tilt:${(index - (handIds.length - 1) / 2) * 4}deg;--hand-rise:${Math.pow(index - (handIds.length - 1) / 2, 2) * 2}px">
-      ${cardHTML(c, { action: touch ? "inspectCard" : "addCard", hand: true, dimmed: !canAdd(plan, id, engine.cards, available()), coached: id === coached, data: rows && !touch ? `data-peek="${id}"` : "" })}
+      ${cardHTML(c, { action: touch ? "inspectCard" : "addCard", hand: true, why: canAdd(plan, id, engine.cards, available()) ? "" : unplayable(cardOf(engine.cards, id)), coached: id === coached, data: rows && !touch ? `data-peek="${id}"` : "" })}
       ${rows ? "" : `<button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Details: ${c.name}" tabindex="-1">Details</button>`}</div>`;
     })
     .join("");
@@ -1999,7 +2003,7 @@ function cardHTML(
   c: Card,
   {
     selected = false,
-    dimmed = false,
+    why = "",
     small = false,
     locked = false,
     pressed = null,
@@ -2021,7 +2025,7 @@ function cardHTML(
     c.rare ? "card--rare" : "",
     c.special ? "" : "card--basic",
     selected ? "card--selected" : "",
-    dimmed ? "card--dimmed" : "",
+    why !== "" ? "card--dimmed" : "",
     small ? "card--small" : "",
     locked ? "card--locked" : "",
     coached ? "card--coached" : "",
@@ -2055,7 +2059,7 @@ function cardHTML(
     <div class="card__foot"><span class="card__clan">${emblem(clan)}${clan}</span>${badges}</div>${sealed !== "" ? cardBackHTML(sealed, "card__back") : ""}`;
   if (action === null) return `<div class="${classes}" ${state} ${small ? `tabindex="0"` : ""} ${data}>${body}</div>`;
   const rules = ruleRefs(c);
-  return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${hand ? `aria-label="${escapeHTML(`${c.name}, ${counted(c.cost, "beat")}. ${c.text}`).replaceAll('"', "&quot;")}"${rules === "" ? "" : ` aria-describedby="${rules}"`}` : ""} ${state} ${data} ${dimmed ? "disabled" : ""}>${body}</button>`;
+  return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${hand ? `aria-label="${escapeHTML(`${c.name}, ${counted(c.cost, "beat")}. ${c.text}${why === "" ? "" : ` ${why}`}`).replaceAll('"', "&quot;")}"${rules === "" ? "" : ` aria-describedby="${rules}"`}` : ""} ${state} ${data} ${why === "" ? "" : `aria-disabled="true" title="${escapeHTML(why)}"`}>${body}</button>`;
 }
 
 // cardBackHTML is the back of a card of clan, hidden from assistive technology; an empty clan, a

@@ -609,7 +609,7 @@
   opacity: 1;
   filter: brightness(0.5);
 }
-.hand-entry button.card:hover:not(:disabled),
+.hand-entry button.card:hover:not(:disabled, .card--dimmed),
 .hand-entry button.card:focus-visible {
   transform: none;
   box-shadow: 0 12px 20px color-mix(in srgb, var(--gh-color-shadow) 47%, transparent);
@@ -688,7 +688,7 @@
 .card.card--coached:focus-visible {
   outline-color: var(--gh-color-highlight);
 }
-.hand-entry button.card.card--coached:hover:not(:disabled),
+.hand-entry button.card.card--coached:hover:not(:disabled, .card--dimmed),
 .hand-entry button.card.card--coached:focus-visible {
   box-shadow:
     0 12px 20px color-mix(in srgb, var(--gh-color-shadow) 47%, transparent),
@@ -1699,7 +1699,7 @@
   flex: 1 0 100%;
   padding: 0 2px;
 }
-.battle-hand--rows .hand-entry button.card:hover:not(:disabled),
+.battle-hand--rows .hand-entry button.card:hover:not(:disabled, .card--dimmed),
 .battle-hand--rows .hand-entry button.card:focus-visible {
   transform: translateY(-3px);
 }
