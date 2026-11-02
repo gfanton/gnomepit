@@ -1719,15 +1719,12 @@
 .battle-hand--rows :is(.card__ornament, .card__clan, .badge--rare, .card__art--pending span) {
   display: none;
 }
-/* A player comes to know a card by its picture sooner than by its rules. */
 .battle-hand--rows .card__art {
+  position: relative;
   grid-area: art;
   height: auto;
 }
 /* Out of flow, the picture fills its band without sizing the card. */
-.battle-hand--rows .card__art {
-  position: relative;
-}
 .battle-hand--rows .card__art img {
   position: absolute;
   inset: 0;
@@ -1799,7 +1796,7 @@
     border-radius: 0 0 3px 3px;
     background: linear-gradient(transparent, color-mix(in srgb, var(--gh-color-shadow) 82%, transparent) 6px);
     color: var(--gh-color-text-bright);
-    font: 700 13px / 15px var(--gh-font-display);
+    font: var(--gh-type-title-small);
   }
   /* The cost's float stops at the first line's foot, so a second line runs the card's full width. */
   .battle-hand--rows .card__cost {
@@ -1807,7 +1804,7 @@
     width: 18px;
     height: 18px;
     margin: 0 var(--gh-space-1) -3px 0;
-    font: 700 12px / 1 var(--gh-font-display);
+    font: var(--gh-type-title-small);
     font-variant-numeric: var(--gh-numerals);
   }
   .battle-hand--rows .card__name {

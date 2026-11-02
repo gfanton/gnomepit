@@ -213,10 +213,12 @@
   /* Type roles. The font shorthand resets font-variant, so a rule that takes a role sets its own
      caps and numerals after it. */
   --gh-type-display: 800 clamp(42px, 4.4vw, 64px) / 1.05 var(--gh-font-display);
+  --gh-type-headline: 800 clamp(36px, 3.4vw, 48px) / 1.05 var(--gh-font-display);
   --gh-type-heading: 800 30px / 1.15 var(--gh-font-display);
   --gh-type-subheading: 700 22px / 1.2 var(--gh-font-display);
   --gh-type-title: 700 17px / 1.15 var(--gh-font-display);
   --gh-type-title-compact: 700 15px / 1.05 var(--gh-font-display);
+  --gh-type-title-small: 700 13px / 15px var(--gh-font-display);
   --gh-type-note: italic 400 16px / 1.4 var(--gh-font-display);
   --gh-type-body: 500 16px / 1.55 var(--gh-font-body);
   --gh-type-rules: 500 14px / 1.35 var(--gh-font-body);

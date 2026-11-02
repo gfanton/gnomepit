@@ -1699,7 +1699,7 @@ function planScreen(): string {
     </section>
     <section class="hand-zone" aria-label="Your hand"><div class="hand-zone__heading">
       ${title}
-      <div class="hand-zone__hint"><span class="label">Your hand <span>${counted(handIds.length, "card")}</span></span><span class="muted">${rows ? "Hover a card to see it whole" : "Lift a card to read"} · click to play · tap to inspect</span></div>
+      <div class="hand-zone__hint"><span class="label">Your hand <span>${counted(handIds.length, "card")}</span></span><span class="muted">${touch ? "Tap a card to read it and play it" : rows ? "Hover a card to see it whole · click to play" : "Lift a card to read · click to play"}</span></div>
       <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length > 0 ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}${onlineSending ? ' aria-busy="true"' : ""}>${sealLabel()}</button></div></div>
       <div class="hand-layout"><div class="battle-hand card-grid${rows ? " battle-hand--rows" : ""}" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount > 0 ? "" : "disabled"} aria-label="Open played cards, ${counted(playedCount, "card")}">${cardBackHTML(clans[me], "pile-back")}<span class="label">Played cards</span><span class="muted">${counted(playedCount, "card")} · inspect</span></button></div></section>
     ${battleDialogsHTML(me)}`;
@@ -1989,7 +1989,7 @@ function resultStageHTML(v: Verdict, body: string, actions: string): string {
   const { state, clans } = underway();
   const champion = (side: Side, place: "near" | "far") => {
     const outcome = v.winner === null ? "" : v.winner === side ? "duel-champion--winner" : "duel-champion--loser";
-    return `<figure class="duel-champion duel-champion--${place} fighter--${clans[side].toLowerCase()} ${outcome}"><div class="duel-champion__portrait">${portraitHTML(clans[side], 'class="sprite"')}</div><figcaption><span class="duel-champion__name">${names[side]}</span><span class="label">${clans[side]}</span><span class="duel-champion__hp">${Math.max(0, state.gnomes[side].hp)} HP</span></figcaption></figure>`;
+    return `<figure class="duel-champion duel-champion--${place} fighter--${clans[side].toLowerCase()} ${outcome}"><div class="duel-champion__portrait">${portraitHTML(clans[side], 'class="sprite"')}</div><figcaption><span class="duel-champion__name">${names[side]}</span>${names[side] === clans[side] ? "" : `<span class="label">${clans[side]}</span>`}<span class="duel-champion__hp">${Math.max(0, state.gnomes[side].hp)} HP</span></figcaption></figure>`;
   };
   const blow =
     v.blow === null || v.winner === null
@@ -2100,8 +2100,8 @@ function cardHTML(
     <div class="card__text">${markKeywords(c.text, { focusable: tips })}</div>
     <div class="card__foot"><span class="card__clan">${emblem(clan)}${clan}</span>${badges}</div>${sealed !== "" ? cardBackHTML(sealed, "card__back") : ""}`;
   if (action === null) return `<div class="${classes}" ${state} ${small ? `tabindex="0"` : ""} ${data}>${body}</div>`;
-  const rules = ruleRefs(c);
-  return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${hand ? `aria-label="${escapeHTML(`${c.name}, ${counted(c.cost, "beat")}. ${c.text}${why === "" ? "" : ` ${why}`}`).replaceAll('"', "&quot;")}"${rules === "" ? "" : ` aria-describedby="${rules}"`}` : ""} ${state} ${data} ${why === "" ? "" : `aria-disabled="true" title="${escapeHTML(why)}"`}>${body}</button>`;
+  const described = [why === "" ? "" : `why-${c.id}`, ruleRefs(c)].filter((ref) => ref !== "").join(" ");
+  return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${hand ? `aria-label="${escapeHTML(`${c.name}, ${counted(c.cost, "beat")}. ${c.text}`).replaceAll('"', "&quot;")}"${described === "" ? "" : ` aria-describedby="${described}"`}` : ""} ${state} ${data} ${why === "" ? "" : `aria-disabled="true" title="${escapeHTML(why)}"`}>${body}${why === "" ? "" : `<span hidden id="why-${c.id}">${escapeHTML(why)}</span>`}</button>`;
 }
 
 // cardBackHTML is the back of a card of clan, hidden from assistive technology; an empty clan, a

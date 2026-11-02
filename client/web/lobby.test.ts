@@ -738,6 +738,9 @@ test("a match page stages both champions on the table, with their health and add
   assert.match(page, /<section class="duel-stage">/);
   assert.match(page, /<figure class="duel-champion duel-champion--near fighter--pickers">.*?>You<.*?>12 HP</s);
   assert.match(page, /<figure class="duel-champion duel-champion--far fighter--ironhide">.*?>Ironhide<.*?>9 HP</s);
+  // A rival named by its clan carries no label repeating it.
+  const far = /<figure class="duel-champion duel-champion--far[^"]*">(.*?)<\/figure>/s.exec(page)?.[1] ?? "";
+  assert.equal(far.match(/Ironhide/g)?.length, 1, far);
   assert.match(page, /Round 2 of 3/);
   assert.match(page, /Posted by you/);
   assert.equal(page.match(/data-address="g1bob"/g)?.length, 1);

@@ -369,7 +369,7 @@
   margin: 8px 0 16px;
 }
 .lobby .duel-stage__headline h1 {
-  font: 800 clamp(36px, 3.4vw, 48px) / 1.05 var(--gh-font-display);
+  font: var(--gh-type-headline);
   text-wrap: balance;
 }
 .lobby .duel-stage__headline > p {
