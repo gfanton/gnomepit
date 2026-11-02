@@ -1218,21 +1218,209 @@ button.card:focus-visible {
   padding: 12px;
   resize: vertical;
 }
+/* The hot-seat curtain: one lantern-lit plaque naming who takes the screen next. */
 .curtain {
   position: fixed;
   inset: 0;
-  background: var(--gh-color-canvas);
+  background:
+    radial-gradient(ellipse at 50% 28%, color-mix(in srgb, var(--gh-color-flame) 14%, transparent), transparent 60%),
+    var(--gh-color-canvas);
   display: grid;
   place-items: center;
   padding: 24px;
   z-index: 4;
 }
-.curtain .frame {
+.handoff {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  max-width: 420px;
+  padding: 36px 32px 32px;
+  text-align: center;
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim) 45%, transparent);
+  border-radius: var(--gh-radius-lg);
+  background: linear-gradient(160deg, var(--gh-color-surface-raised), var(--gh-color-surface));
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--gh-color-shadow) 55%, transparent);
+}
+.handoff h1 {
+  margin: 0;
+  font: var(--gh-type-heading);
+  color: var(--gh-color-text-bright);
+}
+.handoff p {
+  margin: 0 0 8px;
+  color: var(--gh-color-text-muted);
+  font: var(--gh-type-body);
+}
+.handoff__crest {
+  padding: 5px;
+  border: 2px solid var(--clan-color);
+  border-radius: 50%;
+  background: var(--gh-color-surface);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--clan-light) 30%, transparent);
+}
+.handoff__crest .sprite {
+  width: 96px;
+  height: 96px;
+  border: 0;
+}
+
+/* ---- Result: the verdict staged on the duel table between the two champions. The winner's
+   ring lights in their clan's colour and the loser's portrait greys, after a beat. */
+.result-stage {
+  display: grid;
+  justify-items: center;
+  gap: 28px;
+  padding: 44px 32px 32px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim) 33%, transparent);
+  border-radius: var(--gh-radius-lg);
+  background:
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--gh-color-flame) 16%, transparent), transparent 62%),
+    linear-gradient(
+      color-mix(in srgb, var(--gh-color-canvas) 72%, transparent),
+      color-mix(in srgb, var(--gh-color-canvas) 86%, transparent)
+    ),
+    url("art/duel-table.jpg") center / cover;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--gh-color-trim-bright) 20%, transparent),
+    0 14px 36px color-mix(in srgb, var(--gh-color-shadow) 27%, transparent);
+}
+.result-stage__duel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
+  grid-template-areas: "near verdict far";
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 980px;
+}
+.result-verdict {
+  grid-area: verdict;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.result-verdict h1 {
+  margin: 0;
+  color: var(--gh-color-text-bright);
+  font: var(--gh-type-display);
+  letter-spacing: var(--gh-tracking-display);
+  text-shadow: 0 3px 24px color-mix(in srgb, var(--gh-color-shadow) 65%, transparent);
+}
+.result-verdict > p {
+  margin: 0;
+  color: var(--gh-color-text-warm);
+  font: var(--gh-type-note);
+}
+.result-blow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+  margin-top: 10px;
+  color: var(--gh-color-text-muted);
+  font: var(--gh-type-caption);
+}
+.result-champion {
+  margin: 0;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.result-champion--near {
+  grid-area: near;
+}
+.result-champion--far {
+  grid-area: far;
+}
+.result-champion figcaption {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+.result-champion .label {
+  color: var(--clan-light);
+}
+.result-champion__portrait {
+  padding: 6px;
+  border: 3px solid var(--clan-color);
+  border-radius: 50%;
+  background: var(--gh-color-surface);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--gh-color-canvas) 73%, transparent),
+    0 10px 24px color-mix(in srgb, var(--gh-color-shadow) 40%, transparent);
+}
+.result-champion__portrait .sprite {
+  width: 132px;
+  height: 132px;
+  border: 0;
+}
+.result-champion__name {
+  font: var(--gh-type-heading);
+}
+.result-champion__hp {
+  color: var(--gh-color-text-glow);
+  font: var(--gh-type-subheading);
+  font-variant-numeric: var(--gh-numerals);
+}
+.result-champion--winner .result-champion__portrait {
+  scale: 1.06;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--gh-color-canvas) 73%, transparent),
+    0 0 40px 8px color-mix(in srgb, var(--clan-light) 40%, transparent);
+  animation: champion-lit 900ms 250ms var(--gh-ease-out) backwards;
+}
+.result-champion--loser .result-champion__portrait {
+  border-color: var(--gh-color-border);
+}
+.result-champion--loser .sprite {
+  filter: grayscale(0.85) brightness(0.6);
+  animation: champion-greyed 900ms 250ms ease-out backwards;
+}
+.result-champion--loser figcaption {
+  opacity: 0.7;
+}
+.result-stage__note {
+  max-width: 60ch;
+  margin: 0;
+  color: var(--gh-color-text-muted);
+  text-align: center;
+  font: var(--gh-type-body);
+}
+.result-details {
+  border: 1px solid color-mix(in srgb, var(--gh-color-border-pale) 31%, transparent);
+  border-radius: var(--gh-radius-md);
+  background: var(--gh-color-surface);
+}
+.result-details > summary {
+  padding: 16px 20px;
+  color: var(--gh-color-text-warm);
+  cursor: pointer;
+  font-weight: 700;
+}
+.result-details[open] {
   display: grid;
   gap: 20px;
-  text-align: center;
-  justify-items: center;
-  min-width: 300px;
+  padding-bottom: 20px;
+}
+.result-details[open] > :not(summary) {
+  margin-inline: 20px;
+}
+@keyframes champion-lit {
+  from {
+    scale: 1;
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--gh-color-canvas) 73%, transparent),
+      0 0 0 0 transparent;
+  }
+}
+@keyframes champion-greyed {
+  from {
+    filter: none;
+  }
 }
 .row {
   display: flex;
@@ -1381,6 +1569,25 @@ button.card:focus-visible {
     min-width: 0;
   }
 }
+@media (max-width: 700px) {
+  .result-stage {
+    padding: 28px 14px 20px;
+  }
+  .result-stage__duel {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "verdict verdict"
+      "near far";
+    row-gap: 20px;
+  }
+  .result-champion__portrait .sprite {
+    width: 88px;
+    height: 88px;
+  }
+  .result-champion__name {
+    font: var(--gh-type-subheading);
+  }
+}
 /* After the 540px block, so the workbench keeps its own padding over .frame's. */
 @media (max-width: 600px) {
   .frame--acting {
@@ -1416,7 +1623,11 @@ button.card:focus-visible {
 .fighter:first-child .fighter__portrait {
   view-transition-name: champion-near;
 }
-.fighter:last-child .fighter__portrait {
+.result-champion--near .result-champion__portrait {
+  view-transition-name: champion-near;
+}
+.fighter:last-child .fighter__portrait,
+.result-champion--far .result-champion__portrait {
   view-transition-name: champion-far;
 }
 ::view-transition-group(*) {

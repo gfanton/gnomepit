@@ -18,7 +18,8 @@ import { type Action, type Flow, type Round, initial, reduce, botTurn } from "./
 import { type Deck, deckSize, newDeck, readiness, toggle, rareOf } from "./deck.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
 import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.ts";
-import { sentences, matchLog, resultLine, sideNames, possessive } from "./log.ts";
+import { sentences, matchLog, sideNames, possessive } from "./log.ts";
+import { type Verdict, verdict } from "./result.ts";
 import { glossary, markKeywords, escapeHTML } from "./keywords.ts";
 import { type KnownCards, knownCards } from "./table.ts";
 import { type StepFeedback, cardBehind, heavyHit, impact, stepFeedback } from "./battle-feedback.ts";
@@ -1371,14 +1372,20 @@ function deckScreen(): string {
 
 function handoff(): string {
   if (flow.after === null) throw new Error("The hand-off leads nowhere.");
-  const next = flow.after.acting + 1;
+  const next = flow.after.acting;
+  const clan = flow.clans[next] ?? "";
+  const task =
+    flow.after.screen === "plan"
+      ? `Player ${next + 1} plans round ${flow.state?.round ?? 1} in secret.`
+      : `Player ${next + 1} chooses a clan and builds a deck in secret.`;
   return `
     <div class="curtain">
-      <div class="frame">
-        <p class="heading">Pass to Player ${next}</p>
-        <p class="muted">Player ${3 - next}, look away.</p>
-        <button class="button" type="button" data-action="handoffDone">I am Player ${next}</button>
-      </div>
+      <section class="handoff" aria-labelledby="handoff-title">
+        ${clan === "" ? "" : `<div class="handoff__crest fighter--${clan.toLowerCase()}">${portraitHTML(clan, 'class="sprite"')}</div>`}
+        <h1 id="handoff-title">Pass to Player ${next + 1}</h1>
+        <p>${task} Player ${2 - next}, look away.</p>
+        <button class="button" type="button" data-action="handoffDone">I am Player ${next + 1}</button>
+      </section>
     </div>`;
 }
 
@@ -1672,14 +1679,13 @@ function finishHTML(): string {
     const context = onlineMatch();
     return `<div class="button-row"><button class="button" data-action="playbackDone">${context.intent === "move" && context.review ? "Back to match" : "Plan your next round"}</button></div>`;
   }
-  const names = battleNames();
   const { state } = underway();
   if (flow.result === "ongoing") {
     return `<div class="button-row"><button class="button" type="button" data-action="playbackDone">Round ${state.round}</button></div>`;
   }
-  const knockout = state.gnomes.some((g) => g.hp <= 0);
+  const { title, detail } = verdict(flow.rounds, flow.result, battleNames());
   return `
-    <p class="banner">${knockout ? "Knockout!" : "Three rounds played."} ${resultLine(flow.result, names)}</p>
+    <p class="banner">${title}. ${detail}</p>
     <div class="button-row"><button class="button" type="button" data-action="playbackDone">Continue</button></div>`;
 }
 
@@ -1687,56 +1693,67 @@ function resultScreen(): string {
   if (flow.mode === "tutorial") return guidedResultHTML();
   const names = battleNames();
   const { state, decks } = underway();
-  const sides = ([0, 1] as const)
+  const unplayed = ([0, 1] as const)
     .map((side) => {
-      const g = state.gnomes[side];
-      const unplayed = decks[side]
-        .filter((id) => !g.spent.includes(id))
+      const cards = decks[side]
+        .filter((id) => !state.gnomes[side].spent.includes(id))
         .map((id) => cardHTML(cardOf(engine.cards, id), { small: true }))
         .join("");
-      return `
-        <div class="stack">
-          <div class="frame__head"><span class="heading">${names[side]}</span><span class="number">HP ${g.hp}</span></div>
-          <span class="label">Never played</span>
-          <div class="row">${unplayed !== "" ? unplayed : `<span class="muted">Every card.</span>`}</div>
-        </div>`;
+      return `<div class="stack"><span class="label">${possessive(names[side])} unplayed cards</span><div class="row">${cards !== "" ? cards : `<span class="muted">Every card was played.</span>`}</div></div>`;
     })
     .join("");
   return `
     ${masthead()}
-    <section class="frame stack">
-      <p class="banner">${resultLine(flow.result, names)}</p>
-      <div class="split">${sides}</div>
-      <div class="button-row">
-        <button class="button" type="button" data-action="rematch">Rematch</button>
-        <button class="button button--secondary" type="button" data-action="newMatch">New match</button>
-      </div>
+    ${resultStageHTML(
+      verdict(flow.rounds, flow.result, names),
+      "",
+      `<button class="button" type="button" data-action="rematch">Rematch</button>
+      <button class="button button--secondary" type="button" data-action="newMatch">New match</button>`,
+    )}
+    <details class="result-details">
+      <summary>Match log and unplayed cards</summary>
+      <div class="split">${unplayed}</div>
       <div class="stack">
         <div class="frame__head"><span class="label">Match log</span><span class="button-row"><button class="button button--secondary" type="button" data-action="copyLog">Copy match log</button><span class="muted" id="copied"></span></span></div>
         <textarea class="log-text" id="match-log" readonly rows="10">${escapeHTML(matchLog(flow.rounds, flow.result, { cards: engine.cards, names }))}</textarea>
       </div>
-    </section>`;
+    </details>`;
 }
 
-// guidedResultHTML closes the guided match on its health score and leads where the player was
-// heading before it.
+// guidedResultHTML closes the guided match on its verdict and leads where the player was heading
+// before it.
 function guidedResultHTML(): string {
-  const [mine, theirs] = underway().state.gnomes.map((g) => g.hp);
-  const outcome =
-    flow.result === "a"
-      ? `You won on health, ${mine} to ${theirs}.`
-      : flow.result === "b"
-        ? `Ironhide won on health, ${theirs} to ${mine}.`
-        : `An even score: ${mine} to ${theirs}.`;
   return `
     ${masthead()}
-    <section class="frame stack guided-result">
-      <p class="banner">${outcome}</p>
-      <p>${coach.result.real}</p>
-      <div class="button-row">
-        <button class="button" type="button" data-action="tutorialOnward">${coach.result.onward[onward ?? "home"]}</button>
-        <button class="button button--secondary" type="button" data-action="tutorial"${onward === null ? "" : ` data-mode="${onward}"`}>${coach.result.again}</button>
+    ${resultStageHTML(
+      verdict(flow.rounds, flow.result, battleNames()),
+      `<p class="result-stage__note">${coach.result.real}</p>`,
+      `<button class="button" type="button" data-action="tutorialOnward">${coach.result.onward[onward ?? "home"]}</button>
+      <button class="button button--secondary" type="button" data-action="tutorial"${onward === null ? "" : ` data-mode="${onward}"`}>${coach.result.again}</button>`,
+    )}`;
+}
+
+// resultStageHTML stages a finished match: the verdict between the two champions, the winner lit
+// and the loser greyed, the viewer's champion nearest, then body and the actions.
+function resultStageHTML(v: Verdict, body: string, actions: string): string {
+  const viewer: Side = flow.mode === "hotseat" ? flow.acting : 0;
+  const names = battleNames();
+  const { state, clans } = underway();
+  const champion = (side: Side, place: "near" | "far") => {
+    const outcome = v.winner === null ? "" : v.winner === side ? "result-champion--winner" : "result-champion--loser";
+    return `<figure class="result-champion result-champion--${place} fighter--${clans[side].toLowerCase()} ${outcome}"><div class="result-champion__portrait">${portraitHTML(clans[side], 'class="sprite"')}</div><figcaption><span class="result-champion__name">${names[side]}</span><span class="label">${clans[side]}</span><span class="result-champion__hp">${Math.max(0, state.gnomes[side].hp)} HP</span></figcaption></figure>`;
+  };
+  const blow =
+    v.blow === null || v.winner === null
+      ? ""
+      : `<p class="result-blow"><span class="label">${possessive(names[v.winner])} ${v.blow.finishing ? "finishing blow" : "hardest hit"}</span>${cardHTML(cardOf(engine.cards, v.blow.card), { small: true })}<span>${v.blow.damage} damage in round ${v.blow.round}</span></p>`;
+  return `<section class="result-stage" aria-labelledby="result-title">
+      <div class="result-stage__duel">
+        <div class="result-verdict"><h1 id="result-title">${v.title}</h1><p>${v.detail}</p>${blow}</div>
+        ${champion(viewer, "near")}${champion(otherSide(viewer), "far")}
       </div>
+      ${body}
+      <div class="button-row">${actions}</div>
     </section>`;
 }
 

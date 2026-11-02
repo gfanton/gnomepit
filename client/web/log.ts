@@ -66,12 +66,12 @@ const hitKey = (ev: BattleEvent) => `${ev.side}:${ev.card}:${ev.beat}`;
 
 const verb = (name: string, form: string, youForm: string) => (name === "You" ? youForm : form);
 
-// sideNames names the sides by clan, or by player when both play the same clan. The guided
-// match calls its player You.
+// sideNames names the sides by clan, or by player when both play the same clan. Against the bot
+// and in the guided match, the player is You.
 export function sideNames(clans: Names, mode: Flow["mode"]): Names {
   if (mode === "tutorial") return ["You", clans[1]];
-  if (clans[0] !== clans[1]) return [...clans];
-  return mode === "bot" ? ["You", "Bot"] : ["Player 1", "Player 2"];
+  if (mode === "bot") return ["You", clans[0] === clans[1] ? "Bot" : clans[1]];
+  return clans[0] !== clans[1] ? [...clans] : ["Player 1", "Player 2"];
 }
 
 export function possessive(name: string): string {
