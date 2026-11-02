@@ -90,7 +90,7 @@ function rankings(view: LeaderboardView): string {
     case "loading":
       return '<div class="empty-panel" role="status"><span class="loading-rule"></span><h3>Reading the hall’s records…</h3></div>';
     case "error":
-      return '<div class="empty-panel" role="status"><h3>The records are out of reach.</h3><p>Standings couldn’t be loaded. Please check again later.</p></div>';
+      return '<div class="empty-panel" role="status"><h3>The records are out of reach.</h3><p>Standings couldn’t be loaded. Check your connection, then try again.</p><a class="button" href="">Try again</a></div>';
     case "ready":
       return view.players.length > 0
         ? `<table class="ranking-table"><caption class="sr-only">Player leaderboard ranked by Elo, with main clan and win, loss and draw counts</caption><thead><tr><th scope="col">Rank</th><th scope="col">Player</th><th scope="col">Main clan</th><th scope="col">Elo</th><th scope="col"><abbr title="Wins">W</abbr></th><th scope="col"><abbr title="Losses">L</abbr></th><th scope="col"><abbr title="Draws">D</abbr></th></tr></thead><tbody>${rankingRows(view.players, view.ownPlayer?.id)}</tbody></table>`

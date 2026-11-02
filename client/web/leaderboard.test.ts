@@ -65,6 +65,13 @@ test("loading, error and empty views say so", () => {
   assert.match(leaderboardHTML(ready({})), /A place waiting to be earned/);
 });
 
+test("standings that fail to load offer another try", () => {
+  const html = leaderboardHTML({ status: "error", preview: false });
+  assert.match(html, /Check your connection, then try again\./);
+  assert.match(html, /<a class="button" href="">Try again<\/a>/);
+  assert.doesNotMatch(html, /check again later/);
+});
+
 test("the masthead names Gnomepit and the seal carries its initials", () => {
   const html = leaderboardHTML(ready({}));
   assert.match(html, /class="wordmark"[^>]*>Gnomepit<span class="wordmark__beta">Beta</);

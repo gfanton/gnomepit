@@ -525,6 +525,7 @@ dialog::backdrop {
   align-items: center;
 }
 .button {
+  display: inline-block;
   padding: 11px 20px;
   border: 1px solid var(--gh-color-accent);
   border-radius: 5px;
@@ -539,6 +540,7 @@ dialog::backdrop {
     background var(--gh-motion-fast),
     transform var(--gh-motion-fast);
   line-height: 1.2;
+  text-decoration: none;
 }
 .button:hover:not(:disabled) {
   background: var(--gh-color-accent-hover);
@@ -702,25 +704,12 @@ dialog::backdrop {
   transform: none;
 }
 .collection {
+  display: grid;
+  gap: 28px;
+  padding: 20px 20px 24px;
   border: 1px solid color-mix(in srgb, var(--gh-color-border-pale) 31%, transparent);
   border-radius: 7px;
   background: var(--gh-color-surface);
-}
-.collection > summary {
-  cursor: pointer;
-  padding: 16px 20px;
-  color: var(--gh-color-accent-hover);
-  font-weight: bold;
-}
-.collection > summary span {
-  float: right;
-  color: var(--gh-color-text-muted);
-  font: var(--gh-type-caption);
-}
-.collection__groups {
-  display: grid;
-  gap: 28px;
-  padding: 12px 20px 24px;
 }
 .hall-footer {
   border-top: 1px solid color-mix(in srgb, var(--gh-color-trim) 19%, transparent);
@@ -1580,13 +1569,8 @@ button.card:active:not(:disabled, .card--locked) {
     gap: 12px;
     flex-wrap: wrap;
   }
-  .collection > summary span {
-    float: none;
-    display: block;
-    margin: 5px 0 0 16px;
-  }
-  .collection__groups {
-    padding: 8px 10px 18px;
+  .collection {
+    padding: 14px 10px 18px;
   }
   .clan-banner__portrait {
     width: 54px;
