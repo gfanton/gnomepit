@@ -1,6 +1,6 @@
 package arena
 
-import "gno.land/p/gfanton/gnomepit/engine"
+import "gno.land/p/gfanton/gnomepit/engine/v0"
 
 const (
 	startRating = 1000

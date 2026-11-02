@@ -9,7 +9,7 @@ set -o errexit -o nounset -o pipefail
 readonly OUT="${1:?usage: capture.sh <out dir>}"
 readonly RPC="${RPC:-127.0.0.1:36657}"
 readonly CHAIN="${CHAIN:-gnomepit-dev}"
-readonly ARENA="gno.land/r/gfanton/gnomepit/arena"
+readonly ARENA="gno.land/r/gfanton/gnomepit/arena/v0"
 # gnodev premines test1 on every chain it starts; its mnemonic is public.
 readonly MNEMONIC="source bonus chronic canvas draft south burst lottery vacant surface solve popular case indicate oppose farm nothing bullet exhibit title speed wink action roast"
 readonly PLAYER="g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5"

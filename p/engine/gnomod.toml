@@ -1,2 +1,2 @@
-module = "gno.land/p/gfanton/gnomepit/engine"
+module = "gno.land/p/gfanton/gnomepit/engine/v0"
 gno = "0.9"

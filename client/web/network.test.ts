@@ -7,7 +7,7 @@ test("networkFor gives the local, onyx and offline builds' networks and refuses 
   assert.deepEqual(networkFor("local"), {
     chainId: "gnomepit-dev",
     rpc: "http://127.0.0.1:36657",
-    realm: "gno.land/r/gfanton/gnomepit/arena",
+    realm: "gno.land/r/gfanton/gnomepit/arena/v0",
     gnotif: "http://127.0.0.1:8547",
   });
   assert.deepEqual(networkFor("onyx"), {

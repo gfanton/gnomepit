@@ -36,3 +36,6 @@ result-*
 !/.claude/settings.json
 # The superpowers skills' plan workspaces and brainstorm mockups.
 .superpowers/
+
+# gnopm's assembly: rebuilt from gnomod.lock, never committed.
+/.gnopm/

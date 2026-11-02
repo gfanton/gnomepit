@@ -18,7 +18,9 @@ const BroadcastRecording = v.object({
   result: v.object({
     deliver_tx: v.object({
       GasUsed: v.string(),
-      ResponseBase: v.object({ Events: v.array(v.object({ "@type": v.string(), bytes_delta: v.string() })) }),
+      ResponseBase: v.object({
+        Events: v.array(v.object({ "@type": v.string(), bytes_delta: v.optional(v.string()) })),
+      }),
     }),
   }),
 });
@@ -101,22 +103,22 @@ test("the gas price is a price per amount of gas", async () => {
 
 test("a query sends its expression and returns the typed values", async () => {
   const { chain, sent } = replay("qeval-ok");
-  const [open] = await chain.evalJSON("gno.land/r/gfanton/gnomepit/arena.Open(0, 50)");
+  const [open] = await chain.evalJSON("gno.land/r/gfanton/gnomepit/arena/v0.Open(0, 50)");
   const SliceOf = v.object({ T: v.object({ Elt: v.object({ ID: v.string() }) }) });
-  assert.equal(v.parse(SliceOf, open).T.Elt.ID, "gno.land/r/gfanton/gnomepit/arena.OpenChallenge");
+  assert.equal(v.parse(SliceOf, open).T.Elt.ID, "gno.land/r/gfanton/gnomepit/arena/v0.OpenChallenge");
   assert.equal(sent[0]?.params.path, "vm/qeval_json");
-  assert.equal(atob(known(sent[0]?.params.data)), "gno.land/r/gfanton/gnomepit/arena.Open(0, 50)");
+  assert.equal(atob(known(sent[0]?.params.data)), "gno.land/r/gfanton/gnomepit/arena/v0.Open(0, 50)");
 });
 
 test("a type query gives the type's declaration", async () => {
   const { chain } = replay("qtype");
-  const answer = await chain.typeJSON("gno.land/r/gfanton/gnomepit/arena.OpenChallenge");
+  const answer = await chain.typeJSON("gno.land/r/gfanton/gnomepit/arena/v0.OpenChallenge");
   assert.equal(v.parse(v.object({ type: v.object({ Name: v.string() }) }), answer).type.Name, "OpenChallenge");
 });
 
 test("a query the realm refuses fails with the realm's reason", async () => {
   const { chain } = replay("qeval-error");
-  await rejects(chain.evalJSON('gno.land/r/gfanton/gnomepit/arena.Match("99")'), "failed", "unknown match");
+  await rejects(chain.evalJSON('gno.land/r/gfanton/gnomepit/arena/v0.Match("99")'), "failed", "unknown match");
 });
 
 test("a simulation gives the gas the transaction uses", async () => {
@@ -200,7 +202,7 @@ test("an account's sessions list each session's account and limits", async () =>
   assert.equal(typeof first.accountNumber, "number");
   assert.equal(typeof first.sequence, "number");
   assert.equal(typeof first.expiresAt, "number");
-  assert.deepEqual(first.allowPaths, ["vm/exec:gno.land/r/gfanton/gnomepit/arena"]);
+  assert.deepEqual(first.allowPaths, ["vm/exec:gno.land/r/gfanton/gnomepit/arena/v0"]);
   assert.equal(first.spendLimit, 1_000_000);
   assert.equal(typeof first.spendUsed, "number");
   assert.equal(sent[0]?.params.path, "auth/accounts/g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w/sessions");

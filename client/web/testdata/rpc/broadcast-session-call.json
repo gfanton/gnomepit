@@ -11,7 +11,7 @@
         "Info": ""
       },
       "GasWanted": "30000000",
-      "GasUsed": "939858"
+      "GasUsed": "940043"
     },
     "deliver_tx": {
       "ResponseBase": {
@@ -19,19 +19,34 @@
         "Data": "KCIyIiBzdHJpbmcpCgo=",
         "Events": [
           {
+            "@type": "/tm.Event",
+            "type": "Board",
+            "attrs": [
+              {
+                "key": "match",
+                "value": "2"
+              },
+              {
+                "key": "text",
+                "value": "Ironhide posted a challenge."
+              }
+            ],
+            "pkg_path": "gno.land/r/gfanton/gnomepit/arena/v0"
+          },
+          {
             "@type": "/tm.StorageDepositEvent",
             "bytes_delta": "210",
             "fee_delta": "21000ugnot",
-            "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
+            "pkg_path": "gno.land/r/gfanton/gnomepit/arena/v0"
           }
         ],
         "Log": "msg:0,success:true,log:,events:[]",
         "Info": ""
       },
       "GasWanted": "30000000",
-      "GasUsed": "15456824"
+      "GasUsed": "15714615"
     },
-    "hash": "6Djx6aid6Vb1iGnLfCz9oCW/CBmv9yW6jtnARz0rWGE=",
-    "height": "6"
+    "hash": "7qRdzvRJyczPbaBhwfBK8J8lyuRyUHUVH59oHPsaKhM=",
+    "height": "8"
   }
 }

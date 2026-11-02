@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"gno.land/p/gfanton/gnomepit/engine"
+	"gno.land/p/gfanton/gnomepit/engine/v0"
 )
 
 // Accept answers open challenge id as clan, with deck and the round-1 plan in plain

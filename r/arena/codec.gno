@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 
-	"gno.land/p/gfanton/gnomepit/engine"
+	"gno.land/p/gfanton/gnomepit/engine/v0"
 )
 
 // Everything stored by the arena is a byte string laid out here, big-endian. This file

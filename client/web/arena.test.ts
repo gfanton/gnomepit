@@ -273,7 +273,7 @@ function memory(): Pick<Storage, "getItem" | "setItem"> {
 test("notify enables push with the feed's opt-ins and counts the push triggers", async () => {
   const fake = fakeNotifier({
     triggers: async (target) => {
-      assert.equal(target, "gno.land/r/gfanton/gnomepit/arena");
+      assert.equal(target, "gno.land/r/gfanton/gnomepit/arena/v0");
       return arenaTriggers;
     },
   });
@@ -342,7 +342,7 @@ test("notify asks the browser for push before it waits on the server", async () 
 });
 
 test("the arena says whether it found a wallet and can send notifications", () => {
-  const realm = "gno.land/r/gfanton/gnomepit/arena";
+  const realm = "gno.land/r/gfanton/gnomepit/arena/v0";
   const bare = createArena({
     chain: arenaChain(),
     wallet: null,
@@ -448,7 +448,7 @@ test("watch reports a match when it changes, and stops", async () => {
     wallet: null,
     engine,
     signer,
-    realm: "gno.land/r/gfanton/gnomepit/arena",
+    realm: "gno.land/r/gfanton/gnomepit/arena/v0",
     chainId: "dev",
     origin: "http://x",
     storage: memory(),
@@ -469,7 +469,7 @@ test("watch reports a match when it changes, and stops", async () => {
   assert.equal(seen.length, count);
 });
 
-const realm = "gno.land/r/gfanton/gnomepit/arena";
+const realm = "gno.land/r/gfanton/gnomepit/arena/v0";
 const load = (name: string): unknown =>
   JSON.parse(readFileSync(new URL(`./testdata/qeval/${name}.json`, import.meta.url), "utf8"));
 // A recorded vm/qeval_json answer.

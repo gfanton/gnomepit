@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"gno.land/p/gfanton/gnomepit/engine"
+	"gno.land/p/gfanton/gnomepit/engine/v0"
 	"gno.land/p/nt/avl/v0"
 	"gno.land/r/sys/users"
 )

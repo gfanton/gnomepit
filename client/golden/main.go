@@ -25,7 +25,7 @@ const (
 	chainID    = "dev"
 	masterKey  = "0101010101010101010101010101010101010101010101010101010101010101"
 	sessionKey = "0202020202020202020202020202020202020202020202020202020202020202"
-	arena      = "gno.land/r/gfanton/gnomepit/arena"
+	arena      = "gno.land/r/gfanton/gnomepit/arena/v0"
 	seal       = "5e3a1f0c9b8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f"
 )
 

@@ -15,7 +15,7 @@ export const networks = {
   local: {
     chainId: "gnomepit-dev",
     rpc: "http://127.0.0.1:36657",
-    realm: "gno.land/r/gfanton/gnomepit/arena",
+    realm: "gno.land/r/gfanton/gnomepit/arena/v0",
     gnotif: "http://127.0.0.1:8547",
   },
   // The arena deployed from scripts/onyx-copy.sh under a gnomcp test key.

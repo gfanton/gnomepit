@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"gno.land/p/gfanton/gnomepit/engine"
+	"gno.land/p/gfanton/gnomepit/engine/v0"
 )
 
 const notFound = "# Not found\n\nThe arena has no page at this path.\n"

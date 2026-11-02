@@ -8,7 +8,7 @@ import { ChainError } from "./chain.ts";
 import { type Address, address } from "./ids.ts";
 import { type Standing, type Standings, boardView, createStandings, withOwnStanding } from "./standings.ts";
 
-const realm = "gno.land/r/gfanton/gnomepit/arena";
+const realm = "gno.land/r/gfanton/gnomepit/arena/v0";
 const alice = address("g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w");
 const bob = address("g1h3cka3ya6jw3yr64erpklnhvrgh5l4du6w0faw");
 const unrated = address("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5");

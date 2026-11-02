@@ -40,7 +40,7 @@ const floor = { gas: 1000, amount: 1, denom: "ugnot" };
 const busy = { ...floor, amount: 5 };
 const signature = btoa("a root signature of 64 bytes, as a wallet would return one....");
 const otherSignature = btoa("another root signature, from another wallet or another site....");
-const realm = "gno.land/r/gfanton/gnomepit/arena";
+const realm = "gno.land/r/gfanton/gnomepit/arena/v0";
 const now = 1_800_000_000;
 
 const failure = (type: WalletError["type"]) => (err: unknown) => err instanceof WalletError && err.type === type;

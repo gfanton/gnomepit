@@ -11,7 +11,7 @@
         "Info": ""
       },
       "GasWanted": "100000000",
-      "GasUsed": "623908"
+      "GasUsed": "623969"
     },
     "deliver_tx": {
       "ResponseBase": {
@@ -19,10 +19,25 @@
         "Data": "Cgo=",
         "Events": [
           {
+            "@type": "/tm.Event",
+            "type": "Board",
+            "attrs": [
+              {
+                "key": "match",
+                "value": "1"
+              },
+              {
+                "key": "text",
+                "value": "Challenge 1 was withdrawn."
+              }
+            ],
+            "pkg_path": "gno.land/r/gfanton/gnomepit/arena/v0"
+          },
+          {
             "@type": "/tm.StorageUnlockEvent",
             "bytes_delta": "-156",
             "fee_refund": "15600ugnot",
-            "pkg_path": "gno.land/r/gfanton/gnomepit/arena",
+            "pkg_path": "gno.land/r/gfanton/gnomepit/arena/v0",
             "refund_withheld": false
           }
         ],
@@ -30,9 +45,9 @@
         "Info": ""
       },
       "GasWanted": "100000000",
-      "GasUsed": "13361244"
+      "GasUsed": "13627453"
     },
-    "hash": "PEi+sExhOETu3tWZn6qBBJ9zdMegZiBQ9be6e3Wi1hE=",
-    "height": "7"
+    "hash": "ueElBhUgJGmzb0iaPNnZMRnINj0lk9R1D369qkP2dZc=",
+    "height": "9"
   }
 }
