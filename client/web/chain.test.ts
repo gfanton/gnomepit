@@ -156,6 +156,12 @@ test("a broadcast that lands gives its hash, height, gas and the storage it lock
   assert.deepEqual(sent[0]?.params, { tx: "dHg=" });
 });
 
+// The recording posts a challenge, whose call returns the new match's id.
+test("a broadcast that lands gives what its call returned", async () => {
+  const { chain } = replay("broadcast-ok");
+  assert.equal(atob(known((await chain.broadcast("dHg=")).data)), '("1" string)\n\n');
+});
+
 // The recording withdraws an open challenge, which frees its storage.
 test("a broadcast that frees storage reports it as negative", async () => {
   const { chain } = replay("broadcast-unlock");

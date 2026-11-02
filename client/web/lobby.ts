@@ -177,8 +177,8 @@ export function createLobby<Draft extends Drafted = Drafted>({
     unwatch: (() => void) | null = null,
     unfollow: (() => void) | null = null,
     focusReturn: Element | null = null;
-  // The turn each match was on when the chain confirmed this page's plan for it. A read at or
-  // before that turn comes from a node the plan's block has not reached yet.
+  // The turn each match was on when the chain confirmed this page's last call in it. A read at
+  // or before that turn comes from a node the call's block has not reached yet.
   const sent = new Map<MatchId, number>();
   // pending is the click whose request run is waiting on; pressing holds a click only while
   // action hands it to run.
@@ -247,14 +247,21 @@ export function createLobby<Draft extends Drafted = Drafted>({
     if (model.view === null) throw new Error("No match is open.");
     return model.view;
   }
-  // reconciled is v with this page's sent plans: a match read at or before the turn it sent a
-  // plan in waits for the opponent.
+  // reconciled is v with this page's confirmed calls: a match read at or before the turn of
+  // one waits for the opponent after a plan, and offers nothing after the call that ended it.
   function reconciled(v: View): View {
     const turn = sent.get(v.id);
     if (turn === undefined || turnOf(v) > turn) return v;
-    return v.action === "accept" || v.action === "move" ? { ...v, action: "wait" } : v;
+    if (v.action === "accept" || v.action === "move") return { ...v, action: "wait" };
+    return v.action === "finish" || v.action === "claimForfeit" ? { ...v, action: "done" } : v;
   }
   const viewFor = (raw: ArenaView) => reconciled(viewOf(raw, address()));
+  // recordSent keeps a call the chain confirmed in v's match sent from v's turn on, in the
+  // open view too, which stays as it was when the read after the call fails.
+  function recordSent(v: View) {
+    sent.set(v.id, turnOf(v));
+    if (model.view?.id === v.id) model.view = reconciled(model.view);
+  }
   function cancelWatch() {
     unwatch?.();
     unwatch = null;
@@ -355,7 +362,9 @@ export function createLobby<Draft extends Drafted = Drafted>({
         return;
       }
       if (openView().action === "finish" && ready() && openView().session !== "expired") {
+        const v = openView();
         await online().finish(id);
+        recordSent(v);
         raw = await refreshView(id);
       }
       await showEnding(raw);
@@ -712,9 +721,10 @@ export function createLobby<Draft extends Drafted = Drafted>({
           model.account = await online().authorize();
           if (!ready()) throw new Error("Approve this device to continue.");
         }
-        const id = openView().id;
-        await (name === "Claim" ? online().claimForfeit(id) : online().finish(id));
-        await showEnding(await refreshView(id));
+        const v = openView();
+        await (name === "Claim" ? online().claimForfeit(v.id) : online().finish(v.id));
+        recordSent(v);
+        await showEnding(await refreshView(v.id));
       });
     } else if (name === "Notify") {
       await run(async () => {
@@ -769,6 +779,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
           else {
             const posted = await arena.challenge({ clan, deck, plan, opponent: context.opponent ?? "" });
             if (posted !== "") model.view = viewOf({ ID: posted }, address());
+            else leaveMatch();
           }
         } finally {
           model.account = arena.account();

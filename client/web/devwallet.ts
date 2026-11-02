@@ -3,11 +3,11 @@
 // every dev account on gnodev. The keys are public, so the dev wallet is for local chains
 // only.
 
-import { type Broadcast, type Chain, messageOf, payFor } from "./chain.ts";
+import { type Chain, messageOf, payFor } from "./chain.ts";
 import { toBase64 } from "./encoding.ts";
 import { type Address, address } from "./ids.ts";
 import type { Signer } from "./signer.ts";
-import type { TxRequest, Wallet } from "./wallet.ts";
+import type { Committed, TxRequest, Wallet } from "./wallet.ts";
 
 // Each key is the sha256 of "gnomehall dev <name>".
 export const devAccounts = {
@@ -40,6 +40,10 @@ const orDefault = (named: number | undefined, fallback: number): number =>
 
 type Success<T> = { status: "success"; type: string; message: ""; data: T };
 type Failure = { status: "failure"; type: string; message: string; data: null };
+// Adena answers a request with commit with @gnolang/tm2-js-client's BroadcastTxCommitResult,
+// of which the dev wallet gives the hash, the height and what the call returned. It waits for
+// the block whatever the request, so it always answers this way.
+type Landed = Committed & { hash: string; height: string };
 
 // The ADR-036 document SignArbitrary signs: one MsgSignData, with no account and no fee.
 type SignedDocument = {
@@ -62,7 +66,7 @@ export type DevWallet = {
   GetAccount(): Promise<Success<{ address: Address; chainId: string; status: string }>>;
   SignArbitrary(request: { signer: string; data: string }): Promise<Success<SignedArbitrary> | Failure>;
   SignTx(request: TxRequest): Promise<Success<{ encodedTransaction: string }> | Failure>;
-  DoContract(request: TxRequest): Promise<Success<Broadcast> | Failure>;
+  DoContract(request: TxRequest): Promise<Success<Landed> | Failure>;
 };
 
 // devWallet is the dev account name's wallet on chain, whose chain id is chainId.
@@ -142,7 +146,11 @@ export function devWallet({
 
     async DoContract(params) {
       try {
-        return success(await chain.broadcast(await sign(params)), "TRANSACTION_SUCCESS");
+        const { hash, height, data } = await chain.broadcast(await sign(params));
+        return success(
+          { hash, height: String(height), deliver_tx: { ResponseBase: { Data: data } } },
+          "TRANSACTION_SUCCESS",
+        );
       } catch (err) {
         return failure("TRANSACTION_FAILED", messageOf(err));
       }

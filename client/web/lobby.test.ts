@@ -849,6 +849,131 @@ test("a confirmed send replaces an error left on screen before it", async (t) =>
   assert.doesNotMatch(shown(), /didn’t go through/);
 });
 
+// A node behind the one that took the last reveal still reads the match as waiting for it.
+test("a confirmed finish is neither offered nor sent again while the chain still reads its last reveal", async (t) => {
+  stubPage(t);
+  const finishing: MatchDetail = { ...lastTurn, action: "finish" };
+  const arena = endingArena(finishing);
+  let finishes = 0;
+  arena.finish = async () => {
+    finishes++;
+  };
+  const { Plans: _plans, HP: _hp, ...summary } = finishing;
+  arena.myMatches = async () => [summary];
+  const { lobby, played, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  await lobby.action("Open", { id: "4" });
+  assert.equal(finishes, 1);
+  assert.doesNotMatch(shown(), /Finish match/);
+  await lobby.action("Board");
+  assert.doesNotMatch(shown(), /Ready to finish/);
+  await lobby.action("Open", { id: "4" });
+  assert.equal(finishes, 1);
+  await known(arena.onView)(ended);
+  assert.deepEqual(played, [{ phase: "ended", review: true }]);
+});
+
+// A notification's click opens another match while Adena's window holds the finish.
+test("a finish confirmed after another match opened is not sent again", async (t) => {
+  stubPage(t);
+  const finishing: MatchDetail = { ...lastTurn, action: "finish" };
+  const other = detail({ ID: matchId("9"), Phase: "reveal", Challenger: bob, Acceptor: alice, ToMove: bob });
+  const arena = endingArena(finishing);
+  arena.match = async (id) => (id === other.ID ? other : finishing);
+  let finishes = 0;
+  let approve = () => {};
+  arena.finish = () => {
+    finishes++;
+    return finishes > 1
+      ? Promise.resolve()
+      : new Promise<void>((resolve) => {
+          approve = () => resolve();
+        });
+  };
+  const { lobby } = lobbyOf(arena, alice);
+  await lobby.enter();
+  const opening = lobby.action("Open", { id: "4" });
+  await flush();
+  await lobby.enter("9");
+  approve();
+  await opening;
+  await lobby.action("Open", { id: "4" });
+  assert.equal(finishes, 1);
+});
+
+// Bob may claim the match Alice let run past its deadline.
+const missed = detail({
+  Phase: "play",
+  Round: 2,
+  Challenger: alice,
+  Acceptor: bob,
+  ToMove: alice,
+  DeadlinePassed: true,
+  action: "claimForfeit",
+});
+
+test("a confirmed claim is not offered again while the chain still reads the missed deadline", async (t) => {
+  stubPage(t);
+  const arena = endingArena(missed);
+  let claims = 0;
+  arena.claimForfeit = async () => {
+    claims++;
+  };
+  const { Plans: _plans, HP: _hp, ...summary } = missed;
+  arena.myMatches = async () => [summary];
+  const { lobby, shown } = lobbyOf(arena, bob);
+  await lobby.enter();
+  await lobby.action("Open", { id: "4" });
+  await lobby.action("Claim");
+  assert.equal(claims, 1);
+  assert.doesNotMatch(shown(), /Claim win/);
+  await lobby.action("Board");
+  assert.doesNotMatch(shown(), /Claim your win/);
+});
+
+test("a confirmed claim or finish whose match cannot be read back is not offered again", async (t) => {
+  stubPage(t);
+  const cases: [MatchDetail, Address, string, RegExp][] = [
+    [missed, bob, "Claim", /Claim win/],
+    [{ ...lastTurn, action: "finish" }, alice, "Finish", /Finish match/],
+  ];
+  for (const [view, player, button, offered] of cases) {
+    const arena = endingArena(view);
+    let sent = false;
+    arena.claimForfeit = arena.finish = async () => {
+      sent = true;
+    };
+    arena.match = async () => {
+      if (sent) throw new ArenaError("network", "Failed to fetch");
+      return view;
+    };
+    const { lobby, shown } = lobbyOf(arena, player);
+    account(lobby).state = "missing";
+    await lobby.enter();
+    await lobby.action("Open", { id: "4" });
+    account(lobby).state = "active";
+    await lobby.action(button);
+    assert.ok(sent, button);
+    assert.doesNotMatch(shown(), offered, button);
+  }
+});
+
+// The arena names no match for a challenge an Adena answered before its block.
+test("a rematch posted without its match's id returns to the board, not to the match it came from", async (t) => {
+  stubPage(t);
+  const arena = endingArena({ ...ended, Reason: "resign" });
+  arena.challenge = async () => matchId("");
+  arena.account = () => ({ address: alice, state: "active", mode: "contract", fallback: null });
+  const { lobby, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  await lobby.action("Open", { id: "4" });
+  await lobby.sendDraft({ intent: "challenge", view: null, opponent: bob }, "Ironhide", [0], [0, 0, 0]);
+  assert.equal(lobby.model.view, null);
+  assert.equal(arena.onView, null);
+  assert.match(shown(), /Your move is confirmed\./);
+  assert.match(shown(), /THE CHALLENGE BOARD/);
+});
+
 // dialogLobby is a lobby whose page answers every query with one dialog, which the test
 // reads; the dialog doubles as the opponent field.
 function dialogLobby(t: TestContext, arena: LobbyArena, options: Partial<LobbyOptions> = {}) {

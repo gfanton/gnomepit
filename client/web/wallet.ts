@@ -98,7 +98,17 @@ export class WalletError extends Error {
 
 // A transaction for the wallet to sign or send. Without a gas and a fee in ugnot, the
 // wallet picks its own.
-export type TxRequest = { messages: Message[]; memo?: string; gasWanted?: number; gasFee?: number };
+// commit has Adena answer once the transaction's block is committed, with its deliver_tx,
+// rather than once CheckTx passes. Adena reads it since its session release without
+// declaring it.
+export type TxRequest = { messages: Message[]; memo?: string; gasWanted?: number; gasFee?: number; commit?: boolean };
+
+// The part of Adena's answer to a request with commit that holds what the call returned:
+// base64 of the VM's print of its values, or null.
+export const CommittedSchema = v.object({
+  deliver_tx: v.object({ ResponseBase: v.object({ Data: v.nullable(v.string()) }) }),
+});
+export type Committed = v.InferOutput<typeof CommittedSchema>;
 
 // The Adena calls the page makes. Each answers {status, type, message, data}, which
 // answer reads.

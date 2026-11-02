@@ -552,7 +552,7 @@ function arenaChain({
       await new Promise((resolve) => setTimeout(resolve, 20));
       chain.sequence++;
       chain.broadcasts++;
-      return { hash: "h", height: 1, gasUsed: 1, storage: 0 };
+      return { hash: "h", height: 1, gasUsed: 1, storage: 0, data: null };
     },
   };
   return chain;
@@ -742,13 +742,8 @@ test("a challenge seals its deck and plan as their reveal will name them", async
       return { status: "success" };
     },
   });
-  const chain = {
-    ...arenaChain(),
-    evalJSON: async () => recorded("matches").results,
-    typeJSON: async () => load("qtype-MatchSummary"),
-  };
   const arena = createArena({
-    chain,
+    chain: arenaChain(),
     wallet,
     engine,
     signer,
@@ -861,6 +856,7 @@ test("a challenge revokes the dead sessions and creates one in one approval, the
   await arena.challenge(opening);
   const [k0, k1, k2, k3] = await Promise.all([0, 1, 2, 3].map(keysOf));
   assert.equal(contracts.length, 1);
+  assert.equal(contracts[0]?.commit, true, "the page reads the new session once Adena says its block landed");
   assert.deepEqual(contracts[0]?.messages, [
     revokeMessage(test1, known(k0).sessionPubKey),
     revokeMessage(test1, known(k1).sessionPubKey),
@@ -875,6 +871,67 @@ test("a challenge revokes the dead sessions and creates one in one approval, the
     [known(k3).sessionKey, known(k3).sessionAddress, 41, 0],
   );
   assert.equal(accountOf(await arena.connect()).mode, "session");
+});
+
+// A node behind the one that took the challenge lists the player's matches without it.
+test("a challenge a session signs returns the id its call returned", async () => {
+  const base = arenaChain({ sessions: [await sessionOf(0)] });
+  const asked: string[] = [];
+  const chain = {
+    ...base,
+    broadcast: async (tx: string) => ({ ...(await base.broadcast(tx)), data: btoa('("7" string)\n\n') }),
+    evalJSON: (expr: string) => (asked.push(expr), base.evalJSON(expr)),
+  };
+  const { arena } = sessionPlayer(chain);
+  await arena.connect();
+  await arena.authorize();
+  assert.equal(await arena.challenge(opening), "7");
+  assert.deepEqual(
+    asked.filter((expr) => expr.startsWith(`${realm}.Matches(`)),
+    [],
+  );
+});
+
+// Adena's answer to a request with commit, as @gnolang/tm2-js-client gives it.
+const committed = (returned: string) => ({
+  status: "success",
+  type: "TRANSACTION_SUCCESS",
+  data: {
+    check_tx: {
+      ResponseBase: { Error: null, Data: null, Events: null, Log: "", Info: "" },
+      GasWanted: "1",
+      GasUsed: "1",
+    },
+    deliver_tx: {
+      ResponseBase: { Error: null, Data: btoa(returned), Events: null, Log: "", Info: "" },
+      GasWanted: "1",
+      GasUsed: "1",
+    },
+    hash: "ab",
+    height: "1",
+  },
+});
+
+test("a challenge the wallet signs waits for its block and returns the id its call returned", async () => {
+  const { arena, contracts } = sessionPlayer(arenaChain(), {
+    signEachMove: true,
+    created: async () => committed('("8" string)\n\n'),
+  });
+  await arena.connect();
+  await arena.authorize();
+  assert.equal(await arena.challenge(opening), "8");
+  assert.equal(contracts[0]?.commit, true);
+});
+
+// Before its session release, Adena broadcast without waiting for the block, whatever the request.
+test("a challenge an Adena answers before its block returns no id", async () => {
+  const { arena } = sessionPlayer(arenaChain(), {
+    signEachMove: true,
+    created: async () => ({ status: "success", data: { error: null, data: null, Log: "", hash: "ab" } }),
+  });
+  await arena.connect();
+  await arena.authorize();
+  assert.equal(await arena.challenge(opening), "");
 });
 
 // Adena signs session messages with the fee the page gives, or else with 2,000,000,000 gas
