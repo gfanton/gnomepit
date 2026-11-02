@@ -23,7 +23,7 @@ var (
 	players avl.Tree     // address → standing bytes
 	ladder  *avl.Node    // ladderKey of every rated player → nil
 	clans   []clanRecord // in first-seen order; a clan's index plus one is its clan number
-	results avl.Tree     // resultKey → result entry bytes
+	results avl.Tree     // resultChunkKey → that chunk's result entries, oldest first
 )
 
 func init(cur realm) {
@@ -48,8 +48,7 @@ func Record(cur realm, challenger, acceptor address, challengerClan, acceptorCla
 	}
 	ca, cb := clanNumber(challengerClan), clanNumber(acceptorClan)
 	rate(challenger, acceptor, ca, cb, score)
-	entry := resultEntry{writer: writers.Get(caller.PkgPath()).(int), challenger: challenger, acceptor: acceptor, clans: [2]int{ca, cb}, result: result[0], time: time.Now().Unix()}
-	results.Set(resultKey(results.Size()+1), encodeResult(entry))
+	appendResult(resultEntry{writer: writers.Get(caller.PkgPath()).(int), challenger: challenger, acceptor: acceptor, clans: [2]int{ca, cb}, result: result[0], time: time.Now().Unix()})
 }
 
 // AddWriter lets the realm at pkgpath, a versioned path under gno.land/r/, report results.
@@ -139,6 +138,28 @@ func isVersionedRealm(pkgpath string) bool {
 
 func validClan(name string) bool {
 	return len(name) >= 1 && len(name) <= maxClanName
+}
+
+// appendResult logs e as the next result.
+func appendResult(e resultEntry) {
+	key := resultChunkKey(resultCount() + 1)
+	results.Set(key, stringAt(&results, key)+encodeResult(e))
+}
+
+// resultAt is logged result seq, 1 first.
+func resultAt(seq int) resultEntry {
+	at := (seq - 1) % resultsPerChunk * resultSize
+	return decodeResult(stringAt(&results, resultChunkKey(seq))[at : at+resultSize])
+}
+
+// resultCount counts the logged results: every chunk but the last is full.
+func resultCount() int {
+	n := results.Size()
+	if n == 0 {
+		return 0
+	}
+	_, last := results.GetByIndex(n - 1)
+	return (n-1)*resultsPerChunk + len(last.(string))/resultSize
 }
 
 // stringAt is t's string at key, "" when t has none.

@@ -102,10 +102,18 @@ func ClanStandings() []ClanStanding {
 func Results(offset, limit int) []Result {
 	checkPage(offset, limit)
 	list := []Result{}
-	results.IterateByOffset(offset, limit, func(key string, value any) bool {
-		e := decodeResult(value.(string))
+	n := resultCount()
+	if offset >= n {
+		return list
+	}
+	end := offset + limit
+	if end > n {
+		end = n
+	}
+	for seq := offset + 1; seq <= end; seq++ {
+		e := resultAt(seq)
 		list = append(list, Result{
-			Seq:            int((&reader{s: key}).u32()),
+			Seq:            seq,
 			Writer:         writerPaths[e.writer-1],
 			Challenger:     e.challenger.String(),
 			Acceptor:       e.acceptor.String(),
@@ -114,14 +122,13 @@ func Results(offset, limit int) []Result {
 			Result:         resultName(e.result),
 			Time:           e.time,
 		})
-		return false
-	})
+	}
 	return list
 }
 
 // ResultCount counts the logged results.
 func ResultCount() int {
-	return results.Size()
+	return resultCount()
 }
 
 // standingOf is player's standing without its rank.

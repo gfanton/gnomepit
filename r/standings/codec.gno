@@ -9,6 +9,10 @@ const (
 	addressSize = 40                // bytes in an address's text
 	standingFix = 2 + 2 + 2 + 2 + 1 // a standing's bytes before its per-clan counts
 	resultSize  = 1 + 2*addressSize + 1 + 1 + 1 + 4
+
+	// A log chunk is one string of up to resultsPerChunk entries, so a new result grows a
+	// string instead of adding tree nodes.
+	resultsPerChunk = 64
 )
 
 type writer struct{ b []byte }
@@ -115,10 +119,10 @@ type resultEntry struct {
 	time                 int64
 }
 
-// resultKey is the log key of result seq, 1 first.
-func resultKey(seq int) string {
+// resultChunkKey is the log key of the chunk that holds result seq, 1 first.
+func resultChunkKey(seq int) string {
 	w := &writer{}
-	w.u32(uint64(seq))
+	w.u32(uint64((seq - 1) / resultsPerChunk))
 	return w.String()
 }
 

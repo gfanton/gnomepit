@@ -194,12 +194,25 @@ func TestResultsLogEachRecord(cur realm, t *testing.T) {
 	Record(cross(cur), alice, bob, "Pickers", "Ironhide", "a")
 	Record(cross(cur), bob, alice, "Ironhide", "Ironhide", "draw")
 
-	urequire.Equal(t, 2, results.Size())
+	urequire.Equal(t, 2, resultCount())
 	now := time.Now().Unix()
-	first := decodeResult(stringAt(&results, resultKey(1)))
+	first := resultAt(1)
 	uassert.True(t, first == resultEntry{writer: 1, challenger: alice, acceptor: bob, clans: [2]int{1, 2}, result: 'a', time: now})
-	second := decodeResult(stringAt(&results, resultKey(2)))
+	second := resultAt(2)
 	uassert.True(t, second == resultEntry{writer: 1, challenger: bob, acceptor: alice, clans: [2]int{2, 2}, result: 'd', time: now})
+}
+
+// A new log entry grows a chunk string instead of adding tree nodes, which would cost a
+// rated ending far more storage.
+func TestResultsShareChunks(cur realm, t *testing.T) {
+	reset()
+	testing.SetRealm(testing.NewCodeRealm(arenaV0))
+	for i := 0; i < 65; i++ {
+		Record(cross(cur), alice, bob, "Pickers", "Ironhide", "a")
+	}
+	uassert.Equal(t, 2, results.Size(), "64 results to a chunk")
+	uassert.Equal(t, 65, resultCount())
+	uassert.True(t, resultAt(65) == resultEntry{writer: 1, challenger: alice, acceptor: bob, clans: [2]int{1, 2}, result: 'a', time: time.Now().Unix()})
 }
 
 func TestTooManyClans(cur realm, t *testing.T) {

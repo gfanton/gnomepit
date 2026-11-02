@@ -122,6 +122,20 @@ func TestClanStandings(cur realm, t *testing.T) {
 	uassert.Equal(t, 1, list[1].Losses)
 }
 
+func TestResultsPageAcrossChunks(cur realm, t *testing.T) {
+	reset()
+	testing.SetRealm(testing.NewCodeRealm(arenaV0))
+	for i := 0; i < 65; i++ {
+		Record(cross(cur), alice, bob, "Pickers", "Ironhide", "a")
+	}
+	page := Results(62, 5)
+	urequire.Equal(t, 3, len(page))
+	for i, r := range page {
+		uassert.Equal(t, 63+i, r.Seq)
+	}
+	uassert.Equal(t, 65, ResultCount())
+}
+
 func TestLeaderboardAndStandingOfAgree(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewCodeRealm(arenaV0))
@@ -158,6 +172,7 @@ func TestResultsPage(cur realm, t *testing.T) {
 	uassert.Equal(t, 3, page[1].Seq)
 	uassert.Equal(t, "draw", page[1].Result)
 	uassert.Equal(t, "Pickers", page[1].AcceptorClan)
+	uassert.Equal(t, 0, len(Results(3, 10)), "a page past the log is empty")
 	uassert.PanicsWithMessage(t, nil, "limit must be 1 to 50", func() { Results(0, 51) })
 	uassert.PanicsWithMessage(t, nil, "offset must not be negative", func() { Results(-1, 10) })
 }
