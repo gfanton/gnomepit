@@ -1149,7 +1149,7 @@ test("posting needs no session beforehand", async (t) => {
   const { lobby, dialog } = dialogLobby(t, arena, { onCompose: (context) => composed.push(context) });
   await lobby.action("Authorize");
   await lobby.action("Post");
-  assert.match(dialog.innerHTML, /Leave a challenge/);
+  assert.match(dialog.innerHTML, /<h2 id="online-dialog-title">Post a challenge<\/h2>/);
   await lobby.action("Compose");
   assert.equal(lobby.model.error, "");
   assert.deepEqual(

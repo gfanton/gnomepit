@@ -136,7 +136,7 @@ const clanLook: Record<string, { emblem: string; blurb: string }> = {
   Ironhide: {
     emblem:
       '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 6 16 3 26 6v12c0 5-6 9-10 12C12 27 6 23 6 18Z"/><path d="M16 8v15M10 15h12"/></svg>',
-    blurb: "Stand firm. Strike hard. Iron shields and the weight of the mountain.",
+    blurb: "Hold firm. Hit hard. Iron shields and the weight of the mountain.",
   },
 };
 function cardClan(c: Card): string {
@@ -1516,7 +1516,7 @@ function deckScreen(): string {
   const legal = engine.legalDeck({ clan: deck.clan, deck: deck.picks });
   const sitOut = sitOutText(deck, clan, engine.cards);
   const heading =
-    flow.mode === "bot" || flow.mode === "online" ? "Pick your deck" : `Player ${flow.acting + 1} picks a deck`;
+    flow.mode === "bot" || flow.mode === "online" ? "Build your deck" : `Player ${flow.acting + 1} builds a deck`;
   const pool = clan.cards
     .map((id) => {
       const kept = deck.picks.includes(id);
@@ -1600,7 +1600,7 @@ function battleDialogsHTML(viewer: Side): string {
         `<section class="stack"><h3 class="heading">Round ${i + 1}</h3><div class="card-grid">${round.plans[viewer].map((id) => cardHTML(cardOf(engine.cards, id))).join("")}</div></section>`,
     )
     .join("");
-  return `<dialog class="battle-drawer" id="played-cards" aria-labelledby="played-title"><div class="dialog-heading"><h2 class="heading" id="played-title">Your played cards</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close played cards">×</button></div>${played !== "" ? played : `<p class="muted">No cards played yet.</p>`}</dialog><dialog class="battle-drawer" id="battle-info" aria-labelledby="intel-title"><div class="dialog-heading"><h2 class="heading" id="intel-title">Across the table</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close opponent information">×</button></div>
+  return `<dialog class="battle-drawer" id="played-cards" aria-labelledby="played-title"><div class="dialog-heading"><h2 class="heading" id="played-title">Your played cards</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close played cards">×</button></div>${played !== "" ? played : `<p class="muted">No cards played yet.</p>`}</dialog><dialog class="battle-drawer" id="battle-info" aria-labelledby="intel-title"><div class="dialog-heading"><h2 class="heading" id="intel-title">Opponent &amp; history</h2><button class="dialog-close" type="button" data-action="closeDialog" aria-label="Close opponent information">×</button></div>
     <section class="stack">${knownHead}
       ${knownCardsHTML}</section>
     <section class="stack intel-history"><h3 class="heading">Earlier rounds</h3>${history !== "" ? history : `<p class="muted">No rounds played yet.</p>`}</section></dialog>
@@ -1639,7 +1639,7 @@ function planScreen(): string {
   const title =
     flow.mode === "tutorial"
       ? coachHTML(sealable)
-      : `<div class="hand-zone__title"><h2 class="heading">Plot your next move</h2><span class="muted" id="plan-status" role="status">${sealable ? "Your plan is ready. Confirm it when you're sure." : "Play cards to fill all three beats."}</span></div>`;
+      : `<div class="hand-zone__title"><h2 class="heading">Plot your next move</h2><span class="muted" id="plan-status" role="status">${sealable ? `Your plan is ready. ${sealLabel()} when you're sure.` : "Play cards to fill all three beats."}</span></div>`;
   return `${battleHeaderHTML(state.round, "Planning")}
     <section class="duel-table" aria-label="Round ${state.round} battle table">
       <div class="duel-fighters">${gnomeHTML(me, state.gnomes[me], names[me])}${gnomeHTML(opponent, state.gnomes[opponent], names[opponent])}</div>
@@ -1653,7 +1653,7 @@ function planScreen(): string {
     <section class="hand-zone" aria-label="Your hand"><div class="hand-zone__heading">
       ${title}
       <div class="hand-zone__hint"><span class="label">Your hand <span>${counted(handIds.length, "card")}</span></span><span class="muted">${rows ? "Hover a card to see it whole" : "Lift a card to read"} · click to play · tap to inspect</span></div>
-      <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length > 0 ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}${onlineSending ? ' aria-busy="true"' : ""}>${flow.mode === "online" ? (onlineMatch().intent === "challenge" ? "Post challenge" : onlineMatch().intent === "accept" ? "Accept challenge" : "Send plan") : "Seal plan"}</button></div></div>
+      <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length > 0 ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}${onlineSending ? ' aria-busy="true"' : ""}>${sealLabel()}</button></div></div>
       <div class="hand-layout"><div class="battle-hand card-grid${rows ? " battle-hand--rows" : ""}" style="--hand-count:${handIds.length};--hand-cols:${Math.ceil(held / 2)}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount > 0 ? "" : "disabled"} aria-label="Open played cards, ${counted(playedCount, "card")}">${cardBackHTML(clans[me], "pile-back")}<span class="label">Played cards</span><span class="muted">${counted(playedCount, "card")} · inspect</span></button></div></section>
     ${battleDialogsHTML(me)}`;
 }
@@ -1696,6 +1696,13 @@ function practiceTrackHTML(ids: number[]): string {
     .join("");
 }
 
+// sealLabel names what sealing sends: online, a first plan posts or accepts its challenge.
+function sealLabel(): string {
+  if (flow.mode !== "online") return "Seal plan";
+  const { intent } = onlineMatch();
+  return intent === "challenge" ? "Post challenge" : intent === "accept" ? "Accept challenge" : "Seal plan";
+}
+
 // coachHTML is the guided match's coach strip: the round's lesson title, what to do now, and
 // the step count while the rails lead.
 function coachHTML(sealable: boolean): string {
@@ -1710,7 +1717,7 @@ function coachHTML(sealable: boolean): string {
       : `<span class="coach__step">Round ${round} · step ${plan.length + 1} of ${(words.steps?.length ?? 0) + 1}</span>`;
   return `<div class="coach">${portraitHTML("Pickers", 'class="coach__portrait"')}<p class="coach__words"><strong>${words.title}</strong> ${line}</p>${step}
     <button class="text-button coach__skip" type="button" data-action="tutorialLeave">Skip the guide</button>
-    <span class="coach__status" id="plan-status" role="status">${sealable ? "Your plan is ready. Confirm it when you're sure." : "Play cards to fill all three beats."}</span></div>`;
+    <span class="coach__status" id="plan-status" role="status">${sealable ? `Your plan is ready. ${sealLabel()} when you're sure.` : "Play cards to fill all three beats."}</span></div>`;
 }
 
 function playbackScreen(): string {
