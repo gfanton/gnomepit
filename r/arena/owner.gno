@@ -1,6 +1,8 @@
 package arena
 
 import (
+	"chain/runtime"
+
 	"gno.land/p/nt/ownable/v0"
 	"gno.land/r/gfanton/gnomepit/standings/v0"
 )
@@ -18,12 +20,14 @@ func init(cur realm) {
 // running play out and are rated, and an open challenge can still be withdrawn. Owner
 // only.
 func Retire(cur realm) {
+	refuseSession()
 	owner.AssertOwnedBy(cur.Previous().Address())
 	retired = true
 }
 
 // TransferOwnership makes newOwner the owner. Owner only.
 func TransferOwnership(cur realm, newOwner address) {
+	refuseSession()
 	if err := owner.TransferOwnership(0, cur, newOwner); err != nil {
 		panic(err.Error())
 	}
@@ -37,6 +41,14 @@ func Retired() bool {
 // Owner is the address that may retire the arena.
 func Owner() address {
 	return owner.Owner()
+}
+
+// refuseSession refuses a call signed with a session key: the page signs a match's moves
+// with one, so an owner who plays from the owner's wallet must not hand it the owner's calls.
+func refuseSession() {
+	if _, _, _, isSession := runtime.GetSessionInfo(); isSession {
+		panic("sign with the owner's own key, not a session key")
+	}
 }
 
 // mustBeOpen refuses a new match on an arena that is retired, or that the standings realm

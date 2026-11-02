@@ -3,6 +3,7 @@
 package standings
 
 import (
+	"chain/runtime"
 	"strings"
 	"time"
 
@@ -55,6 +56,7 @@ func Record(cur realm, challenger, acceptor address, challengerClan, acceptorCla
 // AddWriter lets the realm at pkgpath, a versioned path under gno.land/r/, report results.
 // A path that was a writer before gets its old writer number back. Owner only.
 func AddWriter(cur realm, pkgpath string) {
+	refuseSession()
 	owner.AssertOwnedBy(cur.Previous().Address())
 	if !isVersionedRealm(pkgpath) {
 		panic("bad writer path")
@@ -67,6 +69,7 @@ func AddWriter(cur realm, pkgpath string) {
 
 // RemoveWriter stops the realm at pkgpath from reporting results. Owner only.
 func RemoveWriter(cur realm, pkgpath string) {
+	refuseSession()
 	owner.AssertOwnedBy(cur.Previous().Address())
 	if _, removed := writers.Remove(pkgpath); !removed {
 		panic("not a writer")
@@ -75,8 +78,17 @@ func RemoveWriter(cur realm, pkgpath string) {
 
 // TransferOwnership makes newOwner the owner. Owner only.
 func TransferOwnership(cur realm, newOwner address) {
+	refuseSession()
 	if err := owner.TransferOwnership(0, cur, newOwner); err != nil {
 		panic(err.Error())
+	}
+}
+
+// refuseSession refuses a call signed with a session key, which its master may have handed
+// to a page or a script: the writer list answers only to the owner's own key.
+func refuseSession() {
+	if _, _, _, isSession := runtime.GetSessionInfo(); isSession {
+		panic("sign with the owner's own key, not a session key")
 	}
 }
 

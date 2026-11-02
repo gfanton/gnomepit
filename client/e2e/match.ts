@@ -2,9 +2,9 @@
 // session per player and match, alice's renewed mid-match, then one the wallet signs move
 // by move. It also checks that each player's live feed, through a running `make gnotif` or
 // the network's gnotif server, reports their notifications in chain order. On the local
-// chain it also checks the standings realm's owner, writers and result log, and that an
+// chain it checks the standings realm's owner, writers and result log, and that an
 // arena the standings realm drops from its writers takes no new match but still ends its
-// running ones, unrated.
+// running ones, unrated, and that a session key on the arena owner's wallet cannot retire it.
 //
 //   [NETWORK=<name>] [CHAIN=<chain id>] [SESSION_SECONDS=<n>] node client/e2e/match.ts [rpc url] [gnotif server url]
 
@@ -473,11 +473,12 @@ assert.deepEqual(
 );
 log(`alice withdrew matches ${second} and ${elsewhere}`);
 
-// ---- A writer the standings realm drops closes its arena
+// ---- An arena the standings realm drops from its writers is closed
 
 if (local) {
   const running = await post(aliceByWallet);
   await accept(bobByWallet, running);
+  const waiting = await post(aliceByWallet);
   const counted = await resultCount();
   asTest1(network.standings, "RemoveWriter", realm);
   assert.deepEqual(await read(`${network.standings}.Writers()`), [], "the arena is no longer a writer");
@@ -486,14 +487,57 @@ if (local) {
     (err) => err instanceof ArenaError && /arena not open/.test(err.reason),
     "a closed arena takes no challenge",
   );
+  await assert.rejects(
+    bobByWallet.accept(waiting, openings[1]),
+    (err) => err instanceof ArenaError && /arena not open/.test(err.reason),
+    "a closed arena takes no acceptance",
+  );
+  await aliceByWallet.resign(waiting);
   await bobByWallet.resign(running);
   assert.equal((await aliceByWallet.match(running)).Phase, "ended", "a closed arena still ends a running match");
   assert.equal(await resultCount(), counted, "an ending on a closed arena is not rated");
-  log(`with the arena off the writer list, match ${running} ended unrated and no challenge was taken`);
+  log(
+    `with the arena off the writer list, match ${running} ended unrated, match ${waiting} was withdrawn, and no challenge or acceptance was taken`,
+  );
 
   asTest1(network.standings, "AddWriter", realm);
   const reopened = await post(aliceByWallet);
   await aliceByWallet.resign(reopened);
   log(`added back as a writer, the arena took match ${reopened}, withdrawn`);
+}
+
+// ---- A session key on the owner's wallet cannot use the owner's calls
+
+if (local) {
+  asTest1(realm, "TransferOwnership", aliceAddress);
+  assert.equal(await read(`${realm}.Owner().String()`), aliceAddress, "test1 handed the arena to alice");
+  const owned = await post(alice);
+  const [ownedLock] = await locksOn(aliceAddress, owned);
+  assert.ok(ownedLock !== undefined, `Locks lists alice's lock on match ${owned}`);
+  const ownedSession = (await chain.sessions(aliceAddress)).find(
+    (s) => s.address === ownedLock.Session && s.expiresAt === ownedLock.Expires,
+  );
+  assert.ok(ownedSession !== undefined, `the chain lists the session locked to match ${owned}`);
+  assert.match(await forceCall(aliceAddress, root, ownedSession, "Retire", []), /not a session key/);
+  assert.equal(await read(`${realm}.Retired()`), false, "a session key cannot retire the arena");
+  await alice.resign(owned);
+  const handedBack = await devWallet({ name: "alice", signer, chain, chainId }).DoContract({
+    messages: [
+      {
+        type: "/vm.m_call",
+        value: {
+          caller: aliceAddress,
+          send: "",
+          max_deposit: "",
+          pkg_path: realm,
+          func: "TransferOwnership",
+          args: [test1],
+        },
+      },
+    ],
+  });
+  assert.equal(handedBack.status, "success", `alice's own key hands the arena back: ${handedBack.message}`);
+  assert.equal(await read(`${realm}.Owner().String()`), test1, "test1 owns the arena again");
+  log(`a session key on the arena owner's wallet could not retire the arena`);
 }
 process.exit(0);
