@@ -35,7 +35,7 @@
                   },
                   "V": {
                     "@type": "/gno.StringValue",
-                    "value": "5"
+                    "value": "7"
                   }
                 },
                 {
@@ -106,7 +106,7 @@
                     "@type": "/gno.PrimitiveType",
                     "value": "1024"
                   },
-                  "N": "mEfyagAAAAA="
+                  "N": "CE/yagAAAAA="
                 },
                 {
                   "T": {

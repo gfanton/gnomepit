@@ -35,8 +35,8 @@
           },
           {
             "@type": "/tm.StorageDepositEvent",
-            "bytes_delta": "2305",
-            "fee_delta": "230500ugnot",
+            "bytes_delta": "2297",
+            "fee_delta": "229700ugnot",
             "pkg_path": "gno.land/r/gfanton/gnomepit/arena/v0"
           }
         ],
@@ -44,9 +44,9 @@
         "Info": ""
       },
       "GasWanted": "100000000",
-      "GasUsed": "14481194"
+      "GasUsed": "15738701"
     },
     "hash": "ZuwGGT2kbkje7cOXuUhX4XWbqp55KmHFrb3DSWsNEUY=",
-    "height": "5"
+    "height": "7"
   }
 }

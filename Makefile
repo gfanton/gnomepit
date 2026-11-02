@@ -54,7 +54,7 @@ serve: build ## Build dist/ and serve it on 127.0.0.1:8080
 # repository's workspace gnodev resolves no import from its examples, so it loads them all.
 # gnodev runs in the background, where its terminal keys find no terminal. It must never
 # reload: a reload moves every transaction to genesis, the arena's triggers with them.
-dev: deps ## Run gnodev with the engine, the gnotif registry and the dev accounts, then deploy the arena on it
+dev: deps ## Run gnodev with the engine, the gnotif registry and the dev accounts, then deploy the standings realm and the arena on it
 	mkdir -p $(GNODEV_WORKSPACE)
 	touch $(GNODEV_WORKSPACE)/gnowork.toml
 	RPC=$(DEV_RPC) CHAIN=$(DEV_CHAIN) scripts/dev.sh \
@@ -78,7 +78,7 @@ gnotif: ## Run gnotifd on a running make indexer, for the page's live updates an
 		-registry gno.land/r/dev/gnotif/v1 -start-height 1 -poll 1s -max-age 1h -stream-max 64 \
 		-db $(GNOTIF_DB)/gnotif.db -listen $(DEV_GNOTIF) -vapid-subject https://github.com/gfanton/gnomepit
 
-capture: ## Record the arena's query answers from a running make dev
+capture: ## Record the arena's and the standings realm's query answers from a running make dev
 	RPC=$(DEV_RPC) CHAIN=$(DEV_CHAIN) scripts/capture.sh $(WEB)/testdata/qeval
 
 fund: ## Send 1,000 GNOT on a running make dev to ADDRESS, such as an Adena account
@@ -95,7 +95,7 @@ test: realm-test build check ## Run the Gno tests, build the page, check the Typ
 	go test ./...
 	pnpm test
 
-realm-test: deps ## Run the arena realm's tests
+realm-test: deps ## Run the standings and arena realms' tests
 	gno test ./r/...
 
 deps: ## Copy the gnotif registry and its trigger package from GNOTIF_DIR into deps/, without their tests

@@ -21,13 +21,13 @@
         },
         "Data": "",
         "Events": null,
-        "Log": "msg:0,success:false,log:--= Error =--\nData: errors.FmtError{format:\"unknown match\", args:[]interface {}(nil)}\nMsg Traces:\n    0  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/errors/errors.go:103 - VM panic: unknown match\nStacktrace:\npanic: unknown match\nfind at gno.land/r/gfanton/gnomepit/arena/v0/play.gno:200\nAccept at gno.land/r/gfanton/gnomepit/arena/v0/play.gno:17\n\n\nStack Trace:\n    0  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/errors/errors.go:88\n    1  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/errors/errors.go:103\n    2  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/gno.land/pkg/sdk/vm/keeper.go:1453\n    3  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/gno.land/pkg/sdk/vm/keeper.go:1426\n    4  runtime/panic.go:860\n... 27 more lines elided,events:[]",
+        "Log": "msg:0,success:false,log:--= Error =--\nData: errors.FmtError{format:\"unknown match\", args:[]interface {}(nil)}\nMsg Traces:\n    0  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/errors/errors.go:103 - VM panic: unknown match\nStacktrace:\npanic: unknown match\nfind at gno.land/r/gfanton/gnomepit/arena/v0/play.gno:201\nAccept at gno.land/r/gfanton/gnomepit/arena/v0/play.gno:18\n\n\nStack Trace:\n    0  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/errors/errors.go:88\n    1  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/tm2/pkg/errors/errors.go:103\n    2  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/gno.land/pkg/sdk/vm/keeper.go:1453\n    3  github.com/gnolang/gno@v0.0.0-00010101000000-000000000000/gno.land/pkg/sdk/vm/keeper.go:1426\n    4  runtime/panic.go:860\n... 27 more lines elided,events:[]",
         "Info": "vm.version=develop"
       },
       "GasWanted": "100000000",
-      "GasUsed": "6760495"
+      "GasUsed": "8585130"
     },
     "hash": "S8UQqjO1hgdWNGLrJ3+b9rFbg2Aj489WD7KBpbM/68I=",
-    "height": "6"
+    "height": "8"
   }
 }

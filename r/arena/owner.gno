@@ -1,6 +1,9 @@
 package arena
 
-import "gno.land/p/nt/ownable/v0"
+import (
+	"gno.land/p/nt/ownable/v0"
+	"gno.land/r/gfanton/gnomepit/standings/v0"
+)
 
 var (
 	owner   *ownable.Ownable
@@ -36,9 +39,13 @@ func Owner() address {
 	return owner.Owner()
 }
 
-// mustBeOpen refuses a new match on an arena that is closed.
+// mustBeOpen refuses a new match on an arena that is retired, or that the standings realm
+// takes no results from.
 func mustBeOpen() {
 	if retired {
 		panic("arena retired")
+	}
+	if !standings.IsWriter(self) {
+		panic("arena not open")
 	}
 }

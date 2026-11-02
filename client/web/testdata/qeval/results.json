@@ -1,0 +1,214 @@
+{
+  "results": [
+    {
+      "T": {
+        "@type": "/gno.SliceType",
+        "Elt": {
+          "@type": "/gno.RefType",
+          "ID": "gno.land/r/gfanton/gnomepit/standings/v0.Result"
+        },
+        "Vrd": false
+      },
+      "V": {
+        "@type": "/gno.SliceValue",
+        "Base": {
+          "@type": "/gno.ArrayValue",
+          "ObjectInfo": {
+            "ID": "071ce6537a46741ce25e7a822aed66b5743af193:0",
+            "ModTime": "0",
+            "RefCount": "0",
+            "LastObjectSize": "0"
+          },
+          "List": [
+            {
+              "T": {
+                "@type": "/gno.RefType",
+                "ID": "gno.land/r/gfanton/gnomepit/standings/v0.Result"
+              },
+              "V": {
+                "@type": "/gno.StructValue",
+                "ObjectInfo": {
+                  "ID": "071ce6537a46741ce25e7a822aed66b5743af193:0",
+                  "ModTime": "0",
+                  "RefCount": "0",
+                  "LastObjectSize": "0"
+                },
+                "Fields": [
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    },
+                    "N": "AQAAAAAAAAA="
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": "gno.land/r/gfanton/gnomepit/arena/v0"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": "g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": "g1h3cka3ya6jw3yr64erpklnhvrgh5l4du6w0faw"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": "Pickers"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": "Ironhide"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": "a"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "1024"
+                    },
+                    "N": "hBTpagAAAAA="
+                  }
+                ]
+              }
+            },
+            {
+              "T": {
+                "@type": "/gno.RefType",
+                "ID": "gno.land/r/gfanton/gnomepit/standings/v0.Result"
+              },
+              "V": {
+                "@type": "/gno.StructValue",
+                "ObjectInfo": {
+                  "ID": "071ce6537a46741ce25e7a822aed66b5743af193:0",
+                  "ModTime": "0",
+                  "RefCount": "0",
+                  "LastObjectSize": "0"
+                },
+                "Fields": [
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "32"
+                    },
+                    "N": "AgAAAAAAAAA="
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": "gno.land/r/gfanton/gnomepit/arena/v0"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": "g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": "g1h3cka3ya6jw3yr64erpklnhvrgh5l4du6w0faw"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": "Pickers"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": "Ironhide"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "16"
+                    },
+                    "V": {
+                      "@type": "/gno.StringValue",
+                      "value": "a"
+                    }
+                  },
+                  {
+                    "T": {
+                      "@type": "/gno.PrimitiveType",
+                      "value": "1024"
+                    },
+                    "N": "hRTpagAAAAA="
+                  }
+                ]
+              }
+            }
+          ],
+          "Data": null
+        },
+        "Offset": "0",
+        "Length": "2",
+        "Maxcap": "2"
+      }
+    }
+  ]
+}

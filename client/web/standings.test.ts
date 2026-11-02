@@ -17,7 +17,7 @@ import {
   withOwnStanding,
 } from "./standings.ts";
 
-const realm = "gno.land/r/gfanton/gnomepit/arena/v0";
+const realm = "gno.land/r/gfanton/gnomepit/standings/v0";
 const alice = address("g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w");
 const bob = address("g1h3cka3ya6jw3yr64erpklnhvrgh5l4du6w0faw");
 const unrated = address("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5");
@@ -82,7 +82,8 @@ test("the clan standings and the number of rated players", async () => {
   const clans = await standings.clanStandings();
   assert.deepEqual(
     clans.map((c) => c.Clan),
-    ["Pickers", "Delvers", "Ironhide"],
+    ["Pickers", "Ironhide"],
+    "the standings realm lists only clans with a rated cross-clan match",
   );
   assert.equal(clans[0]?.Wins, 2);
   assert.equal(await standings.ratedPlayers(), 2);

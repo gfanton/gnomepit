@@ -35,8 +35,8 @@
           },
           {
             "@type": "/tm.StorageUnlockEvent",
-            "bytes_delta": "-156",
-            "fee_refund": "15600ugnot",
+            "bytes_delta": "-153",
+            "fee_refund": "15300ugnot",
             "pkg_path": "gno.land/r/gfanton/gnomepit/arena/v0",
             "refund_withheld": false
           }
@@ -45,9 +45,9 @@
         "Info": ""
       },
       "GasWanted": "100000000",
-      "GasUsed": "13627453"
+      "GasUsed": "12941056"
     },
     "hash": "ueElBhUgJGmzb0iaPNnZMRnINj0lk9R1D369qkP2dZc=",
-    "height": "9"
+    "height": "11"
   }
 }

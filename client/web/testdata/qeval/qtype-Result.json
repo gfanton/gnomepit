@@ -1,0 +1,69 @@
+{
+  "typeid": "gno.land/r/gfanton/gnomepit/standings/v0.Result",
+  "type": {
+    "@type": "/gno.DeclaredType",
+    "PkgPath": "gno.land/r/gfanton/gnomepit/standings/v0",
+    "Name": "Result",
+    "Base": {
+      "@type": "/gno.StructType",
+      "Fields": [
+        {
+          "Name": "Seq",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "32"
+          }
+        },
+        {
+          "Name": "Writer",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "Challenger",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "Acceptor",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "ChallengerClan",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "AcceptorClan",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "Result",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "16"
+          }
+        },
+        {
+          "Name": "Time",
+          "Type": {
+            "@type": "/gno.PrimitiveType",
+            "value": "1024"
+          }
+        }
+      ]
+    }
+  }
+}
