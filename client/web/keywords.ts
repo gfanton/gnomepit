@@ -36,3 +36,8 @@ export function markKeywords(text: string, { focusable = false } = {}): string {
 export function escapeHTML(text: string): string {
   return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;");
 }
+
+// counted is n of a thing, with its noun plural for any n but one.
+export function counted(n: number, noun: string): string {
+  return `${n} ${n === 1 ? noun : `${noun}s`}`;
+}

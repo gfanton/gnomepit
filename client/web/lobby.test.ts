@@ -372,9 +372,9 @@ test("a finish whose session has expired waits for renewal", async (t) => {
 
 test("the header says whether this device can play", () => {
   const { lobby, shown } = lobbyOf(followedArena(), alice);
-  assert.match(shown(), /<small>Device ready<\/small>/);
+  assert.match(shown(), /<small>Ready to play<\/small>/);
   account(lobby).state = "missing";
-  assert.match(shown(), /<small>Approval needed<\/small>/);
+  assert.match(shown(), /<small>Needs approval<\/small>/);
 });
 
 // The realm deletes a withdrawn challenge, so the match it was is gone.
@@ -845,7 +845,7 @@ test("a confirmed send replaces an error left on screen before it", async (t) =>
   assert.match(shown(), /didn’t go through/);
   down = false;
   await lobby.sendDraft({ intent: "accept", view: { id: matchId("4") } }, "Pickers", [0], [0, 0, 0]);
-  assert.match(shown(), /Your move is confirmed\./);
+  assert.match(shown(), /Challenge accepted\. Your plan is sealed\./);
   assert.doesNotMatch(shown(), /didn’t go through/);
 });
 
@@ -970,7 +970,7 @@ test("a rematch posted without its match's id returns to the board, not to the m
   await lobby.sendDraft({ intent: "challenge", view: null, opponent: bob }, "Ironhide", [0], [0, 0, 0]);
   assert.equal(lobby.model.view, null);
   assert.equal(arena.onView, null);
-  assert.match(shown(), /Your move is confirmed\./);
+  assert.match(shown(), /Your challenge is posted\./);
   assert.match(shown(), /THE CHALLENGE BOARD/);
 });
 
@@ -1368,6 +1368,49 @@ test("a board that fits on one page shows no pager, and Notify me needs a notifi
   await lobby.enter();
   assert.doesNotMatch(page.innerHTML, /Previous/);
   assert.doesNotMatch(page.innerHTML, /Notify me/);
+});
+
+test("a challenger's own open challenge says it is up, and its empty seat waits for any rival", async (t) => {
+  stubPage(t);
+  const { lobby, shown } = lobbyOf(
+    endingArena(detail({ Phase: "open", ChallengerClan: "Pickers", action: "wait" })),
+    alice,
+  );
+  await lobby.enter();
+  await lobby.action("Open", { id: "4" });
+  assert.match(shown(), /<h1>Your challenge is up<\/h1>/);
+  assert.match(shown(), /Any rival/);
+  assert.doesNotMatch(shown(), /Rival to come/);
+  const other = lobbyOf(endingArena(detail({ Phase: "open", ChallengerClan: "Pickers", action: "accept" })), bob);
+  await other.lobby.enter();
+  await other.lobby.action("Open", { id: "4" });
+  assert.match(other.shown(), /<h1>A challenge awaits<\/h1>/);
+});
+
+test("resigning asks with the loss named on its button, and keeping on is the first choice", async (t) => {
+  const arena = endingArena(bobsMove);
+  const { lobby, dialog } = dialogLobby(t, arena);
+  lobby.model.view = viewOf(bobsMove, bob);
+  await lobby.action("Resign");
+  const keep = dialog.innerHTML.indexOf("Keep playing");
+  const resign = dialog.innerHTML.search(/data-action="onlineResignConfirm"[^>]*>Resign match</);
+  assert.ok(keep !== -1 && resign !== -1 && keep < resign, dialog.innerHTML);
+  assert.match(dialog.innerHTML, /class="button" data-action="onlineClose"/);
+  assert.doesNotMatch(dialog.innerHTML, />Confirm</);
+});
+
+test("an empty board offers to post the first challenge", async () => {
+  const page = app();
+  const lobby = createLobby({
+    ...unusedPage,
+    app: page,
+    arena: followedArena(),
+    storage: memory(),
+    onRender: () => lobby.render(),
+  });
+  await lobby.enter();
+  const empty = page.innerHTML.slice(page.innerHTML.indexOf("The board is quiet."));
+  assert.match(empty, /^The board is quiet\.<\/h3><p>[^<]*<\/p><button[^>]*data-action="onlinePost"/);
 });
 
 // waiting is match 4 after alice's plan for round 2, with bob to move.

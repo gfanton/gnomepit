@@ -20,7 +20,7 @@ import { randomDeck, randomPlan } from "./bot.ts";
 import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.ts";
 import { sentences, matchLog, sideNames, possessive } from "./log.ts";
 import { type Verdict, verdict } from "./result.ts";
-import { glossary, markKeywords, escapeHTML } from "./keywords.ts";
+import { counted, glossary, markKeywords, escapeHTML } from "./keywords.ts";
 import { type KnownCards, knownCards } from "./table.ts";
 import { type StepFeedback, cardBehind, heavyHit, impact, stepFeedback } from "./battle-feedback.ts";
 import { artIndex } from "./art.ts";
@@ -292,7 +292,7 @@ function underway(): { hp: number; state: GameState; decks: Pair<number[]>; clan
 }
 function battleNames(): Pair<string> {
   const name = (clan: string | null, side: Side) =>
-    side === flow.acting ? "You" : clan === null || clan === "" ? "Rival to come" : clan;
+    side === flow.acting ? "You" : clan === null || clan === "" ? "Your rival" : clan;
   return flow.mode === "online"
     ? [name(flow.clans[0], 0), name(flow.clans[1], 1)]
     : sideNames(underway().clans, flow.mode);
@@ -545,7 +545,7 @@ const handlers = {
     const legal = flow.screen === "plan" && canAdd(plan, c.id, engine.cards, available());
     const reader = elementById("card-reader", HTMLDialogElement);
     elementById("reader-content", HTMLDivElement).innerHTML =
-      `${cardHTML(c)}<p class="muted">${c.cost} ${c.cost === 1 ? "beat" : "beats"}${c.special ? " · Once per match" : " · Reusable basic"}</p>
+      `${cardHTML(c)}<p class="muted">${counted(c.cost, "beat")}${c.special ? " · Once per match" : " · Reusable basic"}</p>
       ${legal ? `<button class="button" type="button" data-action="addCard" data-id="${c.id}">Play ${c.name}</button>` : `<p class="muted">${unplayable(c)}</p>`}`;
     openDialog(reader);
   },
@@ -1582,9 +1582,9 @@ function planScreen(): string {
     </section>
     <section class="hand-zone" aria-label="Your hand"><div class="hand-zone__heading">
       ${title}
-      <div class="hand-zone__hint"><span class="label">Your hand <span>${handIds.length} cards</span></span><span class="muted">Lift a card to read · click to play · tap to inspect</span></div>
+      <div class="hand-zone__hint"><span class="label">Your hand <span>${counted(handIds.length, "card")}</span></span><span class="muted">Lift a card to read · click to play · tap to inspect</span></div>
       <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length > 0 ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}${onlineSending ? ' aria-busy="true"' : ""}>${flow.mode === "online" ? (onlineMatch().intent === "challenge" ? "Post challenge" : onlineMatch().intent === "accept" ? "Accept challenge" : "Send plan") : "Seal plan"}</button></div></div>
-      <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount > 0 ? "" : "disabled"} aria-label="Open played cards, ${playedCount} cards">${cardBackHTML(clans[me], "pile-back")}<span class="label">Played cards</span><span class="muted">${playedCount} cards · inspect</span></button></div></section>
+      <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount > 0 ? "" : "disabled"} aria-label="Open played cards, ${counted(playedCount, "card")}">${cardBackHTML(clans[me], "pile-back")}<span class="label">Played cards</span><span class="muted">${counted(playedCount, "card")} · inspect</span></button></div></section>
     ${battleDialogsHTML(me)}`;
 }
 
@@ -1956,12 +1956,12 @@ function cardHTML(
     ? `<span class="card__cost">${c.cost}</span><span class="card__name">${c.name}</span><span class="card__foot">${badges}</span>`
     : `
     <span class="card__ornament" aria-hidden="true"></span>
-    <div class="card__head"><span class="card__cost" aria-label="${c.cost} beats">${c.cost}</span><span class="card__name">${c.name}</span></div>
+    <div class="card__head"><span class="card__cost" aria-label="${counted(c.cost, "beat")}">${c.cost}</span><span class="card__name">${c.name}</span></div>
     ${artHTML(c)}
     <div class="card__text">${markKeywords(c.text, { focusable: tips })}</div>
     <div class="card__foot"><span class="card__clan">${emblem(clan)}${clan}</span>${badges}</div>${sealed !== "" ? cardBackHTML(sealed, "card__back") : ""}`;
   if (action === null) return `<div class="${classes}" ${state} ${small ? `tabindex="0"` : ""} ${data}>${body}</div>`;
-  return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${hand ? `aria-label="${escapeHTML(`${c.name}, ${c.cost} beats. ${c.text}`).replaceAll('"', "&quot;")}"` : ""} ${state} ${data} ${dimmed ? "disabled" : ""}>${body}</button>`;
+  return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${hand ? `aria-label="${escapeHTML(`${c.name}, ${counted(c.cost, "beat")}. ${c.text}`).replaceAll('"', "&quot;")}"` : ""} ${state} ${data} ${dimmed ? "disabled" : ""}>${body}</button>`;
 }
 
 // cardBackHTML is the back of a card of clan, hidden from assistive technology; an empty clan, a
