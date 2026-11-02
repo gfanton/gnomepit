@@ -1205,8 +1205,10 @@ function draw(): void {
   if (lobby !== null && lobby.model.active && !lobby.model.inGame) {
     if (app.contains(tip)) document.body.append(tip);
     tip.hidden = true;
-    lobby.render();
-    if (arrived) arrive();
+    if (arrived) {
+      lobby.render();
+      arrive();
+    } else keepFocus(() => lobby.render());
     return;
   }
   app.classList.remove("lobby");
@@ -1228,7 +1230,12 @@ function draw(): void {
   const focus = document.activeElement;
   const key =
     focus instanceof HTMLElement && focus.matches(":focus-visible") && (focus.dataset.action ?? "") !== ""
-      ? { action: focus.dataset.action, id: focus.dataset.id, beat: focus.dataset.beat }
+      ? {
+          action: focus.dataset.action,
+          id: focus.dataset.id,
+          beat: focus.dataset.beat,
+          slot: [...app.querySelectorAll('.battle-hand [data-action="addCard"]')].indexOf(focus),
+        }
       : null;
   handScroll = app.querySelector(".battle-hand")?.scrollLeft ?? 0;
   if (!replanning) {
@@ -1262,8 +1269,14 @@ function draw(): void {
           el.dataset.beat === key.beat &&
           !el.disabled,
       );
+      // A card played from the hand hands focus to Seal once the plan is full, or else to the card
+      // that slid into its place.
       const seal = elementById("seal", HTMLButtonElement);
-      target ??= seal.disabled ? app.querySelector('.battle-hand [data-action="addCard"]:not(:disabled)') : seal;
+      const playable = [...app.querySelectorAll('.battle-hand [data-action="addCard"]:not(:disabled)')];
+      const hand = [...app.querySelectorAll('.battle-hand [data-action="addCard"]')];
+      target ??= !seal.disabled
+        ? seal
+        : (hand.slice(Math.max(0, key.slot)).find((el) => playable.includes(el)) ?? playable.at(-1));
       if (target instanceof HTMLElement) target.focus({ preventScroll: true });
     }
   }
@@ -1274,6 +1287,31 @@ function draw(): void {
   }
   if (arrived) arrive();
   dropStaleTip();
+}
+
+// The control keyboard focus was on before the lobby last redrew while a request kept it off.
+let heldFocus: { action: string; id: string | undefined } | null = null;
+
+// keepFocus runs redraw, which rewrites the lobby's page, and puts keyboard focus back on the
+// control it was on. A control a request turned off gets it back once a later redraw turns it on;
+// a control that went away hands focus to the page's heading.
+function keepFocus(redraw: () => void): void {
+  const active = document.activeElement;
+  if (active instanceof HTMLElement && app.contains(active) && (active.dataset.action ?? "") !== "")
+    heldFocus = { action: active.dataset.action ?? "", id: active.dataset.id };
+  redraw();
+  const now = document.activeElement;
+  if (heldFocus === null || (now instanceof HTMLElement && now !== document.body && app.contains(now))) return;
+  const held = heldFocus;
+  const target = [...app.querySelectorAll("[data-action]")].find(
+    (el) => el instanceof HTMLElement && el.dataset.action === held.action && el.dataset.id === held.id,
+  );
+  if (target instanceof HTMLButtonElement && target.disabled) return;
+  heldFocus = null;
+  const landing = target ?? app.querySelector("h1, h2");
+  if (!(landing instanceof HTMLElement)) return;
+  if (target === undefined) landing.tabIndex = -1;
+  landing.focus({ preventScroll: true });
 }
 
 // arrive starts a new page at its top, with keyboard focus on what the page is about: its
@@ -1747,11 +1785,15 @@ function patchPlayback(): void {
       ? `Beat ${current.beat} · ${current.phase}`
       : "Plans revealed";
   elementById("finish", HTMLDivElement).innerHTML = done && !held ? finishHTML() : "";
-  // A control that just turned off would strand keyboard focus; the round's way on takes it.
+  // A control that just turned off or hid, like a lesson's Continue, would strand keyboard focus;
+  // the round's way on takes it once the clash is done, Pause until then.
   const active = document.activeElement;
-  const wayOn = app.querySelector("#finish .button");
-  if (done && !held && active instanceof HTMLButtonElement && active.disabled && wayOn instanceof HTMLElement)
-    wayOn.focus({ preventScroll: true });
+  const stranded =
+    active instanceof HTMLElement &&
+    app.contains(active) &&
+    (active.closest("[hidden]") !== null || (active instanceof HTMLButtonElement && active.disabled));
+  const wayOn = app.querySelector(done && !held ? "#finish .button" : "#play:not(:disabled)");
+  if (stranded && wayOn instanceof HTMLElement) wayOn.focus({ preventScroll: true });
   dropStaleTip();
 }
 

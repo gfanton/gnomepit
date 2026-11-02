@@ -329,6 +329,10 @@ summary {
   outline: 2px solid var(--gh-color-highlight);
   outline-offset: 4px;
 }
+/* A heading or line a new screen focuses only to start the reader there; nothing on it acts. */
+:is(h1, h2, h3, p)[tabindex="-1"]:focus-visible {
+  outline: none;
+}
 img {
   display: block;
   max-width: 100%;
