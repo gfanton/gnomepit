@@ -1940,11 +1940,16 @@ function cardHTML(
     locked ? `aria-disabled="true" title="The Rare stays in"` : "",
     small ? `data-peek="${c.id}"` : "",
   ].join(" ");
+  // A plain full card lets keyboard and touch reach the rules behind its words and badges.
+  const tips = action === null && !small;
+  const tipStop = tips ? ' tabindex="0"' : "";
   const badges = [
     c.tier !== "Normal"
-      ? `<span class="badge badge--${c.tier.toLowerCase()}" data-kw="${c.tier.toLowerCase()}">${c.tier}</span>`
+      ? `<span class="badge badge--${c.tier.toLowerCase()}" data-kw="${c.tier.toLowerCase()}"${tipStop}>${c.tier}</span>`
       : "",
-    c.rare ? `<span class="badge badge--rare" data-kw="rare"><span aria-hidden="true">✦</span> Rare</span>` : "",
+    c.rare
+      ? `<span class="badge badge--rare" data-kw="rare"${tipStop}><span aria-hidden="true">✦</span> Rare</span>`
+      : "",
     spentRound > 0 ? `<span class="badge badge--spent">Spent R${spentRound}</span>` : "",
   ].join("");
   const body = small
@@ -1953,7 +1958,7 @@ function cardHTML(
     <span class="card__ornament" aria-hidden="true"></span>
     <div class="card__head"><span class="card__cost" aria-label="${c.cost} beats">${c.cost}</span><span class="card__name">${c.name}</span></div>
     ${artHTML(c)}
-    <div class="card__text">${markKeywords(c.text)}</div>
+    <div class="card__text">${markKeywords(c.text, { focusable: tips })}</div>
     <div class="card__foot"><span class="card__clan">${emblem(clan)}${clan}</span>${badges}</div>${sealed !== "" ? cardBackHTML(sealed, "card__back") : ""}`;
   if (action === null) return `<div class="${classes}" ${state} ${small ? `tabindex="0"` : ""} ${data}>${body}</div>`;
   return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${hand ? `aria-label="${escapeHTML(`${c.name}, ${c.cost} beats. ${c.text}`).replaceAll('"', "&quot;")}"` : ""} ${state} ${data} ${dimmed ? "disabled" : ""}>${body}</button>`;

@@ -25,6 +25,13 @@ test("markKeywords maps every form of cancel to one entry", () => {
   );
 });
 
+test("focusable keywords take keyboard focus, so their tip opens without a mouse", () => {
+  assert.equal(
+    markKeywords("Gain 1 Block.", { focusable: true }),
+    `Gain 1 <span class="kw" data-kw="block" tabindex="0">Block</span>.`,
+  );
+});
+
 test("markKeywords leaves a word that merely contains a keyword alone", () => {
   assert.equal(markKeywords("Blockade counters."), "Blockade counters.");
 });

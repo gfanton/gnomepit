@@ -22,11 +22,14 @@ export const glossary = {
 const forms: Record<string, string> = { cancelled: "cancel", cancels: "cancel" };
 const words = /\b(Interrupt|Parry|Block|Counter|Vulnerable|Strength|cancelled|cancels)\b/g;
 
-// markKeywords turns a card text into HTML with each rule word wrapped in a tip anchor.
-export function markKeywords(text: string): string {
+// markKeywords turns a card text into HTML with each rule word wrapped in a tip anchor. Focusable
+// anchors take keyboard focus; a card that is itself a button keeps them out, since a button
+// may hold no focusable content.
+export function markKeywords(text: string, { focusable = false } = {}): string {
   return escapeHTML(text).replace(
     words,
-    (word) => `<span class="kw" data-kw="${forms[word] ?? word.toLowerCase()}">${word}</span>`,
+    (word) =>
+      `<span class="kw" data-kw="${forms[word] ?? word.toLowerCase()}"${focusable ? ' tabindex="0"' : ""}>${word}</span>`,
   );
 }
 
