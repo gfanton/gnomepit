@@ -3,14 +3,13 @@ package standings
 import "encoding/binary"
 
 // The standings and the result log are stored as byte strings laid out here, big-endian.
-// This file is the only code that reads or writes those bytes.
 
 const (
 	addressSize = 40                // bytes in an address's text
 	standingFix = 2 + 2 + 2 + 2 + 1 // a standing's bytes before its per-clan counts
 	resultSize  = 1 + 2*addressSize + 1 + 1 + 1 + 4
 
-	// A log chunk is one string of up to resultsPerChunk entries, so a new result grows a
+	// resultsPerChunk is the most entries in a log chunk, one string, so a new result grows a
 	// string instead of adding tree nodes.
 	resultsPerChunk = 64
 )
@@ -71,8 +70,8 @@ type standing struct {
 	perClan                     []int
 }
 
-// A standing's bytes are the rating, wins, losses and draws at 2 bytes each, the last
-// clan number at 1, then a 2-byte count per clan number.
+// decodeStanding reads a standing's bytes: the rating, wins, losses and draws at 2 bytes
+// each, the last clan number at 1, then a 2-byte count per clan number played.
 func decodeStanding(s string) *standing {
 	if s == "" {
 		return nil

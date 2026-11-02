@@ -9,9 +9,9 @@ import (
 	"gno.land/r/gfanton/gnomepit/standings/v0"
 )
 
-// checkReported checks that the store took one result since it held before, from this
-// arena, for alice as Pickers against bob as Ironhide, ending in result. The store keeps
-// its state across tests, which reset cannot reach.
+// checkReported checks that the standings realm holds one result more than before, from this
+// arena, for alice as Pickers against bob as Ironhide, ending in result. The standings realm
+// keeps its state across tests, which reset cannot reach.
 func checkReported(t *testing.T, before int, result string) {
 	t.Helper()
 	urequire.Equal(t, before+1, standings.ResultCount())
@@ -98,7 +98,8 @@ func TestSelfAcceptedMatchUnreported(cur realm, t *testing.T) {
 	uassert.Equal(t, before, standings.ResultCount(), "a self-match is never reported")
 }
 
-// The store refuses a clan name it cannot hold, which would abort every ending.
+// TestEveryClanNamePassesTheStore checks that the standings realm takes every clan name: one
+// it refuses would abort every ending.
 func TestEveryClanNamePassesTheStore(t *testing.T) {
 	for _, c := range engine.ProofOfConcept().Clans {
 		uassert.True(t, len(c.Name) >= 1 && len(c.Name) <= 32, c.Name)

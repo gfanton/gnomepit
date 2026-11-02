@@ -443,7 +443,8 @@ type sessionLock struct {
 	expires int64
 }
 
-// A player's bytes are a 2-byte id count, the ids at 4 bytes each, then the locks.
+// decodePlayer reads a player's bytes: a 2-byte id count, the ids at 4 bytes each, then the
+// locks.
 // ceiling: joining a match or changing a lock rewrites all of a player's ids, up to 65,535, so
 // gas grows with their matches; an avl index of ids per player if some play thousands.
 func decodePlayer(s string) playerRecord {

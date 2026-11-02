@@ -73,8 +73,8 @@ func RatedPlayers() int {
 }
 
 // ClanStandings lists every clan with a rated cross-clan match, highest rating first;
-// equal ratings keep first-seen order and share a rank. A clan with no such match is left
-// out: it stands at 1000 and 0-0-0.
+// equal ratings keep first-seen order and share a rank. Clans with no such match are left
+// out: they stand at 1000 and 0-0-0.
 func ClanStandings() []ClanStanding {
 	list := []ClanStanding{}
 	for _, c := range clans {

@@ -202,8 +202,8 @@ func TestResultsLogEachRecord(cur realm, t *testing.T) {
 	uassert.True(t, second == resultEntry{writer: 1, challenger: bob, acceptor: alice, clans: [2]int{2, 2}, result: 'd', time: now})
 }
 
-// A new log entry grows a chunk string instead of adding tree nodes, which would cost a
-// rated ending far more storage.
+// TestResultsShareChunks checks that a new log entry grows a chunk string instead of adding
+// tree nodes, which would cost a rated ending far more storage.
 func TestResultsShareChunks(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewCodeRealm(arenaV0))
@@ -215,8 +215,8 @@ func TestResultsShareChunks(cur realm, t *testing.T) {
 	uassert.True(t, resultAt(65) == resultEntry{writer: 1, challenger: alice, acceptor: bob, clans: [2]int{1, 2}, result: 'a', time: time.Now().Unix()})
 }
 
-// A writer that fills the clan table must not stop another writer's endings, so a clan past
-// the table rates its players and counts for no clan.
+// TestClanPastTheTableCountsForNone checks that a writer filling the clan table cannot stop
+// another writer's endings: a clan past the table rates its players and counts for no clan.
 func TestClanPastTheTableCountsForNone(cur realm, t *testing.T) {
 	reset()
 	for i := 1; i <= 255; i++ {

@@ -5,9 +5,9 @@ import (
 	"gno.land/r/gfanton/gnomepit/standings/v0"
 )
 
-// report sends match m, which has just ended, to the standings realm, which rates it. A
-// match its challenger accepted is not reported, and neither is any match while the arena
-// is off the writer list, so no ending ever depends on the standings realm.
+// report sends match m, which has just ended, to the standings realm to be rated. A match
+// its challenger accepted is not reported. Neither is any match while the arena is off the
+// writer list, where Record would abort the ending.
 func report(cur realm, rules *engine.Ruleset, m record) {
 	if m.challenger == m.acceptor || !standings.IsWriter(self) {
 		return

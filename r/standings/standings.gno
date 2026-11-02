@@ -35,7 +35,8 @@ func init(cur realm) {
 
 // Record rates a match the calling arena reports as ended, and logs it. result is "a" when
 // the challenger won, "b" when the acceptor did, and "draw". It aborts unless the caller is
-// a realm on the writer list.
+// a realm on the writer list, and on a report no correct arena sends: the same player on
+// both sides, another result, or a clan name that is empty or over 32 bytes.
 func Record(cur realm, challenger, acceptor address, challengerClan, acceptorClan, result string) {
 	caller := cur.Previous()
 	if !caller.IsCode() || !IsWriter(caller.PkgPath()) {
@@ -159,7 +160,6 @@ func validClan(name string) bool {
 	return len(name) >= 1 && len(name) <= maxClanName
 }
 
-// appendResult logs e as the next result.
 func appendResult(e resultEntry) {
 	key := resultChunkKey(resultCount() + 1)
 	results.Set(key, stringAt(&results, key)+encodeResult(e))

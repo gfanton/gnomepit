@@ -144,12 +144,23 @@ func TestLeaderboardAndStandingOfAgree(cur realm, t *testing.T) {
 	Record(cross(cur), carol, alice, "Delvers", "Pickers", "a")
 	Record(cross(cur), dave, bob, "Ironhide", "Ironhide", "b")
 	Record(cross(cur), bob, carol, "Ironhide", "Delvers", "a")
+	erin, frank, gina := testutils.TestAddress("erin"), testutils.TestAddress("frank"), testutils.TestAddress("gina")
+	Record(cross(cur), erin, alice, "Pickers", "Pickers", "a")
+	Record(cross(cur), frank, gina, "Delvers", "Ironhide", "draw")
 
 	board := Leaderboard(0, 50)
-	urequire.Equal(t, 4, len(board))
+	urequire.Equal(t, 7, len(board))
 	for _, s := range board {
 		uassert.Equal(t, s.Rank, StandingOf(address(s.Player)).Rank, s.Player)
 	}
+	for off := 0; off < len(board); off += 2 {
+		for i, s := range Leaderboard(off, 2) {
+			uassert.Equal(t, board[off+i].Rank, s.Rank, "the page at offset "+strconv.Itoa(off))
+		}
+	}
+	tied := StandingOf(frank).Rank
+	uassert.True(t, tied > 1, "frank and gina tie below first place")
+	uassert.Equal(t, tied, StandingOf(gina).Rank)
 }
 
 func TestResultsPage(cur realm, t *testing.T) {

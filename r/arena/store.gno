@@ -66,6 +66,7 @@ func savePlayer(a address, p playerRecord) {
 	players.Set(string(a), encodePlayer(p))
 }
 
+// add appends id unless the player already has it.
 func (p *playerRecord) add(id int) {
 	for _, have := range p.ids {
 		if have == id {

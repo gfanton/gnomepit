@@ -51,8 +51,8 @@ func refuseSession() {
 	}
 }
 
-// mustBeOpen refuses a new match on an arena that is retired, or that the standings realm
-// takes no results from.
+// mustBeOpen refuses a new match on a retired arena, or on one the standings realm takes no
+// results from.
 func mustBeOpen() {
 	if retired {
 		panic("arena retired")
