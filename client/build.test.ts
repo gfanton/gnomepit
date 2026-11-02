@@ -50,13 +50,10 @@ test("an offline build ships the game and no dev page; a local build adds the de
   for (const file of [
     "index.html",
     "app.js",
-    "delvers-preview.html",
-    "delvers-preview.js",
     "engine.wasm",
     "wasm_exec.js",
     "cards.json",
     "art/assets.json",
-    "art/delvers-cards-v2.json",
     "art/duel-table.jpg",
     "art/mountain-hall-v2.jpg",
     "hall.css",
@@ -65,6 +62,9 @@ test("an offline build ships the game and no dev page; a local build adds the de
   }
   const devPages = ["adena-check.html", "online-dev.html"];
   for (const page of devPages) assert.ok(!existsSync(join(offline, page)), page);
+  for (const file of ["delvers-preview.html", "art/delvers-cards-v2.json"]) {
+    assert.ok(!existsSync(join(offline, file)), file);
+  }
   const networkFiles = ["leaderboard.html", "leaderboard-page.js"];
   for (const file of networkFiles) assert.ok(!existsSync(join(offline, file)), file);
   const local = await built(t, "local");
@@ -99,9 +99,7 @@ test("a build empties its output first, so nothing from an earlier build is publ
 
 test("the shipped pages use relative URLs, so they load under a Pages subpath", async (t) => {
   const offline = await built(t, "offline");
-  for (const page of ["index.html", "delvers-preview.html"]) {
-    assert.doesNotMatch(await readFile(join(offline, page), "utf8"), /(src|href)="\//, page);
-  }
+  assert.doesNotMatch(await readFile(join(offline, "index.html"), "utf8"), /(src|href)="\//);
   const shipped = await readdir(offline);
   for (const script of shipped.filter((name) => name.endsWith(".js"))) {
     assert.doesNotMatch(await readFile(join(offline, script), "utf8"), /(src|href)="\//, script);

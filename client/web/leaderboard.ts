@@ -1,6 +1,5 @@
 // The leaderboard screen: the ladder, the viewer's own standing and the clan standings,
-// drawn from a view model the page supplies already ranked. client/LEADERBOARD.md has
-// the view model and the design.
+// drawn from a view model the page supplies already ranked.
 
 import type { Address } from "./ids.ts";
 import { escapeHTML as esc } from "./keywords.ts";

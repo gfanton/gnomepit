@@ -5,483 +5,247 @@
       "name": "Pick",
       "clan": "Shared",
       "kind": "card",
-      "master": "pick-v2.png",
-      "display": "pick-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "pick-v2.jpg"
     },
     {
       "name": "Brace",
       "clan": "Shared",
       "kind": "card",
-      "master": "brace-v2.png",
-      "display": "brace-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "brace-v2.jpg"
     },
     {
       "name": "Pickaxe Flurry",
       "clan": "Pickers",
       "kind": "card",
-      "master": "pickaxe-flurry-v2.png",
-      "display": "pickaxe-flurry-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "pickaxe-flurry-v2.jpg"
     },
     {
       "name": "Kneecap",
       "clan": "Pickers",
       "kind": "card",
-      "master": "kneecap-v2.png",
-      "display": "kneecap-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "kneecap-v2.jpg"
     },
     {
       "name": "Sling Stone",
       "clan": "Pickers",
       "kind": "card",
-      "master": "sling-stone-v2.png",
-      "display": "sling-stone-v2.jpg",
-      "prompts": "variance-prompts.json"
+      "display": "sling-stone-v2.jpg"
     },
     {
       "name": "Dodge Roll",
       "clan": "Pickers",
       "kind": "card",
-      "master": "dodge-roll-v2.png",
-      "display": "dodge-roll-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "dodge-roll-v2.jpg"
     },
     {
       "name": "Chalk Dust",
       "clan": "Pickers",
       "kind": "card",
-      "master": "chalk-dust-v2.png",
-      "display": "chalk-dust-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "chalk-dust-v2.jpg"
     },
     {
       "name": "Double Tap",
       "clan": "Pickers",
       "kind": "card",
-      "master": "double-tap-v2.png",
-      "display": "double-tap-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "double-tap-v2.jpg"
     },
     {
       "name": "Momentum",
       "clan": "Pickers",
       "kind": "card",
-      "master": "momentum-v2.png",
-      "display": "momentum-v2.jpg",
-      "prompts": "variance-prompts.json"
+      "display": "momentum-v2.jpg"
     },
     {
       "name": "Undermine",
       "clan": "Pickers",
       "kind": "card",
-      "master": "undermine-v2.png",
-      "display": "undermine-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "undermine-v2.jpg"
     },
     {
       "name": "Hunker Down",
       "clan": "Pickers",
       "kind": "card",
-      "master": "hunker-down-v2.png",
-      "display": "hunker-down-v2.jpg",
-      "prompts": "variance-prompts.json"
+      "display": "hunker-down-v2.jpg"
     },
     {
       "name": "Boot and Heel",
       "clan": "Pickers",
       "kind": "card",
-      "master": "boot-and-heel-v2.png",
-      "display": "boot-and-heel-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "boot-and-heel-v2.jpg"
     },
     {
       "name": "Stone Guard",
       "clan": "Ironhide",
       "kind": "card",
-      "master": "stone-guard-v2.png",
-      "display": "stone-guard-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "stone-guard-v2.jpg"
     },
     {
       "name": "Bulwark",
       "clan": "Ironhide",
       "kind": "card",
-      "master": "bulwark-v2.png",
-      "display": "bulwark-v2.jpg",
-      "prompts": "variance-prompts.json"
+      "display": "bulwark-v2.jpg"
     },
     {
       "name": "Hammer Blow",
       "clan": "Ironhide",
       "kind": "card",
-      "master": "hammer-blow-v2.png",
-      "display": "hammer-blow-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "hammer-blow-v2.jpg"
     },
     {
       "name": "Cobble Throw",
       "clan": "Ironhide",
       "kind": "card",
-      "master": "cobble-throw-v2.png",
-      "display": "cobble-throw-v2.jpg",
-      "prompts": "variance-prompts.json"
+      "display": "cobble-throw-v2.jpg"
     },
     {
       "name": "Spiked Shield",
       "clan": "Ironhide",
       "kind": "card",
-      "master": "spiked-shield-v2.png",
-      "display": "spiked-shield-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "spiked-shield-v2.jpg"
     },
     {
       "name": "Anvil Stomp",
       "clan": "Ironhide",
       "kind": "card",
-      "master": "anvil-stomp-v2.png",
-      "display": "anvil-stomp-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "anvil-stomp-v2.jpg"
     },
     {
       "name": "Feint",
       "clan": "Ironhide",
       "kind": "card",
-      "master": "feint-v2.png",
-      "display": "feint-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "feint-v2.jpg"
     },
     {
       "name": "Avalanche",
       "clan": "Ironhide",
       "kind": "card",
-      "master": "avalanche-v2.png",
-      "display": "avalanche-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "avalanche-v2.jpg"
     },
     {
       "name": "Shield Catch",
       "clan": "Ironhide",
       "kind": "card",
-      "master": "shield-catch-v2.png",
-      "display": "shield-catch-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "shield-catch-v2.jpg"
     },
     {
       "name": "Loose Timbers",
       "clan": "Ironhide",
       "kind": "card",
-      "master": "loose-timbers-v2.png",
-      "display": "loose-timbers-v2.jpg",
-      "prompts": "variance-prompts.json"
+      "display": "loose-timbers-v2.jpg"
     },
     {
       "name": "Pickers portrait",
       "clan": "Pickers",
       "kind": "portrait",
-      "master": "pickers-portrait-v2.png",
-      "display": "pickers-portrait-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "pickers-portrait-v2.jpg"
     },
     {
       "name": "Ironhide portrait",
       "clan": "Ironhide",
       "kind": "portrait",
-      "master": "ironhide-portrait-v2.png",
-      "display": "ironhide-portrait-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "ironhide-portrait-v2.jpg"
     },
     {
       "name": "Gnomepit hero",
       "clan": "Both",
       "kind": "hero",
-      "master": "hall-hero-v2.png",
-      "display": "hall-hero-v2.jpg",
-      "prompts": "remaining-variance-prompts.json"
+      "display": "hall-hero-v2.jpg"
     },
     {
       "name": "Duel table",
       "clan": "Both",
       "kind": "background",
-      "master": "duel-table.png",
-      "display": "duel-table.jpg",
-      "prompts": "duel-table-prompt.txt"
+      "display": "duel-table.jpg"
     },
     {
       "name": "Blowback",
       "clan": "Delvers",
       "kind": "card",
-      "master": "blowback-delvers-v3.png",
-      "display": "blowback-delvers-v3.jpg",
-      "prompts": "delvers-unsettling-prompts-v3.json"
+      "display": "blowback-delvers-v3.jpg"
     },
     {
       "name": "Deadfall",
       "clan": "Delvers",
       "kind": "card",
-      "master": "deadfall-delvers-v3.png",
-      "display": "deadfall-delvers-v3.jpg",
-      "prompts": "delvers-unsettling-prompts-v3.json"
+      "display": "deadfall-delvers-v3.jpg"
     },
     {
       "name": "Chisel Jab",
       "clan": "Delvers",
       "kind": "card",
-      "master": "chisel-jab-delvers-v3.png",
-      "display": "chisel-jab-delvers-v3.jpg",
-      "prompts": "delvers-unsettling-prompts-v3.json"
+      "display": "chisel-jab-delvers-v3.jpg"
     },
     {
       "name": "Rockfall",
       "clan": "Delvers",
       "kind": "card",
-      "master": "rockfall-delvers-v3.png",
-      "display": "rockfall-delvers-v3.jpg",
-      "prompts": "delvers-unsettling-prompts-v3.json"
+      "display": "rockfall-delvers-v3.jpg"
     },
     {
       "name": "Cribbing",
       "clan": "Delvers",
       "kind": "card",
-      "master": "cribbing-delvers-v3.png",
-      "display": "cribbing-delvers-v3.jpg",
-      "prompts": "delvers-unsettling-prompts-v3.json"
+      "display": "cribbing-delvers-v3.jpg"
     },
     {
       "name": "Pickers clan selection",
       "clan": "Pickers",
       "kind": "selection",
-      "master": "pickers-selection-v1.png",
-      "display": "pickers-selection-v1.jpg",
-      "prompts": "clan-selection-prompts-v1.json"
+      "display": "pickers-selection-v1.jpg"
     },
     {
       "name": "Ironhide clan selection",
       "clan": "Ironhide",
       "kind": "selection",
-      "master": "ironhide-selection-v1.png",
-      "display": "ironhide-selection-v1.jpg",
-      "prompts": "clan-selection-prompts-v1.json"
+      "display": "ironhide-selection-v1.jpg"
     },
     {
       "name": "Kickback",
       "clan": "Delvers",
       "kind": "card",
-      "master": "kickback-delvers-v3.png",
-      "display": "kickback-delvers-v3.jpg",
-      "prompts": "delvers-unsettling-prompts-v3.json"
+      "display": "kickback-delvers-v3.jpg"
     },
     {
       "name": "Overdig",
       "clan": "Delvers",
       "kind": "card",
-      "master": "overdig-delvers-v3.png",
-      "display": "overdig-delvers-v3.jpg",
-      "prompts": "delvers-unsettling-prompts-v3.json"
+      "display": "overdig-delvers-v3.jpg"
     },
     {
       "name": "Ambush",
       "clan": "Delvers",
       "kind": "card",
-      "master": "ambush-delvers-v3.png",
-      "display": "ambush-delvers-v3.jpg",
-      "prompts": "delvers-unsettling-prompts-v3.json"
+      "display": "ambush-delvers-v3.jpg"
     },
     {
       "name": "Open Guard",
       "clan": "Delvers",
       "kind": "card",
-      "master": "open-guard-delvers-v3.png",
-      "display": "open-guard-delvers-v3.jpg",
-      "prompts": "delvers-unsettling-prompts-v3.json"
+      "display": "open-guard-delvers-v3.jpg"
     },
     {
       "name": "Cave-In",
       "clan": "Delvers",
       "kind": "card",
-      "master": "cave-in-delvers-v3.png",
-      "display": "cave-in-delvers-v3.jpg",
-      "prompts": "delvers-unsettling-prompts-v3.json"
+      "display": "cave-in-delvers-v3.jpg"
     },
     {
       "name": "Delvers clan selection",
       "clan": "Delvers",
       "kind": "selection",
-      "master": "delvers-selection-v5.png",
-      "display": "delvers-selection-v5.jpg",
-      "prompts": "delvers-selection-v5-prompt.json"
+      "display": "delvers-selection-v5.jpg"
     },
     {
       "name": "Delvers portrait",
       "clan": "Delvers",
       "kind": "portrait",
-      "master": "delvers-portrait-v1.png",
-      "display": "delvers-portrait-v1.jpg",
-      "prompts": "delvers-portrait-v1-prompt.json"
+      "display": "delvers-portrait-v1.jpg"
     },
     {
       "name": "Mountain hall",
       "clan": "Both",
       "kind": "background",
-      "master": "mountain-hall-v2.png",
-      "display": "mountain-hall-v2.jpg",
-      "prompts": "mountain-hall-prompts.json"
-    }
-  ],
-  "superseded_assets": [
-    {
-      "name": "Earth Ear",
-      "clan": "Delvers",
-      "kind": "card",
-      "master": "earth-ear-delvers-v1.png",
-      "display": "earth-ear-delvers-v1.jpg",
-      "prompts": "delvers-prompts-v1.json"
-    },
-    {
-      "name": "Fool's Gold",
-      "clan": "Delvers",
-      "kind": "card",
-      "master": "fools-gold-delvers-v1.png",
-      "display": "fools-gold-delvers-v1.jpg",
-      "prompts": "delvers-prompts-v1.json"
-    },
-    {
-      "name": "Snare",
-      "clan": "Delvers",
-      "kind": "card",
-      "master": "snare-delvers-v1.png",
-      "display": "snare-delvers-v1.jpg",
-      "prompts": "delvers-prompts-v1.json"
-    },
-    {
-      "name": "Timber Set",
-      "clan": "Delvers",
-      "kind": "card",
-      "master": "timber-set-delvers-v1.png",
-      "display": "timber-set-delvers-v1.jpg",
-      "prompts": "delvers-prompts-v1.json"
-    },
-    {
-      "name": "Cave Echo",
-      "clan": "Delvers",
-      "kind": "card",
-      "master": "cave-echo-delvers-v1.png",
-      "display": "cave-echo-delvers-v1.jpg",
-      "prompts": "delvers-prompts-v1.json"
-    },
-    {
-      "name": "Delvers clan selection",
-      "clan": "Delvers",
-      "kind": "selection",
-      "master": "delvers-selection-v1.png",
-      "display": "delvers-selection-v1.jpg",
-      "prompts": "clan-selection-prompts-v1.json"
-    },
-    {
-      "name": "Blowback",
-      "clan": "Delvers",
-      "kind": "card",
-      "master": "blowback-delvers-v1.png",
-      "display": "blowback-delvers-v1.jpg",
-      "prompts": "delvers-prompts-v1.json"
-    },
-    {
-      "name": "Deadfall",
-      "clan": "Delvers",
-      "kind": "card",
-      "master": "deadfall-delvers-v1.png",
-      "display": "deadfall-delvers-v1.jpg",
-      "prompts": "delvers-prompts-v1.json"
-    },
-    {
-      "name": "Chisel Jab",
-      "clan": "Delvers",
-      "kind": "card",
-      "master": "chisel-jab-delvers-v1.png",
-      "display": "chisel-jab-delvers-v1.jpg",
-      "prompts": "delvers-prompts-v1.json"
-    },
-    {
-      "name": "Rockfall",
-      "clan": "Delvers",
-      "kind": "card",
-      "master": "rockfall-delvers-v1.png",
-      "display": "rockfall-delvers-v1.jpg",
-      "prompts": "delvers-prompts-v1.json"
-    },
-    {
-      "name": "Cribbing",
-      "clan": "Delvers",
-      "kind": "card",
-      "master": "cribbing-delvers-v1.png",
-      "display": "cribbing-delvers-v1.jpg",
-      "prompts": "delvers-prompts-v1.json"
-    },
-    {
-      "name": "Kickback",
-      "clan": "Delvers",
-      "kind": "card",
-      "master": "kickback-delvers-v2.png",
-      "display": "kickback-delvers-v2.jpg",
-      "prompts": "delvers-reckless-prompts-v2.json"
-    },
-    {
-      "name": "Overdig",
-      "clan": "Delvers",
-      "kind": "card",
-      "master": "overdig-delvers-v2.png",
-      "display": "overdig-delvers-v2.jpg",
-      "prompts": "delvers-reckless-prompts-v2.json"
-    },
-    {
-      "name": "Ambush",
-      "clan": "Delvers",
-      "kind": "card",
-      "master": "ambush-delvers-v2.png",
-      "display": "ambush-delvers-v2.jpg",
-      "prompts": "delvers-reckless-prompts-v2.json"
-    },
-    {
-      "name": "Open Guard",
-      "clan": "Delvers",
-      "kind": "card",
-      "master": "open-guard-delvers-v2.png",
-      "display": "open-guard-delvers-v2.jpg",
-      "prompts": "delvers-reckless-prompts-v2.json"
-    },
-    {
-      "name": "Cave-In",
-      "clan": "Delvers",
-      "kind": "card",
-      "master": "cave-in-delvers-v2.png",
-      "display": "cave-in-delvers-v2.jpg",
-      "prompts": "delvers-reckless-prompts-v2.json"
-    },
-    {
-      "name": "Delvers clan selection",
-      "clan": "Delvers",
-      "kind": "selection",
-      "master": "delvers-selection-v2.png",
-      "display": "delvers-selection-v2.jpg",
-      "prompts": "delvers-reckless-prompts-v2.json"
-    },
-    {
-      "name": "Delvers clan selection",
-      "clan": "Delvers",
-      "kind": "selection",
-      "master": "delvers-selection-v3.png",
-      "display": "delvers-selection-v3.jpg",
-      "prompts": "delvers-unsettling-prompts-v3.json"
-    },
-    {
-      "name": "Delvers clan selection",
-      "clan": "Delvers",
-      "kind": "selection",
-      "master": "delvers-selection-v4.png",
-      "display": "delvers-selection-v4.jpg",
-      "prompts": "delvers-selection-v4-prompt.json"
+      "display": "mountain-hall-v2.jpg"
     }
   ]
 }

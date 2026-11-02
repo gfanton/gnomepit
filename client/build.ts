@@ -13,24 +13,14 @@ export type BuildOptions = { network: string; outDir: string };
 
 const web = fileURLToPath(new URL("./web/", import.meta.url));
 
-const pages = [
-  { html: "index.html", entry: "app.ts" },
-  { html: "delvers-preview.html", entry: "delvers-preview.ts" },
-];
+const pages = [{ html: "index.html", entry: "app.ts" }];
 // Pages that read the chain, so a build without a network has nothing to show on them.
 const networkPages = [{ html: "leaderboard.html", entry: "leaderboard-page.ts" }];
 const devPages = [
   { html: "adena-check.html", entry: "adena-check.ts" },
   { html: "online-dev.html", entry: "online-dev.ts" },
 ];
-const staticFiles = [
-  "cards.json",
-  "art/assets.json",
-  "art/delvers-cards-v2.json",
-  "engine.wasm",
-  "wasm_exec.js",
-  "sw.js",
-];
+const staticFiles = ["cards.json", "art/assets.json", "engine.wasm", "wasm_exec.js", "sw.js"];
 
 // browserBundle gives the options that bundle a module for the page, with the shims standing in
 // for the Node Buffer and crypto the gno clients call.
