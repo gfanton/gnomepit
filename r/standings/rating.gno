@@ -60,7 +60,7 @@ func clampRating(r int) int {
 
 // rate counts a match between a, playing clan number ca, and b, playing clan number cb,
 // in which a scored score thousandths: in both standings, on the ladder, and in the clan
-// records when the clans differ.
+// records when both clans are counted and differ.
 func rate(a, b address, ca, cb, score int) {
 	sa, sb := ratedStanding(a), ratedStanding(b)
 	sa.rating, sb.rating = applyChange(sa.rating, sb.rating, eloChange(sa.rating, sb.rating, score, playerK))
@@ -71,7 +71,7 @@ func rate(a, b address, ca, cb, score int) {
 	saveStanding(a, sa)
 	saveStanding(b, sb)
 
-	if ca == cb {
+	if ca == cb || ca == 0 || cb == 0 {
 		return
 	}
 	x, y := &clans[ca-1], &clans[cb-1]
@@ -80,18 +80,14 @@ func rate(a, b address, ca, cb, score int) {
 	tally(1000-score, &y.wins, &y.losses, &y.draws, maxClanCount)
 }
 
-// ratedStanding returns a's standing, created at startRating for a first rated match, with
-// a count for every clan numbered so far, and takes its key off the ladder until it is
-// counted.
+// ratedStanding returns a's standing, created at startRating for a first rated match, and
+// takes its key off the ladder until it is counted.
 func ratedStanding(a address) *standing {
 	st := loadStanding(a)
 	if st == nil {
 		st = &standing{rating: startRating}
 	} else {
 		ladder, _, _, _ = ladder.Remove(ladderKey(st.rating, a))
-	}
-	for len(st.perClan) < len(clans) {
-		st.perClan = append(st.perClan, 0)
 	}
 	return st
 }
@@ -106,7 +102,8 @@ func saveStanding(a address, st *standing) {
 }
 
 // clanNumber is the clan number of name, its first-seen position plus one. A name not
-// seen before gets the next number.
+// seen before gets the next number, or 0, no clan, once maxClans are numbered: a writer
+// that fills the table must not abort another writer's endings.
 func clanNumber(name string) int {
 	for i, c := range clans {
 		if c.name == name {
@@ -114,7 +111,7 @@ func clanNumber(name string) int {
 		}
 	}
 	if len(clans) == maxClans {
-		panic("too many clans")
+		return 0
 	}
 	clans = append(clans, clanRecord{name: name, rating: startRating})
 	return len(clans)
@@ -133,10 +130,17 @@ func scoreOf(result string) int {
 	panic("unknown result")
 }
 
-// count adds a match scored score thousandths and played as clan number clan.
+// count adds a match scored score thousandths and played as clan number clan, 0 for none.
+// perClan grows only as far as the clan numbers s has played.
 func (s *standing) count(score, clan int) {
 	tally(score, &s.wins, &s.losses, &s.draws, maxPlayerCount)
 	s.lastClan = clan
+	if clan == 0 {
+		return
+	}
+	for len(s.perClan) < clan {
+		s.perClan = append(s.perClan, 0)
+	}
 	if s.perClan[clan-1] < maxPlayerCount {
 		s.perClan[clan-1]++
 	}

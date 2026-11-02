@@ -86,7 +86,7 @@ func TestRateFirstMatch(cur realm, t *testing.T) {
 
 	a := loadStanding(alice)
 	urequire.True(t, a != nil)
-	uassert.Equal(t, "1016 1-0-0 last 1 per 1 0", showStanding(*a))
+	uassert.Equal(t, "1016 1-0-0 last 1 per 1", showStanding(*a))
 	uassert.Equal(t, 1, a.mainClan())
 	b := loadStanding(bob)
 	urequire.True(t, b != nil)
@@ -117,7 +117,7 @@ func TestRateDraw(cur realm, t *testing.T) {
 	reset()
 	testing.SetRealm(testing.NewCodeRealm(arenaV0))
 	Record(cross(cur), alice, bob, "Pickers", "Ironhide", "draw")
-	uassert.Equal(t, "1000 0-0-1 last 1 per 1 0", showStanding(*loadStanding(alice)))
+	uassert.Equal(t, "1000 0-0-1 last 1 per 1", showStanding(*loadStanding(alice)))
 	uassert.Equal(t, "1000 0-0-1 last 2 per 0 1", showStanding(*loadStanding(bob)))
 }
 
@@ -167,10 +167,10 @@ func TestClanNumbersFollowFirstSeen(cur realm, t *testing.T) {
 	uassert.Equal(t, "Ironhide", clans[0].name)
 	uassert.Equal(t, "Delvers", clans[1].name)
 	uassert.Equal(t, "Pickers", clans[2].name)
-	uassert.Equal(t, "1016 1-0-0 last 1 per 1 0", first)
+	uassert.Equal(t, "1016 1-0-0 last 1 per 1", first)
 	uassert.Equal(t, first, showStanding(*loadStanding(alice)), "a new clan moves no earlier count")
 	uassert.Equal(t, "1016 1-0-0 last 3 per 0 0 1", showStanding(*loadStanding(carol)))
-	uassert.Equal(t, "984 0-1-0 last 1 per 1 0 0", showStanding(*loadStanding(dave)))
+	uassert.Equal(t, "984 0-1-0 last 1 per 1", showStanding(*loadStanding(dave)))
 }
 
 func TestCountersSaturate(cur realm, t *testing.T) {
@@ -215,13 +215,23 @@ func TestResultsShareChunks(cur realm, t *testing.T) {
 	uassert.True(t, resultAt(65) == resultEntry{writer: 1, challenger: alice, acceptor: bob, clans: [2]int{1, 2}, result: 'a', time: time.Now().Unix()})
 }
 
-func TestTooManyClans(cur realm, t *testing.T) {
+// A writer that fills the clan table must not stop another writer's endings, so a clan past
+// the table rates its players and counts for no clan.
+func TestClanPastTheTableCountsForNone(cur realm, t *testing.T) {
 	reset()
 	for i := 1; i <= 255; i++ {
 		clanNumber("c" + strconv.Itoa(i))
 	}
 	testing.SetRealm(testing.NewCodeRealm(arenaV0))
-	uassert.AbortsWithMessage(t, cur, "too many clans", func() {
-		Record(cross(cur), alice, bob, "c1", "c256", "a")
-	})
+	Record(cross(cur), alice, bob, "c1", "c256", "a")
+
+	uassert.Equal(t, 255, len(clans))
+	uassert.True(t, clans[0] == clanRecord{name: "c1", rating: startRating}, "a clan's record moves only against another counted clan")
+	uassert.Equal(t, "1016 1-0-0 last 1 per 1", showStanding(*loadStanding(alice)))
+	uassert.Equal(t, "984 0-1-0 last 0 per", showStanding(*loadStanding(bob)))
+	uassert.Equal(t, 2, StandingOf(bob).Rank, "a player rated with no counted clan still has a rank")
+	uassert.Equal(t, "", StandingOf(bob).MainClan)
+	r := Results(0, 1)[0]
+	uassert.Equal(t, "c1", r.ChallengerClan)
+	uassert.Equal(t, "", r.AcceptorClan)
 }

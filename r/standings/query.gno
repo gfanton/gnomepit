@@ -10,7 +10,7 @@ const maxPage = 50
 // Standing is one player's place on the ladder. Rank is 1 for the highest rating and
 // equal ratings share it; Rank is 0 and Rating 1000 for a player with no rated match.
 // Name is the player's gno.land name, "" without one. MainClan is "" until their
-// first rated match.
+// first rated match with a counted clan.
 type Standing struct {
 	Rank                   int
 	Player, Name, MainClan string
@@ -61,7 +61,7 @@ func Leaderboard(offset, limit int) []Standing {
 // StandingOf returns player's standing, rated or not.
 func StandingOf(player address) Standing {
 	s := standingOf(player)
-	if s.MainClan != "" {
+	if s.Wins+s.Losses+s.Draws > 0 {
 		s.Rank = rankOf(s.Rating)
 	}
 	return s
@@ -152,7 +152,11 @@ func nameOf(player address) string {
 	return u.Name()
 }
 
+// clanName is the name of clan number n, "" for 0, no clan.
 func clanName(n int) string {
+	if n == 0 {
+		return ""
+	}
 	return clans[n-1].name
 }
 
