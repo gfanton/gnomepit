@@ -13,6 +13,7 @@ import (
 const (
 	maxWriters  = 255 // a writer number fills one byte of a result entry
 	maxClanName = 32
+	maxPkgPath  = 256
 )
 
 var (
@@ -118,11 +119,17 @@ func addWriter(pkgpath string) {
 	writers.Set(pkgpath, n)
 }
 
-// isVersionedRealm reports whether pkgpath is under gno.land/r/ and ends in a version
-// element: "v" and one or more digits.
+// isVersionedRealm reports whether pkgpath is under gno.land/r/, at most maxPkgPath bytes of
+// lowercase letters, digits and "/._-", and ends in a version element: "v" and one or more
+// digits. A sub-realm path, with "#", is refused.
 func isVersionedRealm(pkgpath string) bool {
-	if !strings.HasPrefix(pkgpath, "gno.land/r/") {
+	if len(pkgpath) > maxPkgPath || !strings.HasPrefix(pkgpath, "gno.land/r/") {
 		return false
+	}
+	for _, c := range pkgpath {
+		if !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || strings.ContainsRune("/._-", c)) {
+			return false
+		}
 	}
 	v := pkgpath[strings.LastIndex(pkgpath, "/")+1:]
 	if len(v) < 2 || v[0] != 'v' {

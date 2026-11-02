@@ -116,7 +116,8 @@ func TestAddWriterRefuses(cur realm, t *testing.T) {
 	ownedBy(alice)
 	testing.SetRealm(testing.NewUserRealm(alice))
 
-	for _, p := range []string{"gno.land/p/x/v0", "gno.land/r/x", "gno.land/r/x/v", "gno.land/r/x/vA"} {
+	tooLong := "gno.land/r/" + strings.Repeat("a", 243) + "/v1"
+	for _, p := range []string{"gno.land/p/x/v0", "gno.land/r/x", "gno.land/r/x/v", "gno.land/r/x/vA", "gno.land/r/x#y/v1", "gno.land/r/X/v1", tooLong} {
 		uassert.AbortsWithMessage(t, cur, "bad writer path", func() { AddWriter(cross(cur), p) }, p)
 	}
 	uassert.AbortsWithMessage(t, cur, "already a writer", func() { AddWriter(cross(cur), arenaV0) })
