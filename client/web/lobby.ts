@@ -33,6 +33,11 @@ const clanClass = (block: string, clan: string) =>
   clanSlug(clan) === "" ? block : `${block} ${block}--${clanSlug(clan)}`;
 // dueOf is the time a view's deadline or, without one, its expiry falls on.
 const dueOf = (v: View) => (isSet(v.deadline) ? v.deadline : v.expires);
+const unsentTitle: Record<DraftContext["intent"], string> = {
+  challenge: "Your challenge is not posted yet",
+  accept: "Your acceptance is not sent yet",
+  move: "Your move is not sent yet",
+};
 // waitsFor says whether v's match still waits for a plan sent as context.
 const waitsFor = (context: DraftContext, v: View) => v.action === (context.intent === "move" ? "move" : "accept");
 // turnOf numbers a match's turns in order: open, reveal 1, play 2, reveal 2, play 3, reveal 3,
@@ -538,12 +543,27 @@ export function createLobby<Draft extends Drafted = Drafted>({
   function header() {
     return `<header class="masthead">${wordmarkHTML("./", 'data-action="onlineExit"')}<div class="account">${btn(address() !== "" ? shortAddress(address()) + " · Account" : "Connect wallet", "Account", arena === null || model.busy, true)}${address() !== "" ? `<small>${ready() ? "Ready to play" : "Needs approval"}</small>` : ""}</div></header>`;
   }
+  // needsYou says whether v waits on the player: a move, a finish, a forfeit to claim, or an
+  // ending not yet watched.
+  function needsYou(v: View) {
+    return v.action === "move" || v.action === "finish" || v.action === "claimForfeit" || unwatched(v);
+  }
+  function unwatched(v: View) {
+    return decided(v) && !seen(summaryKey(v));
+  }
+  // draftRow is the id of the match row an unsent move waits in, when that row is on the board.
+  function draftRow() {
+    const context = model.draft?.onlineContext;
+    const id = context?.intent === "move" ? context.view?.id : undefined;
+    return model.matches.some((v) => v.id === id) ? id : undefined;
+  }
   function matchCard(v: View) {
-    const unwatched = decided(v) && !seen(summaryKey(v));
-    const mine = v.action === "move" || v.action === "finish" || v.action === "claimForfeit" || unwatched;
+    const mine = needsYou(v);
+    const drafted = v.id === draftRow();
     const other = v.side === 0 ? 1 : 0;
-    const statusText =
-      v.phase === "open"
+    const statusText = drafted
+      ? "Your plan is saved"
+      : v.phase === "open"
         ? "Awaiting a rival"
         : v.action === "claimForfeit"
           ? "Claim your win"
@@ -551,7 +571,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
             ? "Ready to finish"
             : v.action === "move"
               ? "Your move"
-              : unwatched
+              : unwatched(v)
                 ? "Match over"
                 : v.phase === "ended"
                   ? resultText(v)
@@ -561,12 +581,12 @@ export function createLobby<Draft extends Drafted = Drafted>({
     const own = v.side === -1 ? v.clans[0] : textOr(v.clans[v.side], v.clans[0]);
     const over = !mine && (v.phase === "ended" || v.phase === "expired");
     const round = v.round ?? 1;
-    return `<li class="grudge${mine ? " grudge--turn" : over ? " grudge--over" : ""}"><div class="grudge__faces">${portrait(own, `class="${clanClass("portrait", own)}"`)}${portrait(v.clans[other], `class="${clanClass("portrait", v.clans[other])}"`)}</div><div class="grudge__who"><strong class="status">${esc(statusText)}</strong><span>${esc(textOr(v.clans[other], "Any rival"))} · ${v.players[other] !== "" ? addressText(v.players[other]) : filled(v.opponent) ? `Reserved for ${addressText(v.opponent)}` : "Anyone can accept"}</span></div><div class="grudge__when"><small class="grudge__round">${v.phase === "open" ? "Challenge" : `Round ${round} of 3${roundPipsHTML(round, 'aria-hidden="true"')}`}</small><small>${unwatched ? "Watch the last clash" : over ? esc(reasonText(v)) : esc(timeLeft(dueOf(v)))}</small></div>${btn(mine ? "Open match" : "View match", "Open", model.busy, !mine, `data-id="${esc(v.id)}"`)}</li>`;
+    return `<li class="grudge${mine ? " grudge--turn" : over ? " grudge--over" : ""}"><div class="grudge__faces">${portrait(own, `class="${clanClass("portrait", own)}"`)}${portrait(v.clans[other], `class="${clanClass("portrait", v.clans[other])}"`)}</div><div class="grudge__who"><strong class="status">${esc(statusText)}</strong><span>${esc(textOr(v.clans[other], "Any rival"))} · ${v.players[other] !== "" ? addressText(v.players[other]) : filled(v.opponent) ? `Reserved for ${addressText(v.opponent)}` : "Anyone can accept"}</span></div><div class="grudge__when"><small class="grudge__round">${v.phase === "open" ? "Challenge" : `Round ${round} of 3${roundPipsHTML(round, 'aria-hidden="true"')}`}</small><small>${unwatched(v) ? "Watch the last clash" : over ? esc(reasonText(v)) : esc(timeLeft(dueOf(v)))}</small></div>${drafted ? btn("Resume plan", "ResumeDraft", model.busy) : btn(mine ? "Open match" : "View match", "Open", model.busy, !mine, `data-id="${esc(v.id)}"`)}</li>`;
   }
   function challengeCard(v: View) {
     const reserved = v.opponent;
     const own = v.side === 0;
-    return `<article class="${clanClass("challenge", v.clans[0])}"><div class="challenge__head"><div><h3>${esc(v.clans[0])}</h3><span class="label">${own ? "Your challenge" : filled(reserved) ? (reserved === address() ? "Reserved for you" : "Reserved") : "Open challenge"}</span></div><span class="notice-mark">${emblem(v.clans[0])}</span></div><p>Posted by ${v.side === 0 ? "you" : addressText(v.challenger)}</p>${filled(reserved) && reserved !== address() ? `<p>For ${addressText(reserved)}</p>` : ""}<div class="challenge__foot"><small>${esc(timeLeft(v.expires))}</small>${btn("View challenge", "Open", model.busy || model.blocked, own, `data-id="${esc(v.id)}"`)}</div></article>`;
+    return `<article class="${clanClass("challenge", v.clans[0])}"><div class="challenge__head"><div><h3>${esc(v.clans[0])}</h3><span class="label">${own ? "Your challenge" : filled(reserved) ? (reserved === address() ? "Reserved for you" : "Reserved") : "Open challenge"}</span></div><span class="notice-mark">${emblem(v.clans[0])}</span></div><p>Posted by ${v.side === 0 ? "you" : addressText(v.challenger)}</p>${filled(reserved) && reserved !== address() ? `<p>For ${addressText(reserved)}</p>` : ""}<div class="challenge__foot"><small>${esc(timeLeft(v.expires))}</small>${btn("View challenge", "Open", model.busy || model.blocked, true, `data-id="${esc(v.id)}"`)}</div></article>`;
   }
   function resultText(v: View) {
     if (v.result === "draw") return "An even score";
@@ -614,7 +634,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
     app.innerHTML =
       model.view !== null
         ? detail(model.view)
-        : `${header()}${notice()}${step() !== null ? `<section class="wallet-setup" aria-labelledby="wallet-setup-title"><h2 id="wallet-setup-title">Get ready to play online</h2>${stepsHTML()}</section>` : ""}<section class="hall-banner"><img src="art/hall-hero-v2.jpg" alt=""><div class="copy"><h1>A rival awaits.</h1><p>Settle a grudge in three rounds. Play together tonight, or take turns over a few days. Each move has a 24-hour deadline.</p><div class="banner-actions">${btn("Post a challenge", "Post", arena === null || model.busy || model.blocked)}${arena?.canNotify === true ? btn(model.notifications === "on" ? "Notifications on" : "Notify me", "Notify", model.busy, true) : ""}</div></div></section>${model.draft !== null ? `<section class="notice"><div><strong>Your unsent plan is saved in this tab</strong><p>Resume it after renewing your session or checking the board.</p></div>${btn("Resume draft", "ResumeDraft", model.busy)}</section>` : ""}<div class="lobby-columns"><section aria-labelledby="matches-title"><div class="section-head"><div><h2 id="matches-title">My matches</h2><p>Your next move starts here.</p></div>${btn("Refresh", "Refresh", arena === null || model.busy, true)}</div><div class="match-list">${textOr(model.matches.length > 0 ? `<ol class="ledger">${model.matches.map(matchCard).join("")}</ol>` : "", `<div class="empty"><h3>${model.busy ? "Looking for matches…" : address() !== "" ? "Your first grudge starts here." : "Your matches live here."}</h3><p>${address() !== "" ? "Accept a challenge or post one of your own." : "Connect your wallet to find and resume matches."}</p></div>`)}</div>${pager("Matches", model.matchPage, model.matches.length)}</section><section aria-labelledby="challenges-title"><div class="section-head"><div><h2 id="challenges-title">Open challenges</h2><p>Choose a rival. Bring your own deck.</p></div><small>Newest first</small></div><div class="challenge-list">${textOr(model.challenges.length > 0 ? `<ul class="notice-board">${model.challenges.map((v) => `<li>${challengeCard(v)}</li>`).join("")}</ul>` : "", `<div class="empty"><h3>${model.busy ? "Reading the board…" : arena !== null ? "The board is quiet." : "The board is not connected."}</h3><p>${arena !== null ? "Post one, and the next gnome through the door can take it up." : "Online challenges will appear when the arena is connected."}</p>${arena !== null ? btn("Post a challenge", "Post", model.busy || model.blocked) : ""}</div>`)}</div>${pager("Challenges", model.page, model.challenges.length)}</section></div><footer class="footer"><span>No stakes. Just grudges.</span>${btn("Play offline", "Offline", model.busy, true)}</footer><dialog id="online-dialog" aria-labelledby="online-dialog-title"></dialog>`;
+        : `${header()}${notice()}${step() !== null ? `<section class="wallet-setup" aria-labelledby="wallet-setup-title"><h2 id="wallet-setup-title">Get ready to play online</h2>${stepsHTML()}</section>` : ""}<section class="hall-banner"><img src="art/hall-hero-v2.jpg" alt=""><div class="copy"><h1>A rival awaits.</h1><p>Settle a grudge in three rounds. Play together tonight, or take turns over a few days. Each move has a 24-hour deadline.</p><div class="banner-actions">${btn("Post a challenge", "Post", arena === null || model.busy || model.blocked, model.draft !== null || model.matches.some(needsYou))}${arena?.canNotify === true ? btn(model.notifications === "on" ? "Notifications on" : "Notify me", "Notify", model.busy, true) : ""}</div></div></section>${model.draft !== null && draftRow() === undefined ? `<section class="notice"><div><strong>${unsentTitle[model.draft.onlineContext?.intent ?? "move"]}</strong><p>Its plan is saved in this tab.</p></div>${btn("Resume plan", "ResumeDraft", model.busy)}</section>` : ""}<div class="lobby-columns"><section aria-labelledby="matches-title"><div class="section-head"><div><h2 id="matches-title">My matches</h2><p>Your next move starts here.</p></div>${btn("Refresh", "Refresh", arena === null || model.busy, true)}</div><div class="match-list">${textOr(model.matches.length > 0 ? `<ol class="ledger">${model.matches.map(matchCard).join("")}</ol>` : "", `<div class="empty"><h3>${model.busy ? "Looking for matches…" : address() !== "" ? "Your first grudge starts here." : "Your matches live here."}</h3><p>${address() !== "" ? "Accept a challenge or post one of your own." : "Connect your wallet to find and resume matches."}</p></div>`)}</div>${pager("Matches", model.matchPage, model.matches.length)}</section><section aria-labelledby="challenges-title"><div class="section-head"><div><h2 id="challenges-title">Open challenges</h2><p>Choose a rival. Bring your own deck.</p></div><small>Newest first</small></div><div class="challenge-list">${textOr(model.challenges.length > 0 ? `<ul class="notice-board">${model.challenges.map((v) => `<li>${challengeCard(v)}</li>`).join("")}</ul>` : "", `<div class="empty"><h3>${model.busy ? "Reading the board…" : arena !== null ? "The board is quiet." : "The board is not connected."}</h3><p>${arena !== null ? "Post one, and the next gnome through the door can take it up." : "Online challenges will appear when the arena is connected."}</p>${arena !== null ? btn("Post a challenge", "Post", model.busy || model.blocked, true) : ""}</div>`)}</div>${pager("Challenges", model.page, model.challenges.length)}</section></div><footer class="footer"><span>No stakes. Just grudges.</span>${btn("Play offline", "Offline", model.busy, true)}</footer><dialog id="online-dialog" aria-labelledby="online-dialog-title"></dialog>`;
   }
   function pager(kind: string, page: number, count: number) {
     return arena !== null && (page > 0 || count >= 50)

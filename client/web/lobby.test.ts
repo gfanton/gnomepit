@@ -616,6 +616,82 @@ test("My matches keeps a ledger: a row a match, the player's move marked, ended 
   assert.doesNotMatch(ledger, /data-action="onlineCopy"/);
 });
 
+// brass lists the board's brass buttons by their words.
+const brass = (html: string) =>
+  Array.from(html.matchAll(/<button type="button" class="button"[^>]*>([^<]*)</g), ([, text]) => text);
+
+const onMove = () =>
+  detail({
+    ID: matchId("6"),
+    Phase: "play",
+    Round: 2,
+    Acceptor: bob,
+    ChallengerClan: "Pickers",
+    AcceptorClan: "Ironhide",
+    ToMove: alice,
+    action: "move",
+  });
+const bobsNotice = {
+  ID: matchId("9"),
+  Challenger: bob,
+  Clan: "Ironhide",
+  Opponent: "" as const,
+  Posted: 0,
+  Expires: 9e9,
+  action: "accept" as const,
+  deadline: 9e9,
+};
+
+test("the board's one brass button opens the match waiting on the player", async (t) => {
+  stubPage(t);
+  const arena = followedArena();
+  arena.myMatches = async () => [onMove(), detail({ ID: matchId("7"), Opponent: bob })];
+  arena.board = [bobsNotice];
+  const { lobby, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  assert.deepEqual(brass(shown()), ["Open match"]);
+});
+
+test("with nothing waiting on the player, Post a challenge is the board's brass button", async (t) => {
+  stubPage(t);
+  const arena = followedArena();
+  arena.myMatches = async () => [detail({ ID: matchId("7"), Opponent: bob })];
+  arena.board = [bobsNotice];
+  const { lobby, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  assert.deepEqual(brass(shown()), ["Post a challenge"]);
+});
+
+test("an unsent move waits in its match's row, not in a notice of its own", async (t) => {
+  stubPage(t);
+  const arena = followedArena();
+  arena.myMatches = async () => [onMove()];
+  const { lobby, shown } = lobbyOf(arena, alice);
+  lobby.model.draft = { onlineContext: { intent: "move" as const, view: { id: matchId("6") } } };
+  await lobby.enter();
+  assert.doesNotMatch(shown(), /<section class="notice">/);
+  const row = /<li class="grudge grudge--turn">(.*?)<\/li>/s.exec(shown())?.[1] ?? "";
+  assert.match(row, /Your plan is saved/);
+  assert.match(row, /data-action="onlineResumeDraft"/);
+  assert.deepEqual(brass(shown()), ["Resume plan"]);
+});
+
+test("an unsent challenge or acceptance says which it is", async (t) => {
+  stubPage(t);
+  for (const [intent, words] of [
+    ["challenge", "Your challenge is not posted yet"],
+    ["accept", "Your acceptance is not sent yet"],
+  ] as const) {
+    const arena = followedArena();
+    const { lobby, shown } = lobbyOf(arena, alice);
+    lobby.model.draft = { onlineContext: { intent } };
+    await lobby.enter();
+    const notice = /<section class="notice">(.*?)<\/section>/s.exec(shown())?.[1] ?? "";
+    assert.match(notice, new RegExp(words), intent);
+    assert.deepEqual(brass(shown()), ["Resume plan"], intent);
+  }
+});
+
 test("open challenges hang as notices on the board, each read without a copy button", async (t) => {
   stubPage(t);
   const arena = followedArena();
