@@ -457,8 +457,12 @@ const handlers = {
     stopPlaying();
     playback = null;
     // A move's draft is only its plan's cards; a challenge or acceptance also carries its clan and deck.
-    if (["plan", "deck"].includes(flow.screen) && (plan.length > 0 || onlineContext?.intent !== "move"))
-      onlineLobby().model.draft = { flow, deck, plan, legalPlans, onlineContext, choosingClan };
+    if (["plan", "deck"].includes(flow.screen)) {
+      const board = onlineLobby().model;
+      if (plan.length > 0 || onlineContext?.intent !== "move")
+        board.draft = { flow, deck, plan, legalPlans, onlineContext, choosingClan };
+      else if (board.draft?.onlineContext?.view?.id === onlineContext?.view?.id) board.draft = null;
+    }
     void onlineLobby().returnToBoard();
   },
   library: () => {
