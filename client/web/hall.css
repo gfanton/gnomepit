@@ -9,6 +9,80 @@ body:where(:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby,
     ),
     url("art/mountain-hall-v2.jpg") center top / max(100%, 1680px) auto no-repeat,
     var(--gh-color-canvas);
+  position: relative;
+  isolation: isolate;
+}
+/* The hall's light lives between the illustration and the page: a glow over each painted lantern,
+   drawn at the illustration's own size and crop so it stays on its lantern, flickering; and dust
+   drifting up through the arches at either edge of the window. */
+body:where(:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings))::before,
+body:where(:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings))::after {
+  content: "";
+  z-index: -1;
+  pointer-events: none;
+}
+body:where(:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings))::before {
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1536' height='1024'%3E%3CradialGradient id='g'%3E%3Cstop offset='0' stop-color='%23f0ca8c' stop-opacity='.5'/%3E%3Cstop offset='.35' stop-color='%23d88f26' stop-opacity='.2'/%3E%3Cstop offset='1' stop-color='%23d88f26' stop-opacity='0'/%3E%3C/radialGradient%3E%3Cg fill='url(%23g)'%3E%3Ccircle cx='165' cy='165' r='170'/%3E%3Ccircle cx='1353' cy='150' r='170'/%3E%3Ccircle cx='205' cy='490' r='70'/%3E%3Ccircle cx='243' cy='592' r='50'/%3E%3Ccircle cx='1316' cy='365' r='45'/%3E%3Ccircle cx='1461' cy='475' r='80'/%3E%3Ccircle cx='1464' cy='585' r='50'/%3E%3Ccircle cx='1266' cy='530' r='40'/%3E%3Ccircle cx='1416' cy='525' r='40'/%3E%3C/g%3E%3C/svg%3E")
+    center top / max(100%, 1680px) auto no-repeat;
+  mix-blend-mode: screen;
+  animation: hall-lanterns 6.4s ease-in-out infinite;
+}
+body:where(:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings))::after {
+  position: fixed;
+  inset: 0 0 auto;
+  height: calc(100vh + 240px);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='240'%3E%3CradialGradient id='d'%3E%3Cstop offset='0' stop-color='%23f0ca8c'/%3E%3Cstop offset='1' stop-color='%23f0ca8c' stop-opacity='0'/%3E%3C/radialGradient%3E%3Cg fill='url(%23d)'%3E%3Ccircle cx='38' cy='52' r='4'/%3E%3Ccircle cx='121' cy='188' r='3'/%3E%3Ccircle cx='197' cy='97' r='4.5'/%3E%3Ccircle cx='263' cy='19' r='2.5'/%3E%3Ccircle cx='292' cy='161' r='3.5'/%3E%3Ccircle cx='74' cy='131' r='2.5'/%3E%3Ccircle cx='158' cy='229' r='3'/%3E%3C/g%3E%3C/svg%3E")
+    0 0 / 320px 240px;
+  opacity: 0.6;
+  mask-image: linear-gradient(90deg, #000, transparent 26% 74%, #000);
+  animation: hall-dust 48s linear infinite;
+}
+body:has(.board[data-screen="deck"][data-stage="cards"])::before {
+  background-position: 55% -140px;
+}
+body:has(.standings)::before {
+  background-position: 45% -80px;
+}
+@keyframes hall-lanterns {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  9% {
+    opacity: 1;
+  }
+  12% {
+    opacity: 0.74;
+  }
+  16% {
+    opacity: 0.95;
+  }
+  41% {
+    opacity: 0.86;
+  }
+  46% {
+    opacity: 1;
+  }
+  49% {
+    opacity: 0.8;
+  }
+  72% {
+    opacity: 0.93;
+  }
+  75% {
+    opacity: 0.77;
+  }
+  79% {
+    opacity: 0.97;
+  }
+}
+/* One tile's height, so the loop restarts on the same dust it began with. */
+@keyframes hall-dust {
+  to {
+    transform: translateY(-240px);
+  }
 }
 :is(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings) {
   position: relative;
@@ -55,6 +129,19 @@ body:has(.standings) {
       auto,
       auto 850px,
       auto;
+  }
+  body:where(:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings))::before {
+    background-size: auto 850px;
+  }
+}
+/* Still light and no dust: specks that never move read as grime. */
+@media (prefers-reduced-motion: reduce) {
+  body:where(:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings))::before {
+    animation: none;
+    opacity: 0.85;
+  }
+  body:where(:has(.board[data-screen="title"], .board[data-screen="deck"], .lobby, .standings))::after {
+    display: none;
   }
 }
 @media (max-width: 600px) {
