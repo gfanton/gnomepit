@@ -1,6 +1,6 @@
 import { type AccountState, type Arena, ArenaError, type Connection, type MatchDetail } from "./arena.ts";
 import { otherSide } from "./engine.ts";
-import { type Address, type MatchId, matchId } from "./ids.ts";
+import { type Address, type MatchId, isAccountAddress, matchId } from "./ids.ts";
 import { escapeHTML } from "./keywords.ts";
 import { type ArenaView, type View, deadlineText, isSet, viewOf, shortAddress, timeLeft } from "./online-model.ts";
 import { wordmarkHTML } from "./wordmark.ts";
@@ -84,7 +84,9 @@ type Dialog = Pick<HTMLDialogElement, "innerHTML" | "open" | "showModal" | "clos
 export type LobbyPage = Pick<HTMLElement, "innerHTML" | "dataset"> & {
   classList: Pick<DOMTokenList, "add" | "remove">;
   querySelector(selectors: "#online-dialog"): Dialog | null;
-  querySelector(selectors: "#online-opponent"): Pick<HTMLInputElement, "value"> | null;
+  querySelector(
+    selectors: "#online-opponent",
+  ): Pick<HTMLInputElement, "value" | "setCustomValidity" | "reportValidity"> | null;
 };
 // What a draft is sent as: a challenge, open or reserved for opponent, or an acceptance or a
 // move in view's match.
@@ -550,7 +552,8 @@ export function createLobby<Draft extends Drafted = Drafted>({
   }
   function challengeCard(v: View) {
     const reserved = v.opponent;
-    return `<article class="${clanClass("challenge", v.clans[0])}"><div class="match-top"><div><h3>${esc(v.clans[0])}</h3><span class="label">${filled(reserved) ? (reserved === address() ? "Reserved for you" : "Reserved") : "Open challenge"}</span></div><span class="notice-mark">${emblem(v.clans[0])}</span></div><p>Posted by ${copyButton(v.challenger)}</p>${filled(reserved) && reserved !== address() ? `<p>For ${copyButton(reserved)}</p>` : ""}<div class="match-bottom"><small>${esc(timeLeft(v.expires))}</small>${btn("View challenge", "Open", model.busy || model.blocked, false, `data-id="${esc(v.id)}"`)}</div></article>`;
+    const own = v.side === 0;
+    return `<article class="${clanClass("challenge", v.clans[0])}"><div class="match-top"><div><h3>${esc(v.clans[0])}</h3><span class="label">${own ? "Your challenge" : filled(reserved) ? (reserved === address() ? "Reserved for you" : "Reserved") : "Open challenge"}</span></div><span class="notice-mark">${emblem(v.clans[0])}</span></div><p>Posted by ${v.side === 0 ? "you" : copyButton(v.challenger)}</p>${filled(reserved) && reserved !== address() ? `<p>For ${copyButton(reserved)}</p>` : ""}<div class="match-bottom"><small>${esc(timeLeft(v.expires))}</small>${btn("View challenge", "Open", model.busy || model.blocked, own, `data-id="${esc(v.id)}"`)}</div></article>`;
   }
   function resultText(v: View) {
     if (v.result === "draw") return "An even score";
@@ -571,7 +574,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
     const other = v.side === 0 ? 1 : 0;
     const due = dueOf(v);
     const latest = v.hp?.at(-1);
-    return `${header()}${notice()}${notifyOffer(v)}<section class="match"><div class="section-head"><h1>${esc(v.phase === "open" ? (mine ? "Your challenge is up" : "A challenge awaits") : v.phase === "ended" ? resultText(v) : expired ? `Challenge ${v.phase}` : v.action === "move" || early(v) ? "Your move" : v.action === "finish" ? "Ready to finish" : v.action === "claimForfeit" ? "Opponent missed the deadline" : `Waiting for ${textOr(v.clans[other], "a rival")}`)}</h1>${btn("Back to board", "Board", model.busy, true)}</div><div class="fighters">${portrait(v.clans[0], `class="${clanClass("portrait", v.clans[0])}"`)}<strong>${esc(v.clans[0])}</strong><span class="versus">vs</span>${portrait(v.clans[1], `class="${clanClass("portrait", v.clans[1])}"`)}<strong>${esc(textOr(v.clans[1], "Any rival"))}</strong></div><p>Posted by ${copyButton(v.challenger)}</p>${filled(v.acceptor) ? `<p>Opponent ${copyButton(v.acceptor)}</p>` : ""}<p>${esc(v.phase === "ended" ? reasonText(v) : timeLeft(due))}</p>${isSet(due) ? `<p><small>Deadline: ${esc(deadlineText(due))}</small></p>` : ""}${latest !== undefined ? `<p>Latest clash: ${esc(v.clans[0])} ${esc(latest[0])} HP · ${esc(v.clans[1])} ${esc(latest[1])} HP</p>` : ""}${v.phase === "open" ? `<p>Choose a clan, build eight cards, and plan round 1 before accepting. Their deck stays hidden until round 2.</p>${!filled(v.opponent) ? "" : v.opponent === address() ? "<p>Reserved for you.</p>" : `<p>Reserved for ${copyButton(v.opponent)}.${mine ? " Share the link to invite them; reservations do not send notifications." : ""}</p>`}` : v.action === "wait" && mine ? "<p>Your plan is sealed: they can’t see it until they’ve played theirs.</p>" : ""}<div class="banner-actions">${v.action === "accept" ? btn(ready() ? "Accept challenge" : "Connect to accept", ready() ? "Accept" : "Account", model.busy || model.blocked) : ""}${v.session === "expired" && (v.action === "move" || v.action === "finish") ? btn("Renew session to play", "Renew", model.busy || model.blocked) : v.action === "move" || early(v) ? btn(ready() ? "Watch clash & plan" : "Connect to play", ready() ? (early(v) ? "Finish" : "Play") : "Account", model.busy || model.blocked) : v.action === "finish" ? btn("Finish match", "Finish", model.busy || model.blocked) : ""}${v.action === "claimForfeit" ? btn("Claim win", "Claim", model.busy) : ""}${(v.plans ?? []).some((p) => filled(p[0]) && filled(p[1])) ? btn("Review last clash", "Review", model.busy || model.blocked, true) : ""}${mine && v.phase === "open" ? btn("Withdraw challenge", "Resign", model.busy, true) : mine && (v.phase === "play" || v.phase === "reveal") ? btn("Resign match", "Resign", model.busy, true) : ""}${v.phase === "ended" && mine ? btn("Challenge them again", "Rematch", model.busy || model.blocked) : ""}${btn("Copy match link", "Link", false, true)}</div><p class="busy-note" role="status">${model.busy ? esc(textOr(waitingFor(), "Loading…")) : ""}</p></section><dialog id="online-dialog" aria-labelledby="online-dialog-title"></dialog>`;
+    return `${header()}${notice()}${notifyOffer(v)}<section class="match"><div class="section-head"><h1>${esc(v.phase === "open" ? (mine ? "Your challenge is up" : "A challenge awaits") : v.phase === "ended" ? resultText(v) : expired ? `Challenge ${v.phase}` : v.action === "move" || early(v) ? "Your move" : v.action === "finish" ? "Ready to finish" : v.action === "claimForfeit" ? "Opponent missed the deadline" : `Waiting for ${textOr(v.clans[other], "a rival")}`)}</h1>${btn("Back to board", "Board", model.busy, true)}</div><div class="fighters">${portrait(v.clans[0], `class="${clanClass("portrait", v.clans[0])}"`)}<strong>${esc(v.clans[0])}</strong><span class="versus">vs</span>${portrait(v.clans[1], `class="${clanClass("portrait", v.clans[1])}"`)}<strong>${esc(textOr(v.clans[1], "Any rival"))}</strong></div><p>Posted by ${v.side === 0 ? "you" : copyButton(v.challenger)}</p>${filled(v.acceptor) ? `<p>Opponent ${copyButton(v.acceptor)}</p>` : ""}<p>${esc(v.phase === "ended" ? reasonText(v) : timeLeft(due))}</p>${isSet(due) ? `<p><small>Deadline: ${esc(deadlineText(due))}</small></p>` : ""}${latest !== undefined ? `<p>Latest clash: ${esc(v.clans[0])} ${esc(latest[0])} HP · ${esc(v.clans[1])} ${esc(latest[1])} HP</p>` : ""}${v.phase === "open" ? `${mine ? "" : "<p>Choose a clan, build eight cards, and plan round 1 before accepting. Their deck stays hidden until round 2.</p>"}${!filled(v.opponent) ? "" : v.opponent === address() ? "<p>Reserved for you.</p>" : `<p>Reserved for ${copyButton(v.opponent)}.${mine ? " Share the link to invite them; reservations do not send notifications." : ""}</p>`}` : v.action === "wait" && mine ? "<p>Your plan is sealed: they can’t see it until they’ve played theirs.</p>" : ""}<div class="banner-actions">${v.action === "accept" ? btn(ready() ? "Accept challenge" : "Connect to accept", ready() ? "Accept" : "Account", model.busy || model.blocked) : ""}${v.session === "expired" && (v.action === "move" || v.action === "finish") ? btn("Renew session to play", "Renew", model.busy || model.blocked) : v.action === "move" || early(v) ? btn(ready() ? "Watch clash & plan" : "Connect to play", ready() ? (early(v) ? "Finish" : "Play") : "Account", model.busy || model.blocked) : v.action === "finish" ? btn("Finish match", "Finish", model.busy || model.blocked) : ""}${v.action === "claimForfeit" ? btn("Claim win", "Claim", model.busy) : ""}${(v.plans ?? []).some((p) => filled(p[0]) && filled(p[1])) ? btn("Review last clash", "Review", model.busy || model.blocked, true) : ""}${mine && v.phase === "open" ? btn("Withdraw challenge", "Resign", model.busy, true) : mine && (v.phase === "play" || v.phase === "reveal") ? btn("Resign match", "Resign", model.busy, true) : ""}${v.phase === "ended" && mine ? btn("Challenge them again", "Rematch", model.busy || model.blocked) : ""}${btn("Copy match link", "Link", false, true)}</div><p class="busy-note" role="status">${model.busy ? esc(textOr(waitingFor(), "Loading…")) : ""}</p></section><dialog id="online-dialog" aria-labelledby="online-dialog-title"></dialog>`;
   }
   function render() {
     app.classList.remove("board--battle");
@@ -724,6 +727,14 @@ export function createLobby<Draft extends Drafted = Drafted>({
       const field = app.querySelector("#online-opponent");
       if (field === null) throw new Error("The lobby has no opponent field.");
       const opponent = field.value.trim();
+      // The realm refuses a reserved challenge for anything but an account, after the whole deck and
+      // plan are built; the field says so first.
+      field.setCustomValidity(
+        opponent === "" || isAccountAddress(opponent)
+          ? ""
+          : "Enter a gno.land account address, g1 and 38 more characters, or leave this empty so anyone can accept.",
+      );
+      if (!field.reportValidity()) return;
       close();
       compose("challenge", opponent);
     } else if (name === "Accept") compose("accept");
@@ -741,7 +752,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
       dialog(
         openView().phase === "open" ? "Withdraw this challenge?" : "Resign this match?",
         `<p>${openView().phase === "open" ? "Nobody will be able to accept it." : "This records a loss. Your opponent wins."}</p>`,
-        btn("Keep playing", "Close") +
+        btn(openView().phase === "open" ? "Keep it open" : "Keep playing", "Close") +
           btn(openView().phase === "open" ? "Withdraw challenge" : "Resign match", "ResignConfirm", false, true),
       );
     // The realm deletes a withdrawn challenge, so neither a view nor a watch outlives it.

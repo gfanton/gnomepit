@@ -985,10 +985,19 @@ function dialogLobby(t: TestContext, arena: LobbyArena, options: Partial<LobbyOp
     innerHTML: "",
     value: "",
     open: false,
+    validity: "",
+    reported: 0,
     showModal() {},
     close() {},
     addEventListener() {},
     append() {},
+    setCustomValidity(message: string) {
+      dialog.validity = message;
+    },
+    reportValidity() {
+      dialog.reported++;
+      return dialog.validity === "";
+    },
   };
   const lobby = createLobby({
     ...unusedPage,
@@ -1062,9 +1071,11 @@ test("posting needs no session beforehand", async (t) => {
 test("a rematch posts a challenge reserved for the same opponent", async (t) => {
   const composed: Parameters<LobbyOptions["onCompose"]>[0][] = [];
   const reserved: (string | undefined)[] = [];
-  const ended = detail({ ID: matchId("5"), Phase: "ended", Challenger: alice, Acceptor: bob, Result: "challenger" });
+  // The realm reserves a challenge only for a real account address.
+  const rival = address("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5");
+  const ended = detail({ ID: matchId("5"), Phase: "ended", Challenger: alice, Acceptor: rival, Result: "challenger" });
   const arena = followedArena();
-  arena.match = async (id) => (id === ended.ID ? ended : detail({ ID: id, Opponent: bob }));
+  arena.match = async (id) => (id === ended.ID ? ended : detail({ ID: id, Opponent: rival }));
   arena.challenge = async ({ opponent }) => {
     reserved.push(opponent);
     return matchId("6");
@@ -1074,11 +1085,11 @@ test("a rematch posts a challenge reserved for the same opponent", async (t) => 
   lobby.model.account = arena.account();
   lobby.model.view = viewOf(ended, alice);
   await lobby.action("Rematch");
-  assert.ok(dialog.innerHTML.includes(`value="${bob}"`));
-  dialog.value = bob;
+  assert.ok(dialog.innerHTML.includes(`value="${rival}"`));
+  dialog.value = rival;
   await lobby.action("Compose");
   await lobby.sendDraft(known(composed[0]), "Ironhide", [0], [0, 0, 0]);
-  assert.deepEqual(reserved, [bob]);
+  assert.deepEqual(reserved, [rival]);
   assert.equal(lobby.model.view?.id, "6");
 });
 
@@ -1263,6 +1274,8 @@ test("the wallet search ending leaves an open dialog alone, and redraws once it 
       if (type === "close") closers.push(listener);
     },
     append() {},
+    setCustomValidity() {},
+    reportValidity: () => true,
   };
   const arena = {
     ...followedArena(),
@@ -1397,6 +1410,57 @@ test("resigning asks with the loss named on its button, and keeping on is the fi
   assert.ok(keep !== -1 && resign !== -1 && keep < resign, dialog.innerHTML);
   assert.match(dialog.innerHTML, /class="button" data-action="onlineClose"/);
   assert.doesNotMatch(dialog.innerHTML, />Confirm</);
+});
+
+test("an opponent address that is no account keeps the post dialog open and says so on the field", async (t) => {
+  const composed: string[] = [];
+  const { lobby, dialog } = dialogLobby(t, followedArena(), { onCompose: (c) => composed.push(c.opponent) });
+  lobby.model.account = { address: alice, state: "active", mode: "session", fallback: null };
+  await lobby.action("Post");
+  dialog.value = "g1nope";
+  await lobby.action("Compose");
+  assert.deepEqual(composed, []);
+  assert.match(dialog.validity, /gno\.land account address/);
+  assert.equal(dialog.reported, 1);
+  dialog.value = " g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5 ";
+  await lobby.action("Compose");
+  assert.deepEqual(composed, ["g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5"]);
+  assert.equal(dialog.validity, "");
+});
+
+test("a challenger's own challenge reads as theirs on its page and on the board", async (t) => {
+  stubPage(t);
+  const open = detail({ Phase: "open", ChallengerClan: "Pickers", action: "wait" });
+  const arena = endingArena(open);
+  arena.board = [
+    {
+      ID: matchId("4"),
+      Challenger: alice,
+      Clan: "Pickers",
+      Opponent: "",
+      Posted: 0,
+      Expires: 9e9,
+      action: "wait",
+      deadline: 0,
+    },
+  ];
+  const { lobby, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  const board = shown();
+  assert.match(board, /<span class="label">Your challenge<\/span>/);
+  assert.match(board, /class="quiet" data-action="onlineOpen"\s+data-id="4">View challenge</);
+  await lobby.action("Open", { id: "4" });
+  assert.match(shown(), /Posted by you/);
+  assert.doesNotMatch(shown(), /before accepting/);
+});
+
+test("withdrawing a challenge asks with Keep it open first", async (t) => {
+  const open = detail({ Phase: "open", action: "wait" });
+  const { lobby, dialog } = dialogLobby(t, endingArena(open));
+  lobby.model.view = viewOf(open, alice);
+  await lobby.action("Resign");
+  assert.match(dialog.innerHTML, /data-action="onlineClose"[^>]*>Keep it open</);
+  assert.match(dialog.innerHTML, /data-action="onlineResignConfirm"[^>]*>Withdraw challenge</);
 });
 
 test("an empty board offers to post the first challenge", async () => {

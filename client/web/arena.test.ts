@@ -1447,6 +1447,8 @@ test("the lobby shows the per-move mode a wallet without sessions leaves, until 
       close() {},
       addEventListener() {},
       append() {},
+      setCustomValidity() {},
+      reportValidity: () => true,
     };
     const app = { classList: { add() {}, remove() {} }, dataset: {}, innerHTML: "", querySelector: () => dialog };
     const { arena } = sessionPlayer(chain, {

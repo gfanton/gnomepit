@@ -163,9 +163,17 @@ test("rematch against the bot goes straight to player 1's plan", () => {
   assert.equal(f.acting, 0);
 });
 
-test("newMatch returns to the initial flow", () => {
-  const f = play([...bothDecks("bot"), ...bothPlans("bot"), resolved("a"), playbackDone, { type: "newMatch" }]);
-  assert.deepEqual(f, initial);
+test("newMatch starts another match of the same kind, from player 1's clan choice", () => {
+  for (const mode of ["bot", "hotseat"] as const) {
+    const ended = play([...bothDecks(mode), ...bothPlans(mode), resolved("a"), playbackDone]);
+    const f = reduce(ended, { type: "newMatch" });
+    assert.equal(f.screen, "deck", mode);
+    assert.equal(f.mode, mode);
+    assert.equal(f.acting, 0);
+    assert.deepEqual(f.clans, [null, null]);
+    assert.deepEqual(f.rounds, []);
+    assert.deepEqual(f.state, startState);
+  }
 });
 
 test("botTurn is false in hot-seat and for player 1", () => {
