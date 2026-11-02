@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { cards, pickers } from "./fixture.ts";
-import { beatsUsed, canAdd, addCard, clearFrom, slots, isSealable } from "./plan.ts";
+import { beatsUsed, canAdd, addCard, clearFrom, slots, isSealable, fitText } from "./plan.ts";
 
 const available = [0, 1, ...pickers.cards.filter((c) => c !== 10 && c !== 11)];
 
@@ -66,4 +66,13 @@ test("isSealable is true only for a plan in the legal list, in order", () => {
   assert.equal(isSealable([0, 5], legal), true);
   assert.equal(isSealable([5, 0], legal), false);
   assert.equal(isSealable([], legal), false);
+});
+
+test("fitText says how many beats a card needs and how many are left, or nothing when it fits", () => {
+  const hunker = 10; // 3 beats
+  const roll = 5; // 2 beats
+  assert.equal(fitText([], hunker, cards), "");
+  assert.equal(fitText([0, 0], roll, cards), "Needs 2 beats; 1 beat left.");
+  assert.equal(fitText([0], hunker, cards), "Needs 3 beats; 2 beats left.");
+  assert.equal(fitText([0, 0, 0], 0, cards), "All three beats are filled.");
 });

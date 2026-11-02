@@ -213,10 +213,12 @@
   /* Type roles. The font shorthand resets font-variant, so a rule that takes a role sets its own
      caps and numerals after it. */
   --gh-type-display: 800 clamp(42px, 4.4vw, 64px) / 1.05 var(--gh-font-display);
+  --gh-type-headline: 800 clamp(36px, 3.4vw, 48px) / 1.05 var(--gh-font-display);
   --gh-type-heading: 800 30px / 1.15 var(--gh-font-display);
   --gh-type-subheading: 700 22px / 1.2 var(--gh-font-display);
   --gh-type-title: 700 17px / 1.15 var(--gh-font-display);
   --gh-type-title-compact: 700 15px / 1.05 var(--gh-font-display);
+  --gh-type-title-small: 700 13px / 15px var(--gh-font-display);
   --gh-type-note: italic 400 16px / 1.4 var(--gh-font-display);
   --gh-type-body: 500 16px / 1.55 var(--gh-font-body);
   --gh-type-rules: 500 14px / 1.35 var(--gh-font-body);
@@ -328,6 +330,10 @@ summary {
 :focus-visible {
   outline: 2px solid var(--gh-color-highlight);
   outline-offset: 4px;
+}
+/* Brass is 1.3:1 against parchment, too faint to find focus inside a card. */
+.card :focus-visible {
+  outline-color: var(--gh-color-ink);
 }
 /* A heading or line a new screen focuses only to start the reader there; nothing on it acts. */
 :is(h1, h2, h3, p)[tabindex="-1"]:focus-visible {
@@ -707,6 +713,42 @@ dialog::backdrop {
 .showcase--roster .card:nth-child(n) {
   transform: none;
 }
+.rules {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 28px 40px;
+  margin-bottom: 24px;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-border-pale) 31%, transparent);
+  border-radius: 7px;
+  background: var(--gh-color-surface);
+}
+.rules__steps {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding-left: 20px;
+  font: var(--gh-type-body);
+}
+.rules__steps li::marker {
+  color: var(--gh-color-trim);
+}
+.rule-words {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 28px;
+  margin: 14px 0 0;
+}
+.rule-words dt {
+  color: var(--gh-color-text-bright);
+  font: var(--gh-type-title);
+  text-transform: capitalize;
+}
+.rule-words dd {
+  margin: 4px 0 0;
+  color: var(--gh-color-text-muted);
+  font: var(--gh-type-rules);
+}
 .collection {
   display: grid;
   gap: 28px;
@@ -734,8 +776,7 @@ dialog::backdrop {
   align-items: center;
   gap: 18px;
   padding: 18px 20px;
-  border: 1px solid color-mix(in srgb, var(--clan-line) 33%, transparent);
-  border-left: 3px solid var(--clan-color);
+  border: 1px solid color-mix(in srgb, var(--clan-line) 45%, transparent);
   border-radius: 3px;
   background: linear-gradient(100deg, color-mix(in srgb, var(--clan-deep) 33%, transparent), var(--gh-color-surface));
   box-shadow: inset 0 1px color-mix(in srgb, var(--gh-color-text-bright) 5%, transparent);
@@ -903,12 +944,12 @@ dialog::backdrop {
 button.card {
   cursor: pointer;
 }
-button.card:hover:not(:disabled),
+button.card:hover:not(:disabled, .card--dimmed),
 button.card:focus-visible {
   transform: translateY(-5px);
   box-shadow: 0 12px 20px color-mix(in srgb, var(--gh-color-shadow) 33%, transparent);
 }
-button.card:active:not(:disabled, .card--locked) {
+button.card:active:not(:disabled, .card--locked, .card--dimmed) {
   transform: translateY(-2px) scale(0.98);
 }
 .card--selected {
@@ -1278,7 +1319,7 @@ button.card:active:not(:disabled, .card--locked) {
   border: 2px solid var(--clan-color);
   border-radius: 50%;
   background: var(--gh-color-surface);
-  box-shadow: 0 0 28px color-mix(in srgb, var(--clan-light) 30%, transparent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--gh-color-shadow) 45%, transparent);
 }
 .handoff__crest .sprite {
   width: 96px;
@@ -1286,9 +1327,8 @@ button.card:active:not(:disabled, .card--locked) {
   border: 0;
 }
 
-/* ---- Result: the verdict staged on the duel table between the two champions. The winner's
-   ring lights in their clan's colour and the loser's portrait greys, after a beat. */
-.result-stage {
+/* ---- Duel stage: a result or an online match, set between two champions */
+.duel-stage {
   display: grid;
   justify-items: center;
   gap: 28px;
@@ -1306,7 +1346,7 @@ button.card:active:not(:disabled, .card--locked) {
     inset 0 1px 0 color-mix(in srgb, var(--gh-color-trim-bright) 20%, transparent),
     0 14px 36px color-mix(in srgb, var(--gh-color-shadow) 27%, transparent);
 }
-.result-stage__duel {
+.duel-stage__duel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
   grid-template-areas: "near verdict far";
@@ -1315,21 +1355,21 @@ button.card:active:not(:disabled, .card--locked) {
   width: 100%;
   max-width: 980px;
 }
-.result-verdict {
+.duel-stage__headline {
   grid-area: verdict;
   display: grid;
   justify-items: center;
   gap: 10px;
   text-align: center;
 }
-.result-verdict h1 {
+.duel-stage__headline h1 {
   margin: 0;
   color: var(--gh-color-text-bright);
   font: var(--gh-type-display);
   letter-spacing: var(--gh-tracking-display);
   text-shadow: 0 3px 24px color-mix(in srgb, var(--gh-color-shadow) 65%, transparent);
 }
-.result-verdict > p {
+.duel-stage__headline > p {
   margin: 0;
   color: var(--gh-color-text-warm);
   font: var(--gh-type-note);
@@ -1344,28 +1384,28 @@ button.card:active:not(:disabled, .card--locked) {
   color: var(--gh-color-text-muted);
   font: var(--gh-type-caption);
 }
-.result-champion {
+.duel-champion {
   margin: 0;
   display: grid;
   justify-items: center;
   gap: 12px;
   text-align: center;
 }
-.result-champion--near {
+.duel-champion--near {
   grid-area: near;
 }
-.result-champion--far {
+.duel-champion--far {
   grid-area: far;
 }
-.result-champion figcaption {
+.duel-champion figcaption {
   display: grid;
   justify-items: center;
   gap: 2px;
 }
-.result-champion .label {
+.duel-champion .label {
   color: var(--clan-light);
 }
-.result-champion__portrait {
+.duel-champion__portrait {
   padding: 6px;
   border: 3px solid var(--clan-color);
   border-radius: 50%;
@@ -1374,37 +1414,37 @@ button.card:active:not(:disabled, .card--locked) {
     0 0 0 4px color-mix(in srgb, var(--gh-color-canvas) 73%, transparent),
     0 10px 24px color-mix(in srgb, var(--gh-color-shadow) 40%, transparent);
 }
-.result-champion__portrait .sprite {
+.duel-champion__portrait .sprite {
   width: 132px;
   height: 132px;
   border: 0;
 }
-.result-champion__name {
+.duel-champion__name {
   font: var(--gh-type-heading);
 }
-.result-champion__hp {
+.duel-champion__hp {
   color: var(--gh-color-text-glow);
   font: var(--gh-type-subheading);
   font-variant-numeric: var(--gh-numerals);
 }
-.result-champion--winner .result-champion__portrait {
+.duel-champion--winner .duel-champion__portrait {
   scale: 1.06;
   box-shadow:
     0 0 0 4px color-mix(in srgb, var(--gh-color-canvas) 73%, transparent),
     0 0 40px 8px color-mix(in srgb, var(--clan-light) 40%, transparent);
   animation: champion-lit 900ms 250ms var(--gh-ease-out) backwards;
 }
-.result-champion--loser .result-champion__portrait {
+.duel-champion--loser .duel-champion__portrait {
   border-color: var(--gh-color-border);
 }
-.result-champion--loser .sprite {
+.duel-champion--loser .sprite {
   filter: grayscale(0.85) brightness(0.6);
   animation: champion-greyed 900ms 250ms ease-out backwards;
 }
-.result-champion--loser figcaption {
+.duel-champion--loser figcaption {
   opacity: 0.7;
 }
-.result-stage__note {
+.duel-stage__note {
   max-width: 60ch;
   margin: 0;
   color: var(--gh-color-text-muted);
@@ -1466,6 +1506,9 @@ button.card:active:not(:disabled, .card--locked) {
 }
 
 @media (max-width: 1050px) {
+  .rules {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .board {
     padding: 20px;
   }
@@ -1573,6 +1616,12 @@ button.card:active:not(:disabled, .card--locked) {
     gap: 12px;
     flex-wrap: wrap;
   }
+  .rules {
+    padding: 14px 12px 18px;
+  }
+  .rule-words {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .collection {
     padding: 14px 10px 18px;
   }
@@ -1586,21 +1635,21 @@ button.card:active:not(:disabled, .card--locked) {
   }
 }
 @media (max-width: 700px) {
-  .result-stage {
+  .duel-stage {
     padding: 28px 14px 20px;
   }
-  .result-stage__duel {
+  .duel-stage__duel {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
       "verdict verdict"
       "near far";
     row-gap: 20px;
   }
-  .result-champion__portrait .sprite {
+  .duel-champion__portrait .sprite {
     width: 88px;
     height: 88px;
   }
-  .result-champion__name {
+  .duel-champion__name {
     font: var(--gh-type-subheading);
   }
 }
@@ -1639,11 +1688,11 @@ button.card:active:not(:disabled, .card--locked) {
 .fighter:first-child .fighter__portrait {
   view-transition-name: champion-near;
 }
-.result-champion--near .result-champion__portrait {
+.duel-champion--near .duel-champion__portrait {
   view-transition-name: champion-near;
 }
 .fighter:last-child .fighter__portrait,
-.result-champion--far .result-champion__portrait {
+.duel-champion--far .duel-champion__portrait {
   view-transition-name: champion-far;
 }
 ::view-transition-group(*) {

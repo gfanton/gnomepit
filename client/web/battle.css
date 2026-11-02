@@ -385,8 +385,27 @@
   background: var(--gh-color-accent);
   border-color: var(--gh-color-accent);
 }
-.beat-markers .timeline__beat--past {
+.beat-markers .timeline__beat--past > :not(.beat-marker__outcome) {
   opacity: 0.5;
+}
+.beat-marker__outcome {
+  padding-left: 8px;
+  border-left: 1px solid color-mix(in srgb, var(--gh-color-trim) 45%, transparent);
+  color: var(--gh-color-text);
+  font: var(--gh-type-caption);
+  font-variant-caps: normal;
+  font-variant-numeric: var(--gh-numerals);
+  letter-spacing: normal;
+  white-space: nowrap;
+  animation: outcome-in var(--gh-motion-base) var(--gh-ease-out);
+}
+.beat-marker__outcome:empty {
+  display: none;
+}
+@keyframes outcome-in {
+  from {
+    opacity: 0;
+  }
 }
 .board--battle .card--track {
   width: 188px;
@@ -590,7 +609,7 @@
   opacity: 1;
   filter: brightness(0.5);
 }
-.hand-entry button.card:hover:not(:disabled),
+.hand-entry button.card:hover:not(:disabled, .card--dimmed),
 .hand-entry button.card:focus-visible {
   transform: none;
   box-shadow: 0 12px 20px color-mix(in srgb, var(--gh-color-shadow) 47%, transparent);
@@ -669,7 +688,7 @@
 .card.card--coached:focus-visible {
   outline-color: var(--gh-color-highlight);
 }
-.hand-entry button.card.card--coached:hover:not(:disabled),
+.hand-entry button.card.card--coached:hover:not(:disabled, .card--dimmed),
 .hand-entry button.card.card--coached:focus-visible {
   box-shadow:
     0 12px 20px color-mix(in srgb, var(--gh-color-shadow) 47%, transparent),
@@ -875,6 +894,34 @@
   max-width: calc(100vw - 24px);
   padding: 18px;
 }
+/* Docked above the hand, the reader leaves the page live and scrolls inside itself when short. */
+.card-reader.card-reader--docked {
+  position: fixed;
+  inset: auto auto var(--dock-bottom, 8px) 50%;
+  translate: -50% 0;
+  z-index: 90;
+  max-height: var(--dock-room, calc(100dvh - 16px));
+  margin: 0;
+  overflow-y: auto;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--gh-color-shadow) 60%, transparent);
+}
+/* A short phone shrinks the docked card and drops its beats line, so Play stays in view. */
+@media (max-height: 700px) {
+  .card-reader.card-reader--docked {
+    padding: 10px;
+  }
+  .card-reader--docked #reader-content {
+    padding-top: 0;
+  }
+  .card-reader.card-reader--docked .card {
+    width: 180px;
+    height: 248px;
+    grid-template-rows: 28px 108px 1fr 20px;
+  }
+  .card-reader--docked #reader-content > p.muted:nth-child(2) {
+    display: none;
+  }
+}
 .card-reader > .dialog-close {
   position: absolute;
   right: 0;
@@ -973,28 +1020,6 @@
     font: var(--gh-type-subheading);
   }
 }
-/* Below 1001px the hand scrolls sideways instead of fanning. */
-@media (max-width: 1000px) {
-  .board--battle .battle-hand {
-    justify-content: flex-start;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 35px 12px;
-  }
-  .hand-entry {
-    transform: none;
-  }
-  .hand-layout .hand-entry + .hand-entry {
-    margin-left: -46px;
-  }
-  .hand-entry:hover,
-  .hand-entry:has(:focus-visible) {
-    transform: translateY(-14px);
-  }
-  .hand-entry.hand-entry--resting {
-    transform: none;
-  }
-}
 @media (max-width: 800px) {
   .board.board--battle {
     padding: 12px 16px 20px;
@@ -1056,30 +1081,6 @@
   }
   .hand-zone__hint {
     justify-items: start;
-  }
-  .hand-layout {
-    grid-template-columns: minmax(0, 1fr) 86px;
-    gap: 6px;
-  }
-  .board--battle .battle-hand {
-    padding-bottom: 30px;
-    scroll-snap-type: x proximity;
-  }
-  .hand-entry {
-    transform: rotate(-3deg);
-    scroll-snap-align: start;
-  }
-  .card-inspect {
-    opacity: 1;
-    bottom: -16px;
-    padding: 4px 8px;
-  }
-  .played-pile {
-    padding: 5px;
-  }
-  .played-pile .pile-back {
-    width: 65px;
-    height: 100px;
   }
   .playback-meta {
     gap: 10px;
@@ -1247,7 +1248,7 @@
 }
 /* Phones: the beats run down the screen, your plan beside your fighter and theirs beside theirs,
    and a card spans as many rows as it takes beats. The rows share the height the window leaves.
-   The hand docks at the bottom as a strip of card tops, and tapping one opens the reader. */
+   The hand docks at the bottom as rows of names, and tapping one opens the reader. */
 @media (max-width: 700px) {
   .board.board--battle {
     display: flex;
@@ -1350,6 +1351,10 @@
     padding: 6px 7px;
     font: var(--gh-type-title-compact);
     font-variant-numeric: var(--gh-numerals);
+  }
+  /* ceiling: the beat column is a gem wide here; Round details keeps each beat's damage. */
+  .beat-marker__outcome {
+    display: none;
   }
   .beat-marker__word,
   .hand-zone__title .muted {
@@ -1457,33 +1462,6 @@
     font: var(--gh-type-title);
   }
   .hand-zone__hint {
-    display: none;
-  }
-  .hand-layout {
-    height: 112px;
-    overflow: clip;
-    align-items: start;
-  }
-  .board--battle .battle-hand {
-    padding: var(--gh-space-3) 12px 0;
-  }
-  .hand-entry:hover,
-  .hand-entry:has(:focus-visible) {
-    transform: translateY(calc(-1 * var(--gh-space-3)));
-  }
-  .card-inspect {
-    top: 44px;
-    bottom: auto;
-  }
-  .played-pile {
-    gap: var(--gh-space-1);
-    padding-top: var(--gh-space-3);
-  }
-  .played-pile .pile-back {
-    width: 48px;
-    height: 70px;
-  }
-  .played-pile .label {
     display: none;
   }
   [data-screen="playback"] > .battle-controls {
@@ -1689,6 +1667,13 @@
     transform: translateY(var(--hand-rise)) rotate(var(--hand-tilt));
   }
 }
+/* On a short window the fan tilts and drops half as far, so its outermost cost stays in view. */
+@media (min-width: 1001px) and (max-height: 700px) {
+  .hand-entry,
+  [data-screen="plan"] .hand-entry.hand-entry--resting {
+    transform: translateY(calc(var(--hand-rise) / 2)) rotate(calc(var(--hand-tilt) / 2));
+  }
+}
 /* Touch: cards stay still, and Details is always shown. */
 @media (hover: none) {
   .hand-entry,
@@ -1699,6 +1684,147 @@
   .card-inspect {
     opacity: 1;
     bottom: -18px;
+  }
+}
+
+/* ---- Hand rows: a window too narrow for the fan rests the hand as rows of compact cards */
+.board--battle .battle-hand.battle-hand--rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  justify-self: center;
+  width: 100%;
+  align-items: stretch;
+  gap: var(--gh-space-2);
+  padding: var(--gh-space-1) 0 var(--gh-space-2);
+}
+.battle-hand.battle-hand--rows > .hand-entry {
+  width: auto;
+  margin: 0;
+  transform: none;
+}
+/* Name, a band of the art, then the rules; the badges sit on the art's corner so each name keeps
+   its line and the bands of one row line up. */
+.board.board--battle .battle-hand--rows .card--hand {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template: "head" auto "art" 52px "text" 1fr / minmax(0, 1fr);
+  align-content: start;
+  gap: var(--gh-space-1);
+  padding: 5px 8px 6px;
+  border-width: 1px;
+  border-radius: 5px;
+}
+/* The Rare badge goes: a rare card's gold stock already marks it. */
+.battle-hand--rows :is(.card__ornament, .card__clan, .badge--rare, .card__art--pending span) {
+  display: none;
+}
+.battle-hand--rows .card__art {
+  position: relative;
+  grid-area: art;
+  height: auto;
+}
+/* Out of flow, the picture fills its band without sizing the card. */
+.battle-hand--rows .card__art img {
+  position: absolute;
+  inset: 0;
+  object-position: 50% 35%;
+}
+.battle-hand--rows .card__head {
+  grid-area: head;
+  min-width: 0;
+  padding: 0;
+}
+.battle-hand--rows .card__foot {
+  grid-area: art;
+  z-index: 1;
+  align-self: start;
+  justify-self: end;
+  margin: 4px;
+  border: 0;
+  padding: 0;
+}
+.battle-hand--rows .card__text {
+  grid-area: text;
+  padding: 0 2px;
+}
+.battle-hand--rows .hand-entry button.card:hover:not(:disabled, .card--dimmed),
+.battle-hand--rows .hand-entry button.card:focus-visible {
+  transform: translateY(-3px);
+}
+/* Dimmed this far, an unplayable card's rules keep 4.5:1. */
+.battle-hand--rows .card--hand.card--dimmed {
+  filter: brightness(0.6);
+}
+.hand-layout:has(> .battle-hand--rows) {
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: var(--gh-space-3);
+}
+.hand-layout:has(> .battle-hand--rows) .played-pile {
+  gap: var(--gh-space-1);
+  padding: var(--gh-space-1);
+}
+.hand-layout:has(> .battle-hand--rows) .pile-back {
+  width: 60px;
+  height: 86px;
+}
+/* Phones: four cards to a row, each name laid over its art, with the played pile as the last cell. */
+@media (max-width: 700px) {
+  .hand-layout:has(> .battle-hand--rows) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+    gap: var(--gh-space-1);
+    padding: 6px 0;
+  }
+  .board--battle .battle-hand.battle-hand--rows {
+    display: contents;
+  }
+  .board.board--battle .battle-hand--rows .card--hand {
+    grid-template: "art" minmax(44px, 1fr) / minmax(0, 1fr);
+    padding: 2px;
+  }
+  .battle-hand--rows :is(.card__text, .card__foot) {
+    display: none;
+  }
+  /* The scrim under the name keeps it legible over any painting. */
+  .battle-hand--rows .card__head {
+    grid-area: art;
+    z-index: 1;
+    align-self: end;
+    display: flow-root;
+    padding: 6px 4px 3px;
+    border-radius: 0 0 3px 3px;
+    background: linear-gradient(transparent, color-mix(in srgb, var(--gh-color-shadow) 82%, transparent) 6px);
+    color: var(--gh-color-text-bright);
+    font: var(--gh-type-title-small);
+  }
+  /* The cost's float stops at the first line's foot, so a second line runs the card's full width. */
+  .battle-hand--rows .card__cost {
+    float: left;
+    width: 18px;
+    height: 18px;
+    margin: 0 var(--gh-space-1) -3px 0;
+    font: var(--gh-type-title-small);
+    font-variant-numeric: var(--gh-numerals);
+  }
+  .battle-hand--rows .card__name {
+    font: inherit;
+  }
+  .hand-layout:has(> .battle-hand--rows) .played-pile {
+    padding: 0;
+  }
+  .hand-layout:has(> .battle-hand--rows) .pile-back {
+    width: 28px;
+    height: 40px;
+  }
+  .hand-layout:has(> .battle-hand--rows) .played-pile :is(.label, .muted) {
+    display: none;
+  }
+}
+/* A short phone gives the guided match's coach the height: a card is no taller than its name. */
+@media (max-width: 700px) and (max-height: 700px) {
+  .board.board--battle .battle-hand--rows .card--hand {
+    grid-template-rows: minmax(40px, 1fr);
   }
 }
 @media (prefers-reduced-motion: reduce) {

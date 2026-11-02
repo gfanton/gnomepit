@@ -587,6 +587,175 @@ test("portraits and notices wear their own clan's colours, whichever side the cl
   assert.match(board, /<article class="challenge challenge--delvers">/);
 });
 
+test("My matches keeps a ledger: a row a match, the player's move marked, ended grudges set back", async (t) => {
+  stubPage(t);
+  const arena = followedArena();
+  const { Plans: _plans, HP: _hp, ...over } = ended;
+  arena.myMatches = async () => [
+    detail({
+      ID: matchId("6"),
+      Phase: "play",
+      Round: 2,
+      Acceptor: bob,
+      ChallengerClan: "Pickers",
+      AcceptorClan: "Ironhide",
+      ToMove: alice,
+      action: "move",
+    }),
+    detail({ ID: matchId("7"), Opponent: bob }),
+    { ...over, ID: matchId("8"), Reason: "resign" },
+  ];
+  const { lobby, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  const ledger = /<ol class="ledger">(.*?)<\/ol>/s.exec(shown())?.[1] ?? "";
+  assert.equal(ledger.match(/<li class="grudge[ "]/g)?.length, 3);
+  assert.equal(ledger.match(/<li class="grudge grudge--turn"/g)?.length, 1);
+  assert.equal(ledger.match(/<li class="grudge grudge--over"/g)?.length, 1);
+  assert.match(ledger, /Round 2 of 3/);
+  // An address in a row is for reading; the match page copies it.
+  assert.doesNotMatch(ledger, /data-action="onlineCopy"/);
+});
+
+// brass lists the board's brass buttons by their words.
+const brass = (html: string) =>
+  Array.from(html.matchAll(/<button type="button" class="button"[^>]*>([^<]*)</g), ([, text]) => text);
+
+const onMove = () =>
+  detail({
+    ID: matchId("6"),
+    Phase: "play",
+    Round: 2,
+    Acceptor: bob,
+    ChallengerClan: "Pickers",
+    AcceptorClan: "Ironhide",
+    ToMove: alice,
+    action: "move",
+  });
+const bobsNotice = {
+  ID: matchId("9"),
+  Challenger: bob,
+  Clan: "Ironhide",
+  Opponent: "" as const,
+  Posted: 0,
+  Expires: 9e9,
+  action: "accept" as const,
+  deadline: 9e9,
+};
+
+test("the board's one brass button opens the match waiting on the player", async (t) => {
+  stubPage(t);
+  const arena = followedArena();
+  arena.myMatches = async () => [onMove(), detail({ ID: matchId("7"), Opponent: bob })];
+  arena.board = [bobsNotice];
+  const { lobby, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  assert.deepEqual(brass(shown()), ["Open match"]);
+});
+
+test("with nothing waiting on the player, Post a challenge is the board's brass button", async (t) => {
+  stubPage(t);
+  const arena = followedArena();
+  arena.myMatches = async () => [detail({ ID: matchId("7"), Opponent: bob })];
+  arena.board = [bobsNotice];
+  const { lobby, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  assert.deepEqual(brass(shown()), ["Post a challenge"]);
+});
+
+test("an unsent move waits in its match's row, not in a notice of its own", async (t) => {
+  stubPage(t);
+  const arena = followedArena();
+  arena.myMatches = async () => [onMove()];
+  const { lobby, shown } = lobbyOf(arena, alice);
+  lobby.model.draft = { onlineContext: { intent: "move" as const, view: { id: matchId("6") } } };
+  await lobby.enter();
+  assert.doesNotMatch(shown(), /<section class="notice">/);
+  const row = /<li class="grudge grudge--turn">(.*?)<\/li>/s.exec(shown())?.[1] ?? "";
+  assert.match(row, /Your plan is saved/);
+  assert.match(row, /data-action="onlineResumeDraft"/);
+  assert.deepEqual(brass(shown()), ["Resume plan"]);
+});
+
+test("an unsent challenge or acceptance says which it is", async (t) => {
+  stubPage(t);
+  for (const [intent, words] of [
+    ["challenge", "Your challenge is not posted yet"],
+    ["accept", "Your acceptance is not sent yet"],
+  ] as const) {
+    const arena = followedArena();
+    const { lobby, shown } = lobbyOf(arena, alice);
+    lobby.model.draft = { onlineContext: { intent } };
+    await lobby.enter();
+    const notice = /<section class="notice">(.*?)<\/section>/s.exec(shown())?.[1] ?? "";
+    assert.match(notice, new RegExp(words), intent);
+    assert.deepEqual(brass(shown()), ["Resume plan"], intent);
+  }
+});
+
+test("open challenges hang as notices on the board, each read without a copy button", async (t) => {
+  stubPage(t);
+  const arena = followedArena();
+  const notice = (id: string, Challenger: Address, Opponent: Address | "" = "") => ({
+    ID: matchId(id),
+    Challenger,
+    Clan: "Ironhide",
+    Opponent,
+    Posted: 0,
+    Expires: 9e9,
+    action: "accept" as const,
+    deadline: 9e9,
+  });
+  arena.board = [notice("7", bob), notice("8", bob, alice)];
+  const { lobby, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  const board = /<ul class="notice-board">(.*?)<\/ul>/s.exec(shown())?.[1] ?? "";
+  assert.equal(board.match(/<li><article class="challenge challenge--ironhide">/g)?.length, 2);
+  assert.match(board, /Reserved for you/);
+  assert.doesNotMatch(board, /data-action="onlineCopy"/);
+});
+
+test("a match page stages both champions on the table, with their health and addresses", async (t) => {
+  stubPage(t);
+  const arena = endingArena(
+    detail({
+      Phase: "play",
+      Round: 2,
+      Acceptor: bob,
+      ChallengerClan: "Pickers",
+      AcceptorClan: "Ironhide",
+      ToMove: alice,
+      HP: [
+        [15, 15],
+        [12, 9],
+      ],
+      action: "move",
+    }),
+  );
+  const { lobby, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  await lobby.action("Open", { id: "4" });
+  const page = shown();
+  assert.match(page, /<section class="duel-stage">/);
+  assert.match(page, /<figure class="duel-champion duel-champion--near fighter--pickers">.*?>You<.*?>12 HP</s);
+  assert.match(page, /<figure class="duel-champion duel-champion--far fighter--ironhide">.*?>Ironhide<.*?>9 HP</s);
+  // A rival named by its clan carries no label repeating it.
+  const far = /<figure class="duel-champion duel-champion--far[^"]*">(.*?)<\/figure>/s.exec(page)?.[1] ?? "";
+  assert.equal(far.match(/Ironhide/g)?.length, 1, far);
+  assert.match(page, /Round 2 of 3/);
+  assert.match(page, /Posted by you/);
+  assert.equal(page.match(/data-address="g1bob"/g)?.length, 1);
+});
+
+test("an ended match page lights the winner and greys the loser", async (t) => {
+  stubPage(t);
+  const won = detail({ ...ended, ChallengerClan: "Pickers", AcceptorClan: "Ironhide" });
+  const { lobby, shown } = lobbyOf(endingArena(won), bob);
+  await lobby.enter();
+  await lobby.action("Open", { id: "4" });
+  assert.match(shown(), /class="duel-champion duel-champion--near fighter--ironhide duel-champion--winner"/);
+  assert.match(shown(), /class="duel-champion duel-champion--far fighter--pickers duel-champion--loser"/);
+});
+
 test("a match opened from its link is watched", async (t) => {
   stubPage(t);
   const arena = endingArena({ ...lastTurn, action: "wait" });
@@ -1059,7 +1228,7 @@ test("posting needs no session beforehand", async (t) => {
   const { lobby, dialog } = dialogLobby(t, arena, { onCompose: (context) => composed.push(context) });
   await lobby.action("Authorize");
   await lobby.action("Post");
-  assert.match(dialog.innerHTML, /Leave a challenge/);
+  assert.match(dialog.innerHTML, /<h2 id="online-dialog-title">Post a challenge<\/h2>/);
   await lobby.action("Compose");
   assert.equal(lobby.model.error, "");
   assert.deepEqual(

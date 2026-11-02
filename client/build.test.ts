@@ -63,7 +63,7 @@ test("an offline build ships the game and no dev page; a local build adds the de
   ]) {
     assert.ok(existsSync(join(offline, file)), file);
   }
-  const devPages = ["adena-check.html", "online-dev.html", "lobby-preview.html"];
+  const devPages = ["adena-check.html", "online-dev.html"];
   for (const page of devPages) assert.ok(!existsSync(join(offline, page)), page);
   const networkFiles = ["leaderboard.html", "leaderboard-page.js"];
   for (const file of networkFiles) assert.ok(!existsSync(join(offline, file)), file);
