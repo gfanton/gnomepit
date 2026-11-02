@@ -4,6 +4,7 @@ package standings
 
 import (
 	"strings"
+	"time"
 
 	"gno.land/p/nt/avl/v0"
 	"gno.land/p/nt/ownable/v0"
@@ -18,6 +19,11 @@ var (
 	owner       *ownable.Ownable
 	writerPaths []string // every path ever a writer; its index plus one is its writer number
 	writers     avl.Tree // current writer path → its writer number
+
+	players avl.Tree     // address → standing bytes
+	ladder  *avl.Node    // ladderKey of every rated player → nil
+	clans   []clanRecord // in first-seen order; a clan's index plus one is its clan number
+	results avl.Tree     // resultKey → result entry bytes
 )
 
 func init(cur realm) {
@@ -25,9 +31,9 @@ func init(cur realm) {
 	addWriter("gno.land/r/gfanton/gnomepit/arena/v0")
 }
 
-// Record counts a match the calling arena reports as ended. result is "a" when the
-// challenger won, "b" when the acceptor did, and "draw". It aborts unless the caller is a
-// realm on the writer list.
+// Record rates a match the calling arena reports as ended, and logs it. result is "a" when
+// the challenger won, "b" when the acceptor did, and "draw". It aborts unless the caller is
+// a realm on the writer list.
 func Record(cur realm, challenger, acceptor address, challengerClan, acceptorClan, result string) {
 	caller := cur.Previous()
 	if !caller.IsCode() || !IsWriter(caller.PkgPath()) {
@@ -36,12 +42,14 @@ func Record(cur realm, challenger, acceptor address, challengerClan, acceptorCla
 	if challenger == acceptor {
 		panic("same player")
 	}
-	if result != "a" && result != "b" && result != "draw" {
-		panic("unknown result")
-	}
+	score := scoreOf(result)
 	if !validClan(challengerClan) || !validClan(acceptorClan) {
 		panic("bad clan name")
 	}
+	ca, cb := clanNumber(challengerClan), clanNumber(acceptorClan)
+	rate(challenger, acceptor, ca, cb, score)
+	entry := resultEntry{writer: writers.Get(caller.PkgPath()).(int), challenger: challenger, acceptor: acceptor, clans: [2]int{ca, cb}, result: result[0], time: time.Now().Unix()}
+	results.Set(resultKey(results.Size()+1), encodeResult(entry))
 }
 
 // AddWriter lets the realm at pkgpath, a versioned path under gno.land/r/, report results.
@@ -131,4 +139,13 @@ func isVersionedRealm(pkgpath string) bool {
 
 func validClan(name string) bool {
 	return len(name) >= 1 && len(name) <= maxClanName
+}
+
+// stringAt is t's string at key, "" when t has none.
+func stringAt(t *avl.Tree, key string) string {
+	v := t.Get(key)
+	if v == nil {
+		return ""
+	}
+	return v.(string)
 }

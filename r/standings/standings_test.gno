@@ -19,7 +19,18 @@ const (
 var (
 	alice = testutils.TestAddress("alice")
 	bob   = testutils.TestAddress("bob")
+	carol = testutils.TestAddress("carol")
+	dave  = testutils.TestAddress("dave")
 )
+
+// reset empties the standings and the result log; tests share package globals. It leaves
+// the writer list alone.
+func reset() {
+	players = avl.Tree{}
+	ladder = nil
+	clans = nil
+	results = avl.Tree{}
+}
 
 // ownedBy makes a the owner: under gno test, init's deployer address is empty.
 func ownedBy(a address) {
