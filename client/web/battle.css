@@ -894,6 +894,34 @@
   max-width: calc(100vw - 24px);
   padding: 18px;
 }
+/* Docked above the hand, the reader leaves the page live and scrolls inside itself when short. */
+.card-reader.card-reader--docked {
+  position: fixed;
+  inset: auto auto var(--dock-bottom, 8px) 50%;
+  translate: -50% 0;
+  z-index: 90;
+  max-height: var(--dock-room, calc(100dvh - 16px));
+  margin: 0;
+  overflow-y: auto;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--gh-color-shadow) 60%, transparent);
+}
+/* A short phone shrinks the docked card and drops its beats line, so Play stays in view. */
+@media (max-height: 700px) {
+  .card-reader.card-reader--docked {
+    padding: 10px;
+  }
+  .card-reader--docked #reader-content {
+    padding-top: 0;
+  }
+  .card-reader.card-reader--docked .card {
+    width: 180px;
+    height: 248px;
+    grid-template-rows: 28px 108px 1fr 20px;
+  }
+  .card-reader--docked #reader-content > p.muted:nth-child(2) {
+    display: none;
+  }
+}
 .card-reader > .dialog-close {
   position: absolute;
   right: 0;

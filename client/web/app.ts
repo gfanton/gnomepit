@@ -545,7 +545,7 @@ const handlers = {
   },
   clearFrom: ({ beat }: DOMStringMap) => returnCards(clearFrom(plan, Number(beat), engine.cards)),
   clearPlan: () => returnCards([]),
-  inspectCard: ({ id }: DOMStringMap) => {
+  inspectCard: ({ id, from }: DOMStringMap) => {
     if (flow.screen === "playback") stopPlaying();
     const c = cardOf(engine.cards, Number(id));
     const legal = flow.screen === "plan" && canAdd(plan, c.id, engine.cards, available());
@@ -553,7 +553,8 @@ const handlers = {
     elementById("reader-content", HTMLDivElement).innerHTML =
       `${cardHTML(c)}<p class="muted">${counted(c.cost, "beat")}${c.special ? " · Once per match" : " · Reusable basic"}</p>
       ${legal ? `<button class="button" type="button" data-action="addCard" data-id="${c.id}">Play ${c.name}</button>` : `<p class="muted">${unplayable(c)}</p>`}`;
-    openDialog(reader);
+    if (from === "hand") dockReader(reader);
+    else openDialog(reader);
   },
   playedCards: () => {
     if (flow.screen === "playback") stopPlaying();
@@ -751,8 +752,22 @@ app.addEventListener("mouseout", (event) => {
 app.addEventListener("focusin", (event) => showTip(anchorAt(event.target)));
 app.addEventListener("focusout", () => showTip(null));
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") showTip(null);
+  if (event.key !== "Escape") return;
+  showTip(null);
+  dockedReader()?.close();
 });
+// A docked reader closes on a tap anywhere but itself and the hand it reads from.
+document.addEventListener("click", (event) => {
+  const reader = dockedReader();
+  if (reader === null || !(event.target instanceof Node)) return;
+  if (!reader.contains(event.target) && !(app.querySelector(".battle-hand")?.contains(event.target) ?? false))
+    reader.close();
+});
+
+function dockedReader(): HTMLDialogElement | null {
+  const reader = app.querySelector("#card-reader.card-reader--docked[open]");
+  return reader instanceof HTMLDialogElement ? reader : null;
+}
 
 function showTip(anchor: HTMLElement | null): void {
   if (anchor === tipAnchor) return;
@@ -1125,10 +1140,21 @@ function lunge(card: Element | null, target: Element, force: number): void {
 
 function openDialog(dialog: HTMLDialogElement): void {
   showTip(null);
+  dialog.classList.remove("card-reader--docked");
   if (!dialog.open) {
     dialog.showModal();
     dialog.append(tip);
   }
+}
+// dockReader shows the reader just above the hand without blocking the page, so a tap on another
+// hand card swaps the card it shows.
+function dockReader(reader: HTMLDialogElement): void {
+  showTip(null);
+  const handTop = app.querySelector(".hand-zone")?.getBoundingClientRect().top ?? innerHeight;
+  reader.style.setProperty("--dock-bottom", `${Math.round(innerHeight - handTop + 8)}px`);
+  reader.style.setProperty("--dock-room", `${Math.round(handTop - 16)}px`);
+  reader.classList.add("card-reader--docked");
+  if (!reader.open) reader.show();
 }
 function closeBattleDialogs(): void {
   for (const dialog of app.querySelectorAll("dialog[open]")) if (dialog instanceof HTMLDialogElement) dialog.close();
@@ -1636,7 +1662,7 @@ function planScreen(): string {
     .map((id, index) => {
       const c = cardOf(engine.cards, id);
       return `<div class="hand-entry" style="--hand-order:${index};--hand-tilt:${(index - (handIds.length - 1) / 2) * 4}deg;--hand-rise:${Math.pow(index - (handIds.length - 1) / 2, 2) * 2}px">
-      ${cardHTML(c, { action: touch ? "inspectCard" : "addCard", hand: true, why: canAdd(plan, id, engine.cards, available()) ? "" : unplayable(cardOf(engine.cards, id)), coached: id === coached, data: rows && !touch ? `data-peek="${id}"` : "" })}
+      ${cardHTML(c, { action: touch ? "inspectCard" : "addCard", hand: true, why: canAdd(plan, id, engine.cards, available()) ? "" : unplayable(cardOf(engine.cards, id)), coached: id === coached, data: touch ? 'data-from="hand"' : rows ? `data-peek="${id}"` : "" })}
       ${rows ? "" : `<button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Details: ${c.name}" tabindex="-1">Details</button>`}</div>`;
     })
     .join("");
