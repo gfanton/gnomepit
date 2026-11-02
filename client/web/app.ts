@@ -1141,6 +1141,8 @@ function lunge(card: Element | null, target: Element, force: number): void {
 function openDialog(dialog: HTMLDialogElement): void {
   showTip(null);
   dialog.classList.remove("card-reader--docked");
+  // showModal throws on an open dialog, so a docked reader closes first.
+  if (dialog.open && !dialog.matches(":modal")) dialog.close();
   if (!dialog.open) {
     dialog.showModal();
     dialog.append(tip);
@@ -1152,9 +1154,12 @@ function dockReader(reader: HTMLDialogElement): void {
   showTip(null);
   const handTop = app.querySelector(".hand-zone")?.getBoundingClientRect().top ?? innerHeight;
   reader.style.setProperty("--dock-bottom", `${Math.round(innerHeight - handTop + 8)}px`);
-  reader.style.setProperty("--dock-room", `${Math.round(handTop - 16)}px`);
+  const room = Math.round(handTop - 16);
+  reader.style.setProperty("--dock-room", `${room}px`);
   reader.classList.add("card-reader--docked");
   if (!reader.open) reader.show();
+  // A hand scrolled up the screen, or a short landscape one, leaves the reader no room above it.
+  if (reader.scrollHeight > room) openDialog(reader);
 }
 function closeBattleDialogs(): void {
   for (const dialog of app.querySelectorAll("dialog[open]")) if (dialog instanceof HTMLDialogElement) dialog.close();
@@ -1163,7 +1168,9 @@ function closeBattleDialogs(): void {
 }
 app.addEventListener(
   "close",
-  () => {
+  (event) => {
+    // A docked reader reopened as a modal fires its close afterwards; the tip stays in the modal.
+    if (event.target instanceof HTMLDialogElement && event.target.open) return;
     document.body.append(tip);
     showTip(null);
   },
