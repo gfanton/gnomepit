@@ -769,6 +769,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
           else {
             const posted = await arena.challenge({ clan, deck, plan, opponent: context.opponent ?? "" });
             if (posted !== "") model.view = viewOf({ ID: posted }, address());
+            else leaveMatch();
           }
         } finally {
           model.account = arena.account();

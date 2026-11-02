@@ -6,6 +6,7 @@
 import * as v from "valibot";
 
 import { type Chain, ChainError, feeFor, type GasPrice, messageOf, payFor, type Session } from "./chain.ts";
+import { fromBase64 } from "./encoding.ts";
 import {
   type BattleEvent,
   type Card,
@@ -22,6 +23,7 @@ import { type Address, type MatchId, address, matchId } from "./ids.ts";
 import type { Message, Signer } from "./signer.ts";
 import {
   type BoxContents,
+  CommittedSchema,
   type LockedMatch,
   type Role,
   type SessionEntry,
@@ -124,6 +126,9 @@ const OpenChallengeSchema = v.object({
 const SessionLockSchema = v.object({ Session: AddressSchema, Match: MatchIdSchema, Expires: v.number() });
 
 const ModeSchema = v.picklist(["session", "contract"]);
+
+// returned is what a call returned, from its deliver_tx data, as the VM prints values.
+const returned = (data: string | null) => (data === null ? "" : new TextDecoder().decode(fromBase64(data)));
 
 export type MatchSummary = v.InferOutput<typeof MatchSummarySchema>;
 export type MatchView = v.InferOutput<typeof MatchViewSchema>;
@@ -524,8 +529,9 @@ export type Arena = {
   myMatches(page?: number): Promise<Listed<MatchSummary>[]>;
   match(id: MatchId): Promise<MatchDetail>;
   // challenge posts a challenge with card ids for the deck and round-1 plan, open to
-  // anyone or reserved for opponent's address, and returns the new match's id. Like
-  // accept, it signs with a session prepareSession gives, which the call locks.
+  // anyone or reserved for opponent's address, and returns the new match's id, or "" from
+  // an Adena that answers before the call's block. Like accept, it signs with a session
+  // prepareSession gives, which the call locks.
   challenge(opening: Opening & { opponent?: string }): Promise<MatchId>;
   accept(id: MatchId, opening: Opening): Promise<void>;
   // move sends this player's plan, as card ids, for the round being played.
@@ -703,6 +709,7 @@ export function createArena({
         memo: "Gnomepit session",
         gasWanted,
         gasFee: feeFor(gasWanted, found.price),
+        commit: true,
       }),
     );
     // Adena's answer when the player rejects the approval or closes its window.
@@ -766,11 +773,12 @@ export function createArena({
   }
 
   // send makes one arena call, signed by the session signing resolves to, or by the
-  // wallet itself when it resolves to null or the arena signs each move.
+  // wallet itself when it resolves to null or the arena signs each move. It returns what
+  // the call returned, or "" from an Adena that answers before the call's block.
   const send = (func: string, args: string[], signing: () => Promise<SessionEntry | null>) =>
     serial(() => sendNow(func, args, signing));
 
-  async function sendNow(func: string, args: string[], signing: () => Promise<SessionEntry | null>): Promise<void> {
+  async function sendNow(func: string, args: string[], signing: () => Promise<SessionEntry | null>): Promise<string> {
     const me = requireAddress();
     const msg = {
       type: "/vm.m_call",
@@ -779,9 +787,11 @@ export function createArena({
     try {
       const signedBy = signEachMove ? null : await signing();
       if (signedBy === null) {
-        const response = await signingWallet().DoContract({ messages: [msg], memo: "" });
-        if (replyOf(response)?.status !== "success") throw walletFailure(response);
-        return;
+        const response = await signingWallet().DoContract({ messages: [msg], memo: "", commit: true });
+        const reply = replyOf(response);
+        if (reply?.status !== "success") throw walletFailure(response);
+        const landed = v.safeParse(CommittedSchema, reply.data);
+        return landed.success ? returned(landed.output.deliver_tx.ResponseBase.Data) : "";
       }
       const { keys, session } = signedBy;
       const request = {
@@ -793,7 +803,7 @@ export function createArena({
         memo: "",
         msgs: [msg],
       };
-      await chain.broadcast(await payFor(chain, (fee) => signer.signTx({ ...request, fee })));
+      return returned((await chain.broadcast(await payFor(chain, (fee) => signer.signTx({ ...request, fee })))).data);
     } catch (err) {
       throw errorFrom(err);
     }
@@ -986,18 +996,16 @@ export function createArena({
     },
 
     async challenge({ clan, deck, plan, opponent = "" }) {
-      const me = requireAddress();
+      requireAddress();
       checkOpening(engine, clan, deck, plan, 0);
       const key = await boxKey();
       const sealed = { deck: [...deck].sort((a, b) => a - b), deckSalt: newSalt(), plan, planSalt: newSalt() };
       const deckSeal = await sealOf(sealed.deckSalt, cardNames(sealed.deck, engine.cards));
       const planSeal = await sealOf(sealed.planSalt, cardNames(plan, engine.cards));
-      await send("Challenge", [clan, deckSeal, planSeal, await sealBox(key, sealed), opponent], () =>
+      const result = await send("Challenge", [clan, deckSeal, planSeal, await sealBox(key, sealed), opponent], () =>
         prepareSession("challenger"),
       );
-      const [latest] = await read(`${realm}.Matches("${me}", 0, 1)`, v.array(MatchSummarySchema));
-      if (latest === undefined) throw new ArenaError("failed", "The posted challenge is not in your matches yet");
-      return latest.ID;
+      return matchId(/^\("(\d+)" string\)/.exec(result)?.[1] ?? "");
     },
 
     async accept(id, { clan, deck, plan }) {
@@ -1018,7 +1026,8 @@ export function createArena({
       try {
         if (view.Phase === "play") {
           const { func, args } = moveCall(view, null, { plan: planText }, engine.cards);
-          return await send(func, args, () => signingIn(id, view));
+          await send(func, args, () => signingIn(id, view));
+          return;
         }
         const key = await boxKey();
         const planSalt = newSalt();
@@ -1028,7 +1037,7 @@ export function createArena({
           box: await sealBox(key, { plan, planSalt }),
         };
         const { func, args } = moveCall(view, await openBox(key, view.Box), next, engine.cards);
-        return await send(func, args, () => signingIn(id, view));
+        await send(func, args, () => signingIn(id, view));
       } catch (err) {
         throw errorFrom(err);
       }
@@ -1039,7 +1048,7 @@ export function createArena({
       if (view.action !== "finish") throw new ArenaError("wrongPhase", `Match ${id} has no reveal to finish`);
       try {
         const { func, args } = moveCall(view, await openBox(await boxKey(), view.Box), null, engine.cards);
-        return await send(func, args, () => signingIn(id, view));
+        await send(func, args, () => signingIn(id, view));
       } catch (err) {
         throw errorFrom(err);
       }

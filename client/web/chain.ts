@@ -105,7 +105,7 @@ const GasPriceSchema = v.pipe(
 export type Account = v.InferOutput<typeof AccountSchema>;
 export type Session = v.InferOutput<typeof SessionSchema>;
 export type GasPrice = v.InferOutput<typeof GasPriceSchema>;
-export type Broadcast = { hash: string; height: number; gasUsed: number; storage: number };
+export type Broadcast = { hash: string; height: number; gasUsed: number; storage: number; data: string | null };
 export type Fee = { gasWanted: number; gasFee: string };
 
 type AbciResponse = v.InferOutput<typeof AbciSchema>["response"];
@@ -128,7 +128,8 @@ export type Chain = {
   simulate(tx: string): Promise<number>;
   // broadcast sends a signed transaction and waits for its block. A wait that times
   // out is a network error: the transaction passed CheckTx and may still land. storage
-  // is the bytes the transaction locked in realm storage, negative when it freed more.
+  // is the bytes the transaction locked in realm storage, negative when it freed more,
+  // and data what its call returned, base64 of the VM's print of its values: `("5" string)`.
   broadcast(tx: string): Promise<Broadcast>;
 };
 
@@ -228,7 +229,13 @@ export function createChain({ rpc, fetch = globalThis.fetch.bind(globalThis) }: 
         .filter((e) => v.is(StorageKindSchema, e))
         .map((e) => readAnswer("broadcast_tx_commit", StorageEventSchema, e))
         .reduce((bytes, e) => bytes + Number(e.bytes_delta), 0);
-      return { hash: result.hash, height: Number(result.height), gasUsed: Number(result.deliver_tx.GasUsed), storage };
+      return {
+        hash: result.hash,
+        height: Number(result.height),
+        gasUsed: Number(result.deliver_tx.GasUsed),
+        storage,
+        data: result.deliver_tx.ResponseBase.Data,
+      };
     },
   };
 }

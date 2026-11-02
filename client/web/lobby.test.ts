@@ -849,6 +849,22 @@ test("a confirmed send replaces an error left on screen before it", async (t) =>
   assert.doesNotMatch(shown(), /didn’t go through/);
 });
 
+// The arena names no match for a challenge an Adena answered before its block.
+test("a rematch posted without its match's id returns to the board, not to the match it came from", async (t) => {
+  stubPage(t);
+  const arena = endingArena({ ...ended, Reason: "resign" });
+  arena.challenge = async () => matchId("");
+  arena.account = () => ({ address: alice, state: "active", mode: "contract", fallback: null });
+  const { lobby, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  await lobby.action("Open", { id: "4" });
+  await lobby.sendDraft({ intent: "challenge", view: null, opponent: bob }, "Ironhide", [0], [0, 0, 0]);
+  assert.equal(lobby.model.view, null);
+  assert.equal(arena.onView, null);
+  assert.match(shown(), /Your move is confirmed\./);
+  assert.match(shown(), /THE CHALLENGE BOARD/);
+});
+
 // dialogLobby is a lobby whose page answers every query with one dialog, which the test
 // reads; the dialog doubles as the opponent field.
 function dialogLobby(t: TestContext, arena: LobbyArena, options: Partial<LobbyOptions> = {}) {

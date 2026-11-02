@@ -164,9 +164,11 @@ test("DoContract broadcasts and answers like Adena, or fails with the chain's re
     chain: replayChain("account", "gasprice", "simulate", "broadcast-ok"),
     chainId: "dev",
   });
-  const landed = await ok.DoContract({ messages: [call] });
+  const landed = await ok.DoContract({ messages: [call], commit: true });
   assert.equal(landed.status, "success");
   assert.equal(typeof landed.data.hash, "string");
+  // The recording posts a challenge, whose call returns the new match's id.
+  assert.equal(atob(known(landed.data.deliver_tx.ResponseBase.Data)), '("1" string)\n\n');
 
   const refused = devWallet({
     name: "alice",

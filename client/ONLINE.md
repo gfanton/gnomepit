@@ -40,6 +40,7 @@ Rejecting check 2's approval cancels its post. When Adena cannot create the sess
 - **Boxes.** A challenger's sealed deck and plans travel to the chain encrypted with the box key, beside their seals. Any browser with the same wallet opens them, so a challenger can continue from another device.
 - **A rejected approval.** When the player rejects the session's approval or closes Adena's window, Adena answers `TRANSACTION_REJECTED`. The challenge, acceptance or renewal throws `refused` and sends nothing, and the next one asks for a session again.
 - **The fallback.** When Adena answers that it cannot create the session, or every generation holds a live session, Adena signs and sends each call through `DoContract`, except in a match that has a live session locked to it, which keeps signing with that session. The account state's `fallback` holds the reason, and after `resumeSessions()` the next challenge, acceptance or renewal asks for a session again.
+- **Confirmed in a block.** Every `DoContract` asks Adena, with `commit: true`, to answer once the transaction's block is committed, with its `deliver_tx`, as a session's broadcast does. Adena reads that field since its session release without documenting it; an older Adena answers once CheckTx passes, with no result.
 
 ## Live updates
 
@@ -90,7 +91,7 @@ const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origi
 | `openChallenges(page)` | Open challenges, newest first, 50 a page, each with `action` (`accept`, `wait` for one's own, `done`) |
 | `myMatches(page)` | This player's matches, newest first, each with `action` and `deadline` |
 | `match(id)` | The match view, plus `rounds` (each resolved round replayed: plans, events, state, result), `state`, `pending` (the challenger's next clash, when it is their move), `planning` (`{state, side, deck}` to plan from when the action is `move`), `action`, `session`: `expired` when the player must call `renew(id)` before acting, `active` otherwise, and `sessionExpires`: the expiry, in Unix seconds, of the session that signs the player's next call, when one does |
-| `challenge({clan, deck, plan, opponent})` | Posts a challenge and returns its id. Deck and plan are card ids. |
+| `challenge({clan, deck, plan, opponent})` | Posts a challenge and returns the id its call returns, or `""` from an Adena that answers before the call's block. Deck and plan are card ids. |
 | `accept(id, {clan, deck, plan})` | Accepts a challenge |
 | `renew(id)` | Asks the wallet for a new session for the player's side of match `id`, revoking the dead ones, unless a live unlocked session has that side's budget left. It sends no move: the next one locks the session. |
 | `move(id, plan)` | Sends this player's turn: the challenger's reveal and next seal in one call, or the acceptor's plan |
