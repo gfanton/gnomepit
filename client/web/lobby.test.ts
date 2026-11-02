@@ -587,6 +587,57 @@ test("portraits and notices wear their own clan's colours, whichever side the cl
   assert.match(board, /<article class="challenge challenge--delvers">/);
 });
 
+test("My matches keeps a ledger: a row a match, the player's move marked, ended grudges set back", async (t) => {
+  stubPage(t);
+  const arena = followedArena();
+  const { Plans: _plans, HP: _hp, ...over } = ended;
+  arena.myMatches = async () => [
+    detail({
+      ID: matchId("6"),
+      Phase: "play",
+      Round: 2,
+      Acceptor: bob,
+      ChallengerClan: "Pickers",
+      AcceptorClan: "Ironhide",
+      ToMove: alice,
+      action: "move",
+    }),
+    detail({ ID: matchId("7"), Opponent: bob }),
+    { ...over, ID: matchId("8"), Reason: "resign" },
+  ];
+  const { lobby, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  const ledger = /<ol class="ledger">(.*?)<\/ol>/s.exec(shown())?.[1] ?? "";
+  assert.equal(ledger.match(/<li class="grudge[ "]/g)?.length, 3);
+  assert.equal(ledger.match(/<li class="grudge grudge--turn"/g)?.length, 1);
+  assert.equal(ledger.match(/<li class="grudge grudge--over"/g)?.length, 1);
+  assert.match(ledger, /Round 2 of 3/);
+  // An address in a row is for reading; the match page copies it.
+  assert.doesNotMatch(ledger, /data-action="onlineCopy"/);
+});
+
+test("open challenges hang as notices on the board, each read without a copy button", async (t) => {
+  stubPage(t);
+  const arena = followedArena();
+  const notice = (id: string, Challenger: Address, Opponent: Address | "" = "") => ({
+    ID: matchId(id),
+    Challenger,
+    Clan: "Ironhide",
+    Opponent,
+    Posted: 0,
+    Expires: 9e9,
+    action: "accept" as const,
+    deadline: 9e9,
+  });
+  arena.board = [notice("7", bob), notice("8", bob, alice)];
+  const { lobby, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  const board = /<ul class="notice-board">(.*?)<\/ul>/s.exec(shown())?.[1] ?? "";
+  assert.equal(board.match(/<li><article class="challenge challenge--ironhide">/g)?.length, 2);
+  assert.match(board, /Reserved for you/);
+  assert.doesNotMatch(board, /data-action="onlineCopy"/);
+});
+
 test("a match opened from its link is watched", async (t) => {
   stubPage(t);
   const arena = endingArena({ ...lastTurn, action: "wait" });

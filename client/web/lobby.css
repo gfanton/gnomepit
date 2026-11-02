@@ -82,9 +82,7 @@
   margin: 24px 0;
   background: linear-gradient(110deg, var(--gh-color-canvas), var(--gh-color-surface));
   border: 1px solid color-mix(in srgb, var(--gh-color-trim) 55%, transparent);
-  box-shadow:
-    0 16px 30px color-mix(in srgb, var(--gh-color-shadow) 35%, transparent),
-    inset 3px 0 var(--gh-color-trim);
+  box-shadow: 0 16px 30px color-mix(in srgb, var(--gh-color-shadow) 35%, transparent);
   min-height: 200px;
 }
 .hall-banner img {
@@ -134,10 +132,129 @@
 .section-head p {
   color: var(--gh-color-text-muted);
 }
-.match-list,
-.challenge-list {
+/* My matches is a ledger: one bound page, a ruled row for each grudge. */
+.match-list {
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim) 40%, transparent);
+  border-radius: 4px;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--gh-color-ambient-warm) 8%, var(--gh-color-surface)),
+    var(--gh-color-canvas)
+  );
+  box-shadow:
+    inset 0 1px color-mix(in srgb, var(--gh-color-trim) 14%, transparent),
+    0 10px 24px color-mix(in srgb, var(--gh-color-shadow) 30%, transparent);
+}
+.ledger {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.grudge {
   display: grid;
-  gap: 12px;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "faces who when action";
+  align-items: center;
+  gap: var(--gh-space-1) 16px;
+  padding: 14px 16px;
+}
+.grudge + .grudge {
+  border-top: 1px solid color-mix(in srgb, var(--gh-color-trim) 22%, transparent);
+}
+.grudge__faces {
+  grid-area: faces;
+  display: flex;
+}
+.grudge__faces .portrait {
+  width: 40px;
+  height: 46px;
+}
+/* The first portrait is the player's champion: it stands in front of the rival's. */
+.grudge__faces .portrait:first-child {
+  position: relative;
+  z-index: 1;
+}
+.grudge__faces .portrait + .portrait {
+  margin-left: -12px;
+}
+.grudge__who {
+  grid-area: who;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.grudge__who .status {
+  font: var(--gh-type-title);
+  color: var(--gh-color-text-bright);
+}
+.grudge__who span {
+  overflow: hidden;
+  color: var(--gh-color-text-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--gh-type-caption);
+}
+.grudge__when {
+  grid-area: when;
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  text-align: right;
+}
+.grudge__round {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gh-space-2);
+}
+.grudge > :is(button, .button, .quiet) {
+  grid-area: action;
+}
+/* A grudge waiting on the player glows like a lantern until they act. */
+.grudge--turn {
+  background: color-mix(in srgb, var(--gh-color-accent) 9%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gh-color-accent) 55%, transparent);
+  animation:
+    notice-in var(--gh-motion-base) ease-out both,
+    turn-glow 3.2s ease-in-out infinite alternate;
+}
+.grudge--turn .status {
+  color: var(--gh-color-highlight);
+}
+@keyframes turn-glow {
+  to {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--gh-color-accent) 55%, transparent),
+      inset 0 0 28px color-mix(in srgb, var(--gh-color-flame) 22%, transparent);
+  }
+}
+.grudge--over .portrait {
+  filter: grayscale(0.7) brightness(0.8);
+}
+.grudge--over .status {
+  color: var(--gh-color-text-muted);
+}
+/* Open challenges hang on an oak board, each a parchment notice on a brass nail. */
+.challenge-list {
+  padding: 20px 18px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim) 40%, transparent);
+  border-radius: 4px;
+  background:
+    linear-gradient(
+      color-mix(in srgb, var(--gh-color-canvas) 45%, transparent),
+      color-mix(in srgb, var(--gh-color-canvas) 65%, transparent)
+    ),
+    url("art/duel-table.jpg") 50% 50% / 320% auto;
+  box-shadow:
+    inset 0 0 32px color-mix(in srgb, var(--gh-color-shadow) 65%, transparent),
+    0 10px 24px color-mix(in srgb, var(--gh-color-shadow) 30%, transparent);
+}
+.notice-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 22px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 .match {
   background: linear-gradient(
@@ -151,47 +268,6 @@
   box-shadow:
     inset 0 1px color-mix(in srgb, var(--gh-color-trim) 12%, transparent),
     0 6px 12px color-mix(in srgb, var(--gh-color-shadow) 25%, transparent);
-}
-.match--turn {
-  border-color: var(--gh-color-accent);
-  background: linear-gradient(
-    125deg,
-    color-mix(in srgb, var(--gh-color-accent) 10%, var(--gh-color-surface)),
-    var(--gh-color-canvas)
-  );
-  box-shadow:
-    inset 3px 0 var(--gh-color-accent),
-    0 0 22px color-mix(in srgb, var(--gh-color-flame) 7%, transparent);
-}
-.match-top,
-.match-bottom {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-}
-.match-bottom {
-  margin-top: 16px;
-}
-.status {
-  font-weight: bold;
-  color: var(--gh-color-text);
-}
-.match--turn .status {
-  color: var(--gh-color-highlight);
-}
-/* A match waiting on the player glows like a lantern until they act. */
-.match.match--turn {
-  animation:
-    notice-in var(--gh-motion-base) ease-out both,
-    turn-glow 3.2s ease-in-out infinite alternate;
-}
-@keyframes turn-glow {
-  to {
-    box-shadow:
-      inset 3px 0 var(--gh-color-accent),
-      0 0 34px color-mix(in srgb, var(--gh-color-flame) 24%, transparent);
-  }
 }
 .fighters {
   display: flex;
@@ -226,29 +302,78 @@
   color: inherit;
   cursor: pointer;
 }
-.challenge {
+.challenge,
+.challenge-list > .empty {
   --notice-clan: var(--clan-deep, var(--gh-color-trim));
-  border-radius: 2px 5px 5px 2px;
-  border: 1px solid var(--gh-color-trim);
-  border-left: 5px solid var(--notice-clan);
+  position: relative;
+  padding: 28px 16px 14px;
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim) 70%, transparent);
+  border-radius: 2px;
   background: linear-gradient(120deg, var(--gh-color-text-warm), var(--gh-color-text-pale));
   box-shadow:
-    inset 0 0 20px color-mix(in srgb, var(--notice-clan) 12%, transparent),
-    0 5px 12px color-mix(in srgb, var(--gh-color-shadow) 35%, transparent);
+    inset 0 0 22px color-mix(in srgb, var(--notice-clan) 14%, transparent),
+    0 6px 14px color-mix(in srgb, var(--gh-color-shadow) 45%, transparent);
   color: var(--gh-color-ink);
-  padding: 18px;
-  position: relative;
+  rotate: -1.2deg;
+  transition:
+    rotate var(--gh-motion-fast) var(--gh-ease-out),
+    translate var(--gh-motion-fast) var(--gh-ease-out);
+}
+.notice-board > li:nth-child(3n + 2) .challenge {
+  rotate: 0.8deg;
+}
+.notice-board > li:nth-child(3n) .challenge {
+  rotate: -0.4deg;
+}
+.challenge:is(:hover, :focus-within) {
+  rotate: 0deg;
+  translate: 0 -2px;
+}
+.challenge::before,
+.challenge-list > .empty::before {
+  content: "";
+  position: absolute;
+  top: 9px;
+  left: calc(50% - 5px);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 35%,
+    var(--gh-palette-brass-86),
+    var(--gh-palette-brass-69) 45%,
+    var(--gh-palette-copper-37)
+  );
+  box-shadow: 0 2px 2px color-mix(in srgb, var(--gh-color-shadow) 55%, transparent);
+}
+.challenge-list > .empty {
+  max-width: 420px;
+  margin-inline: auto;
+}
+.match-list > .empty {
+  border: 0;
 }
 .challenge .label,
-.challenge small {
+.challenge small,
+.challenge-list > .empty p {
   color: var(--gh-color-ink);
 }
 .challenge .quiet {
   color: var(--gh-color-ink);
   border-color: var(--gh-color-ink);
 }
-.challenge .match-top {
+.challenge__head,
+.challenge__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.challenge__head {
   align-items: flex-start;
+}
+.challenge__foot {
+  align-items: center;
+  margin-top: 14px;
 }
 .challenge .clan-name {
   font: var(--gh-type-subheading);
@@ -420,6 +545,7 @@
   z-index: 5;
 }
 .match,
+.grudge,
 .challenge {
   animation: notice-in var(--gh-motion-base) ease-out both;
 }
@@ -480,12 +606,22 @@
     align-items: flex-start;
     flex-direction: column;
   }
-  .match,
-  .challenge {
+  .match {
     padding: 16px;
   }
-  .match-bottom {
-    align-items: flex-start;
+  .grudge {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "faces who who"
+      "faces when action";
+    padding: 12px;
+  }
+  .grudge__when {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px var(--gh-space-3);
+    text-align: left;
   }
   .footer {
     flex-wrap: wrap;
@@ -499,7 +635,8 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .match,
-  .match.match--turn,
+  .grudge,
+  .grudge--turn,
   .challenge {
     animation: none;
   }
@@ -527,7 +664,6 @@
     max-height: calc(100dvh - 573px);
     min-height: 127px;
     overflow-y: auto;
-    padding: 2px 6px 2px 2px;
     scrollbar-color: var(--gh-color-border) var(--gh-color-surface);
   }
   .match {
@@ -536,15 +672,42 @@
   .fighters {
     margin: 10px 0;
   }
-  .match-bottom {
-    margin-top: 10px;
-  }
   .portrait {
     width: 44px;
     height: 48px;
   }
   .footer {
     margin-top: 18px;
+  }
+}
+/* A short window keeps the banner to its heading and buttons, so the lists hold more rows. */
+@media (min-width: 1000px) and (min-height: 700px) and (max-height: 859px) {
+  .hall-banner {
+    display: flex;
+    align-items: center;
+    min-height: 0;
+    padding: 16px 28px;
+  }
+  .hall-banner .copy {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 28px;
+    max-width: none;
+  }
+  .hall-banner h1 {
+    margin: 0;
+    font-size: 32px;
+  }
+  .hall-banner p {
+    display: none;
+  }
+  .hall-banner .banner-actions {
+    margin: 0;
+  }
+  .match-list,
+  .challenge-list {
+    max-height: calc(100dvh - 450px);
   }
 }
 .lobby button:disabled:not([aria-busy="true"]) {

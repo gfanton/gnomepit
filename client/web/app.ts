@@ -28,7 +28,7 @@ import { loadArena } from "./arena-provider.ts";
 import { messageOf } from "./chain.ts";
 import { elementById } from "./dom.ts";
 import type { Address } from "./ids.ts";
-import { type Lobby, createLobby, linkedMatch } from "./lobby.ts";
+import { type Lobby, createLobby, linkedMatch, roundPipsHTML } from "./lobby.ts";
 import { networkFor } from "./network.ts";
 import { type View, matchBarText, replayView, sendingText } from "./online-model.ts";
 import {
@@ -1533,7 +1533,7 @@ function battleHeaderHTML(round: number, phase: string): string {
 
 function roundHTML(round: number, phase: string): string {
   return `<div class="round-medallion"><span class="eyebrow">${phase}</span><span class="round-medallion__number">${round}<small> / 3</small></span>
-    <div class="round-pips" aria-label="Round ${round} of 3">${[1, 2, 3].map((n) => `<span class="${n === round ? "round-pip--current" : n < round ? "round-pip--done" : ""}"></span>`).join("")}</div></div>`;
+    ${roundPipsHTML(round, `aria-label="Round ${round} of 3"`)}</div>`;
 }
 
 function beatMarkersHTML(): string {
