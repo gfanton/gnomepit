@@ -19,7 +19,7 @@
 .preview-notice {
   padding: 12px 16px;
   background: var(--gh-color-surface-raised);
-  border-left: 3px solid var(--gh-color-trim);
+  border: 1px solid color-mix(in srgb, var(--gh-color-trim) 55%, transparent);
   color: var(--gh-color-text-warm);
   font: var(--gh-type-caption);
 }
@@ -86,7 +86,6 @@
     var(--gh-color-surface)
   );
   border: 1px solid var(--gh-color-select);
-  border-left: 4px solid var(--gh-color-select);
   border-radius: 6px;
 }
 .own-standing__intro {
