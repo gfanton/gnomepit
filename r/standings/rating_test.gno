@@ -20,8 +20,10 @@ func showStanding(s standing) string {
 	return out
 }
 
-// seed gives a a standing at rating with one rated win as clan 1, and its ladder key.
+// seed gives a a standing at rating with one rated win as Pickers, clan 1, and its ladder
+// key.
 func seed(a address, rating int) {
+	clanNumber("Pickers")
 	saveStanding(a, &standing{rating: rating, wins: 1, lastClan: 1, perClan: []int{1}})
 	ladder, _ = ladder.Set(ladderKey(rating, a), nil)
 }
