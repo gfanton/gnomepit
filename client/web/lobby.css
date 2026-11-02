@@ -342,6 +342,22 @@
 .notice--danger {
   border-color: var(--gh-color-danger-line);
 }
+/* The offer to turn notifications on, made right after the player hands the turn over. */
+.notify-offer {
+  flex-wrap: wrap;
+  background: linear-gradient(
+    125deg,
+    color-mix(in srgb, var(--gh-color-accent) 10%, var(--gh-color-surface)),
+    var(--gh-color-canvas)
+  );
+}
+.notify-offer > div:first-child {
+  flex: 1 1 auto;
+  min-width: min(100%, 18rem);
+}
+.notify-offer p {
+  color: var(--gh-color-text-muted);
+}
 .notice--danger strong {
   color: var(--gh-color-damage);
 }

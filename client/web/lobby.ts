@@ -75,9 +75,10 @@ export function setupStep({
   return null;
 }
 // The arena the lobby plays through. One that does not say it found a wallet counts as having
-// none, and without subscribe or watch the lobby neither follows the board nor watches a match.
-export type LobbyArena = Omit<Arena, "hasWallet" | "walletSearch" | "subscribe" | "watch"> &
-  Partial<Pick<Arena, "hasWallet" | "walletSearch" | "subscribe" | "watch">>;
+// none, without subscribe or watch the lobby neither follows the board nor watches a match, and
+// without notifying it takes notifications to be off.
+export type LobbyArena = Omit<Arena, "hasWallet" | "walletSearch" | "subscribe" | "watch" | "notifying"> &
+  Partial<Pick<Arena, "hasWallet" | "walletSearch" | "subscribe" | "watch" | "notifying">>;
 type Dialog = Pick<HTMLDialogElement, "innerHTML" | "open" | "showModal" | "close" | "addEventListener" | "append">;
 // The element the lobby draws into, and the dialog and opponent field its markup holds.
 export type LobbyPage = Pick<HTMLElement, "innerHTML" | "dataset"> & {
@@ -401,6 +402,39 @@ export function createLobby<Draft extends Drafted = Drafted>({
   // the plans tell two matches under one number apart.
   const summaryKey = (v: View) => `gnomepit:ending:${address()}:${v.id}:${v.players.join(",")}:${v.result}:${v.reason}`;
   const endingKey = (v: View) => `${summaryKey(v)}:${JSON.stringify(v.plans)}`;
+  // The matches whose offer to turn notifications on this player put off with Not now.
+  const laterKey = (id: MatchId) => `gnomepit:notify-later:${address()}:${id}`;
+  // checkPush reads whether notifications are already on for the connected wallet, so the page
+  // offers them only to a player who has them off. A browser that cannot answer counts as off,
+  // and Notify me asks again.
+  async function checkPush() {
+    if (arena?.canNotify !== true || arena.notifying === undefined || address() === "") return;
+    if (globalThis.Notification?.permission === "denied") {
+      model.notifications = "blocked";
+      return;
+    }
+    model.notifications = await arena.notifying().then(
+      (on) => (on ? "on" : "off"),
+      () => "off",
+    );
+  }
+  // notifyOffer asks a player who has handed the turn over to hear when it comes back: after
+  // posting a challenge, or while the opponent plans. Not now keeps it away from that match.
+  function notifyOffer(v: View) {
+    if (arena?.canNotify !== true || model.notifications !== "off" || v.side < 0 || v.action !== "wait") return "";
+    if (!(v.phase === "open" || v.phase === "play" || v.phase === "reveal") || seen(laterKey(v.id))) return "";
+    const [title, text] =
+      v.phase === "open"
+        ? [
+            "Hear when a rival accepts",
+            "Get a notification when someone takes up your challenge, and whenever it’s your move, even with this page closed.",
+          ]
+        : [
+            "Hear when it’s your move",
+            "They may take a while. Get a notification when it’s your move and when the match ends, even with this page closed.",
+          ];
+    return `<section class="notice notify-offer" aria-labelledby="notify-offer-title"><div><strong id="notify-offer-title">${title}</strong><p>${text}</p></div><div class="banner-actions">${btn("Notify me", "Notify", model.busy)}${btn("Not now", "NotifyLater", false, true, `data-id="${esc(v.id)}"`)}</div></section>`;
+  }
   // showEnding plays the clash that ended a match, once per player, before its result shows.
   async function showEnding(raw: MatchDetail) {
     const v = viewOf(raw, address());
@@ -537,7 +571,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
     const other = v.side === 0 ? 1 : 0;
     const due = dueOf(v);
     const latest = v.hp?.at(-1);
-    return `${header()}${notice()}<section class="match"><div class="section-head"><h1>${esc(v.phase === "open" ? "A challenge awaits" : v.phase === "ended" ? resultText(v) : expired ? `Challenge ${v.phase}` : v.action === "move" || early(v) ? "Your move" : v.action === "finish" ? "Ready to finish" : v.action === "claimForfeit" ? "Opponent missed the deadline" : `Waiting for ${textOr(v.clans[other], "a rival")}`)}</h1>${btn("Back to board", "Board", model.busy, true)}</div><div class="fighters">${portrait(v.clans[0], `class="${clanClass("portrait", v.clans[0])}"`)}<strong>${esc(v.clans[0])}</strong><span class="versus">vs</span>${portrait(v.clans[1], `class="${clanClass("portrait", v.clans[1])}"`)}<strong>${esc(textOr(v.clans[1], "Rival to come"))}</strong></div><p>Posted by ${copyButton(v.challenger)}</p>${filled(v.acceptor) ? `<p>Opponent ${copyButton(v.acceptor)}</p>` : ""}<p>${esc(v.phase === "ended" ? reasonText(v) : timeLeft(due))}</p>${isSet(due) ? `<p><small>Deadline: ${esc(new Date(due * 1000).toLocaleString())}</small></p>` : ""}${latest !== undefined ? `<p>Latest clash: ${esc(v.clans[0])} ${esc(latest[0])} HP · ${esc(v.clans[1])} ${esc(latest[1])} HP</p>` : ""}${v.phase === "open" ? `<p>Choose a clan, build eight cards, and plan round 1 before accepting. Their deck stays hidden until round 2.</p>${!filled(v.opponent) ? "" : v.opponent === address() ? "<p>Reserved for you.</p>" : `<p>Reserved for ${copyButton(v.opponent)}.${mine ? " Share the link to invite them; reservations do not send notifications." : ""}</p>`}` : v.action === "wait" && mine ? "<p>Your plan is sealed: they can’t see it until they’ve played theirs.</p>" : ""}<div class="banner-actions">${v.action === "accept" ? btn(ready() ? "Accept challenge" : "Connect to accept", ready() ? "Accept" : "Account", model.busy || model.blocked) : ""}${v.session === "expired" && (v.action === "move" || v.action === "finish") ? btn("Renew session to play", "Renew", model.busy || model.blocked) : v.action === "move" || early(v) ? btn(ready() ? "Watch clash & plan" : "Connect to play", ready() ? (early(v) ? "Finish" : "Play") : "Account", model.busy || model.blocked) : v.action === "finish" ? btn("Finish match", "Finish", model.busy || model.blocked) : ""}${v.action === "claimForfeit" ? btn("Claim win", "Claim", model.busy) : ""}${(v.plans ?? []).some((p) => filled(p[0]) && filled(p[1])) ? btn("Review last clash", "Review", model.busy || model.blocked, true) : ""}${mine && v.phase === "open" ? btn("Withdraw challenge", "Resign", model.busy, true) : mine && (v.phase === "play" || v.phase === "reveal") ? btn("Resign match", "Resign", model.busy, true) : ""}${v.phase === "ended" && mine ? btn("Challenge them again", "Rematch", model.busy || model.blocked) : ""}${btn("Copy match link", "Link", false, true)}</div><p class="busy-note" role="status">${model.busy ? esc(textOr(waitingFor(), "Loading…")) : ""}</p></section><dialog id="online-dialog" aria-labelledby="online-dialog-title"></dialog>`;
+    return `${header()}${notice()}${notifyOffer(v)}<section class="match"><div class="section-head"><h1>${esc(v.phase === "open" ? "A challenge awaits" : v.phase === "ended" ? resultText(v) : expired ? `Challenge ${v.phase}` : v.action === "move" || early(v) ? "Your move" : v.action === "finish" ? "Ready to finish" : v.action === "claimForfeit" ? "Opponent missed the deadline" : `Waiting for ${textOr(v.clans[other], "a rival")}`)}</h1>${btn("Back to board", "Board", model.busy, true)}</div><div class="fighters">${portrait(v.clans[0], `class="${clanClass("portrait", v.clans[0])}"`)}<strong>${esc(v.clans[0])}</strong><span class="versus">vs</span>${portrait(v.clans[1], `class="${clanClass("portrait", v.clans[1])}"`)}<strong>${esc(textOr(v.clans[1], "Rival to come"))}</strong></div><p>Posted by ${copyButton(v.challenger)}</p>${filled(v.acceptor) ? `<p>Opponent ${copyButton(v.acceptor)}</p>` : ""}<p>${esc(v.phase === "ended" ? reasonText(v) : timeLeft(due))}</p>${isSet(due) ? `<p><small>Deadline: ${esc(new Date(due * 1000).toLocaleString())}</small></p>` : ""}${latest !== undefined ? `<p>Latest clash: ${esc(v.clans[0])} ${esc(latest[0])} HP · ${esc(v.clans[1])} ${esc(latest[1])} HP</p>` : ""}${v.phase === "open" ? `<p>Choose a clan, build eight cards, and plan round 1 before accepting. Their deck stays hidden until round 2.</p>${!filled(v.opponent) ? "" : v.opponent === address() ? "<p>Reserved for you.</p>" : `<p>Reserved for ${copyButton(v.opponent)}.${mine ? " Share the link to invite them; reservations do not send notifications." : ""}</p>`}` : v.action === "wait" && mine ? "<p>Your plan is sealed: they can’t see it until they’ve played theirs.</p>" : ""}<div class="banner-actions">${v.action === "accept" ? btn(ready() ? "Accept challenge" : "Connect to accept", ready() ? "Accept" : "Account", model.busy || model.blocked) : ""}${v.session === "expired" && (v.action === "move" || v.action === "finish") ? btn("Renew session to play", "Renew", model.busy || model.blocked) : v.action === "move" || early(v) ? btn(ready() ? "Watch clash & plan" : "Connect to play", ready() ? (early(v) ? "Finish" : "Play") : "Account", model.busy || model.blocked) : v.action === "finish" ? btn("Finish match", "Finish", model.busy || model.blocked) : ""}${v.action === "claimForfeit" ? btn("Claim win", "Claim", model.busy) : ""}${(v.plans ?? []).some((p) => filled(p[0]) && filled(p[1])) ? btn("Review last clash", "Review", model.busy || model.blocked, true) : ""}${mine && v.phase === "open" ? btn("Withdraw challenge", "Resign", model.busy, true) : mine && (v.phase === "play" || v.phase === "reveal") ? btn("Resign match", "Resign", model.busy, true) : ""}${v.phase === "ended" && mine ? btn("Challenge them again", "Rematch", model.busy || model.blocked) : ""}${btn("Copy match link", "Link", false, true)}</div><p class="busy-note" role="status">${model.busy ? esc(textOr(waitingFor(), "Loading…")) : ""}</p></section><dialog id="online-dialog" aria-labelledby="online-dialog-title"></dialog>`;
   }
   function render() {
     app.classList.remove("board--battle");
@@ -621,6 +655,11 @@ export function createLobby<Draft extends Drafted = Drafted>({
       } else changed();
       return;
     }
+    if (name === "NotifyLater") {
+      storage?.setItem(laterKey(matchId(data.id ?? "")), "later");
+      changed();
+      return;
+    }
     if (model.busy) return;
     if (name === "ResumeDraft") {
       onResume();
@@ -635,6 +674,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
         model.account = await online().connect();
         if (address() !== "" && !ready()) model.account = await online().authorize();
         await lists();
+        await checkPush();
       });
       if (model.view !== null && model.view.id !== "") await open(model.view.id);
     } else if (name === "ResumeSessions") {
@@ -757,7 +797,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
       follow();
       changed();
       await run(async () => {
-        if (arena !== null) await lists();
+        if (arena !== null) await Promise.all([lists(), checkPush()]);
       });
       if (arena !== null && id !== undefined && id !== "") await open(matchId(id));
     },

@@ -1370,6 +1370,91 @@ test("a board that fits on one page shows no pager, and Notify me needs a notifi
   assert.doesNotMatch(page.innerHTML, /Notify me/);
 });
 
+// waiting is match 4 after alice's plan for round 2, with bob to move.
+const waiting = detail({ Phase: "play", Round: 2, Acceptor: bob, ToMove: bob, action: "wait" });
+
+// notifyingArena serves view as match 4 and can turn notifications on, which on says they are.
+function notifyingArena(view: MatchDetail, on = false) {
+  const arena = Object.assign(endingArena(view), { canNotify: true, notified: 0 });
+  arena.notifying = async () => on;
+  arena.notify = async () => {
+    arena.notified++;
+    on = true;
+    return 2;
+  };
+  return arena;
+}
+
+test("a player waiting on their opponent is offered notifications, and Not now keeps it away from that match", async (t) => {
+  stubPage(t);
+  const storage = memory();
+  const { lobby, shown } = lobbyOf(notifyingArena(waiting), alice, storage);
+  await lobby.enter();
+  await lobby.action("Open", { id: "4" });
+  assert.match(shown(), /Hear when it’s your move/);
+  assert.match(shown(), /data-action="onlineNotifyLater"\s+data-id="4"/);
+  await lobby.action("NotifyLater", { id: "4" });
+  assert.doesNotMatch(shown(), /Hear when it’s your move/);
+
+  const again = lobbyOf(notifyingArena(waiting), alice, storage);
+  await again.lobby.enter();
+  await again.lobby.action("Open", { id: "4" });
+  assert.doesNotMatch(again.shown(), /Hear when it’s your move/);
+});
+
+test("a challenger's own open challenge offers to hear when a rival accepts", async (t) => {
+  stubPage(t);
+  const { lobby, shown } = lobbyOf(notifyingArena(detail({ Phase: "open", action: "wait" })), alice);
+  await lobby.enter();
+  await lobby.action("Open", { id: "4" });
+  assert.match(shown(), /Hear when a rival accepts/);
+});
+
+test("Notify me on the offer turns notifications on and the offer goes", async (t) => {
+  stubPage(t);
+  const arena = notifyingArena(waiting);
+  const { lobby, shown } = lobbyOf(arena, alice);
+  await lobby.enter();
+  await lobby.action("Open", { id: "4" });
+  await lobby.action("Notify");
+  assert.equal(arena.notified, 1);
+  assert.equal(lobby.model.notifications, "on");
+  assert.doesNotMatch(shown(), /Hear when it’s your move/);
+});
+
+test("notifications already on show as on, with no offer", async (t) => {
+  stubPage(t);
+  const { lobby, shown } = lobbyOf(notifyingArena(waiting, true), alice);
+  await lobby.enter();
+  assert.equal(lobby.model.notifications, "on");
+  assert.match(shown(), /Notifications on/);
+  await lobby.action("Open", { id: "4" });
+  assert.doesNotMatch(shown(), /Hear when it’s your move/);
+});
+
+test("notifications the browser blocks are never offered", async (t) => {
+  stubPage(t);
+  Object.defineProperty(globalThis, "Notification", { value: { permission: "denied" }, configurable: true });
+  t.after(() => Reflect.deleteProperty(globalThis, "Notification"));
+  const { lobby, shown } = lobbyOf(notifyingArena(waiting), alice);
+  await lobby.enter();
+  assert.equal(lobby.model.notifications, "blocked");
+  await lobby.action("Open", { id: "4" });
+  assert.doesNotMatch(shown(), /Hear when it’s your move/);
+});
+
+test("a match the player only watches, or one that is theirs to play, offers no notifications", async (t) => {
+  stubPage(t);
+  const watched = lobbyOf(notifyingArena(waiting), address("g1carol"));
+  await watched.lobby.enter();
+  await watched.lobby.action("Open", { id: "4" });
+  assert.doesNotMatch(watched.shown(), /Hear when/);
+  const toPlay = lobbyOf(notifyingArena({ ...waiting, ToMove: alice, action: "move" }), alice);
+  await toPlay.lobby.enter();
+  await toPlay.lobby.action("Open", { id: "4" });
+  assert.doesNotMatch(toPlay.shown(), /Hear when/);
+});
+
 test("a board the page cannot reach says so in plain words", async () => {
   const page = app();
   const arena = {

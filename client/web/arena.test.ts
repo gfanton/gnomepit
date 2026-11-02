@@ -286,6 +286,47 @@ test("notify enables push with the feed's opt-ins and counts the push triggers",
   assert.equal(fake.calls.filter((c) => c === "enable").length, 1);
 });
 
+test("notifying holds once push is on for the connected wallet and the browser keeps its subscription", async () => {
+  const storage = memory();
+  const first = liveArena(fakeNotifier(), walletFor(alice), storage);
+  await first.connect();
+  assert.equal(await first.notifying(), false);
+  await first.notify();
+  assert.equal(await first.notifying(), true);
+
+  const other = liveArena(fakeNotifier(), walletFor(bob), storage);
+  await other.connect();
+  assert.equal(await other.notifying(), false, "push is on for alice, not bob");
+
+  const lost = liveArena(fakeNotifier({ enabled: async () => false }), walletFor(alice), storage);
+  await lost.connect();
+  assert.equal(await lost.notifying(), false, "the browser dropped its subscription or its permission");
+});
+
+test("notifying is false before a wallet connects and on an arena that offers no push", async () => {
+  const storage = memory();
+  const first = liveArena(fakeNotifier(), walletFor(alice), storage);
+  assert.equal(await first.notifying(), false);
+  await first.connect();
+  await first.notify();
+  const fake = fakeNotifier();
+  const arena = createArena({
+    chain: arenaChain(),
+    wallet: walletFor(alice),
+    engine,
+    signer,
+    realm,
+    chainId: "dev",
+    origin: "http://x",
+    storage,
+    notifier: fake.notifier,
+    offerPush: false,
+  });
+  await arena.connect();
+  assert.equal(await arena.notifying(), false);
+  assert.equal(fake.calls.includes("enabled"), false);
+});
+
 test("notify asks the browser for push before it waits on the server", async () => {
   let list: (triggers: Awaited<ReturnType<Notifier["triggers"]>>) => void = () => {};
   const listed = new Promise<Awaited<ReturnType<Notifier["triggers"]>>>((resolve) => (list = resolve));
@@ -1613,10 +1654,12 @@ type Optins = Parameters<Notifier["setOptins"]>[0];
 function fakeNotifier({
   triggers = async () => arenaTriggers,
   connect = async () => {},
+  enabled = async () => true,
   refuse = () => false,
 }: {
   triggers?: Notifier["triggers"];
   connect?: Notifier["connect"];
+  enabled?: Notifier["enabled"];
   // refuse says whether the server refuses the nth set, from 0, as it does for a push
   // subscription it forgot.
   refuse?: (n: number) => boolean;
@@ -1656,6 +1699,10 @@ function fakeNotifier({
     },
     disconnect: () => {
       count.disconnects++;
+    },
+    enabled: async () => {
+      calls.push("enabled");
+      return enabled();
     },
   };
   return {
