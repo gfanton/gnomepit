@@ -1457,8 +1457,9 @@ function clanChoicesHTML(): string {
   return `<div class="clan-choices">${clanPresentation
     .map((c) => {
       const available = Boolean(clanNamed(c.name));
-      const body = `<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="eager"></div><div class="clan-choice__body"><h2 class="clan-choice__name">${emblem(c.name)}${c.name}</h2><span class="clan-choice__tag">${c.tag}</span><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available ? `Choose ${c.name} →` : "Coming soon"}</span></div>`;
-      return `<button class="clan-choice clan-choice--${c.name.toLowerCase()}" type="button" data-action="clan" data-name="${c.name}" ${available ? "" : "disabled"}>${body}</button>`;
+      const id = `clan-${c.name.toLowerCase()}`;
+      const body = `<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="eager"></div><div class="clan-choice__body"><h2 class="clan-choice__name" id="${id}-name">${emblem(c.name)}${c.name}</h2><span class="clan-choice__tag" id="${id}-tag">${c.tag}</span><p id="${id}-text">${c.description}</p><span class="clan-choice__style" id="${id}-style">${c.style}</span><span class="clan-choice__cta" id="${id}-cta">${available ? `Choose ${c.name} →` : "Coming soon"}</span></div>`;
+      return `<button class="clan-choice clan-choice--${c.name.toLowerCase()}" type="button" data-action="clan" data-name="${c.name}" aria-labelledby="${id}-name" aria-describedby="${id}-tag ${id}-text ${id}-style${available ? "" : ` ${id}-cta`}" ${available ? "" : "disabled"}>${body}</button>`;
     })
     .join("")}</div>`;
 }
