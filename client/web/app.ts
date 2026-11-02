@@ -531,14 +531,8 @@ const handlers = {
     elementById("plan-status", HTMLSpanElement).textContent =
       `${cardOf(engine.cards, cardId).name} added. ${beatsUsed(plan, engine.cards)} of 3 beats filled.`;
   },
-  clearFrom: ({ beat }: DOMStringMap) => {
-    plan = clearFrom(plan, Number(beat), engine.cards);
-    render();
-  },
-  clearPlan: () => {
-    plan = [];
-    render();
-  },
+  clearFrom: ({ beat }: DOMStringMap) => returnCards(clearFrom(plan, Number(beat), engine.cards)),
+  clearPlan: () => returnCards([]),
   inspectCard: ({ id }: DOMStringMap) => {
     if (flow.screen === "playback") stopPlaying();
     const c = cardOf(engine.cards, Number(id));
@@ -714,6 +708,18 @@ function placeTip(anchor: HTMLElement): void {
   const left = Math.max(gap, Math.min(at.left, window.innerWidth - tip.offsetWidth - gap));
   tip.style.top = `${top}px`;
   tip.style.left = `${left}px`;
+}
+
+// returnCards keeps kept, the start of the plan, and flies the cards after it back to the hand.
+function returnCards(kept: number[]): void {
+  const leaving = plan.slice(kept.length).map((id, i) => {
+    const card = app.querySelector(`[data-plan-index="${kept.length + i}"] .card`);
+    return { id, card, from: card?.getBoundingClientRect() };
+  });
+  plan = kept;
+  render();
+  for (const { id, card, from } of leaving)
+    flyCard(card, from, app.querySelector(`.battle-hand .card[data-id="${id}"]`));
 }
 
 // available lists the ids the acting player may play: the basics and the deck's unspent specials,
@@ -1056,16 +1062,20 @@ function render(): void {
   if (flow.screen === "lobby") throw new Error("The lobby draws the lobby screen.");
   const previousScreen = app.dataset.screen;
   const previousStage = app.dataset.stage;
+  const replanning = flow.screen === "plan" && previousScreen === "plan";
   const focus = document.activeElement;
   const key =
     focus instanceof HTMLElement && focus.matches(":focus-visible") && (focus.dataset.action ?? "") !== ""
       ? { action: focus.dataset.action, id: focus.dataset.id, beat: focus.dataset.beat }
       : null;
   handScroll = app.querySelector(".battle-hand")?.scrollLeft ?? 0;
-  for (const ghost of flights) ghost.remove();
-  flights.clear();
+  if (!replanning) {
+    for (const ghost of flights) ghost.remove();
+    flights.clear();
+  }
   if (app.contains(tip)) document.body.append(tip);
-  app.innerHTML = onlineBar() + screens[flow.screen]();
+  if (replanning) patchPlan();
+  else app.innerHTML = onlineBar() + screens[flow.screen]();
   app.dataset.screen = flow.screen;
   app.dataset.stage = flow.screen === "deck" ? (choosingClan ? "clan" : "cards") : "";
   if (
@@ -1120,6 +1130,60 @@ function render(): void {
       { duration: 360 },
     );
   dropStaleTip();
+}
+
+// The parts of the plan screen a pick, a clear or a send can change. The rest of the table stays
+// in place, so the fighters' idle motion runs on across picks.
+const planParts = [
+  ".online-match-bar",
+  ".track-row--yours",
+  "#plan-status",
+  ".coach__words",
+  ".coach__step",
+  ".hand-zone__hint",
+  ".hand-zone__heading > .button-row",
+  ".battle-hand",
+];
+
+function patchPlan(): void {
+  const fresh = document.createElement("template");
+  fresh.innerHTML = onlineBar() + planScreen();
+  const before = handPlaces();
+  for (const selector of planParts) {
+    const now = app.querySelector(selector);
+    const next = fresh.content.querySelector(selector);
+    if (now === null && next === null) continue;
+    if (now === null || next === null) throw new Error(`The plan screen lost or gained ${selector}.`);
+    if (now.outerHTML === next.outerHTML) continue;
+    // A live region is announced only when its text changes in place.
+    if (now.getAttribute("role") === "status") now.textContent = next.textContent;
+    else now.replaceWith(next);
+  }
+  slideHand(before);
+}
+
+// handPlaces is each hand card's entry and its offset in the fan, by card id.
+function handPlaces(): Map<string, { entry: HTMLElement; left: number }> {
+  const places = new Map<string, { entry: HTMLElement; left: number }>();
+  for (const entry of app.querySelectorAll(".battle-hand .hand-entry")) {
+    const id = entry.querySelector("[data-id]")?.getAttribute("data-id");
+    if (entry instanceof HTMLElement && id !== null && id !== undefined)
+      places.set(id, { entry, left: entry.offsetLeft });
+  }
+  return places;
+}
+
+// slideHand moves each card still in the hand from its place before to its place now, so the fan
+// closes over a played card and opens for a returned one.
+function slideHand(before: ReturnType<typeof handPlaces>): void {
+  for (const [id, { entry, left }] of handPlaces()) {
+    const was = before.get(id)?.left;
+    if (was === undefined || Math.abs(was - left) < 1) continue;
+    animateElement(entry, [{ translate: `${was - left}px 0` }, { translate: "0 0" }], {
+      duration: 320,
+      easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+    });
+  }
 }
 
 // dropStaleTip hides the tip once its anchor has been rendered away.

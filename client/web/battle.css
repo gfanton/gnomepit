@@ -684,6 +684,7 @@
   position: fixed !important;
   z-index: 120;
   margin: 0;
+  overflow: hidden;
   pointer-events: none;
   transform-origin: center;
 }
