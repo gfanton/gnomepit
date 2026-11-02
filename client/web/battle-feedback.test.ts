@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { cards, event, id } from "./fixture.ts";
-import { stepFeedback, cardBehind } from "./battle-feedback.ts";
+import { stepFeedback, cardBehind, heavyHit, impact } from "./battle-feedback.ts";
 
 test("a fully blocked hit has shield feedback without HP damage", () => {
   const f = stepFeedback([event({ kind: "HitLanded", side: 0, n: 0, blocked: 3 })]);
@@ -70,4 +70,16 @@ test("the card behind any other event is its own side's card on that beat", () =
       index: 1,
     },
   );
+});
+
+test("a hit's impact grows with its damage up to a heavy hit", () => {
+  assert.equal(impact(0), 0);
+  assert.equal(impact(1), 1 / heavyHit);
+  assert.equal(impact(heavyHit - 1), (heavyHit - 1) / heavyHit);
+  assert.equal(impact(heavyHit), 1);
+  assert.equal(impact(heavyHit + 4), 1);
+});
+
+test("a heal or a negative tally has no impact", () => {
+  assert.equal(impact(-3), 0);
 });

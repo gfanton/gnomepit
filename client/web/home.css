@@ -174,8 +174,9 @@
   flex-direction: column;
   flex: 1;
 }
-.clan-choice__eyebrow {
-  color: var(--gh-color-text-muted);
+.clan-choice__tag {
+  margin: -4px 0 12px;
+  color: var(--clan-light);
   font: var(--gh-type-label);
   font-variant-caps: all-small-caps;
   letter-spacing: var(--gh-tracking-label);
@@ -278,7 +279,7 @@
     align-items: flex-start;
   }
   .section-intro h1,
-  .clan-choice__eyebrow {
+  .clan-choice__tag {
     letter-spacing: 0;
   }
 }

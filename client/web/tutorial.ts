@@ -77,7 +77,7 @@ export const coach = {
     skip: "Skip",
   },
   result: {
-    real: "In a real match you choose a clan, pick eight cards from its ten, and plan without seeing your rival's plan.",
+    real: "In a real match you choose a clan, build an eight-card deck by leaving two of its ten cards out, and plan without seeing your rival's plan.",
     again: "Play the guided match again",
     onward: { online: "Play online", bot: "Play the bot", hotseat: "Two players", home: "Back to the hall" },
   },

@@ -180,6 +180,10 @@ test("sideNames uses clan names, or player names in a mirror", () => {
   assert.deepEqual(sideNames(["Ironhide", "Ironhide"], "bot"), ["You", "Bot"]);
 });
 
+test("sideNames calls the bot's opponent You whatever the clans", () => {
+  assert.deepEqual(sideNames(["Pickers", "Ironhide"], "bot"), ["You", "Ironhide"]);
+});
+
 test("possessive reads naturally for every side name", () => {
   assert.deepEqual(["You", "Bot", "Player 1", "Pickers", "Ironhide"].map(possessive), [
     "Your",

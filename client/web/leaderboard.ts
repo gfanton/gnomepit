@@ -82,7 +82,7 @@ function clanStandings(items: ClanRow[]): string {
       return `<article class="clan-standing ${clanClass(c.clan)}"><div class="clan-standing__art">${art !== undefined ? `<img src="art/${art.image}" alt="">` : ""}<span class="clan-place">#${number(c.rank)}</span></div><div class="clan-standing__body"><div class="clan-standing__heading"><h3>${esc(c.clan)}</h3><span><strong>${number(c.rating)}</strong><span class="stat-label">CLAN RATING</span></span></div>${record(c)}</div></article>`;
     })
     .join("");
-  return `<aside class="clan-standings" aria-labelledby="clan-title"><div class="standings-section-title"><div><span class="eyebrow">THREE CLANS. ONE HALL.</span><h2 id="clan-title">Clan standings</h2></div></div>${items.length > 0 ? cards : '<div class="empty-panel"><h3>The clans await their challengers.</h3><p>Clan ratings and match records will appear here when standings are available.</p></div>'}</aside>`;
+  return `<aside class="clan-standings" aria-labelledby="clan-title"><div class="standings-section-title"><div><h2 id="clan-title">Clan standings</h2></div></div>${items.length > 0 ? cards : '<div class="empty-panel"><h3>The clans await their challengers.</h3><p>Clan ratings and match records will appear here when standings are available.</p></div>'}</aside>`;
 }
 
 function rankings(view: LeaderboardView): string {
@@ -90,7 +90,7 @@ function rankings(view: LeaderboardView): string {
     case "loading":
       return '<div class="empty-panel" role="status"><span class="loading-rule"></span><h3>Reading the hall’s records…</h3></div>';
     case "error":
-      return '<div class="empty-panel" role="status"><h3>The records are out of reach.</h3><p>Standings couldn’t be loaded. Please check again later.</p></div>';
+      return '<div class="empty-panel" role="status"><h3>The records are out of reach.</h3><p>Standings couldn’t be loaded. Check your connection, then try again.</p><a class="button" href="">Try again</a></div>';
     case "ready":
       return view.players.length > 0
         ? `<table class="ranking-table"><caption class="sr-only">Player leaderboard ranked by Elo, with main clan and win, loss and draw counts</caption><thead><tr><th scope="col">Rank</th><th scope="col">Player</th><th scope="col">Main clan</th><th scope="col">Elo</th><th scope="col"><abbr title="Wins">W</abbr></th><th scope="col"><abbr title="Losses">L</abbr></th><th scope="col"><abbr title="Draws">D</abbr></th></tr></thead><tbody>${rankingRows(view.players, view.ownPlayer?.id)}</tbody></table>`

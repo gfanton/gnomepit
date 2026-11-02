@@ -18,10 +18,11 @@ import { type Action, type Flow, type Round, initial, reduce, botTurn } from "./
 import { type Deck, deckSize, newDeck, readiness, toggle, rareOf } from "./deck.ts";
 import { randomDeck, randomPlan } from "./bot.ts";
 import { addCard, beatsUsed, canAdd, clearFrom, isSealable, slots } from "./plan.ts";
-import { sentences, matchLog, resultLine, sideNames, possessive } from "./log.ts";
-import { glossary, markKeywords, escapeHTML } from "./keywords.ts";
+import { sentences, matchLog, sideNames, possessive } from "./log.ts";
+import { type Verdict, verdict } from "./result.ts";
+import { counted, glossary, markKeywords, escapeHTML } from "./keywords.ts";
 import { type KnownCards, knownCards } from "./table.ts";
-import { stepFeedback, cardBehind } from "./battle-feedback.ts";
+import { type StepFeedback, cardBehind, heavyHit, impact, stepFeedback } from "./battle-feedback.ts";
 import { artIndex } from "./art.ts";
 import { loadArena } from "./arena-provider.ts";
 import { messageOf } from "./chain.ts";
@@ -90,6 +91,7 @@ type CardOptions = {
   hand?: boolean;
   track?: boolean;
   coached?: boolean;
+  sealed?: string;
 };
 
 const engine = await loadEngine("engine.wasm", "cards.json");
@@ -148,14 +150,13 @@ function artHTML(c: Card): string {
     ? `<div class="card__art"><img src="art/${file}" alt="" loading="lazy"></div>`
     : `<div class="card__art card__art--pending">${emblem(cardClan(c))}<span>Clan study · art to come</span></div>`;
 }
+// collectionHTML lists every card, clan by clan, then the shared techniques.
 function collectionHTML(): string {
   const groups = [
     ...engine.clans.map((clan) => ({ name: clan.name, ids: clan.cards })),
     { name: "Shared", ids: basics },
   ];
-  return `<details class="collection"><summary>Browse all ${engine.cards.length} cards<span>${engine.clans.map((clan) => clan.name).join(", ")} & shared techniques</span></summary>
-    <div class="collection__groups">${groups.map(({ name, ids }) => `<section class="stack"><div class="frame__head"><h2 class="heading">${name === "Shared" ? "Shared techniques" : name}</h2><span class="label">${ids.length} cards</span></div><div class="card-grid">${ids.map((id) => cardHTML(cardOf(engine.cards, id))).join("")}</div></section>`).join("")}</div>
-  </details>`;
+  return `<div class="collection">${groups.map(({ name, ids }) => `<section class="stack"><div class="frame__head"><h2 class="heading">${name === "Shared" ? "Shared techniques" : name}</h2><span class="label">${counted(ids.length, "card")}</span></div><div class="card-grid">${ids.map((id) => cardHTML(cardOf(engine.cards, id))).join("")}</div></section>`).join("")}</div>`;
 }
 
 function masthead(note = "A duel beneath the mountain"): string {
@@ -189,8 +190,9 @@ const lobby: Lobby<Draft> | null =
           playback = null;
           onlineContext = null;
           flow = initial;
-          render();
-          if (offline) app.querySelector(".offline-row")?.scrollIntoView({ block: "center" });
+          render(() => {
+            if (offline) app.querySelector(".offline-row")?.scrollIntoView({ block: "center" });
+          });
         },
         onCompose: (context) => {
           onlineContext = context;
@@ -289,7 +291,7 @@ function underway(): { hp: number; state: GameState; decks: Pair<number[]>; clan
 }
 function battleNames(): Pair<string> {
   const name = (clan: string | null, side: Side) =>
-    side === flow.acting ? "You" : clan === null || clan === "" ? "Rival to come" : clan;
+    side === flow.acting ? "You" : clan === null || clan === "" ? "Your rival" : clan;
   return flow.mode === "online"
     ? [name(flow.clans[0], 0), name(flow.clans[1], 1)]
     : sideNames(underway().clans, flow.mode);
@@ -493,6 +495,9 @@ const handlers = {
     if (clan === undefined) return;
     if (deck?.clan !== name) deck = newDeck(clan);
     choosingClan = false;
+    // The chosen clan's picture carries over into the deck banner's portrait.
+    const art = app.querySelector(`.clan-choice[data-name="${clan.name}"] .clan-choice__art`);
+    if (art instanceof HTMLElement) art.style.viewTransitionName = "champion-near";
     render();
   },
   toggle: ({ id }: DOMStringMap) => {
@@ -531,21 +536,15 @@ const handlers = {
     elementById("plan-status", HTMLSpanElement).textContent =
       `${cardOf(engine.cards, cardId).name} added. ${beatsUsed(plan, engine.cards)} of 3 beats filled.`;
   },
-  clearFrom: ({ beat }: DOMStringMap) => {
-    plan = clearFrom(plan, Number(beat), engine.cards);
-    render();
-  },
-  clearPlan: () => {
-    plan = [];
-    render();
-  },
+  clearFrom: ({ beat }: DOMStringMap) => returnCards(clearFrom(plan, Number(beat), engine.cards)),
+  clearPlan: () => returnCards([]),
   inspectCard: ({ id }: DOMStringMap) => {
     if (flow.screen === "playback") stopPlaying();
     const c = cardOf(engine.cards, Number(id));
     const legal = flow.screen === "plan" && canAdd(plan, c.id, engine.cards, available());
     const reader = elementById("card-reader", HTMLDialogElement);
     elementById("reader-content", HTMLDivElement).innerHTML =
-      `${cardHTML(c)}<p class="muted">${c.cost} ${c.cost === 1 ? "beat" : "beats"}${c.special ? " · Once per match" : " · Reusable basic"}</p>
+      `${cardHTML(c)}<p class="muted">${counted(c.cost, "beat")}${c.special ? " · Once per match" : " · Reusable basic"}</p>
       ${legal ? `<button class="button" type="button" data-action="addCard" data-id="${c.id}">Play ${c.name}</button>` : `<p class="muted">${unplayable(c)}</p>`}`;
     openDialog(reader);
   },
@@ -581,7 +580,7 @@ const handlers = {
   },
   skip: () => {
     stopPlaying();
-    for (const card of app.querySelectorAll(".card-reveal")) card.classList.remove("card-reveal");
+    for (const card of app.querySelectorAll(".card--sealed")) card.classList.remove("card--sealed");
     const session = playing();
     const lesson = session.lessons.find((l) => !l.shown);
     if (lesson === undefined) return showStep(session.steps.length, false);
@@ -613,6 +612,11 @@ const handlers = {
     legalPlans = engine.legalPlans({ state, side: flow.acting, deck: decks[flow.acting] });
     plan = [];
     render();
+  },
+  // tutorialLeave ends the guided match early, as a skip if the browser had not finished it.
+  tutorialLeave: () => {
+    if (!tutorialFlag.seen()) tutorialFlag.remember("skipped");
+    handlers.tutorialOnward();
   },
   tutorialOnward: () => {
     const mode = onward;
@@ -647,6 +651,59 @@ app.addEventListener("pointerout", (event) => {
 document.addEventListener("keydown", () =>
   app.querySelectorAll(".hand-entry--resting").forEach((el) => el.classList.remove("hand-entry--resting")),
 );
+// The wordmark leads home, which would throw away a match or a deck under way, so it asks first.
+// Online, the match lives on the chain and the draft is kept, so it leads back to the board.
+app.addEventListener("click", (event) => {
+  const mark = event.target instanceof Element ? event.target.closest("a.wordmark:not([data-action])") : null;
+  if (mark === null || !atStake()) return;
+  event.preventDefault();
+  if (flow.mode === "online") handlers.onlineBack();
+  else confirmLeave();
+});
+
+// atStake holds while leaving would lose something: a match under way or a deck being built.
+function atStake(): boolean {
+  if (flow.screen === "plan" || flow.screen === "playback" || flow.screen === "handoff") return true;
+  return flow.screen === "deck" && (!choosingClan || flow.decks[0] !== null);
+}
+
+const leaveDialog = document.createElement("dialog");
+leaveDialog.className = "offer";
+leaveDialog.setAttribute("aria-labelledby", "leave-title");
+document.body.append(leaveDialog);
+leaveDialog.addEventListener("click", (event) => {
+  const choice = event.target instanceof Element ? event.target.closest("[data-leave]") : null;
+  if (event.target === leaveDialog || choice?.getAttribute("data-leave") === "stay") leaveDialog.close();
+  else if (choice?.getAttribute("data-leave") === "go") {
+    leaveDialog.close();
+    leaveMatch();
+  }
+});
+
+function confirmLeave(): void {
+  const [title, text] =
+    flow.mode === "tutorial"
+      ? ["Leave the guided match?", "You can play it again from How to play."]
+      : flow.screen === "deck" && flow.decks[0] === null
+        ? ["Leave this deck?", "The cards you chose are not kept."]
+        : ["Leave this match?", "The match ends here and cannot be picked up again."];
+  leaveDialog.innerHTML = `<h2 id="leave-title">${title}</h2><p>${text}</p><div class="button-row"><button class="button" type="button" data-leave="stay">Keep playing</button><button class="button button--secondary" type="button" data-leave="go">Leave</button></div>`;
+  leaveDialog.showModal();
+}
+
+// leaveMatch drops the match under way and goes home; leaving the guided match counts as skipping
+// it for a browser that never finished it.
+function leaveMatch(): void {
+  if (flow.mode === "tutorial" && !tutorialFlag.seen()) tutorialFlag.remember("skipped");
+  closeBattleDialogs();
+  stopPlaying();
+  playback = null;
+  guided = null;
+  onward = null;
+  flow = initial;
+  render();
+}
+
 const isHandled = (action: string): action is keyof typeof handlers => Object.hasOwn(handlers, action);
 
 app.addEventListener("click", (event) => {
@@ -716,6 +773,18 @@ function placeTip(anchor: HTMLElement): void {
   tip.style.left = `${left}px`;
 }
 
+// returnCards keeps kept, the start of the plan, and flies the cards after it back to the hand.
+function returnCards(kept: number[]): void {
+  const leaving = plan.slice(kept.length).map((id, i) => {
+    const card = app.querySelector(`[data-plan-index="${kept.length + i}"] .card`);
+    return { id, card, from: card?.getBoundingClientRect() };
+  });
+  plan = kept;
+  render();
+  for (const { id, card, from } of leaving)
+    flyCard(card, from, app.querySelector(`.battle-hand .card[data-id="${id}"]`));
+}
+
 // available lists the ids the acting player may play: the basics and the deck's unspent specials,
 // or only the card a guided round's rails ask for next.
 function available(): number[] {
@@ -769,10 +838,18 @@ function showStep(n: number, animate = true): void {
     clearInterval(playback.timer);
     playback.timer = null;
   }
-  patchPlayback();
   const step = playback.steps[target - 1];
-  if (animate && sequential && step !== undefined) {
-    animateStep(shownRound().events.slice(step.from, step.to));
+  const events = animate && sequential && step !== undefined ? shownRound().events.slice(step.from, step.to) : null;
+  const feedback = events === null ? null : stepFeedback(events);
+  // The HP bar's trailing drain lingers in proportion to the hit; it takes its pace before the bar moves.
+  for (const side of [0, 1] as const)
+    elementById(`hp-ghost-${side}`, HTMLDivElement).style.setProperty(
+      "--impact",
+      String(impact(feedback?.sides[side].damage ?? 0)),
+    );
+  patchPlayback();
+  if (events !== null && feedback !== null && step !== undefined) {
+    animateStep(events, feedback);
     pauseForLesson(step);
   } else for (const side of [0, 1]) elementById(`float-${side}`, HTMLDivElement).replaceChildren();
 }
@@ -903,14 +980,19 @@ function flyCard(source: Element | null, from: DOMRect | undefined, destination:
   );
 }
 
-function animateStep(events: BattleEvent[]): void {
-  const feedback = stepFeedback(events);
+// animateStep plays one step's feedback. A hit's force, from impact, sets how far the struck
+// portrait recoils, how large its number rises and how far the striking card lunges; a heavy
+// hit also jolts the table.
+function animateStep(events: BattleEvent[], feedback: StepFeedback): void {
   const round = shownRound();
   const laid = round.plans.map((p) => slots(p, engine.cards));
   for (const side of [0, 1] as const) {
     const f = feedback.sides[side];
+    const force = impact(f.damage);
     const labels = [
-      f.damage > 0 ? `<span class="combat-float combat-float--damage">−${f.damage} HP</span>` : "",
+      f.damage > 0
+        ? `<span class="combat-float combat-float--damage" style="--impact:${force}">−${f.damage} HP</span>`
+        : "",
       f.blocked > 0 ? `<span class="combat-float combat-float--block">Blocked ${f.blocked}</span>` : "",
       f.block > 0 ? `<span class="combat-float combat-float--block">+${f.block} Block</span>` : "",
       f.block < 0 ? `<span class="combat-float combat-float--debuff">−${-f.block} Block</span>` : "",
@@ -920,18 +1002,25 @@ function animateStep(events: BattleEvent[]): void {
       f.vulnerable < 0 ? `<span class="combat-float combat-float--buff">Vulnerable −${-f.vulnerable}</span>` : "",
     ].join("");
     elementById(`float-${side}`, HTMLDivElement).innerHTML = labels;
-    const portrait = elementById(`sprite-${side}`, HTMLImageElement);
-    if (f.damage > 0)
+    if (f.damage > 0) {
+      // Away from the table: the near fighter is pushed left, the far one right.
+      const away = elementById(`fighter-${side}`, HTMLDivElement).matches(":first-child") ? -1 : 1;
+      const reach = away * (5 + 11 * force);
       animateElement(
-        portrait,
+        elementById(`sprite-${side}`, HTMLImageElement),
         [
-          { transform: "translateX(0)", filter: "brightness(1)" },
-          { transform: "translateX(-7px)", filter: "brightness(1.5)" },
-          { transform: "translateX(5px)" },
-          { transform: "translateX(0)", filter: "brightness(1)" },
+          { transform: "translateX(0) rotate(0)", filter: "brightness(1)" },
+          {
+            transform: `translateX(${reach}px) rotate(${away * 7 * force}deg)`,
+            filter: `brightness(${1.4 + 0.5 * force})`,
+            offset: 0.25,
+          },
+          { transform: `translateX(${-0.4 * reach}px) rotate(0)`, offset: 0.6 },
+          { transform: "translateX(0) rotate(0)", filter: "brightness(1)" },
         ],
-        { duration: 320 },
+        { duration: 320 + 260 * force },
       );
+    }
     if (f.blocked > 0 || f.block > 0)
       animateElement(
         elementById(`portrait-frame-${side}`, HTMLDivElement),
@@ -952,14 +1041,31 @@ function animateStep(events: BattleEvent[]): void {
   for (const event of events) {
     const { side, index } = cardBehind(event, round.plans, engine.cards);
     const key = `${side}:${index}`;
-    if (!active.has(key))
+    if (active.has(key)) continue;
+    active.add(key);
+    const card = app.querySelector(`.card--track[data-side="${side}"][data-index="${index}"]`);
+    if (event.kind === "HitLanded")
+      lunge(card, elementById(`portrait-frame-${otherSide(side)}`, HTMLDivElement), impact(event.n + event.blocked));
+    else
       animateElement(
-        app.querySelector(`.card--track[data-side="${side}"][data-index="${index}"]`),
+        card,
         [{ transform: "translateY(0)" }, { transform: "translateY(-7px) scale(1.03)" }, { transform: "translateY(0)" }],
         { duration: 500 },
       );
-    active.add(key);
   }
+  if (Math.max(feedback.sides[0].damage, feedback.sides[1].damage) >= heavyHit)
+    animateElement(
+      app.querySelector(".duel-table"),
+      [
+        { translate: "0 0" },
+        { translate: "-5px 2px" },
+        { translate: "5px -2px" },
+        { translate: "-3px 1px" },
+        { translate: "2px 0" },
+        { translate: "0 0" },
+      ],
+      { duration: 420, delay: 80, easing: "linear" },
+    );
   for (const cancelled of feedback.cancelled) {
     const index = laid[cancelled.side]?.[cancelled.beat - 1]?.index;
     const card = app.querySelector(`.card--track[data-side="${cancelled.side}"][data-index="${index}"]`);
@@ -974,6 +1080,29 @@ function animateStep(events: BattleEvent[]): void {
       { duration: 350 },
     );
   }
+}
+
+// lunge drives a striking card toward the portrait it hits and back, further the harder the hit.
+function lunge(card: Element | null, target: Element, force: number): void {
+  if (card === null) return;
+  const from = card.getBoundingClientRect();
+  const to = target.getBoundingClientRect();
+  const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+  const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+  const reach = (10 + 16 * force) / Math.max(1, Math.hypot(dx, dy));
+  animateElement(
+    card,
+    [
+      { transform: "translate(0, 0) scale(1)", easing: "cubic-bezier(0.5, 0, 0.75, 0)" },
+      {
+        transform: `translate(${dx * reach}px, ${dy * reach}px) scale(${1.04 + 0.04 * force})`,
+        offset: 0.35,
+        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+      },
+      { transform: "translate(0, 0) scale(1)" },
+    ],
+    { duration: 520, easing: "linear" },
+  );
 }
 
 function openDialog(dialog: HTMLDialogElement): void {
@@ -1036,11 +1165,51 @@ function copyMatchLog(): void {
 
 // ---- Rendering
 
-function render(): void {
+// pageOf is the page the state calls for: one per screen, one per deck stage, and the lobby's
+// board or one of its matches. A move between two pages runs a view transition.
+function pageOf(): string {
+  if (lobby !== null && lobby.model.active && !lobby.model.inGame) return `lobby:${lobby.model.view?.id ?? ""}`;
+  return flow.screen === "deck" ? `deck:${choosingClan ? "clan" : "cards"}` : flow.screen;
+}
+let drawnPage = "";
+// The callbacks waiting on a draw the browser has deferred to capture the page it leaves; null
+// while none is deferred.
+let deferred: (() => void)[] | null = null;
+
+// render draws the state. A move to another page lets the browser capture the page it leaves
+// first, so the draw runs a frame later; after runs once the state is drawn. A render while a draw
+// is deferred joins it, since that draw shows the state as it is by then.
+function render(after?: () => void): void {
+  if (deferred !== null) {
+    if (after !== undefined) deferred.push(after);
+    return;
+  }
+  const leaving = drawnPage !== "" && pageOf() !== drawnPage;
+  if (!leaving || reducedMotion.matches || document.hidden || !("startViewTransition" in document)) {
+    draw();
+    after?.();
+    return;
+  }
+  const waiting = after === undefined ? [] : [after];
+  deferred = waiting;
+  document.startViewTransition(() => {
+    deferred = null;
+    draw();
+    for (const run of waiting) run();
+  });
+}
+
+function draw(): void {
+  const arrived = drawnPage !== "" && drawnPage !== pageOf();
+  drawnPage = pageOf();
   if (lobby !== null && lobby.model.active && !lobby.model.inGame) {
     if (app.contains(tip)) document.body.append(tip);
     tip.hidden = true;
-    return lobby.render();
+    if (arrived) {
+      lobby.render();
+      arrive();
+    } else keepFocus(() => lobby.render());
+    return;
   }
   app.classList.remove("lobby");
   const screens = {
@@ -1056,29 +1225,29 @@ function render(): void {
   if (flow.screen === "lobby") throw new Error("The lobby draws the lobby screen.");
   const previousScreen = app.dataset.screen;
   const previousStage = app.dataset.stage;
+  const replanning = flow.screen === "plan" && previousScreen === "plan";
+  const repicking = flow.screen === "deck" && !choosingClan && previousScreen === "deck" && previousStage === "cards";
   const focus = document.activeElement;
   const key =
     focus instanceof HTMLElement && focus.matches(":focus-visible") && (focus.dataset.action ?? "") !== ""
-      ? { action: focus.dataset.action, id: focus.dataset.id, beat: focus.dataset.beat }
+      ? {
+          action: focus.dataset.action,
+          id: focus.dataset.id,
+          beat: focus.dataset.beat,
+          slot: [...app.querySelectorAll('.battle-hand [data-action="addCard"]')].indexOf(focus),
+        }
       : null;
   handScroll = app.querySelector(".battle-hand")?.scrollLeft ?? 0;
-  for (const ghost of flights) ghost.remove();
-  flights.clear();
+  if (!replanning) {
+    for (const ghost of flights) ghost.remove();
+    flights.clear();
+  }
   if (app.contains(tip)) document.body.append(tip);
-  app.innerHTML = onlineBar() + screens[flow.screen]();
+  if (replanning) patchPlan();
+  else if (repicking) patchDeck();
+  else app.innerHTML = onlineBar() + screens[flow.screen]();
   app.dataset.screen = flow.screen;
   app.dataset.stage = flow.screen === "deck" ? (choosingClan ? "clan" : "cards") : "";
-  if (
-    (flow.screen === "deck" && (previousStage !== app.dataset.stage || previousScreen !== flow.screen)) ||
-    flow.screen === "library"
-  ) {
-    const heading = app.querySelector("h1,h2");
-    if (heading instanceof HTMLElement) {
-      heading.setAttribute("tabindex", "-1");
-      heading.focus({ preventScroll: true });
-    }
-    app.scrollIntoView({ block: "start" });
-  }
   app.classList.toggle("board--battle", ["plan", "playback"].includes(flow.screen));
   if (flow.screen === "plan") {
     const hand = app.querySelector(".battle-hand");
@@ -1100,26 +1269,146 @@ function render(): void {
           el.dataset.beat === key.beat &&
           !el.disabled,
       );
+      // A card played from the hand hands focus to Seal once the plan is full, or else to the card
+      // that slid into its place.
       const seal = elementById("seal", HTMLButtonElement);
-      target ??= seal.disabled ? app.querySelector('.battle-hand [data-action="addCard"]:not(:disabled)') : seal;
+      const playable = [...app.querySelectorAll('.battle-hand [data-action="addCard"]:not(:disabled)')];
+      const hand = [...app.querySelectorAll('.battle-hand [data-action="addCard"]')];
+      target ??= !seal.disabled
+        ? seal
+        : (hand.slice(Math.max(0, key.slot)).find((el) => playable.includes(el)) ?? playable.at(-1));
       if (target instanceof HTMLElement) target.focus({ preventScroll: true });
     }
   }
   if (flow.screen === "playback") {
     patchPlayback();
     const session = playing();
-    queueReveal(session, reducedMotion.matches ? 450 : 1050);
+    // The opponent's cards finish turning by about 1s; the rest of the wait lets them be read.
+    queueReveal(session, reducedMotion.matches ? 450 : 1800);
   }
-  if (previousScreen !== flow.screen)
-    animateElement(
-      app.querySelector(".duel-table"),
-      [
-        { opacity: 0.2, transform: "translateY(7px)" },
-        { opacity: 1, transform: "translateY(0)" },
-      ],
-      { duration: 360 },
-    );
+  if (arrived) arrive();
   dropStaleTip();
+}
+
+// The control keyboard focus was on before the lobby last redrew while a request kept it off.
+let heldFocus: { action: string; id: string | undefined } | null = null;
+
+// keepFocus runs redraw, which rewrites the lobby's page, and puts keyboard focus back on the
+// control it was on. A control a request turned off gets it back once a later redraw turns it on;
+// a control that went away hands focus to the page's heading.
+function keepFocus(redraw: () => void): void {
+  const active = document.activeElement;
+  if (active instanceof HTMLElement && app.contains(active) && (active.dataset.action ?? "") !== "")
+    heldFocus = { action: active.dataset.action ?? "", id: active.dataset.id };
+  redraw();
+  const now = document.activeElement;
+  if (heldFocus === null || (now instanceof HTMLElement && now !== document.body && app.contains(now))) return;
+  const held = heldFocus;
+  const target = [...app.querySelectorAll("[data-action]")].find(
+    (el) => el instanceof HTMLElement && el.dataset.action === held.action && el.dataset.id === held.id,
+  );
+  if (target instanceof HTMLButtonElement && target.disabled) return;
+  heldFocus = null;
+  const landing = target ?? app.querySelector("h1, h2");
+  if (!(landing instanceof HTMLElement)) return;
+  if (target === undefined) landing.tabIndex = -1;
+  landing.focus({ preventScroll: true });
+}
+
+// arrive starts a new page at its top, with keyboard focus on what the page is about: its
+// heading, the plan's heading or the coach's words, or the clash's Pause. The next Tab then starts
+// inside the page instead of on its wordmark.
+function arrive(): void {
+  const landmark =
+    app.dataset.screen === "plan"
+      ? ".hand-zone__title .heading, .coach__words"
+      : app.dataset.screen === "playback"
+        ? "#play"
+        : "h1, h2";
+  const target = app.querySelector(landmark);
+  if (target instanceof HTMLElement) {
+    if (!(target instanceof HTMLButtonElement)) target.tabIndex = -1;
+    target.focus({ preventScroll: true });
+  }
+  scrollTo(0, 0);
+}
+
+// The parts of the plan screen a pick, a clear or a send can change. The rest of the table stays
+// in place, so the fighters' idle motion runs on across picks.
+const planParts = [
+  ".online-match-bar",
+  ".track-row--yours",
+  "#plan-status",
+  ".coach__words",
+  ".coach__step",
+  ".hand-zone__hint",
+  ".hand-zone__heading > .button-row",
+  ".battle-hand",
+];
+
+function patchPlan(): void {
+  const fresh = document.createElement("template");
+  fresh.innerHTML = onlineBar() + planScreen();
+  const before = handPlaces();
+  for (const selector of planParts) {
+    const now = app.querySelector(selector);
+    const next = fresh.content.querySelector(selector);
+    if (now === null && next === null) continue;
+    if (now === null || next === null) throw new Error(`The plan screen lost or gained ${selector}.`);
+    if (now.outerHTML === next.outerHTML) continue;
+    // A live region is announced only when its text changes in place.
+    if (now.getAttribute("role") === "status") now.textContent = next.textContent;
+    else now.replaceWith(next);
+  }
+  slideHand(before);
+}
+
+// patchDeck carries a pick onto the deck screen in place: each card takes its new state, so its fade
+// runs and keyboard focus stays on it, and the tray takes the new count.
+function patchDeck(): void {
+  const fresh = document.createElement("template");
+  fresh.innerHTML = onlineBar() + deckScreen();
+  for (const next of fresh.content.querySelectorAll(".card-grid > .card[data-id]")) {
+    const now = app.querySelector(`.card-grid > .card[data-id="${next.getAttribute("data-id")}"]`);
+    if (now === null) throw new Error("The deck screen lost a card.");
+    now.className = next.className;
+    now.setAttribute("aria-pressed", next.getAttribute("aria-pressed") ?? "false");
+  }
+  const tray = app.querySelector(".deck-tray");
+  const next = fresh.content.querySelector(".deck-tray");
+  if (tray === null || next === null) throw new Error("The deck screen has no tray.");
+  const count = next.querySelector(".deck-count strong");
+  const changed = tray.querySelector(".deck-count strong")?.textContent !== count?.textContent;
+  tray.replaceWith(next);
+  if (changed)
+    animateElement(count, [{ scale: 1.5, color: "var(--gh-color-highlight)" }, { scale: 1 }], {
+      duration: 360,
+      easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+    });
+}
+
+// handPlaces is each hand card's entry and its offset in the fan, by card id.
+function handPlaces(): Map<string, { entry: HTMLElement; left: number }> {
+  const places = new Map<string, { entry: HTMLElement; left: number }>();
+  for (const entry of app.querySelectorAll(".battle-hand .hand-entry")) {
+    const id = entry.querySelector("[data-id]")?.getAttribute("data-id");
+    if (entry instanceof HTMLElement && id !== null && id !== undefined)
+      places.set(id, { entry, left: entry.offsetLeft });
+  }
+  return places;
+}
+
+// slideHand moves each card still in the hand from its place before to its place now, so the fan
+// closes over a played card and opens for a returned one.
+function slideHand(before: ReturnType<typeof handPlaces>): void {
+  for (const [id, { entry, left }] of handPlaces()) {
+    const was = before.get(id)?.left;
+    if (was === undefined || Math.abs(was - left) < 1) continue;
+    animateElement(entry, [{ translate: `${was - left}px 0` }, { translate: "0 0" }], {
+      duration: 320,
+      easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+    });
+  }
 }
 
 // dropStaleTip hides the tip once its anchor has been rendered away.
@@ -1154,19 +1443,28 @@ function clanChoicesHTML(): string {
   return `<div class="clan-choices">${clanPresentation
     .map((c) => {
       const available = Boolean(clanNamed(c.name));
-      const body = `<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="eager"></div><div class="clan-choice__body"><span class="clan-choice__eyebrow">${c.tag}</span><h2 class="clan-choice__name">${emblem(c.name)}${c.name}</h2><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available ? `Choose ${c.name} →` : "Coming soon"}</span></div>`;
+      const body = `<div class="clan-choice__art"><img src="art/${c.file}" alt="" loading="eager"></div><div class="clan-choice__body"><h2 class="clan-choice__name">${emblem(c.name)}${c.name}</h2><span class="clan-choice__tag">${c.tag}</span><p>${c.description}</p><span class="clan-choice__style">${c.style}</span><span class="clan-choice__cta">${available ? `Choose ${c.name} →` : "Coming soon"}</span></div>`;
       return `<button class="clan-choice clan-choice--${c.name.toLowerCase()}" type="button" data-action="clan" data-name="${c.name}" ${available ? "" : "disabled"}>${body}</button>`;
     })
     .join("")}</div>`;
 }
 function title(): string {
   return `<header class="masthead">${wordmarkHTML("./")}<nav class="home-nav" aria-label="Explore the game">${lobby !== null ? '<a href="leaderboard.html">Leaderboard</a>' : ""}<button type="button" data-action="tutorial">How to play</button><button type="button" data-action="library">Card library</button></nav></header>
+    ${
+      lobby === null && linkedMatch(location.hash) !== undefined
+        ? `<section class="notice" role="status"><div><strong>That link opens an online match</strong><p>This copy of Gnomepit plays offline only, so it can’t open the match. Play the bot, or two players on one screen, here.</p></div></section>`
+        : ""
+    }
     <section class="intro intro--home">
-      <div class="intro__copy"><span class="eyebrow">A TACTICAL CARD DUEL</span>
+      <div class="intro__copy">
         <h1>Small gnomes.<br>Big grudges.</h1>
         <p>Choose a clan. Plot three beats. Settle your grudge beneath the mountain.</p>
-        <div class="home-play">${lobby !== null ? `<button class="button" type="button" data-action="playMode" data-mode="online">Play online <span aria-hidden="true">→</span></button>` : ""}<button class="button button--secondary" type="button" data-action="tutorial">How to play</button></div>
-        ${lobby !== null ? `<p class="home-play__note">24 hours per move · needs the Adena wallet</p>` : ""}
+        <div class="home-play">${
+          lobby !== null
+            ? `<button class="button" type="button" data-action="playMode" data-mode="online">Play online <span aria-hidden="true">→</span></button><button class="button button--secondary" type="button" data-action="playMode" data-mode="bot">Play the bot</button>`
+            : `<button class="button" type="button" data-action="playMode" data-mode="bot">Play the bot <span aria-hidden="true">→</span></button><button class="button button--secondary" type="button" data-action="tutorial">How to play</button>`
+        }</div>
+        <p class="home-play__note">${lobby !== null ? "Online: 24 hours per move · needs the Adena wallet" : "Plays in this browser · no wallet needed"}</p>
       </div>
       <div class="intro__art"><img src="art/hall-hero-v2.jpg" alt="Gnomes gather around a card table in the underground hall"><span class="intro__art-label">WELCOME TO GNOMEPIT<span>Different clans. Shared grudges.</span></span></div>
     </section>
@@ -1176,11 +1474,11 @@ function title(): string {
       <div class="button-row"><button class="button" type="button" data-action="tutorial">${coach.offer.start}</button><button class="button button--secondary" type="button" data-action="tutorialSkip">${coach.offer.skip}</button></div></dialog>`;
 }
 function libraryScreen(): string {
-  return `${masthead("Know your tools. Read your rival.")}<div class="section-intro"><div><span class="eyebrow">THE CLAN ARCHIVES</span><h1 class="heading">Card library</h1><p>Every card available in this build. Read the rules and find your favorites.</p></div><button class="button button--secondary" data-action="home">Back to the hall</button></div>${collectionHTML().replace('<details class="collection">', '<details class="collection" open>')}`;
+  return `${masthead("Know your tools. Read your rival.")}<div class="section-intro"><div><h1 class="heading">Card library</h1><p>Every card available in this build. Read the rules and find your favorites.</p></div><button class="button button--secondary" data-action="home">Back to the hall</button></div>${collectionHTML()}`;
 }
 function clanSelectionScreen(): string {
   const heading = flow.mode === "hotseat" ? `Player ${flow.acting + 1}, choose your clan` : "Choose your clan";
-  return `${masthead("Different clans. Shared grudges.")}<section class="clan-selection" aria-labelledby="clan-select-title"><nav class="setup-steps" aria-label="Match setup"><span aria-current="step">1 · Choose clan</span><span>2 · Build deck</span><span>3 · Plan your round</span></nav><div class="section-intro"><div><span class="eyebrow">CHOOSE YOUR ALLEGIANCE</span><h1 id="clan-select-title">${heading}</h1><p>Find your fighting style. You’ll choose your cards next.</p></div>${flow.mode === "online" ? "" : '<button class="button button--secondary" data-action="home">Back to the hall</button>'}</div>${clanChoicesHTML()}<p class="clan-selection__note">${engine.clans.some((c) => c.name === "Delvers") ? "Every clan brings its own tools. Your timing makes the difference." : "The Delvers are preparing their tools. Choose Pickers or Ironhide to play now."}</p></section>`;
+  return `${masthead("Different clans. Shared grudges.")}<section class="clan-selection" aria-labelledby="clan-select-title"><nav class="setup-steps" aria-label="Match setup"><span aria-current="step">1 · Choose clan</span><span>2 · Build deck</span><span>3 · Plan your round</span></nav><div class="section-intro"><div><h1 id="clan-select-title">${heading}</h1><p>Find your fighting style. You’ll choose your cards next.</p></div>${flow.mode === "online" ? "" : '<button class="button button--secondary" data-action="home">Back to the hall</button>'}</div>${clanChoicesHTML()}<p class="clan-selection__note">${engine.clans.some((c) => c.name === "Delvers") ? "Every clan brings its own tools. Your timing makes the difference." : "The Delvers are preparing their tools. Choose Pickers or Ironhide to play now."}</p></section>`;
 }
 
 function deckScreen(): string {
@@ -1208,22 +1506,28 @@ function deckScreen(): string {
     <nav class="setup-steps" aria-label="Match setup"><button class="text-button" data-action="changeClan">1 · Choose clan</button><span aria-current="step">2 · Build deck</span><span>3 · Plan your round</span></nav>
     <section class="frame frame--acting stack">
       <div class="frame__head"><h2 class="heading">${heading}</h2><span class="hint">Every card starts in. Leave out ${clan.cards.length - deckSize}; the Rare stays.</span></div>
-      <div class="clan-banner clan-banner--${deck.clan.toLowerCase()}">${portraitHTML(deck.clan, `class="clan-banner__portrait"`)}<div><span class="eyebrow">CHOOSE YOUR ALLEGIANCE</span><h3 class="heading clan-banner__name">${emblem(deck.clan)}${deck.clan}</h3><p>${clanLook[deck.clan]?.blurb ?? ""}</p></div><button class="button button--secondary" type="button" data-action="changeClan">Change clan</button></div>
+      <div class="clan-banner clan-banner--${deck.clan.toLowerCase()}">${portraitHTML(deck.clan, `class="clan-banner__portrait"`)}<div><h3 class="heading clan-banner__name">${emblem(deck.clan)}${deck.clan}</h3><p>${clanLook[deck.clan]?.blurb ?? ""}</p></div><button class="button button--secondary" type="button" data-action="changeClan">Change clan</button></div>
       <div class="card-grid">${pool}</div>
-      <div class="button-row"><button class="button" type="button" data-action="deckReady" ${legal ? "" : "disabled"}>${readiness(deck)}</button></div>
+      <div class="deck-tray"><span class="deck-count"><strong>${deck.picks.length}</strong> of ${clan.cards.length} cards kept</span><button class="button" type="button" data-action="deckReady" ${legal ? "" : "disabled"}>${readiness(deck)}</button></div>
     </section>`;
 }
 
 function handoff(): string {
   if (flow.after === null) throw new Error("The hand-off leads nowhere.");
-  const next = flow.after.acting + 1;
+  const next = flow.after.acting;
+  const clan = flow.clans[next] ?? "";
+  const task =
+    flow.after.screen === "plan"
+      ? `Player ${next + 1} plans round ${flow.state?.round ?? 1} in secret.`
+      : `Player ${next + 1} chooses a clan and builds a deck in secret.`;
   return `
     <div class="curtain">
-      <div class="frame">
-        <p class="heading">Pass to Player ${next}</p>
-        <p class="muted">Player ${3 - next}, look away.</p>
-        <button class="button" type="button" data-action="handoffDone">I am Player ${next}</button>
-      </div>
+      <section class="handoff" aria-labelledby="handoff-title">
+        ${clan === "" ? "" : `<div class="handoff__crest fighter--${clan.toLowerCase()}">${portraitHTML(clan, 'class="sprite"')}</div>`}
+        <h1 id="handoff-title">Pass to Player ${next + 1}</h1>
+        <p>${task} Player ${2 - next}, look away.</p>
+        <button class="button" type="button" data-action="handoffDone">I am Player ${next + 1}</button>
+      </section>
     </div>`;
 }
 
@@ -1291,15 +1595,10 @@ function planScreen(): string {
       const c = cardOf(engine.cards, id);
       return `<div class="hand-entry" style="--hand-order:${index};--hand-tilt:${(index - (handIds.length - 1) / 2) * 4}deg;--hand-rise:${Math.pow(index - (handIds.length - 1) / 2, 2) * 2}px">
       ${cardHTML(c, { action: matchMedia("(hover: none)").matches ? "inspectCard" : "addCard", hand: true, dimmed: !canAdd(plan, id, engine.cards, available()), coached: id === coached })}
-      <button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Details: ${c.name}">Details</button></div>`;
+      <button class="card-inspect" type="button" data-action="inspectCard" data-id="${id}" aria-label="Details: ${c.name}" tabindex="-1">Details</button></div>`;
     })
     .join("");
-  const backs = [1, 2, 3]
-    .map(
-      () =>
-        `<div class="card-back card-back--${(clans[opponent] === "" ? "shared" : clans[opponent]).toLowerCase()}" aria-hidden="true"><span>${emblem(clans[opponent])}</span></div>`,
-    )
-    .join("");
+  const backs = [1, 2, 3].map(() => cardBackHTML(clans[opponent])).join("");
   const practice = flow.mode === "tutorial" && guidedRound().rails !== null ? guidedRound().opponent : null;
   const opponentTrack =
     practice === null
@@ -1321,9 +1620,9 @@ function planScreen(): string {
     </section>
     <section class="hand-zone" aria-label="Your hand"><div class="hand-zone__heading">
       ${title}
-      <div class="hand-zone__hint"><span class="label">Your hand <span>${handIds.length} cards</span></span><span class="muted">Lift a card to read · click to play · tap to inspect</span></div>
+      <div class="hand-zone__hint"><span class="label">Your hand <span>${counted(handIds.length, "card")}</span></span><span class="muted">Lift a card to read · click to play · tap to inspect</span></div>
       <div class="button-row"><button class="button button--secondary" type="button" data-action="clearPlan" ${plan.length > 0 ? "" : "disabled"}>Clear</button><button class="button" type="button" data-action="seal" id="seal" ${sealable && !onlineSending ? "" : "disabled"}${onlineSending ? ' aria-busy="true"' : ""}>${flow.mode === "online" ? (onlineMatch().intent === "challenge" ? "Post challenge" : onlineMatch().intent === "accept" ? "Accept challenge" : "Send plan") : "Seal plan"}</button></div></div>
-      <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount > 0 ? "" : "disabled"} aria-label="Open played cards, ${playedCount} cards"><span class="pile-back card-back card-back--${(clans[me] === "" ? "shared" : clans[me]).toLowerCase()}"><span>${emblem(clans[me])}</span></span><span class="label">Played cards</span><span class="muted">${playedCount} cards · inspect</span></button></div></section>
+      <div class="hand-layout"><div class="battle-hand card-grid" style="--hand-count:${handIds.length}">${hand}</div><button class="played-pile" type="button" data-action="playedCards" ${playedCount > 0 ? "" : "disabled"} aria-label="Open played cards, ${counted(playedCount, "card")}">${cardBackHTML(clans[me], "pile-back")}<span class="label">Played cards</span><span class="muted">${counted(playedCount, "card")} · inspect</span></button></div></section>
     ${battleDialogsHTML(me)}`;
 }
 
@@ -1378,12 +1677,14 @@ function coachHTML(sealable: boolean): string {
       ? `<button class="button button--secondary" type="button" data-action="intel">${words.look}</button>`
       : `<span class="coach__step">Round ${round} · step ${plan.length + 1} of ${(words.steps?.length ?? 0) + 1}</span>`;
   return `<div class="coach">${portraitHTML("Pickers", 'class="coach__portrait"')}<p class="coach__words"><strong>${words.title}</strong> ${line}</p>${step}
+    <button class="text-button coach__skip" type="button" data-action="tutorialLeave">Skip the guide</button>
     <span class="coach__status" id="plan-status" role="status">${sealable ? "Your plan is ready. Confirm it when you're sure." : "Play cards to fill all three beats."}</span></div>`;
 }
 
 function playbackScreen(): string {
   const round = shownRound();
   const names = battleNames();
+  const { clans } = underway();
   const session = playing();
   const me = session.viewer,
     opponent = otherSide(me);
@@ -1396,7 +1697,7 @@ function playbackScreen(): string {
         const c = cardOf(engine.cards, id);
         const from = beat + 1;
         beat += c.cost;
-        return `<div class="slot card-reveal" style="--beats:${c.cost};--reveal-delay:${index * 120}ms">${cardHTML(c, { track: true, action: "inspectCard", data: `data-side="${side}" data-index="${index}"` })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
+        return `<div class="slot" style="--beats:${c.cost};--reveal-delay:${index * 140}ms">${cardHTML(c, { track: true, action: "inspectCard", data: `data-side="${side}" data-index="${index}"`, sealed: side === me ? "" : clans[side] })}<span class="track-note">${trackNote(c, from, beat)}</span></div>`;
       })
       .join("")}</div></div>`;
   };
@@ -1485,6 +1786,15 @@ function patchPlayback(): void {
       ? `Beat ${current.beat} · ${current.phase}`
       : "Plans revealed";
   elementById("finish", HTMLDivElement).innerHTML = done && !held ? finishHTML() : "";
+  // A control that just turned off or hid, like a lesson's Continue, would strand keyboard focus;
+  // the round's way on takes it once the clash is done, Pause until then.
+  const active = document.activeElement;
+  const stranded =
+    active instanceof HTMLElement &&
+    app.contains(active) &&
+    (active.closest("[hidden]") !== null || (active instanceof HTMLButtonElement && active.disabled));
+  const wayOn = app.querySelector(done && !held ? "#finish .button" : "#play:not(:disabled)");
+  if (stranded && wayOn instanceof HTMLElement) wayOn.focus({ preventScroll: true });
   dropStaleTip();
 }
 
@@ -1521,14 +1831,13 @@ function finishHTML(): string {
     const context = onlineMatch();
     return `<div class="button-row"><button class="button" data-action="playbackDone">${context.intent === "move" && context.review ? "Back to match" : "Plan your next round"}</button></div>`;
   }
-  const names = battleNames();
   const { state } = underway();
   if (flow.result === "ongoing") {
     return `<div class="button-row"><button class="button" type="button" data-action="playbackDone">Round ${state.round}</button></div>`;
   }
-  const knockout = state.gnomes.some((g) => g.hp <= 0);
+  const { title, detail } = verdict(flow.rounds, flow.result, battleNames());
   return `
-    <p class="banner">${knockout ? "Knockout!" : "Three rounds played."} ${resultLine(flow.result, names)}</p>
+    <p class="banner">${title}. ${detail}</p>
     <div class="button-row"><button class="button" type="button" data-action="playbackDone">Continue</button></div>`;
 }
 
@@ -1536,56 +1845,67 @@ function resultScreen(): string {
   if (flow.mode === "tutorial") return guidedResultHTML();
   const names = battleNames();
   const { state, decks } = underway();
-  const sides = ([0, 1] as const)
+  const unplayed = ([0, 1] as const)
     .map((side) => {
-      const g = state.gnomes[side];
-      const unplayed = decks[side]
-        .filter((id) => !g.spent.includes(id))
+      const cards = decks[side]
+        .filter((id) => !state.gnomes[side].spent.includes(id))
         .map((id) => cardHTML(cardOf(engine.cards, id), { small: true }))
         .join("");
-      return `
-        <div class="stack">
-          <div class="frame__head"><span class="heading">${names[side]}</span><span class="number">HP ${g.hp}</span></div>
-          <span class="label">Never played</span>
-          <div class="row">${unplayed !== "" ? unplayed : `<span class="muted">Every card.</span>`}</div>
-        </div>`;
+      return `<div class="stack"><span class="label">${possessive(names[side])} unplayed cards</span><div class="row">${cards !== "" ? cards : `<span class="muted">Every card was played.</span>`}</div></div>`;
     })
     .join("");
   return `
     ${masthead()}
-    <section class="frame stack">
-      <p class="banner">${resultLine(flow.result, names)}</p>
-      <div class="split">${sides}</div>
-      <div class="button-row">
-        <button class="button" type="button" data-action="rematch">Rematch</button>
-        <button class="button button--secondary" type="button" data-action="newMatch">New match</button>
-      </div>
+    ${resultStageHTML(
+      verdict(flow.rounds, flow.result, names),
+      "",
+      `<button class="button" type="button" data-action="rematch">Rematch</button>
+      <button class="button button--secondary" type="button" data-action="newMatch">New match</button>`,
+    )}
+    <details class="result-details">
+      <summary>Match log and unplayed cards</summary>
+      <div class="split">${unplayed}</div>
       <div class="stack">
         <div class="frame__head"><span class="label">Match log</span><span class="button-row"><button class="button button--secondary" type="button" data-action="copyLog">Copy match log</button><span class="muted" id="copied"></span></span></div>
         <textarea class="log-text" id="match-log" readonly rows="10">${escapeHTML(matchLog(flow.rounds, flow.result, { cards: engine.cards, names }))}</textarea>
       </div>
-    </section>`;
+    </details>`;
 }
 
-// guidedResultHTML closes the guided match on its health score and leads where the player was
-// heading before it.
+// guidedResultHTML closes the guided match on its verdict and leads where the player was heading
+// before it.
 function guidedResultHTML(): string {
-  const [mine, theirs] = underway().state.gnomes.map((g) => g.hp);
-  const outcome =
-    flow.result === "a"
-      ? `You won on health, ${mine} to ${theirs}.`
-      : flow.result === "b"
-        ? `Ironhide won on health, ${theirs} to ${mine}.`
-        : `An even score: ${mine} to ${theirs}.`;
   return `
     ${masthead()}
-    <section class="frame stack guided-result">
-      <p class="banner">${outcome}</p>
-      <p>${coach.result.real}</p>
-      <div class="button-row">
-        <button class="button" type="button" data-action="tutorialOnward">${coach.result.onward[onward ?? "home"]}</button>
-        <button class="button button--secondary" type="button" data-action="tutorial"${onward === null ? "" : ` data-mode="${onward}"`}>${coach.result.again}</button>
+    ${resultStageHTML(
+      verdict(flow.rounds, flow.result, battleNames()),
+      `<p class="result-stage__note">${coach.result.real}</p>`,
+      `<button class="button" type="button" data-action="tutorialOnward">${coach.result.onward[onward ?? "home"]}</button>
+      <button class="button button--secondary" type="button" data-action="tutorial"${onward === null ? "" : ` data-mode="${onward}"`}>${coach.result.again}</button>`,
+    )}`;
+}
+
+// resultStageHTML stages a finished match: the verdict between the two champions, the winner lit
+// and the loser greyed, the viewer's champion nearest, then body and the actions.
+function resultStageHTML(v: Verdict, body: string, actions: string): string {
+  const viewer: Side = flow.mode === "hotseat" ? flow.acting : 0;
+  const names = battleNames();
+  const { state, clans } = underway();
+  const champion = (side: Side, place: "near" | "far") => {
+    const outcome = v.winner === null ? "" : v.winner === side ? "result-champion--winner" : "result-champion--loser";
+    return `<figure class="result-champion result-champion--${place} fighter--${clans[side].toLowerCase()} ${outcome}"><div class="result-champion__portrait">${portraitHTML(clans[side], 'class="sprite"')}</div><figcaption><span class="result-champion__name">${names[side]}</span><span class="label">${clans[side]}</span><span class="result-champion__hp">${Math.max(0, state.gnomes[side].hp)} HP</span></figcaption></figure>`;
+  };
+  const blow =
+    v.blow === null || v.winner === null
+      ? ""
+      : `<p class="result-blow"><span class="label">${possessive(names[v.winner])} ${v.blow.finishing ? "finishing blow" : "hardest hit"}</span>${cardHTML(cardOf(engine.cards, v.blow.card), { small: true })}<span>${v.blow.damage} damage in round ${v.blow.round}</span></p>`;
+  return `<section class="result-stage" aria-labelledby="result-title">
+      <div class="result-stage__duel">
+        <div class="result-verdict"><h1 id="result-title">${v.title}</h1><p>${v.detail}</p>${blow}</div>
+        ${champion(viewer, "near")}${champion(otherSide(viewer), "far")}
       </div>
+      ${body}
+      <div class="button-row">${actions}</div>
     </section>`;
 }
 
@@ -1595,7 +1915,7 @@ function gnomeHTML(side: Side, vitals: ShownVitals, name: string): string {
   const clan = named === null || named === "" ? "Shared" : named;
   return `<div class="fighter fighter--${clan.toLowerCase()}" id="fighter-${side}">
     <div class="fighter__portrait" id="portrait-frame-${side}">${portraitHTML(clan, `class="sprite" id="sprite-${side}"`)}<span class="fighter__crest">${emblem(clan)}</span><div class="combat-floats" id="float-${side}" aria-hidden="true"></div></div>
-    <div class="fighter__vitals"><div class="fighter__name"><h2>${name}</h2><span class="label">${clan}</span></div><div class="hp__row"><span class="fighter__health-label">Health</span><span class="number" id="hp-num-${side}">${vitals.hp} / ${flow.hp}</span></div>
+    <div class="fighter__vitals"><div class="fighter__name"><h2>${name}</h2><span class="label">${named === null || named === "" ? "Clan unknown" : clan}</span></div><div class="hp__row"><span class="fighter__health-label">Health</span><span class="number" id="hp-num-${side}">${vitals.hp} / ${flow.hp}</span></div>
     <div class="hp__bar"><div class="hp__ghost" id="hp-ghost-${side}" style="width:${hpWidth(vitals.hp)}"></div><div class="hp__fill" id="hp-fill-${side}" style="width:${hpWidth(vitals.hp)}"></div></div><div class="chips" id="chips-${side}">${chipsHTML(vitals)}</div></div></div>`;
 }
 
@@ -1623,6 +1943,7 @@ function hpWidth(hp: number): string {
 // pressed marks a toggle's state, locked a toggle that does nothing, coached the card the
 // guided match asks for next. A small card shows cost, name and badges and peeks the full
 // card on hover or focus. spentRound, when above 0, marks the round the card was played in.
+// sealed names the clan whose back the card shows until it turns over.
 function cardHTML(
   c: Card,
   {
@@ -1637,6 +1958,7 @@ function cardHTML(
     hand = false,
     track = false,
     coached = false,
+    sealed = "",
   }: CardOptions = {},
 ): string {
   const clan = cardClan(c);
@@ -1652,6 +1974,7 @@ function cardHTML(
     small ? "card--small" : "",
     locked ? "card--locked" : "",
     coached ? "card--coached" : "",
+    sealed !== "" ? "card--sealed" : "",
     spentRound > 0 ? "card--spent" : "",
   ].join(" ");
   const state = [
@@ -1659,23 +1982,34 @@ function cardHTML(
     locked ? `aria-disabled="true" title="The Rare stays in"` : "",
     small ? `data-peek="${c.id}"` : "",
   ].join(" ");
+  // A plain full card lets keyboard and touch reach the rules behind its words and badges.
+  const tips = action === null && !small;
+  const tipStop = tips ? ' tabindex="0"' : "";
   const badges = [
     c.tier !== "Normal"
-      ? `<span class="badge badge--${c.tier.toLowerCase()}" data-kw="${c.tier.toLowerCase()}">${c.tier}</span>`
+      ? `<span class="badge badge--${c.tier.toLowerCase()}" data-kw="${c.tier.toLowerCase()}"${tipStop}>${c.tier}</span>`
       : "",
-    c.rare ? `<span class="badge badge--rare" data-kw="rare"><span aria-hidden="true">✦</span> Rare</span>` : "",
+    c.rare
+      ? `<span class="badge badge--rare" data-kw="rare"${tipStop}><span aria-hidden="true">✦</span> Rare</span>`
+      : "",
     spentRound > 0 ? `<span class="badge badge--spent">Spent R${spentRound}</span>` : "",
   ].join("");
   const body = small
     ? `<span class="card__cost">${c.cost}</span><span class="card__name">${c.name}</span><span class="card__foot">${badges}</span>`
     : `
     <span class="card__ornament" aria-hidden="true"></span>
-    <div class="card__head"><span class="card__cost" aria-label="${c.cost} beats">${c.cost}</span><span class="card__name">${c.name}</span></div>
+    <div class="card__head"><span class="card__cost" aria-label="${counted(c.cost, "beat")}">${c.cost}</span><span class="card__name">${c.name}</span></div>
     ${artHTML(c)}
-    <div class="card__text">${markKeywords(c.text)}</div>
-    <div class="card__foot"><span class="card__clan">${emblem(clan)}${clan}</span>${badges}</div>`;
+    <div class="card__text">${markKeywords(c.text, { focusable: tips })}</div>
+    <div class="card__foot"><span class="card__clan">${emblem(clan)}${clan}</span>${badges}</div>${sealed !== "" ? cardBackHTML(sealed, "card__back") : ""}`;
   if (action === null) return `<div class="${classes}" ${state} ${small ? `tabindex="0"` : ""} ${data}>${body}</div>`;
-  return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${hand ? `aria-label="${escapeHTML(`${c.name}, ${c.cost} beats. ${c.text}`).replaceAll('"', "&quot;")}"` : ""} ${state} ${data} ${dimmed ? "disabled" : ""}>${body}</button>`;
+  return `<button class="${classes}" type="button" data-action="${action}" data-id="${c.id}" ${hand ? `aria-label="${escapeHTML(`${c.name}, ${counted(c.cost, "beat")}. ${c.text}`).replaceAll('"', "&quot;")}"` : ""} ${state} ${data} ${dimmed ? "disabled" : ""}>${body}</button>`;
+}
+
+// cardBackHTML is the back of a card of clan, hidden from assistive technology; an empty clan, a
+// rival still to come, shows the shared back.
+function cardBackHTML(clan: string, extra = ""): string {
+  return `<span class="card-back card-back--${(clan === "" ? "shared" : clan).toLowerCase()}${extra === "" ? "" : ` ${extra}`}" aria-hidden="true"><span>${emblem(clan)}</span></span>`;
 }
 
 function smallCards(ids: number[]): string {

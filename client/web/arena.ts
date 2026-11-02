@@ -199,6 +199,8 @@ export type Notifier = {
   on<K extends keyof NotifierEvents>(event: K, handler: (arg: NotifierEvents[K]) => void): () => void;
   connect(): Promise<unknown>;
   disconnect(): void;
+  // enabled holds while this browser has a push subscription and notification permission.
+  enabled(): Promise<boolean>;
 };
 
 export type Opening = { clan: string; deck: number[]; plan: number[] };
@@ -560,6 +562,9 @@ export type Arena = {
   // notifications for this wallet by push, and returns how many it opted in to. Call it
   // from a click.
   notify(): Promise<number>;
+  // notifying holds when push is on for the connected wallet and this browser still has its
+  // subscription; false before a wallet connects.
+  notifying(): Promise<boolean>;
 };
 
 // What this page keeps per wallet: the root signature, the signing mode and its fallback's reason.
@@ -1169,6 +1174,11 @@ export function createArena({
       storage.setItem(pushKey, me);
       await notifier.setOptins(optinsFor(picked, address, me));
       return [...picked.values()].filter((event) => event !== "Board").length;
+    },
+
+    async notifying() {
+      if (notifier === undefined || address === null || pushed() !== address) return false;
+      return notifier.enabled();
     },
   };
   return arena;

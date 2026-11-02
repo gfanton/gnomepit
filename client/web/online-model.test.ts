@@ -3,7 +3,16 @@ import assert from "node:assert/strict";
 import type { GameState, Gnome, ResolveRequest, Resolution } from "./engine.ts";
 import { event } from "./fixture.ts";
 import { address, matchId } from "./ids.ts";
-import { type ArenaView, viewOf, timeLeft, cardIds, replayView, matchBarText, sendingText } from "./online-model.ts";
+import {
+  type ArenaView,
+  viewOf,
+  timeLeft,
+  cardIds,
+  replayView,
+  matchBarText,
+  sendingText,
+  deadlineText,
+} from "./online-model.ts";
 const account = address("g1player");
 const other = address("g1other");
 const gnome = (hp: number): Gnome => ({ hp, vulnerable: 0, strength: 0, spent: [] });
@@ -99,7 +108,7 @@ test("the challenger replays their pending clash last, with the deck the arena o
 test("the match bar gives the deadline only for a move", () => {
   assert.equal(matchBarText("accept", 200), "Accepting a challenge · Round 1");
   assert.equal(matchBarText("challenge", 200), "Posting a challenge · Round 1");
-  assert.equal(matchBarText("move", 200), `Your move deadline: ${new Date(200_000).toLocaleString()}`);
+  assert.equal(matchBarText("move", 200), `Your move deadline: ${deadlineText(200)}`);
   assert.equal(matchBarText("move", 0), "Your move");
 });
 // Posting or accepting asks Adena unless a live unlocked session already has the role's budget.
@@ -110,6 +119,13 @@ test("while a plan is sent, the match bar names the wallet's part in posting or 
   );
   assert.equal(sendingText("accept"), "Approve the request in Adena if it asks, then wait for the chain to confirm.");
   assert.equal(sendingText("move"), "Sending your move… Waiting for confirmation.");
+});
+test("a deadline a day or more away counts whole days, one in the singular", () => {
+  assert.equal(timeLeft(100 + 86_400, 100), "1 day left");
+  assert.equal(timeLeft(100 + 3 * 86_400, 100), "3 days left");
+});
+test("a deadline reads as a short date and time", () => {
+  assert.equal(deadlineText(200, "en-US", "UTC"), "Jan 1, 1970, 12:03 AM");
 });
 test("deadline labels never round a still-active deadline to expired", () => {
   assert.equal(timeLeft(100, 99), "0h 1m left");

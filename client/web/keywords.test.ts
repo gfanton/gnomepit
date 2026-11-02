@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { glossary, markKeywords, escapeHTML } from "./keywords.ts";
+import { glossary, markKeywords, escapeHTML, counted } from "./keywords.ts";
 
 const kw = (key: string, word: string) => `<span class="kw" data-kw="${key}">${word}</span>`;
 
@@ -22,6 +22,13 @@ test("markKeywords maps every form of cancel to one entry", () => {
   assert.equal(
     markKeywords("If this card is cancelled, gain 4 Block. Otherwise, deal 4 damage."),
     `If this card is ${kw("cancel", "cancelled")}, gain 4 ${kw("block", "Block")}. Otherwise, deal 4 damage.`,
+  );
+});
+
+test("focusable keywords take keyboard focus, so their tip opens without a mouse", () => {
+  assert.equal(
+    markKeywords("Gain 1 Block.", { focusable: true }),
+    `Gain 1 <span class="kw" data-kw="block" tabindex="0">Block</span>.`,
   );
 });
 
@@ -55,4 +62,10 @@ test("every key the markup and the badges use has a glossary entry", () => {
     assert.equal(typeof glossary[key], "string", key);
     assert.ok(glossary[key].length > 0, key);
   }
+});
+
+test("counted names one of a thing in the singular and any other number in the plural", () => {
+  assert.equal(counted(1, "beat"), "1 beat");
+  assert.equal(counted(2, "beat"), "2 beats");
+  assert.equal(counted(0, "card"), "0 cards");
 });

@@ -5,6 +5,7 @@ import type { Action, MatchDetail, MatchView, OpenChallenge, Phase } from "./are
 import { type Card, type Clan, type Engine, type GameState, type Resolution, type Side, startState } from "./engine.ts";
 import type { Round } from "./flow.ts";
 import { type Address, type MatchId, matchId } from "./ids.ts";
+import { counted } from "./keywords.ts";
 
 type Pair<T> = [T, T];
 
@@ -112,7 +113,13 @@ function sideOf(players: Pair<Address | "">, address: Address | ""): Side | -1 {
 export function matchBarText(intent: "challenge" | "accept" | "move", deadline: number | undefined): string {
   if (intent === "accept") return "Accepting a challenge · Round 1";
   if (intent === "challenge") return "Posting a challenge · Round 1";
-  return isSet(deadline) ? `Your move deadline: ${new Date(deadline * 1000).toLocaleString()}` : "Your move";
+  return isSet(deadline) ? `Your move deadline: ${deadlineText(deadline)}` : "Your move";
+}
+
+// deadlineText is a Unix time as a short date and time in the page's locale and time zone.
+export function deadlineText(unix: number, locale?: string, timeZone?: string): string {
+  const style = { dateStyle: "medium", timeStyle: "short" } as const;
+  return new Intl.DateTimeFormat(locale, timeZone === undefined ? style : { ...style, timeZone }).format(unix * 1000);
 }
 
 // sendingText is the match bar's status while a plan of intent is sent.
@@ -131,7 +138,7 @@ export function timeLeft(unix: number | undefined, now = Date.now() / 1000): str
   const seconds = unix - now;
   if (seconds <= 0) return "Deadline passed";
   const minutes = Math.ceil(seconds / 60);
-  if (minutes >= 1440) return `${Math.ceil(minutes / 1440)} days left`;
+  if (minutes >= 1440) return `${counted(Math.ceil(minutes / 1440), "day")} left`;
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m left`;
 }
 

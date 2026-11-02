@@ -119,7 +119,8 @@ export function reduce(flow: Flow, action: Action): Flow {
         0,
       );
     case "newMatch":
-      return initial;
+      if (flow.mode !== "bot" && flow.mode !== "hotseat") return initial;
+      return reduce(initial, { type: "start", mode: flow.mode, hp: flow.hp ?? 0 });
   }
 }
 

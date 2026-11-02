@@ -71,6 +71,9 @@
   padding: 8px 12px;
   cursor: pointer;
 }
+.quiet:active:not(:disabled) {
+  transform: translateY(1px);
+}
 .hall-banner {
   position: relative;
   overflow: hidden;
@@ -177,6 +180,19 @@
 .match--turn .status {
   color: var(--gh-color-highlight);
 }
+/* A match waiting on the player glows like a lantern until they act. */
+.match.match--turn {
+  animation:
+    notice-in var(--gh-motion-base) ease-out both,
+    turn-glow 3.2s ease-in-out infinite alternate;
+}
+@keyframes turn-glow {
+  to {
+    box-shadow:
+      inset 3px 0 var(--gh-color-accent),
+      0 0 34px color-mix(in srgb, var(--gh-color-flame) 24%, transparent);
+  }
+}
 .fighters {
   display: flex;
   align-items: center;
@@ -223,7 +239,7 @@
   padding: 18px;
   position: relative;
 }
-.challenge .eyebrow,
+.challenge .label,
 .challenge small {
   color: var(--gh-color-ink);
 }
@@ -325,6 +341,22 @@
 }
 .notice--danger {
   border-color: var(--gh-color-danger-line);
+}
+/* The offer to turn notifications on, made right after the player hands the turn over. */
+.notify-offer {
+  flex-wrap: wrap;
+  background: linear-gradient(
+    125deg,
+    color-mix(in srgb, var(--gh-color-accent) 10%, var(--gh-color-surface)),
+    var(--gh-color-canvas)
+  );
+}
+.notify-offer > div:first-child {
+  flex: 1 1 auto;
+  min-width: min(100%, 18rem);
+}
+.notify-offer p {
+  color: var(--gh-color-text-muted);
 }
 .notice--danger strong {
   color: var(--gh-color-damage);
@@ -467,6 +499,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .match,
+  .match.match--turn,
   .challenge {
     animation: none;
   }
