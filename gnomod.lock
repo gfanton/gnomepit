@@ -22,3 +22,7 @@ source = { dir = "deps/gnotif/v1" }
 [[module]]
 module = "gno.land/r/gfanton/gnomepit/arena/v0"
 source = { dir = "r/arena" }
+
+[[module]]
+module = "gno.land/r/gfanton/gnomepit/standings/v0"
+source = { dir = "r/standings" }

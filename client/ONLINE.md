@@ -6,7 +6,7 @@ Online matches run through the arena realm, `r/arena`, on a gno chain. The page 
 
 Every command below runs in the flake's dev shell: `direnv allow` once, or `nix develop`. It provides Go, TinyGo, Node, pnpm, jq, gno, gnokey and gnodev built from gno's `chain/onyx` tag, and gnotifd built from the gnotif revision the flake pins.
 
-1. `make dev` starts gnodev with the engine, the gnotif registry and its trigger package, on the chain `gnomepit-dev`, then deploys the arena in a transaction from gnodev's test1 account. tx-indexer files genesis transactions at height 0, where gnotifd never reads, so the arena's triggers have to land in a block. The RPC listens on `127.0.0.1:36657` and gnoweb on `127.0.0.1:8890`. It copies the registry from the gnotif revision the flake pins, or from the checkout `GNOTIF_DIR` names. It funds four dev accounts, alice, bob, carol and dave, with 10,000 GNOT each.
+1. `make dev` starts gnodev with the engine, the gnotif registry and its trigger package, on the chain `gnomepit-dev`, then deploys the standings realm and the arena, each in a transaction from gnodev's test1 account, which then owns both. tx-indexer files genesis transactions at height 0, where gnotifd never reads, so the arena's triggers have to land in a block. The RPC listens on `127.0.0.1:36657` and gnoweb on `127.0.0.1:8890`. It copies the registry from the gnotif revision the flake pins, or from the checkout `GNOTIF_DIR` names. It funds four dev accounts, alice, bob, carol and dave, with 10,000 GNOT each.
 2. `make indexer` runs tx-indexer v1.3.0 on that chain, answering on `127.0.0.1:8546`. gnotifd reads the chain through it.
 3. `make gnotif` runs gnotifd on `127.0.0.1:8547`, reading the chain through `make indexer`. The page learns of the other player's moves and of the board's changes from it. It makes new VAPID keys and an empty database in `.gnotif/` each time.
 4. `make serve` builds `engine.wasm` with TinyGo and bundles the pages with esbuild into `dist/`, then serves `dist/` on `http://127.0.0.1:8080/`. `GNOMEPIT_NETWORK` picks the network the build targets: `local` by default, `onyx` for the arena on onyx, or `offline` for a page with no online play. `make e2e` and `make test` build the engine too.
@@ -107,6 +107,23 @@ const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origi
 
 An action is `accept`, `move`, `finish`, `claimForfeit`, `wait` or `done`. A failed call throws an `ArenaError` whose `type` is one of `noWallet`, `wrongNetwork`, `refused`, `unauthorized`, `wrongPhase`, `sealMismatch`, `illegalPlan`, `deadlinePassed`, `sessionExpired`, `insufficientFunds`, `outOfStep`, `network` or `failed`, with a readable `reason`. `outOfStep` means the page's card file differs from the deployed engine.
 
+## The standings realm
+
+The standings realm keeps ratings, records, the ladder, clan ratings and a log of every rated result, whatever arena version played the match. On `make dev` it is `gno.land/r/gfanton/gnomepit/standings/v0`. The leaderboard page reads it with `createStandings({ chain, realm })` from `standings.ts`. `realm` is the network's `standings` path, and `?standings=` overrides it for one visit.
+
+| Call | Returns or does |
+|---|---|
+| `Leaderboard(offset, limit)`, `StandingOf(player)`, `RatedPlayers()` | The ladder a page at a time, highest rating first; one player's standing; the number of rated players |
+| `ClanStandings()` | Each clan with a rated cross-clan match, highest rating first. The page adds every other clan of `cards.json` at 1,000 and 0-0-0. |
+| `Results(offset, limit)`, `ResultCount()` | The log of rated results, oldest first, each naming the arena that reported it |
+| `IsWriter(pkgpath)`, `Writers()`, `Owner()` | Which arenas may report results, and the address that manages that list |
+| `Record(...)` | Rates and logs a match that ended. Only a realm on the writer list may call it. |
+| `AddWriter(pkgpath)`, `RemoveWriter(pkgpath)`, `TransferOwnership(address)` | Owner only. A path keeps its writer number when it is removed and added back. |
+
+The arena has an owner too, the address that deployed it. `Retire()`, owner only and one-way, closes it to new challenges and acceptances, while its running matches play out and are rated. `Retired()` reports whether it is retired, `Owner()` names its owner, and `TransferOwnership(address)` hands it on.
+
+A new match fails with `arena retired` once the arena is retired. It fails with `arena not open` while the standings realm does not list the arena as a writer. An arena off the writer list still ends its running matches, unrated.
+
 ## Storage per move
 
 `scripts/measure-storage.ts` has alice and bob play the realm test's worked match twice on a fresh `make dev`, built from gno `5cdbc25` (the `chain/onyx` tag), with gas at 1 ugnot per 1,000 and storage at 100 ugnot per byte, then a third match that bob resigns after round 1, then carol and dave play the worked match. Each player signs through a session for the match, as the page does.
@@ -206,12 +223,18 @@ A session with less left than the costliest move it may still pay counts as used
 
 The `onyx` build plays on the arena at `gno.land/r/g188vafzutzvlfw6wt7u3s62xtuvm0epmu8ufmfz/gnomepit/arena`, deployed under a gnomcp test key with its engine at `gno.land/p/g188vafzutzvlfw6wt7u3s62xtuvm0epmu8ufmfz/gnomepit/engine`, and follows the chain through `https://gnotif.xyz/onyx`. CI builds the page for it when the repository variable `GNOMEPIT_NETWORK` is `onyx`. A player connects Adena on `onyx-1` and pays their sessions in onyx GNOT. The onyx build ignores `?dev=` and uses Adena: the dev accounts' keys ship in the page, and on a public chain anyone could play as them.
 
-`scripts/onyx-copy.sh <address> <dir>` writes the engine and the arena, tests included, for a deploy under that address's namespace: their package paths move to it, the arena imports gnotif's registry at `gno.land/r/nym-gfanton001/gnotif/v1`, and `pagePath` becomes `/gnomepit/`, the page's path on GitHub Pages, so a notification's click opens the page there. Onyx parks every deploy until its approver type-checks it, and a deploy that fails stays parked with no error, so lint and test the copy with the gno release the node's `/status` names, v1.6.0-rc.1 on 2026-10-26, against dependencies fetched from onyx (`gno mod download -remote-overrides gno.land=https://rpc.onyx.testnets.gno.land:443`). The flake's gno, the `chain/onyx` tag, is an older release.
+`scripts/onyx-copy.sh <namespace> <dir>` writes the engine, the standings realm and the arena, tests included, for a deploy under that namespace, a registered name such as `nym-gfanton001` or a `g1` address. Their package paths move to it, the standings realm's first writer with them. The arena imports gnotif's registry at `gno.land/r/nym-gfanton001/gnotif/v1`. `pagePath` becomes `/gnomepit/`, the page's path on GitHub Pages, so a notification's click opens the page there.
 
-The approver charges the storage deposit to the deployer when it enables the package, up to the maximum deposit the deploy named. On gnodev the arena's deploy stores 127,627 bytes, 12.76 GNOT at 100 ugnot per byte, so a deploy capped at 10 GNOT, as gnomcp caps them before v0.12.3, never goes live.
+Onyx parks every deploy until its approver type-checks it, and a deploy that fails stays parked with no error, so lint and test the copy with the gno release the node's `/status` names, v1.7.0-rc.1 on 2026-11-03, against dependencies fetched from onyx (`gno mod download -remote-overrides gno.land=https://rpc.onyx.testnets.gno.land:443`). The flake's gno, the `chain/onyx` tag, is an older release.
 
-Three things in onyx's release decide whether the arena works there. Each held on 2026-10-26; check them again after an onyx upgrade:
-- **`runtime.GetSessionInfo` and session accounts.** The realm calls `GetSessionInfo` to lock each session to its match. Without it the lock has to go, and a session is held only to its per-match budget. The realm's tests pass on v1.6.0-rc.1.
+The standings realm goes up before the arena, which imports it: `go run moul.io/gnopm -C <dir> publish -print -rpc https://rpc.onyx.testnets.gno.land:443 -chainid onyx-1` prints the deploys in that order, engine, standings realm, arena. Without `-rpc` and `-chainid`, gnopm reads mainnet, the chain the `gno.land` paths name. `Writers()` on the standings realm must list the arena once all three are live. The page's onyx config moves to the new paths only after that.
+
+A later arena version moves no data. Publish it, and it takes no match until it is a writer. The owner calls `AddWriter` on the standings realm with its path and checks that `Writers()` lists it, then calls `Retire` on the old arena. The page's network config then moves to the new arena. Matches already running on the old arena play out there and are rated.
+
+The approver charges the storage deposit to the deployer when it enables the package, up to the maximum deposit the deploy named. The standings realm's deploy stores 48,212 bytes on gnodev, 4.82 GNOT at 100 ugnot per byte. The arena's deploy stores 112,354 bytes, 11.24 GNOT, 17,347 of those bytes in gnotif's registry for its triggers. The arena never goes live with a deploy capped at 10 GNOT, as gnomcp caps them before v0.12.3.
+
+Three things in onyx's release decide whether the arena works there. Each held on 2026-11-03, on v1.7.0-rc.1; check them again after an onyx upgrade:
+- **`runtime.GetSessionInfo` and session accounts.** The realm calls `GetSessionInfo` to lock each session to its match. Without it the lock has to go, and a session is held only to its per-match budget. The realms' tests pass on v1.7.0-rc.1.
 - **Restricted ugnot transfers.** On a chain that restricts them, freed storage deposits go to the storage fee collector (`gno.land/pkg/sdk/vm/keeper.go`) instead of the caller. A call that frees storage then gets nothing back: a reveal that drops a seal, a withdrawn challenge, or a challenge that clears expired ones. Onyx's `bank` parameter `restricted_denoms` is empty.
 - **The gas price and the storage price.** A budget prices gas at the gas price of the session's creation, so a price that keeps rising through a match makes its players renew. The deposits assume gnodev's storage price, the `vm` parameter `storage_price` of 100 ugnot per byte, which the page never reads. Onyx's `auth/gasprice` is 1 ugnot per 1,000 gas and its `storage_price` 100 ugnot per byte, the prices the budgets above were measured at.
 
@@ -220,4 +243,4 @@ Three things in onyx's release decide whether the arena works there. Each held o
 ## Tests
 
 - `make test` runs the realm's tests, builds the page, type-checks, lints and format-checks the TypeScript, then runs `go vet`, the Go tests and the TypeScript tests; the TypeScript tests run `engine.wasm`.
-- With `make dev`, `make indexer` and `make gnotif` running, `make e2e` plays its matches and checks each player's live feed. With `make dev` running, `make capture` records the query answers `gnovalue.ts`'s and `arena.ts`'s tests read, and `make record` records the RPC answers the other tests replay.
+- With `make dev`, `make indexer` and `make gnotif` running, `make e2e` plays its matches and checks each player's live feed. On the local chain it also checks the standings realm's owner, writers and result log, and that an arena removed from the writers takes no new match. With `make dev` running, `make capture` records the query answers `gnovalue.ts`'s and `arena.ts`'s tests read, and `make record` records the RPC answers the other tests replay. `make capture` saves the standings a `make e2e` run left, so run it after one on a fresh `make dev`. `make record` expects a chain with nothing played on it: run it alone on another fresh `make dev`.
