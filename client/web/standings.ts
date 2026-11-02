@@ -31,6 +31,9 @@ const ClanStandingSchema = v.object({
   Draws: v.number(),
 });
 
+// What the page reads of cards.json: its clans, keyed by name.
+const CardsSchema = v.object({ Clans: v.record(v.string(), v.unknown()) });
+
 export type Standing = v.InferOutput<typeof StandingSchema>;
 export type ClanStanding = v.InferOutput<typeof ClanStandingSchema>;
 
@@ -76,9 +79,31 @@ export function playerRow(s: Standing): PlayerRow {
   };
 }
 
-// boardView is the ladder's first page and the clan standings, without the viewer's own
-// standing; any failed query makes it an error view.
-export async function boardView(standings: Standings): Promise<LeaderboardView> {
+// clanNamesOf is the names of the clans of cards, a parsed cards.json, in file order.
+export function clanNamesOf(cards: unknown): string[] {
+  return Object.keys(v.parse(CardsSchema, cards).Clans);
+}
+
+// withMissingClans is clans plus every clan of names it lacks, at 1000 and 0-0-0, highest
+// rating first; equal ratings keep their order and share a rank. The store lists only
+// clans with a rated cross-clan match.
+export function withMissingClans(clans: readonly ClanStanding[], names: readonly string[]): ClanStanding[] {
+  const listed = new Set(clans.map((c) => c.Clan));
+  const missing = names
+    .filter((name) => !listed.has(name))
+    .map((Clan) => ({ Rank: 0, Clan, Rating: 1000, Wins: 0, Losses: 0, Draws: 0 }));
+  const sorted = [...clans, ...missing].sort((a, b) => b.Rating - a.Rating);
+  const ranked: ClanStanding[] = [];
+  for (const [i, c] of sorted.entries()) {
+    const above = ranked[i - 1];
+    ranked.push({ ...c, Rank: above !== undefined && above.Rating === c.Rating ? above.Rank : i + 1 });
+  }
+  return ranked;
+}
+
+// boardView is the ladder's first page and the clan standings, every clan of clanNames
+// among them, without the viewer's own standing; any failed query makes it an error view.
+export async function boardView(standings: Standings, clanNames: readonly string[]): Promise<LeaderboardView> {
   try {
     const [players, clans] = await Promise.all([standings.leaderboard(0), standings.clanStandings()]);
     return {
@@ -86,7 +111,7 @@ export async function boardView(standings: Standings): Promise<LeaderboardView> 
       preview: false,
       players: players.map(playerRow),
       ownPlayer: null,
-      clans: clans.map((c) => ({
+      clans: withMissingClans(clans, clanNames).map((c) => ({
         rank: c.Rank,
         clan: c.Clan,
         rating: c.Rating,
