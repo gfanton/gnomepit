@@ -4,6 +4,8 @@ Gnomepit is a two-player card duel between gnome clans beneath a mountain. Both 
 
 Play it at <https://gfanton.github.io/gnomepit/>.
 
+![A round being planned: the player's three beats hold Sling Stone and Double Tap, the Delvers' plan sits sealed above them, and the hand of cards fans out below](docs/gnomepit-planning.jpg)
+
 ## Ways to play
 
 The page offers four ways to play. The first three need no account and no wallet.
