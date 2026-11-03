@@ -6,14 +6,17 @@ import * as v from "valibot";
 
 import { ChainError } from "./chain.ts";
 import { type Address, address } from "./ids.ts";
+import type { LeaderboardView } from "./leaderboard.ts";
 import {
   type ClanStanding,
   type Standing,
   type Standings,
   boardView,
   clanNamesOf,
+  connectedStanding,
   createStandings,
   offerConnect,
+  viewerStanding,
   withMissingClans,
   withOwnStanding,
 } from "./standings.ts";
@@ -181,8 +184,7 @@ test("the board maps names, and an empty name to none", async () => {
   );
   assert.ok(view.status === "ready");
   assert.equal(view.preview, false);
-  assert.equal(view.ownPlayer, null);
-  assert.equal(view.connect, null);
+  assert.deepEqual(view.own, { kind: "unranked" });
   assert.equal(view.updatedLabel, "");
   assert.equal(view.players[0]?.name, "alice");
   assert.equal(view.players[1]?.name, null);
@@ -194,7 +196,7 @@ test("the board maps names, and an empty name to none", async () => {
 test("offerConnect asks a ready board's viewer to connect, and leaves an error view alone", async () => {
   const offered = offerConnect(await boardView(stub({}), clanNames), "Unlock Adena");
   assert.ok(offered.status === "ready");
-  assert.deepEqual(offered.connect, { error: "Unlock Adena" });
+  assert.deepEqual(offered.own, { kind: "connect", error: "Unlock Adena" });
   const error = { status: "error", preview: false } as const;
   assert.equal(offerConnect(error, ""), error);
 });
@@ -206,16 +208,18 @@ test("a failed query makes the board an error", async () => {
 test("the own standing joins a ready board only for a ranked account", async () => {
   const board = await boardView(stub({ leaderboard: async () => [standingOf(alice, 1)] }), clanNames);
   const ranked = await withOwnStanding(board, stub({ standing: async (p) => standingOf(p, 1) }), alice);
-  assert.ok(ranked.status === "ready");
-  assert.equal(ranked.ownPlayer?.id, alice);
+  assert.ok(ranked.status === "ready" && ranked.own.kind === "player");
+  assert.equal(ranked.own.player.id, alice);
 
   const unranked = await withOwnStanding(board, stub({}), alice);
   const noAccount = await withOwnStanding(board, stub({ standing: async (p) => standingOf(p, 1) }), null);
-  const failed = await withOwnStanding(board, stub({ standing: nodeDown }), alice);
-  for (const view of [unranked, noAccount, failed]) {
+  for (const view of [unranked, noAccount]) {
     assert.ok(view.status === "ready");
-    assert.equal(view.ownPlayer, null);
+    assert.deepEqual(view.own, { kind: "unranked" });
   }
+  const failed = await withOwnStanding(board, stub({ standing: nodeDown }), alice);
+  assert.ok(failed.status === "ready");
+  assert.deepEqual(failed.own, { kind: "unavailable" }, "a failed read calls no one unranked");
   const error = { status: "error", preview: false } as const;
   assert.equal(await withOwnStanding(error, stub({}), alice), error);
 });
@@ -225,7 +229,48 @@ test("an own standing below the first page still shows, with no row marked", asy
   const others = Array.from({ length: 50 }, (_, i) => standingOf(i % 2 === 0 ? alice : bob, i + 1));
   const board = await boardView(stub({ leaderboard: async () => others }), clanNames);
   const view = await withOwnStanding(board, stub({ standing: async (p) => standingOf(p, 75) }), carol);
-  assert.ok(view.status === "ready");
-  assert.equal(view.ownPlayer?.rank, 75);
+  assert.ok(view.status === "ready" && view.own.kind === "player");
+  assert.equal(view.own.player.rank, 75);
   assert.ok(!view.players.some((p) => p.id === carol));
+});
+
+// Wallets answering like Adena: one that shares alice, one that has not connected the site,
+// and one that connects it first.
+const sharing = { GetAccount: async () => ({ status: "success", data: { address: alice } }) };
+const notConnected = { GetAccount: async () => ({ status: "failure", type: "NOT_CONNECTED", message: "" }) };
+const connecting = { AddEstablish: async () => ({ status: "success", type: "CONNECTION_SUCCESS" }), ...sharing };
+const ownOf = (view: LeaderboardView) => (view.status === "ready" ? view.own : null);
+
+test("the viewer's card: their standing, an offer to connect a wallet that names no account, or the invitation", async () => {
+  const board = await boardView(stub({}), clanNames);
+  const thirds = stub({ standing: async (p) => standingOf(p, 3) });
+  const shared = ownOf(await viewerStanding(board, thirds, sharing));
+  assert.ok(shared?.kind === "player" && shared.player.rank === 3);
+  assert.deepEqual(ownOf(await viewerStanding(board, thirds, notConnected)), { kind: "connect", error: "" });
+  assert.deepEqual(ownOf(await viewerStanding(board, thirds, undefined)), { kind: "unranked" }, "no wallet, no offer");
+});
+
+test("connecting gives the standing, or the offer again with the wallet's reason", async () => {
+  const board = await boardView(stub({}), clanNames);
+  const thirds = stub({ standing: async (p) => standingOf(p, 3) });
+  const shared = ownOf(await connectedStanding(board, thirds, connecting, "dev"));
+  assert.ok(shared?.kind === "player" && shared.player.id === alice);
+  const locked = {
+    ...connecting,
+    AddEstablish: async () => ({ status: "failure", type: "WALLET_LOCKED", message: "The wallet is locked" }),
+  };
+  assert.deepEqual(ownOf(await connectedStanding(board, thirds, locked, "dev")), {
+    kind: "connect",
+    error: "The wallet is locked",
+  });
+  const broken = {
+    ...connecting,
+    GetAccount: async () => {
+      throw new TypeError("the extension's port closed");
+    },
+  };
+  assert.deepEqual(ownOf(await connectedStanding(board, thirds, broken, "dev")), {
+    kind: "connect",
+    error: "the extension's port closed",
+  });
 });

@@ -167,6 +167,46 @@ export async function connect(
   chainId: string,
   network: { chainName?: string; rpcUrl?: string } = {},
 ): Promise<{ address: Address }> {
+  const connected = await establish(wallet, chainId);
+  const current = answer(await connected.GetNetwork(), NetworkSchema);
+  if (current.chainId !== chainId) {
+    let switched = await connected.SwitchNetwork(chainId);
+    if (replyOf(switched)?.type === "UNADDED_NETWORK") {
+      const missing = new WalletError("wrongNetwork", `Add the network ${chainId} to Adena`);
+      if (typeof connected.AddNetwork !== "function" || network.rpcUrl === undefined || network.rpcUrl === "")
+        throw missing;
+      const added = replyOf(
+        await connected.AddNetwork({
+          chainId,
+          chainName: network.chainName ?? chainId,
+          rpcUrl: network.rpcUrl,
+        }),
+      );
+      if (added?.status !== "success")
+        throw new WalletError("wrongNetwork", nonEmpty(added?.message) ?? missing.reason);
+      switched = await connected.SwitchNetwork(chainId);
+    }
+    answer(switched, v.unknown(), ["REDUNDANT_CHANGE_REQUEST"]);
+  }
+  return { address: answer(await connected.GetAccount(), AccountSchema).address };
+}
+
+// shareAccount asks the wallet to connect the page and returns its address, on whatever
+// network the wallet is on.
+export async function shareAccount(
+  wallet: Pick<Wallet, "AddEstablish" | "GetAccount"> | null | undefined,
+  chainId: string,
+): Promise<{ address: Address }> {
+  const connected = await establish(wallet, chainId);
+  return { address: answer(await connected.GetAccount(), AccountSchema).address };
+}
+
+// establish asks the wallet to connect the page and returns it. chainId is the game's network,
+// which a wallet that cannot reach its own is told to switch to.
+async function establish<W extends Pick<Wallet, "AddEstablish">>(
+  wallet: W | null | undefined,
+  chainId: string,
+): Promise<W> {
   if (typeof wallet?.AddEstablish !== "function") throw new WalletError("noWallet", "No Adena wallet in this browser");
   const established = await wallet.AddEstablish("Gnomepit");
   // Adena checks the node of the network it is on before it connects a site.
@@ -176,27 +216,7 @@ export async function connect(
       `Adena cannot reach the network it is on. Switch Adena to ${chainId}, then connect again.`,
     );
   answer(established, v.unknown(), ["ALREADY_CONNECTED"]);
-  const current = answer(await wallet.GetNetwork(), NetworkSchema);
-  if (current.chainId !== chainId) {
-    let switched = await wallet.SwitchNetwork(chainId);
-    if (replyOf(switched)?.type === "UNADDED_NETWORK") {
-      const missing = new WalletError("wrongNetwork", `Add the network ${chainId} to Adena`);
-      if (typeof wallet.AddNetwork !== "function" || network.rpcUrl === undefined || network.rpcUrl === "")
-        throw missing;
-      const added = replyOf(
-        await wallet.AddNetwork({
-          chainId,
-          chainName: network.chainName ?? chainId,
-          rpcUrl: network.rpcUrl,
-        }),
-      );
-      if (added?.status !== "success")
-        throw new WalletError("wrongNetwork", nonEmpty(added?.message) ?? missing.reason);
-      switched = await wallet.SwitchNetwork(chainId);
-    }
-    answer(switched, v.unknown(), ["REDUNDANT_CHANGE_REQUEST"]);
-  }
-  return { address: answer(await wallet.GetAccount(), AccountSchema).address };
+  return wallet;
 }
 
 // currentAccount is the account wallet already shares with this page, read without asking
