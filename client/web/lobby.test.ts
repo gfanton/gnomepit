@@ -672,6 +672,37 @@ test("the board links to the leaderboard", async (t) => {
   );
 });
 
+test("with an unsent plan, the board's Leaderboard link asks before leaving", async (t) => {
+  stubPage(t);
+  const { lobby, shown } = lobbyOf(followedArena(), alice);
+  await lobby.enter();
+  assert.match(shown(), /<a href="leaderboard.html">Leaderboard<\/a>/, "with nothing unsent, it just goes");
+  lobby.model.draft = { onlineContext: { intent: "challenge" as const } };
+  lobby.render();
+  assert.match(shown(), /<a href="leaderboard.html" data-action="onlineLeaderboard">Leaderboard<\/a>/);
+});
+
+test("the unsent-plan dialog opens the leaderboard in a new tab, keeping the plan", async (t) => {
+  const opened: string[] = [];
+  Object.defineProperty(globalThis, "open", {
+    value: (url: string) => {
+      opened.push(url);
+      return null;
+    },
+    configurable: true,
+  });
+  t.after(() => Reflect.deleteProperty(globalThis, "open"));
+  const { lobby, dialog } = dialogLobby(t, followedArena());
+  lobby.model.draft = { onlineContext: { intent: "move" as const } };
+  await lobby.action("Leaderboard");
+  assert.match(dialog.innerHTML, /<h2 id="online-dialog-title">Your plan is not sent yet<\/h2>/);
+  assert.match(dialog.innerHTML, /data-action="onlineLeaderboardTab"/);
+  assert.match(dialog.innerHTML, /data-action="onlineClose"/);
+  await lobby.action("LeaderboardTab");
+  assert.deepEqual(opened, ["leaderboard.html"]);
+  assert.notEqual(lobby.model.draft, null, "the plan stays");
+});
+
 test("an unsent move waits in its match's row, not in a notice of its own", async (t) => {
   stubPage(t);
   const arena = followedArena();
