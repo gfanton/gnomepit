@@ -111,6 +111,7 @@ export async function boardView(standings: Standings, clanNames: readonly string
       preview: false,
       players: players.map(playerRow),
       ownPlayer: null,
+      connect: null,
       clans: withMissingClans(clans, clanNames).map((c) => ({
         rank: c.Rank,
         clan: c.Clan,
@@ -140,4 +141,10 @@ export async function withOwnStanding(
   } catch {
     return view;
   }
+}
+
+// offerConnect asks a ready view's viewer to connect the wallet that named no account, with
+// error the wallet's last refusal or "".
+export function offerConnect(view: LeaderboardView, error: string): LeaderboardView {
+  return view.status === "ready" ? { ...view, connect: { error } } : view;
 }

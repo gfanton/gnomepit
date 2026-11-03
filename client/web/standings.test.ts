@@ -13,6 +13,7 @@ import {
   boardView,
   clanNamesOf,
   createStandings,
+  offerConnect,
   withMissingClans,
   withOwnStanding,
 } from "./standings.ts";
@@ -181,12 +182,21 @@ test("the board maps names, and an empty name to none", async () => {
   assert.ok(view.status === "ready");
   assert.equal(view.preview, false);
   assert.equal(view.ownPlayer, null);
+  assert.equal(view.connect, null);
   assert.equal(view.updatedLabel, "");
   assert.equal(view.players[0]?.name, "alice");
   assert.equal(view.players[1]?.name, null);
   assert.equal(view.players[1]?.address, bob);
   assert.equal(view.players[1]?.id, bob);
   assert.equal(view.players[1]?.rank, 2);
+});
+
+test("offerConnect asks a ready board's viewer to connect, and leaves an error view alone", async () => {
+  const offered = offerConnect(await boardView(stub({}), clanNames), "Unlock Adena");
+  assert.ok(offered.status === "ready");
+  assert.deepEqual(offered.connect, { error: "Unlock Adena" });
+  const error = { status: "error", preview: false } as const;
+  assert.equal(offerConnect(error, ""), error);
 });
 
 test("a failed query makes the board an error", async () => {

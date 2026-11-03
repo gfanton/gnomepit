@@ -34,16 +34,17 @@ const clans: ClanRow[] = [
   { rank: 3, clan: "Pickers", rating: 1594, wins: 264, losses: 278, draws: 31 },
 ];
 
-// previewView is the view for ?state=: "empty", "loading", "error", or the full board.
+// previewView is the view for ?state=: "empty", "loading", "error", "connect", or the full board.
 export function previewView(state: string | null): LeaderboardView {
   if (state === "loading" || state === "error") return { status: state, preview: true };
   if (state === "empty")
-    return { status: "ready", preview: true, players: [], ownPlayer: null, clans: [], updatedLabel: "" };
+    return { status: "ready", preview: true, players: [], ownPlayer: null, connect: null, clans: [], updatedLabel: "" };
   return {
     status: "ready",
     preview: true,
     players,
-    ownPlayer: players[4] ?? null,
+    ownPlayer: state === "connect" ? null : (players[4] ?? null),
+    connect: state === "connect" ? { error: "" } : null,
     clans,
     updatedLabel: "Updated just now",
   };

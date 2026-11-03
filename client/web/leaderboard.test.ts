@@ -22,6 +22,7 @@ const ready = (parts: Partial<Extract<LeaderboardView, { status: "ready" }>>): L
   preview: false,
   players: [],
   ownPlayer: null,
+  connect: null,
   clans: [],
   updatedLabel: "",
   ...parts,
@@ -51,6 +52,26 @@ test("names and clans are escaped", () => {
 test("the own row is marked, and an unranked own player reads Unranked", () => {
   assert.match(leaderboardHTML(ready({ players: [row("a", 1)], ownPlayer: row("a", 1) })), /class="is-you"/);
   assert.match(leaderboardHTML(ready({ ownPlayer: row("z", null) })), /Unranked/);
+});
+
+test("a viewer whose wallet named no account is asked to connect, not called unranked", () => {
+  const html = leaderboardHTML(ready({ connect: { error: "" } }));
+  assert.match(
+    html,
+    /<button type="button" class="button button--secondary" data-action="connect">Connect wallet<\/button>/,
+  );
+  assert.doesNotMatch(html, /Unranked|after your first rated matches/);
+  assert.match(
+    leaderboardHTML(ready({})),
+    /after your first rated matches/,
+    "a viewer with no wallet is invited to play",
+  );
+});
+
+test("a refused connection says why, escaped", () => {
+  const html = leaderboardHTML(ready({ connect: { error: "Unlock <Adena>" } }));
+  assert.match(html, /Unlock &lt;Adena>/);
+  assert.doesNotMatch(html, /<Adena>/);
 });
 
 test("null numbers read as a dash and zero as zero", () => {
@@ -90,4 +111,7 @@ test("the preview's states", () => {
   assert.ok(empty.status === "ready" && empty.players.length === 0 && empty.clans.length === 0);
   const full = previewView(null);
   assert.ok(full.status === "ready" && full.players.length === 10 && full.ownPlayer?.id === full.players[4]?.id);
+  const connect = previewView("connect");
+  assert.ok(connect.status === "ready" && connect.players.length === 10 && connect.ownPlayer === null);
+  assert.deepEqual(connect.connect, { error: "" });
 });
