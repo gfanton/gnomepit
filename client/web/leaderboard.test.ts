@@ -114,6 +114,14 @@ test("the masthead names Gnomepit and the seal carries its initials", () => {
   assert.match(html, /class="ranking-seal" aria-hidden="true">GP</);
 });
 
+test("the footer links the source, and the standings realm's page when it has one", () => {
+  const html = leaderboardHTML(ready({}), "https://onyx.testnets.gno.land/r/x/standings/v0");
+  const footer = /<footer class="standings-footer">(.*?)<\/footer>/s.exec(html)?.[1] ?? "";
+  assert.match(footer, /Source on GitHub/);
+  assert.match(footer, /href="https:\/\/onyx\.testnets\.gno\.land\/r\/x\/standings\/v0">Standings on gno\.land/);
+  assert.doesNotMatch(leaderboardHTML(ready({}), null), /Standings on gno\.land/);
+});
+
 test("only a preview carries the preview notice", () => {
   assert.match(leaderboardHTML(previewView(null)), /DESIGN PREVIEW/);
   assert.doesNotMatch(leaderboardHTML(ready({})), /DESIGN PREVIEW/);

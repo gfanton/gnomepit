@@ -769,6 +769,14 @@ dialog::backdrop {
   margin: 0 8px;
   color: var(--gh-color-accent-deep);
 }
+.source-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+.source-links a {
+  padding: 8px 0;
+}
 
 /* ---- Deck */
 .clan-banner {

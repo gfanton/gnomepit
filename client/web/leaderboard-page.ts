@@ -8,17 +8,20 @@ import { pageWallet } from "./arena-provider.ts";
 import { createChain } from "./chain.ts";
 import { elementById } from "./dom.ts";
 import { type LeaderboardView, leaderboardHTML } from "./leaderboard.ts";
-import { networkFor, networkFrom } from "./network.ts";
+import { networkFor, networkFrom, realmPage } from "./network.ts";
 import * as signer from "./signer.ts";
 import { boardView, clanNamesOf, connectedStanding, createStandings, viewerStanding } from "./standings.ts";
 
 declare const GNOMEPIT_NETWORK: string;
 
 const root = elementById("leaderboard", HTMLElement);
-const render = (view: LeaderboardView): void => {
-  root.innerHTML = leaderboardHTML(view);
-};
 const params = new URLSearchParams(location.search);
+const built = networkFor(GNOMEPIT_NETWORK);
+const site = built === null ? null : networkFrom(params, built);
+const standingsPage = site === null ? null : realmPage(site.gnoweb, site.standings);
+const render = (view: LeaderboardView): void => {
+  root.innerHTML = leaderboardHTML(view, standingsPage);
+};
 
 async function clanNames(): Promise<string[]> {
   const res = await fetch("cards.json");
@@ -30,9 +33,8 @@ if (params.get("preview") === "1") {
   const { previewView } = await import("./leaderboard-preview.ts");
   render(previewView(params.get("state")));
 } else {
-  const built = networkFor(GNOMEPIT_NETWORK);
-  if (built === null) throw new Error("This build has no network");
-  const { chainId, rpc, standings: standingsRealm } = networkFrom(params, built);
+  if (built === null || site === null) throw new Error("This build has no network");
+  const { chainId, rpc, standings: standingsRealm } = site;
   const chain = createChain({ rpc });
   const standings = createStandings({ chain, realm: standingsRealm });
   render({ status: "loading", preview: false });
