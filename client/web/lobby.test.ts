@@ -662,6 +662,23 @@ test("with nothing waiting on the player, Post a challenge is the board's brass 
   assert.deepEqual(brass(shown()), ["Post a challenge"]);
 });
 
+test("the board's footer links the source, and the arena's page on gnoweb", async (t) => {
+  stubPage(t);
+  const page = app();
+  const lobby = createLobby({
+    ...unusedPage,
+    app: page,
+    arena: followedArena(),
+    storage: memory(),
+    onRender: () => lobby.render(),
+    arenaPage: "https://onyx.testnets.gno.land/r/x/arena/v0",
+  });
+  await lobby.enter();
+  const footer = /<footer class="footer">(.*?)<\/footer>/s.exec(page.innerHTML)?.[1] ?? "";
+  assert.match(footer, /href="https:\/\/github\.com\/gfanton\/gnomepit">Source on GitHub/);
+  assert.match(footer, /href="https:\/\/onyx\.testnets\.gno\.land\/r\/x\/arena\/v0">Arena on gno\.land/);
+});
+
 test("the board links to the leaderboard", async (t) => {
   stubPage(t);
   const { lobby, shown } = lobbyOf(followedArena(), alice);

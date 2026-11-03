@@ -3,6 +3,7 @@
 
 import type { Address } from "./ids.ts";
 import { escapeHTML as esc } from "./keywords.ts";
+import { sourceLinksHTML } from "./source.ts";
 import { wordmarkHTML } from "./wordmark.ts";
 
 // A null rank reads Unranked and a null number a dash; zero stays zero.
@@ -124,8 +125,9 @@ function rankings(view: LeaderboardView): string {
   }
 }
 
-export function leaderboardHTML(view: LeaderboardView): string {
+// standingsPage is the standings realm's page on gnoweb, which the footer links.
+export function leaderboardHTML(view: LeaderboardView, standingsPage: string | null = null): string {
   const ready = view.status === "ready" ? view : null;
   const updated = ready !== null && ready.updatedLabel !== "" ? `<span>${esc(ready.updatedLabel)}</span>` : "";
-  return `<header class="masthead">${wordmarkHTML("index.html")}<nav class="home-nav" aria-label="Main navigation"><a href="index.html">Back to the hall</a><a href="leaderboard.html" aria-current="page">Leaderboard</a></nav></header>${view.preview ? '<p class="preview-notice">DESIGN PREVIEW · Illustrative players and scores. These are not live standings.</p>' : ""}<div class="standings-hero"><div><h1>The Hall of Rivals</h1><p>Every duel leaves a mark. See who holds their ground.</p></div><span class="ranking-seal" aria-hidden="true">GP<span>RANKED DUELS</span></span></div>${ownStanding(ready?.own ?? { kind: "unranked" })}<div class="standings-layout"><section class="player-standings" aria-labelledby="players-title"><div class="standings-section-title"><div><h2 id="players-title">Player rankings</h2></div><span class="rating-label">RANKED BY ELO</span></div>${rankings(view)}<p class="rankings-note">Elo measures your standing. Your main clan appears beside your name.${updated}</p></section>${clanStandings(ready?.clans ?? [])}</div><footer class="standings-footer"><span>Forged below. Earned at the table.</span><a href="index.html">Back to the hall →</a></footer>`;
+  return `<header class="masthead">${wordmarkHTML("index.html")}<nav class="home-nav" aria-label="Main navigation"><a href="index.html">Back to the hall</a><a href="leaderboard.html" aria-current="page">Leaderboard</a></nav></header>${view.preview ? '<p class="preview-notice">DESIGN PREVIEW · Illustrative players and scores. These are not live standings.</p>' : ""}<div class="standings-hero"><div><h1>The Hall of Rivals</h1><p>Every duel leaves a mark. See who holds their ground.</p></div><span class="ranking-seal" aria-hidden="true">GP<span>RANKED DUELS</span></span></div>${ownStanding(ready?.own ?? { kind: "unranked" })}<div class="standings-layout"><section class="player-standings" aria-labelledby="players-title"><div class="standings-section-title"><div><h2 id="players-title">Player rankings</h2></div><span class="rating-label">RANKED BY ELO</span></div>${rankings(view)}<p class="rankings-note">Elo measures your standing. Your main clan appears beside your name.${updated}</p></section>${clanStandings(ready?.clans ?? [])}</div><footer class="standings-footer"><span>Forged below. Earned at the table.</span>${sourceLinksHTML("Standings", standingsPage)}<a href="index.html">Back to the hall →</a></footer>`;
 }

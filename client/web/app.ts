@@ -29,7 +29,8 @@ import { messageOf } from "./chain.ts";
 import { elementById } from "./dom.ts";
 import type { Address } from "./ids.ts";
 import { type Lobby, createLobby, linkedMatch, roundPipsHTML } from "./lobby.ts";
-import { networkFor } from "./network.ts";
+import { networkFor, networkFrom, realmPage } from "./network.ts";
+import { sourceLinksHTML } from "./source.ts";
 import { type View, matchBarText, replayView, sendingText } from "./online-model.ts";
 import {
   type TutorialMatch,
@@ -169,6 +170,8 @@ function masthead(note = "A duel beneath the mountain"): string {
 
 const tutorialFlag = tutorialMemory(localStorage);
 const built = networkFor(GNOMEPIT_NETWORK);
+const site = built === null ? null : networkFrom(new URLSearchParams(location.search), built);
+const arenaPage = site === null ? null : realmPage(site.gnoweb, site.realm);
 const arena = built === null ? null : loadArena(engine, built);
 const lobby: Lobby<Draft> | null =
   arena === null
@@ -180,6 +183,7 @@ const lobby: Lobby<Draft> | null =
         onRender: render,
         portrait: portraitHTML,
         emblem,
+        arenaPage,
         onResume: () => {
           const draft = onlineLobby().model.draft;
           if (draft === null) return;
@@ -1527,7 +1531,7 @@ function title(): string {
       <div class="intro__art"><img src="art/hall-hero-v2.jpg" alt="Gnomes gather around a card table in the underground hall"><span class="intro__art-label">WELCOME TO GNOMEPIT<span>Different clans. Shared grudges.</span></span></div>
     </section>
     <section class="home-library"><button type="button" class="text-button" data-action="library">Meet the clans and read every card <span aria-hidden="true">→</span></button></section>
-    <footer class="hall-footer"><span>Forged below. Settled at the table.</span><nav class="offline-row" aria-label="Play offline"><span>Play offline:</span><button type="button" class="text-button" data-action="playMode" data-mode="bot">Bot</button><button type="button" class="text-button" data-action="playMode" data-mode="hotseat">Two players</button><button type="button" class="text-button" data-action="library">Rules and cards</button></nav></footer>
+    <footer class="hall-footer"><span>Forged below. Settled at the table.</span>${sourceLinksHTML("Arena", arenaPage)}<nav class="offline-row" aria-label="Play offline"><span>Play offline:</span><button type="button" class="text-button" data-action="playMode" data-mode="bot">Bot</button><button type="button" class="text-button" data-action="playMode" data-mode="hotseat">Two players</button><button type="button" class="text-button" data-action="library">Rules and cards</button></nav></footer>
     <dialog class="offer" id="tutorial-offer" aria-labelledby="offer-title"><h2 id="offer-title">${coach.offer.title}</h2><p>${coach.offer.body}</p>
       <div class="button-row"><button class="button" type="button" data-action="tutorial">${coach.offer.start}</button><button class="button button--secondary" type="button" data-action="tutorialSkip">${coach.offer.skip}</button></div></dialog>`;
 }

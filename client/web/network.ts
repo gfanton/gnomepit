@@ -10,6 +10,8 @@ export type Network = {
   // The gnotif server the page follows the chain and turns on push through; null polls the
   // node instead.
   readonly gnotif: string | null;
+  // The gnoweb site that shows this chain's realms; null when a link names another chain.
+  readonly gnoweb: string | null;
 };
 
 // null is the offline build: no chain at all.
@@ -20,6 +22,7 @@ export const networks = {
     realm: "gno.land/r/gfanton/gnomepit/arena/v0",
     standings: "gno.land/r/gfanton/gnomepit/standings/v0",
     gnotif: "http://127.0.0.1:8547",
+    gnoweb: "http://127.0.0.1:8890",
   },
   // The realms deployed from scripts/onyx-copy.sh under the name nym-gfanton001.
   onyx: {
@@ -28,6 +31,7 @@ export const networks = {
     realm: "gno.land/r/nym-gfanton001/gnomepit/arena/v0",
     standings: "gno.land/r/nym-gfanton001/gnomepit/standings/v0",
     gnotif: "https://gnotif.xyz/onyx",
+    gnoweb: "https://onyx.testnets.gno.land",
   },
   offline: null,
 } as const satisfies Record<string, Network | null>;
@@ -49,5 +53,13 @@ export function networkFrom(params: URLSearchParams, base: Network): Network {
     realm: params.get("realm") ?? base.realm,
     standings: params.get("standings") ?? base.standings,
     gnotif: gnotif === null ? base.gnotif : gnotif === "" ? null : gnotif,
+    gnoweb: params.has("chain") || params.has("rpc") ? null : base.gnoweb,
   };
+}
+
+// realmPage is realm's page on gnoweb; null without a gnoweb, or for a path that is no realm's,
+// since a link's ?realm= lands in an href.
+export function realmPage(gnoweb: string | null, realm: string): string | null {
+  if (gnoweb === null || !/^gno\.land\/r\/[a-z0-9_./-]+$/.test(realm)) return null;
+  return gnoweb + realm.slice("gno.land".length);
 }
