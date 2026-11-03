@@ -541,7 +541,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
             : "";
   }
   function header() {
-    return `<header class="masthead">${wordmarkHTML("./", 'data-action="onlineExit"')}<div class="account">${btn(address() !== "" ? shortAddress(address()) + " · Account" : "Connect wallet", "Account", arena === null || model.busy, true)}${address() !== "" ? `<small>${ready() ? "Ready to play" : "Needs approval"}</small>` : ""}</div></header>`;
+    return `<header class="masthead">${wordmarkHTML("./", 'data-action="onlineExit"')}<div class="account"><nav class="home-nav" aria-label="Explore the game"><a href="leaderboard.html"${model.draft !== null ? ' data-action="onlineLeaderboard"' : ""}>Leaderboard</a></nav>${btn(address() !== "" ? shortAddress(address()) + " · Account" : "Connect wallet", "Account", arena === null || model.busy, true)}${address() !== "" ? `<small>${ready() ? "Ready to play" : "Needs approval"}</small>` : ""}</div></header>`;
   }
   // needsYou says whether v waits on the player: a move, a finish, a forfeit to claim, or an
   // ending not yet watched.
@@ -674,6 +674,20 @@ export function createLobby<Draft extends Drafted = Drafted>({
   }
   async function dispatch(name: string, data: ActionData) {
     if (name === "Close") {
+      close();
+      return;
+    }
+    // Leaving the page drops the unsent plan, so the leaderboard opens in a new tab instead.
+    if (name === "Leaderboard") {
+      dialog(
+        "Your plan is not sent yet",
+        "<p>It is kept only on this page. Open the leaderboard in a new tab to keep it.</p>",
+        `${btn("Open in a new tab", "LeaderboardTab")}${btn("Stay here", "Close", false, true)}`,
+      );
+      return;
+    }
+    if (name === "LeaderboardTab") {
+      globalThis.open("leaderboard.html", "_blank", "noopener");
       close();
       return;
     }

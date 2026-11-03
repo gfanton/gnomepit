@@ -1,7 +1,8 @@
 // The leaderboard page. ?preview=1 shows illustrative standings, with ?state=empty,
-// loading or error. Otherwise it reads the build's network, overridden by ?rpc=, ?chain= and
+// loading, error or connect. Otherwise it reads the build's network, overridden by ?rpc=, ?chain= and
 // ?standings=, shows the board, then adds the viewer's own standing once the wallet names an
-// account; ?dev=alice or ?dev=bob names a dev account instead of Adena's.
+// account, or offers to connect a wallet that names none; ?dev=alice or ?dev=bob names a dev
+// account instead of Adena's.
 
 import { pageWallet } from "./arena-provider.ts";
 import { createChain } from "./chain.ts";
@@ -9,8 +10,7 @@ import { elementById } from "./dom.ts";
 import { type LeaderboardView, leaderboardHTML } from "./leaderboard.ts";
 import { networkFor, networkFrom } from "./network.ts";
 import * as signer from "./signer.ts";
-import { boardView, clanNamesOf, createStandings, withOwnStanding } from "./standings.ts";
-import { currentAccount } from "./wallet.ts";
+import { boardView, clanNamesOf, connectedStanding, createStandings, viewerStanding } from "./standings.ts";
 
 declare const GNOMEPIT_NETWORK: string;
 
@@ -41,6 +41,19 @@ if (params.get("preview") === "1") {
     (): LeaderboardView => ({ status: "error", preview: false }),
   );
   render(board);
-  const account = await currentAccount(await pageWallet(params.get("dev"), { signer, chain, chainId, built }));
-  render(await withOwnStanding(board, standings, account));
+  const wallet = await pageWallet(params.get("dev"), { signer, chain, chainId, built });
+  render(await viewerStanding(board, standings, wallet));
+  root.addEventListener("click", (event) => {
+    const button = event.target instanceof Element ? event.target.closest('[data-action="connect"]') : null;
+    if (!(button instanceof HTMLButtonElement)) return;
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    void connectedStanding(board, standings, wallet, chainId).then((view) => {
+      render(view);
+      // Focus stays on the card the wallet's answer redrew: its button again, or the card.
+      (
+        root.querySelector<HTMLElement>('[data-action="connect"]') ?? root.querySelector<HTMLElement>(".own-standing")
+      )?.focus();
+    });
+  });
 }

@@ -18,13 +18,21 @@ export type PlayerRow = {
   draws: number | null;
 };
 export type ClanRow = { rank: number; clan: string; rating: number; wins: number; losses: number; draws: number };
+// OwnStanding is the viewer's card: their row; the invitation, for a viewer with no wallet or
+// no rated match; an offer to connect a wallet that named no account, with its last refusal
+// or ""; or a standing that could not be read.
+export type OwnStanding =
+  | { kind: "player"; player: PlayerRow }
+  | { kind: "unranked" }
+  | { kind: "connect"; error: string }
+  | { kind: "unavailable" };
 export type LeaderboardView =
   | { status: "loading" | "error"; preview: boolean }
   | {
       status: "ready";
       preview: boolean;
       players: PlayerRow[];
-      ownPlayer: PlayerRow | null;
+      own: OwnStanding;
       clans: ClanRow[];
       updatedLabel: string;
     };
@@ -60,9 +68,28 @@ const record = (p: Counts): string =>
 const identity = (p: PlayerRow): string =>
   `<span class="player-identity ${clanClass(p.mainClan)}">${portrait(p.mainClan)}<span><strong>${name(p)}</strong><span class="player-clan">${esc(p.mainClan ?? "No main clan yet")}</span></span></span>`;
 
-function ownStanding(p: PlayerRow | null): string {
-  const rank = p !== null && p.rank !== null && p.rank > 0 ? `#${number(p.rank)}` : "Unranked";
-  return `<section class="own-standing" aria-labelledby="your-standing"><div class="own-standing__intro"><span class="eyebrow" id="your-standing">YOUR STANDING</span>${p !== null ? identity(p) : "<h2>Your story starts here.</h2><p>Your rank will appear after your first rated matches.</p>"}</div><dl class="own-standing__numbers"><div><dt>Rank</dt><dd>${rank}</dd></div><div><dt>Elo</dt><dd>${number(p?.elo ?? null)}</dd></div></dl><div class="own-standing__record"><span class="stat-label">MATCH RECORD</span>${record(p ?? { wins: null, losses: null, draws: null })}</div></section>`;
+function ownIntro(own: OwnStanding): string {
+  switch (own.kind) {
+    case "player":
+      return identity(own.player);
+    case "unranked":
+      return "<h2>Your story starts here.</h2><p>Your rank will appear after your first rated matches.</p>";
+    case "connect":
+      return `<h2>See where you stand.</h2>${own.error !== "" ? `<p role="alert">${esc(own.error)}</p>` : "<p>Connect your wallet to find your rank.</p>"}<button type="button" class="button button--secondary" data-action="connect">Connect wallet</button>`;
+    case "unavailable":
+      return '<h2>Your standing is out of reach.</h2><p>It couldn’t be loaded. Check your connection, then try again.</p><a class="button button--secondary" href="">Try again</a>';
+  }
+}
+
+function ownStanding(own: OwnStanding): string {
+  const p = own.kind === "player" ? own.player : null;
+  const rank =
+    p !== null && p.rank !== null && p.rank > 0
+      ? `#${number(p.rank)}`
+      : own.kind === "connect" || own.kind === "unavailable"
+        ? "—"
+        : "Unranked";
+  return `<section class="own-standing" aria-labelledby="your-standing" tabindex="-1"><div class="own-standing__intro"><span class="eyebrow" id="your-standing">YOUR STANDING</span>${ownIntro(own)}</div><dl class="own-standing__numbers"><div><dt>Rank</dt><dd>${rank}</dd></div><div><dt>Elo</dt><dd>${number(p?.elo ?? null)}</dd></div></dl><div class="own-standing__record"><span class="stat-label">MATCH RECORD</span>${record(p ?? { wins: null, losses: null, draws: null })}</div></section>`;
 }
 
 function rankingRows(players: PlayerRow[], ownId: string | undefined): string {
@@ -92,7 +119,7 @@ function rankings(view: LeaderboardView): string {
       return '<div class="empty-panel" role="status"><h3>The records are out of reach.</h3><p>Standings couldn’t be loaded. Check your connection, then try again.</p><a class="button" href="">Try again</a></div>';
     case "ready":
       return view.players.length > 0
-        ? `<table class="ranking-table"><caption class="sr-only">Player leaderboard ranked by Elo, with main clan and win, loss and draw counts</caption><thead><tr><th scope="col">Rank</th><th scope="col">Player</th><th scope="col">Main clan</th><th scope="col">Elo</th><th scope="col"><abbr title="Wins">W</abbr></th><th scope="col"><abbr title="Losses">L</abbr></th><th scope="col"><abbr title="Draws">D</abbr></th></tr></thead><tbody>${rankingRows(view.players, view.ownPlayer?.id)}</tbody></table>`
+        ? `<table class="ranking-table"><caption class="sr-only">Player leaderboard ranked by Elo, with main clan and win, loss and draw counts</caption><thead><tr><th scope="col">Rank</th><th scope="col">Player</th><th scope="col">Main clan</th><th scope="col">Elo</th><th scope="col"><abbr title="Wins">W</abbr></th><th scope="col"><abbr title="Losses">L</abbr></th><th scope="col"><abbr title="Draws">D</abbr></th></tr></thead><tbody>${rankingRows(view.players, view.own.kind === "player" ? view.own.player.id : undefined)}</tbody></table>`
         : '<div class="empty-panel"><span class="empty-mark" aria-hidden="true">Ⅰ</span><h3>A place waiting to be earned.</h3><p>No player standings are available yet. Rated match results will shape the hall.</p><a class="button button--secondary" href="index.html">Find your next duel</a></div>';
   }
 }
@@ -100,5 +127,5 @@ function rankings(view: LeaderboardView): string {
 export function leaderboardHTML(view: LeaderboardView): string {
   const ready = view.status === "ready" ? view : null;
   const updated = ready !== null && ready.updatedLabel !== "" ? `<span>${esc(ready.updatedLabel)}</span>` : "";
-  return `<header class="masthead">${wordmarkHTML("index.html")}<nav class="home-nav" aria-label="Main navigation"><a href="index.html">Back to the hall</a><a href="leaderboard.html" aria-current="page">Leaderboard</a></nav></header>${view.preview ? '<p class="preview-notice">DESIGN PREVIEW · Illustrative players and scores. These are not live standings.</p>' : ""}<div class="standings-hero"><div><h1>The Hall of Rivals</h1><p>Every duel leaves a mark. See who holds their ground.</p></div><span class="ranking-seal" aria-hidden="true">GP<span>RANKED DUELS</span></span></div>${ownStanding(ready?.ownPlayer ?? null)}<div class="standings-layout"><section class="player-standings" aria-labelledby="players-title"><div class="standings-section-title"><div><h2 id="players-title">Player rankings</h2></div><span class="rating-label">RANKED BY ELO</span></div>${rankings(view)}<p class="rankings-note">Elo measures your standing. Your main clan appears beside your name.${updated}</p></section>${clanStandings(ready?.clans ?? [])}</div><footer class="standings-footer"><span>Forged below. Earned at the table.</span><a href="index.html">Back to the hall →</a></footer>`;
+  return `<header class="masthead">${wordmarkHTML("index.html")}<nav class="home-nav" aria-label="Main navigation"><a href="index.html">Back to the hall</a><a href="leaderboard.html" aria-current="page">Leaderboard</a></nav></header>${view.preview ? '<p class="preview-notice">DESIGN PREVIEW · Illustrative players and scores. These are not live standings.</p>' : ""}<div class="standings-hero"><div><h1>The Hall of Rivals</h1><p>Every duel leaves a mark. See who holds their ground.</p></div><span class="ranking-seal" aria-hidden="true">GP<span>RANKED DUELS</span></span></div>${ownStanding(ready?.own ?? { kind: "unranked" })}<div class="standings-layout"><section class="player-standings" aria-labelledby="players-title"><div class="standings-section-title"><div><h2 id="players-title">Player rankings</h2></div><span class="rating-label">RANKED BY ELO</span></div>${rankings(view)}<p class="rankings-note">Elo measures your standing. Your main clan appears beside your name.${updated}</p></section>${clanStandings(ready?.clans ?? [])}</div><footer class="standings-footer"><span>Forged below. Earned at the table.</span><a href="index.html">Back to the hall →</a></footer>`;
 }

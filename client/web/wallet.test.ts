@@ -28,6 +28,7 @@ import {
   sealOf,
   sessionBudget,
   sessionMessage,
+  shareAccount,
   sessionReserve,
   waitForAdena,
   type LockedMatch,
@@ -478,6 +479,25 @@ test("connecting without a wallet, or when the player refuses, fails with its re
     connect(refused, "dev"),
     (err) => err instanceof WalletError && err.type === "refused" && err.reason === "User rejected",
   );
+});
+
+test("sharing the account connects the site on whatever network Adena is on", async () => {
+  const anywhere = adena({
+    GetNetwork: async () => {
+      throw new Error("sharing the account reads no network");
+    },
+  });
+  assert.deepEqual(await shareAccount(anywhere, "dev"), { address: "g1player" });
+  const already = adena({ AddEstablish: async () => ({ status: "failure", type: "ALREADY_CONNECTED" }) });
+  assert.deepEqual(await shareAccount(already, "dev"), { address: "g1player" });
+  const locked = adena({
+    AddEstablish: async () => ({ status: "failure", type: "WALLET_LOCKED", message: "The wallet is locked" }),
+  });
+  await assert.rejects(
+    shareAccount(locked, "dev"),
+    (err) => err instanceof WalletError && err.reason === "The wallet is locked",
+  );
+  await assert.rejects(shareAccount(undefined, "dev"), failure("noWallet"));
 });
 
 // Adena checks the node of the network it is on before it connects a site.

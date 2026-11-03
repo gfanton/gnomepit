@@ -8,6 +8,7 @@ import type { Chain } from "./chain.ts";
 import { createReader } from "./gnovalue.ts";
 import { type Address, address } from "./ids.ts";
 import type { LeaderboardView, PlayerRow } from "./leaderboard.ts";
+import { type Wallet, currentAccount, shareAccount } from "./wallet.ts";
 
 export const pageSize = 50;
 
@@ -110,7 +111,7 @@ export async function boardView(standings: Standings, clanNames: readonly string
       status: "ready",
       preview: false,
       players: players.map(playerRow),
-      ownPlayer: null,
+      own: { kind: "unranked" },
       clans: withMissingClans(clans, clanNames).map((c) => ({
         rank: c.Rank,
         clan: c.Clan,
@@ -126,8 +127,8 @@ export async function boardView(standings: Standings, clanNames: readonly string
   }
 }
 
-// withOwnStanding adds account's standing to a ready view when the account is ranked. It
-// returns view unchanged otherwise, a failed read included: the board stands without it.
+// withOwnStanding adds account's standing to a ready view when the account is ranked, and
+// says so when the read fails. It returns view unchanged for an unranked account or none.
 export async function withOwnStanding(
   view: LeaderboardView,
   standings: Standings,
@@ -136,8 +137,42 @@ export async function withOwnStanding(
   if (view.status !== "ready" || account === null) return view;
   try {
     const own = await standings.standing(account);
-    return own.Rank === 0 ? view : { ...view, ownPlayer: playerRow(own) };
+    return own.Rank === 0 ? view : { ...view, own: { kind: "player", player: playerRow(own) } };
   } catch {
-    return view;
+    return { ...view, own: { kind: "unavailable" } };
+  }
+}
+
+// offerConnect asks a ready view's viewer to connect the wallet that named no account, with
+// error the wallet's last refusal or "".
+export function offerConnect(view: LeaderboardView, error: string): LeaderboardView {
+  return view.status === "ready" ? { ...view, own: { kind: "connect", error } } : view;
+}
+
+// viewerStanding adds to board the standing of the account wallet already shares, or offers
+// to connect a wallet that shares none. Without a wallet, board stands as it is.
+export async function viewerStanding(
+  board: LeaderboardView,
+  standings: Standings,
+  wallet: Pick<Wallet, "GetAccount"> | undefined,
+): Promise<LeaderboardView> {
+  const account = await currentAccount(wallet);
+  if (account === null) return wallet === undefined ? board : offerConnect(board, "");
+  return withOwnStanding(board, standings, account);
+}
+
+// connectedStanding asks wallet to connect the page and adds its account's standing to board,
+// or offers to connect again with the wallet's reason for refusing.
+export async function connectedStanding(
+  board: LeaderboardView,
+  standings: Standings,
+  wallet: Pick<Wallet, "AddEstablish" | "GetAccount"> | undefined,
+  chainId: string,
+): Promise<LeaderboardView> {
+  try {
+    const { address } = await shareAccount(wallet, chainId);
+    return await withOwnStanding(board, standings, address);
+  } catch (err) {
+    return offerConnect(board, err instanceof Error ? err.message : "The wallet did not connect.");
   }
 }

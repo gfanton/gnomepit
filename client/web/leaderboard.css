@@ -106,6 +106,9 @@
   margin: 8px 0 0;
   font: var(--gh-type-caption);
 }
+.own-standing__intro .button {
+  margin-top: 14px;
+}
 .own-standing__numbers {
   display: flex;
   gap: 36px;

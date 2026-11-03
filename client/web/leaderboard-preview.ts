@@ -1,7 +1,7 @@
 // Illustrative standings for reviewing the screen's design, loaded only with ?preview=1.
 // No rating is computed here, and none of it stands in for live standings.
 
-import type { ClanRow, LeaderboardView, PlayerRow } from "./leaderboard.ts";
+import type { ClanRow, LeaderboardView, OwnStanding, PlayerRow } from "./leaderboard.ts";
 
 const players: PlayerRow[] = (
   [
@@ -34,16 +34,19 @@ const clans: ClanRow[] = [
   { rank: 3, clan: "Pickers", rating: 1594, wins: 264, losses: 278, draws: 31 },
 ];
 
-// previewView is the view for ?state=: "empty", "loading", "error", or the full board.
+const own = (player: PlayerRow | undefined): OwnStanding =>
+  player !== undefined ? { kind: "player", player } : { kind: "unranked" };
+
+// previewView is the view for ?state=: "empty", "loading", "error", "connect", or the full board.
 export function previewView(state: string | null): LeaderboardView {
   if (state === "loading" || state === "error") return { status: state, preview: true };
   if (state === "empty")
-    return { status: "ready", preview: true, players: [], ownPlayer: null, clans: [], updatedLabel: "" };
+    return { status: "ready", preview: true, players: [], own: { kind: "unranked" }, clans: [], updatedLabel: "" };
   return {
     status: "ready",
     preview: true,
     players,
-    ownPlayer: players[4] ?? null,
+    own: state === "connect" ? { kind: "connect", error: "" } : own(players[4]),
     clans,
     updatedLabel: "Updated just now",
   };

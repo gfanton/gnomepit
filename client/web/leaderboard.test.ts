@@ -21,7 +21,7 @@ const ready = (parts: Partial<Extract<LeaderboardView, { status: "ready" }>>): L
   status: "ready",
   preview: false,
   players: [],
-  ownPlayer: null,
+  own: { kind: "unranked" },
   clans: [],
   updatedLabel: "",
   ...parts,
@@ -49,12 +49,48 @@ test("names and clans are escaped", () => {
 });
 
 test("the own row is marked, and an unranked own player reads Unranked", () => {
-  assert.match(leaderboardHTML(ready({ players: [row("a", 1)], ownPlayer: row("a", 1) })), /class="is-you"/);
-  assert.match(leaderboardHTML(ready({ ownPlayer: row("z", null) })), /Unranked/);
+  assert.match(
+    leaderboardHTML(ready({ players: [row("a", 1)], own: { kind: "player", player: row("a", 1) } })),
+    /class="is-you"/,
+  );
+  assert.match(leaderboardHTML(ready({ own: { kind: "player", player: row("z", null) } })), /Unranked/);
+});
+
+test("a viewer whose wallet named no account is asked to connect, not called unranked", () => {
+  const html = leaderboardHTML(ready({ own: { kind: "connect", error: "" } }));
+  assert.match(
+    html,
+    /<button type="button" class="button button--secondary" data-action="connect">Connect wallet<\/button>/,
+  );
+  assert.doesNotMatch(html, /Unranked|after your first rated matches/);
+  assert.match(
+    leaderboardHTML(ready({})),
+    /after your first rated matches/,
+    "a viewer with no wallet is invited to play",
+  );
+});
+
+test("a refused connection says why in an alert, escaped", () => {
+  const html = leaderboardHTML(ready({ own: { kind: "connect", error: "Unlock <Adena>" } }));
+  assert.match(html, /<p role="alert">Unlock &lt;Adena><\/p>/);
+  assert.doesNotMatch(html, /<Adena>/);
+});
+
+test("a standing that could not be read says so, and calls no one unranked", () => {
+  const html = leaderboardHTML(ready({ own: { kind: "unavailable" } }));
+  assert.match(html, /Your standing is out of reach\./);
+  assert.doesNotMatch(html, /Unranked|after your first rated matches/);
+});
+
+test("the own standing can take focus after the wallet answers", () => {
+  assert.match(
+    leaderboardHTML(ready({})),
+    /<section class="own-standing" aria-labelledby="your-standing" tabindex="-1">/,
+  );
 });
 
 test("null numbers read as a dash and zero as zero", () => {
-  const html = leaderboardHTML(ready({ ownPlayer: { ...row("z", null), elo: null, wins: 0 } }));
+  const html = leaderboardHTML(ready({ own: { kind: "player", player: { ...row("z", null), elo: null, wins: 0 } } }));
   assert.match(html, /<dd>—<\/dd>/);
   assert.match(html, /<b>0<\/b>/);
 });
@@ -89,5 +125,9 @@ test("the preview's states", () => {
   const empty = previewView("empty");
   assert.ok(empty.status === "ready" && empty.players.length === 0 && empty.clans.length === 0);
   const full = previewView(null);
-  assert.ok(full.status === "ready" && full.players.length === 10 && full.ownPlayer?.id === full.players[4]?.id);
+  assert.ok(full.status === "ready" && full.players.length === 10);
+  assert.ok(full.own.kind === "player" && full.own.player.id === full.players[4]?.id);
+  const connect = previewView("connect");
+  assert.ok(connect.status === "ready" && connect.players.length === 10);
+  assert.deepEqual(connect.own, { kind: "connect", error: "" });
 });
