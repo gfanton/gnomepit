@@ -662,6 +662,16 @@ test("with nothing waiting on the player, Post a challenge is the board's brass 
   assert.deepEqual(brass(shown()), ["Post a challenge"]);
 });
 
+test("the board links to the leaderboard", async (t) => {
+  stubPage(t);
+  const { lobby, shown } = lobbyOf(followedArena(), alice);
+  await lobby.enter();
+  assert.match(
+    shown(),
+    /<nav class="home-nav" aria-label="Explore the game"><a href="leaderboard.html">Leaderboard<\/a><\/nav>/,
+  );
+});
+
 test("an unsent move waits in its match's row, not in a notice of its own", async (t) => {
   stubPage(t);
   const arena = followedArena();

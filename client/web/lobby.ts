@@ -541,7 +541,7 @@ export function createLobby<Draft extends Drafted = Drafted>({
             : "";
   }
   function header() {
-    return `<header class="masthead">${wordmarkHTML("./", 'data-action="onlineExit"')}<div class="account">${btn(address() !== "" ? shortAddress(address()) + " · Account" : "Connect wallet", "Account", arena === null || model.busy, true)}${address() !== "" ? `<small>${ready() ? "Ready to play" : "Needs approval"}</small>` : ""}</div></header>`;
+    return `<header class="masthead">${wordmarkHTML("./", 'data-action="onlineExit"')}<div class="account"><nav class="home-nav" aria-label="Explore the game"><a href="leaderboard.html">Leaderboard</a></nav>${btn(address() !== "" ? shortAddress(address()) + " · Account" : "Connect wallet", "Account", arena === null || model.busy, true)}${address() !== "" ? `<small>${ready() ? "Ready to play" : "Needs approval"}</small>` : ""}</div></header>`;
   }
   // needsYou says whether v waits on the player: a move, a finish, a forfeit to claim, or an
   // ending not yet watched.
