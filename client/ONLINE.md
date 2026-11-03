@@ -6,7 +6,7 @@ Online matches run through the arena realm, `r/arena`, on a gno chain. The page 
 
 Every command below runs in the flake's dev shell: `direnv allow` once, or `nix develop`. It provides Go, TinyGo, Node, pnpm, jq, gno, gnokey and gnodev built from gno's `chain/onyx` tag, and gnotifd built from the gnotif revision the flake pins.
 
-1. `make dev` starts gnodev with the engine, the gnotif registry and its trigger package, on the chain `gnomepit-dev`, then deploys the arena in a transaction from gnodev's test1 account. tx-indexer files genesis transactions at height 0, where gnotifd never reads, so the arena's triggers have to land in a block. The RPC listens on `127.0.0.1:36657` and gnoweb on `127.0.0.1:8890`. It copies the registry from the gnotif revision the flake pins, or from the checkout `GNOTIF_DIR` names. It funds four dev accounts, alice, bob, carol and dave, with 10,000 GNOT each.
+1. `make dev` starts gnodev with the engine, the gnotif registry and its trigger package, on the chain `gnomepit-dev`, then deploys the standings realm and the arena, each in a transaction from gnodev's test1 account, which then owns both. tx-indexer files genesis transactions at height 0, where gnotifd never reads, so the arena's triggers have to land in a block. The RPC listens on `127.0.0.1:36657` and gnoweb on `127.0.0.1:8890`. It copies the registry from the gnotif revision the flake pins, or from the checkout `GNOTIF_DIR` names. It funds four dev accounts, alice, bob, carol and dave, with 10,000 GNOT each.
 2. `make indexer` runs tx-indexer v1.3.0 on that chain, answering on `127.0.0.1:8546`. gnotifd reads the chain through it.
 3. `make gnotif` runs gnotifd on `127.0.0.1:8547`, reading the chain through `make indexer`. The page learns of the other player's moves and of the board's changes from it. It makes new VAPID keys and an empty database in `.gnotif/` each time.
 4. `make serve` builds `engine.wasm` with TinyGo and bundles the pages with esbuild into `dist/`, then serves `dist/` on `http://127.0.0.1:8080/`. `GNOMEPIT_NETWORK` picks the network the build targets: `local` by default, `onyx` for the arena on onyx, or `offline` for a page with no online play. `make e2e` and `make test` build the engine too.
@@ -107,11 +107,30 @@ const arena = createArena({ chain, wallet, engine, signer, realm, chainId, origi
 
 An action is `accept`, `move`, `finish`, `claimForfeit`, `wait` or `done`. A failed call throws an `ArenaError` whose `type` is one of `noWallet`, `wrongNetwork`, `refused`, `unauthorized`, `wrongPhase`, `sealMismatch`, `illegalPlan`, `deadlinePassed`, `sessionExpired`, `insufficientFunds`, `outOfStep`, `network` or `failed`, with a readable `reason`. `outOfStep` means the page's card file differs from the deployed engine.
 
+## The standings realm
+
+The standings realm keeps ratings, records, the ladder, clan ratings and a log of every rated result, whatever arena version played the match. On `make dev` it is `gno.land/r/gfanton/gnomepit/standings/v0`. The leaderboard page reads it with `createStandings({ chain, realm })` from `standings.ts`. `realm` is the network's `standings` path, and `?standings=` overrides it for one visit. Its calls:
+
+| Call | Returns or does |
+|---|---|
+| `Leaderboard(offset, limit)`, `StandingOf(player)`, `RatedPlayers()` | The ladder a page at a time, highest rating first; one player's standing; the number of rated players |
+| `ClanStandings()` | Each clan with a rated cross-clan match, highest rating first. The page adds every other clan of `cards.json` at 1,000 and 0-0-0. |
+| `Results(offset, limit)`, `ResultCount()` | The log of rated results, oldest first, each naming the arena that reported it |
+| `IsWriter(pkgpath)`, `Writers()`, `Owner()` | Which arenas may report results, and the address that manages that list |
+| `Record(...)` | Rates and logs a match that ended. Only a realm on the writer list may call it. A clan name past the 255 the realm numbers counts for no clan. |
+| `AddWriter(pkgpath)`, `RemoveWriter(pkgpath)`, `TransferOwnership(address)` | Owner only, signed with the owner's own key: let an arena report results, stop it, or hand the standings realm to another owner. A path keeps its writer number when it is removed and added back. |
+
+## Closing an arena
+
+The arena has an owner, the address that deployed it. `Retire()` closes it to new challenges and acceptances for good, while its running matches play out and are rated. `TransferOwnership(address)` hands the arena on. Both are the owner's alone and refuse a transaction a session key signed, so a page session on the owner's wallet cannot use them. `Retired()` reports whether the arena is retired, and `Owner()` names its owner.
+
+A new match fails with `arena retired` once the arena is retired. It fails with `arena not open` while the standings realm does not list the arena as a writer. An arena off the writer list still ends its running matches, unrated.
+
 ## Storage per move
 
 `scripts/measure-storage.ts` has alice and bob play the realm test's worked match twice on a fresh `make dev`, built from gno `5cdbc25` (the `chain/onyx` tag), with gas at 1 ugnot per 1,000 and storage at 100 ugnot per byte, then a third match that bob resigns after round 1, then carol and dave play the worked match. Each player signs through a session for the match, as the page does.
 
-- **Storage** is the bytes the move adds to the arena's storage, negative when it frees more than it adds.
+- **Storage** is the bytes the move adds to the storage of the arena and the standings realm together, negative when it frees more than it adds.
 - **Gas used** is the gas the transaction used.
 - **Fee** is what the page pays for it: the gas used, plus a fifth and 100,000, at the chain's price.
 - **Deposit** is the ugnot the move locks for the storage it adds. A move that frees storage locks nothing and gets 100 ugnot back per byte.
@@ -120,58 +139,58 @@ The first match is the chain's first, so it carries the one-time costs:
 
 | Move | Storage | Gas used | Fee | Deposit |
 |---|---|---|---|---|
-| Challenge | 2,450 B | 15,843,919 | 19,113 ugnot | 245,000 ugnot |
-| Accept | 2,158 B | 26,921,336 | 32,406 ugnot | 215,800 ugnot |
-| Reveal, round 1 | -71 B | 48,981,438 | 58,878 ugnot | 0 ugnot |
-| Play, round 2 | 0 B | 20,829,608 | 25,096 ugnot | 0 ugnot |
-| Reveal, round 2 | 0 B | 35,586,567 | 42,804 ugnot | 0 ugnot |
-| Play, round 3 | 0 B | 20,919,577 | 25,204 ugnot | 0 ugnot |
-| Reveal, round 3 | 3,034 B | 37,721,896 | 45,367 ugnot | 303,400 ugnot |
-| Total | 7,571 B | 206,804,341 | 248,868 ugnot | 764,200 ugnot |
+| Challenge | 2,445 B | 17,501,639 | 21,102 ugnot | 244,500 ugnot |
+| Accept | 2,153 B | 28,461,182 | 34,254 ugnot | 215,300 ugnot |
+| Reveal, round 1 | -69 B | 48,446,281 | 58,236 ugnot | 0 ugnot |
+| Play, round 2 | 1 B | 20,626,652 | 24,852 ugnot | 100 ugnot |
+| Reveal, round 2 | 0 B | 35,055,120 | 42,167 ugnot | 0 ugnot |
+| Play, round 3 | 0 B | 20,409,451 | 24,592 ugnot | 0 ugnot |
+| Reveal, round 3 | 8,659 B | 40,184,001 | 48,321 ugnot | 875,900 ugnot |
+| Total | 13,189 B | 210,684,326 | 253,524 ugnot | 1,335,800 ugnot |
 
 The second match is between players who already have a record and a rating, inside the chunk the first match opened:
 
 | Move | Storage | Gas used | Fee | Deposit |
 |---|---|---|---|---|
-| Challenge | 320 B | 17,287,178 | 20,845 ugnot | 32,000 ugnot |
-| Accept | 81 B | 27,959,487 | 33,652 ugnot | 8,100 ugnot |
-| Reveal, round 1 | -71 B | 49,329,611 | 59,296 ugnot | 0 ugnot |
-| Play, round 2 | 0 B | 21,183,721 | 25,521 ugnot | 0 ugnot |
-| Reveal, round 2 | 0 B | 35,927,057 | 43,213 ugnot | 0 ugnot |
-| Play, round 3 | 0 B | 21,269,482 | 25,624 ugnot | 0 ugnot |
-| Reveal, round 3 | -104 B | 39,512,611 | 47,516 ugnot | 0 ugnot |
-| Total | 226 B | 212,469,147 | 255,667 ugnot | 40,100 ugnot |
+| Challenge | 319 B | 18,582,571 | 22,400 ugnot | 31,900 ugnot |
+| Accept | 82 B | 29,142,398 | 35,071 ugnot | 8,200 ugnot |
+| Reveal, round 1 | -71 B | 48,651,440 | 58,482 ugnot | 0 ugnot |
+| Play, round 2 | 0 B | 20,512,602 | 24,716 ugnot | 0 ugnot |
+| Reveal, round 2 | 0 B | 35,221,699 | 42,367 ugnot | 0 ugnot |
+| Play, round 3 | 0 B | 20,592,051 | 24,811 ugnot | 0 ugnot |
+| Reveal, round 3 | 8 B | 42,282,595 | 50,840 ugnot | 10,600 ugnot |
+| Total | 338 B | 214,985,356 | 258,687 ugnot | 50,700 ugnot |
 
 The third match ends with bob's resignation after round 1:
 
 | Move | Storage | Gas used | Fee | Deposit |
 |---|---|---|---|---|
-| Challenge | 269 B | 17,458,191 | 21,050 ugnot | 26,900 ugnot |
-| Accept | 33 B | 28,166,821 | 33,901 ugnot | 3,300 ugnot |
-| Reveal, round 1 | -71 B | 49,430,602 | 59,417 ugnot | 0 ugnot |
-| Resign | -104 B | 19,246,023 | 23,196 ugnot | 0 ugnot |
-| Total | 127 B | 114,301,637 | 137,564 ugnot | 30,200 ugnot |
+| Challenge | 262 B | 18,734,285 | 22,582 ugnot | 26,200 ugnot |
+| Accept | 32 B | 29,339,043 | 35,307 ugnot | 3,200 ugnot |
+| Reveal, round 1 | -71 B | 48,740,861 | 58,590 ugnot | 0 ugnot |
+| Resign | 36 B | 21,935,874 | 26,424 ugnot | 13,400 ugnot |
+| Total | 259 B | 118,750,063 | 142,903 ugnot | 42,800 ugnot |
 
 The fourth match is carol's and dave's first, on a ladder that already holds alice and bob:
 
 | Move | Storage | Gas used | Fee | Deposit |
 |---|---|---|---|---|
-| Challenge | 2,391 B | 17,010,608 | 20,513 ugnot | 239,100 ugnot |
-| Accept | 2,155 B | 27,815,497 | 33,479 ugnot | 215,500 ugnot |
-| Reveal, round 1 | -71 B | 49,394,508 | 59,374 ugnot | 0 ugnot |
-| Play, round 2 | 0 B | 21,273,182 | 25,628 ugnot | 0 ugnot |
-| Reveal, round 2 | 0 B | 35,999,637 | 43,300 ugnot | 0 ugnot |
-| Play, round 3 | 0 B | 21,356,839 | 25,729 ugnot | 0 ugnot |
-| Reveal, round 3 | 3,980 B | 40,070,899 | 48,186 ugnot | 398,000 ugnot |
-| Total | 8,455 B | 212,921,170 | 256,209 ugnot | 852,600 ugnot |
+| Challenge | 2,384 B | 18,734,550 | 22,582 ugnot | 238,400 ugnot |
+| Accept | 2,154 B | 29,359,467 | 35,332 ugnot | 215,400 ugnot |
+| Reveal, round 1 | -71 B | 48,898,008 | 58,778 ugnot | 0 ugnot |
+| Play, round 2 | 0 B | 20,767,304 | 25,021 ugnot | 0 ugnot |
+| Reveal, round 2 | 0 B | 35,518,300 | 42,722 ugnot | 0 ugnot |
+| Play, round 3 | 0 B | 20,844,649 | 25,114 ugnot | 0 ugnot |
+| Reveal, round 3 | 8,212 B | 42,599,480 | 51,220 ugnot | 831,000 ugnot |
+| Total | 12,679 B | 216,721,758 | 260,769 ugnot | 1,284,800 ugnot |
 
 From one run to the next, a move's gas used differs by up to about 50,000, while its storage stays the same.
 
-A finished match between known players keeps 226 bytes locked, the players' two 48-byte session locks included. Each record keeps its lock until that session expires, and the player's next session-signed call then drops it. The match's moves lock 40,100 ugnot, and its reveals give back 17,500 as they drop the deck seal, shrink the box and finally clear the seal and the box.
+A finished match between known players keeps 338 bytes locked. Its last reveal adds 106 of them to the standings realm, which appends the result's 88-byte entry to its log, and frees 98 in the arena. The third match's resignation adds 134 to the standings realm. The arena keeps the other 232 bytes, the players' two 48-byte session locks included. Each record keeps its lock until that session expires, and the player's next session-signed call then drops it. The match's moves lock 50,700 ugnot, and its reveals give back 16,900 as they drop the deck seal, shrink the box and finally clear the seal and the box.
 
-The one-time costs, the first match minus the second, are 7,345 bytes and a 724,100 ugnot deposit. The challenge carries 2,130 bytes of them: alice's new player record and the arena's first chunk. The acceptance carries 2,077 bytes: bob's new player record. The last reveal carries 3,138 bytes: the move that ends both players' first rated match stores their standings, their ladder entries and the clan records.
+The one-time costs, the first match minus the second, are 12,851 bytes and a 1,285,100 ugnot deposit. The challenge carries 2,126 bytes of them: alice's new player record and the arena's first chunk. The acceptance carries 2,071 bytes: bob's new player record. The last reveal carries 8,651 bytes: the move that ends both players' first rated match stores their standings, their ladder entries and the clan records in the standings realm, and starts its result log.
 
-The ladder grows by more once it holds players. It is a tree whose players sit at the leaves, so the first two players take three nodes and every later player two. The fourth match's last reveal, the first rated match of two new players on that ladder, deposits 398,000 ugnot against the first match's 303,400, and it is the costliest ending measured. A Resign or a ClaimForfeit makes the same writes when it ends a first rated match; gnodev cannot pass a 24-hour deadline, so the script measures no ClaimForfeit.
+The fourth match's last reveal, the first rated match of two new players on a ladder that already holds players, deposits 831,000 ugnot. The log keeps 64 results to a chunk. A result that starts a new chunk adds 2,001 bytes more to the standings realm, 200,100 ugnot. The costliest ending is the first rated match of two new players whose result starts a chunk, 1,031,100 ugnot. A Resign or a ClaimForfeit makes the same writes when it ends a first rated match; gnodev cannot pass a 24-hour deadline, so the script measures no ClaimForfeit.
 
 ## Session budgets
 
@@ -180,7 +199,7 @@ Each match gets its own session, and its spend limit is the budget of the player
 - **The deposit**, in ugnot: 100 per byte the move adds, whatever the gas price. The opening's deposit holds the 48-byte session lock its call adds.
 - **The fee**, for the gas the page asks for: the gas used, plus a fifth and 100,000 (`gasWantedFor` in `chain.ts`), at the chain's gas price.
 
-`wallet.ts` keeps each measured move's gas used and deposit. Each side's moves end with the move that ends a first rated match, with the fourth match's 398,000 ugnot deposit. A knockout lets any Reveal end a match, so the challenger's ending takes the costliest Reveal's gas, the third match's round 1. The acceptor ends a match only by resigning or claiming a forfeit, so theirs takes the third match's Resign. When the page creates a session, it reads the gas price and sets the budget of the player's side:
+`wallet.ts` keeps each measured move's gas used and deposit. Each side's moves end with the move that ends a first rated match, with the costliest ending's 1,031,100 ugnot deposit. A knockout lets any Reveal end a match, so the challenger's ending takes the costliest Reveal's gas, the fourth match's round 1. The acceptor ends a match only by resigning or claiming a forfeit, so theirs takes the third match's Resign. When the page creates a session, it reads the gas price and sets the budget of the player's side:
 
 - the cost of each of the side's moves;
 - its costliest move once more, for one failed attempt.
@@ -189,29 +208,42 @@ At gnodev's 1 ugnot per 1,000 gas, the budgets come to:
 
 | | Challenger | Acceptor |
 |---|---|---|
-| Opening move | Challenge: 19,113 + 245,000 = 264,113 | Accept: 32,406 + 215,800 = 248,206 |
-| Later moves | Reveals: 58,878 + 42,804 | Plays: 25,096 + 25,204 |
-| Ending | Reveal: 59,417 + 398,000 = 457,417 | Resign: 23,196 + 398,000 = 421,196 |
-| The side's moves | 823,212 | 719,702 |
-| The costliest move again | 457,417 | 421,196 |
-| Budget | 1,280,629 ugnot | 1,140,898 ugnot |
+| Opening move | Challenge: 21,102 + 244,500 = 265,602 | Accept: 34,254 + 215,300 = 249,554 |
+| Later moves | Reveals: 58,236 + 42,167 | Plays: 24,852 + 100 = 24,952, then 24,592 |
+| Ending | Reveal: 58,778 + 1,031,100 = 1,089,878 | Resign: 26,424 + 1,031,100 = 1,057,524 |
+| The side's moves | 1,455,883 | 1,356,622 |
+| The costliest move again | 1,089,878 | 1,057,524 |
+| Budget | 2,545,761 ugnot | 2,414,146 ugnot |
 
-At five times that gas price, the fees cost five times as much and the deposits stay: the budgets come to 2,239,141 and 1,657,279 ugnot.
+At five times that gas price, the fees cost five times as much and the deposits stay: the budgets come to 3,501,997 and 2,960,317 ugnot.
 
 A session with less left than the costliest move it may still pay counts as used up (`sessionReserve`). The page prices that move at the chain's gas price each time it reads the session. The chain refuses a move its session cannot pay before running it, and charges nothing, so the session's spending never shows the shortfall. Once a rising price leaves a session short, its match's `session` reads `expired` and the lobby offers a renewal. At the floor price:
-- **An unlocked session** may still pay an opening: 264,113 ugnot for the challenger and 248,206 for the acceptor.
-- **A session locked to a match** pays only its side's later moves and its ending. Their reserve is the costlier of the side's ending and its costliest later move in any measured match, plus a tenth, rounded up to the ugnot, since moves cost more as a chunk fills: 503,159 ugnot for the challenger, from the 457,417 ending, and 463,316 for the acceptor, from the 421,196 ending.
+- **An unlocked session** may still pay an opening: 265,602 ugnot for the challenger and 249,554 for the acceptor.
+- **A session locked to a match** pays only its side's later moves and its ending. Their reserve is the costlier of the side's ending and its costliest later move in any measured match, plus a tenth, rounded up to the ugnot, since moves cost more as a chunk fills: 1,198,866 ugnot for the challenger, from the 1,089,878 ending, and 1,163,277 for the acceptor, from the 1,057,524 ending.
 
 ## On onyx
 
 The `onyx` build plays on the arena at `gno.land/r/g188vafzutzvlfw6wt7u3s62xtuvm0epmu8ufmfz/gnomepit/arena`, deployed under a gnomcp test key with its engine at `gno.land/p/g188vafzutzvlfw6wt7u3s62xtuvm0epmu8ufmfz/gnomepit/engine`, and follows the chain through `https://gnotif.xyz/onyx`. CI builds the page for it when the repository variable `GNOMEPIT_NETWORK` is `onyx`. A player connects Adena on `onyx-1` and pays their sessions in onyx GNOT. The onyx build ignores `?dev=` and uses Adena: the dev accounts' keys ship in the page, and on a public chain anyone could play as them.
 
-`scripts/onyx-copy.sh <address> <dir>` writes the engine and the arena, tests included, for a deploy under that address's namespace: their package paths move to it, the arena imports gnotif's registry at `gno.land/r/nym-gfanton001/gnotif/v1`, and `pagePath` becomes `/gnomepit/`, the page's path on GitHub Pages, so a notification's click opens the page there. Onyx parks every deploy until its approver type-checks it, and a deploy that fails stays parked with no error, so lint and test the copy with the gno release the node's `/status` names, v1.6.0-rc.1 on 2026-10-26, against dependencies fetched from onyx (`gno mod download -remote-overrides gno.land=https://rpc.onyx.testnets.gno.land:443`). The flake's gno, the `chain/onyx` tag, is an older release.
+`scripts/onyx-copy.sh <namespace> <dir>` writes the engine, the standings realm and the arena, tests included, for a deploy under that namespace, a registered name such as `nym-gfanton001` or a `g1` address. Their package paths move to it, and so does the arena path the standings realm seeds as its first writer. The arena imports gnotif's registry at `gno.land/r/nym-gfanton001/gnotif/v1`. `pagePath` becomes `/gnomepit/`, the page's path on GitHub Pages, so a notification's click opens the page there.
 
-The approver charges the storage deposit to the deployer when it enables the package, up to the maximum deposit the deploy named. On gnodev the arena's deploy stores 127,627 bytes, 12.76 GNOT at 100 ugnot per byte, so a deploy capped at 10 GNOT, as gnomcp caps them before v0.12.3, never goes live.
+Onyx parks every deploy until its approver type-checks it, and a deploy that fails stays parked with no error, so lint and test the copy with the gno release the node's `/status` names, v1.7.0-rc.1 on 2026-11-03, against dependencies fetched from onyx (`gno mod download -remote-overrides gno.land=https://rpc.onyx.testnets.gno.land:443`). The flake's gno, the `chain/onyx` tag, is an older release.
 
-Three things in onyx's release decide whether the arena works there. Each held on 2026-10-26; check them again after an onyx upgrade:
-- **`runtime.GetSessionInfo` and session accounts.** The realm calls `GetSessionInfo` to lock each session to its match. Without it the lock has to go, and a session is held only to its per-match budget. The realm's tests pass on v1.6.0-rc.1.
+The standings realm goes up before the arena, which imports it: `go run moul.io/gnopm -C <dir> publish -print -rpc https://rpc.onyx.testnets.gno.land:443 -chainid onyx-1` prints the deploys in that order, engine, standings realm, arena. Without `-rpc` and `-chainid`, gnopm reads mainnet, the chain the `gno.land` paths name. The key that deploys each realm owns it, so deploy with the `nym-gfanton001` key and check `Owner()` on both realms. `Writers()` on the standings realm must list the arena once all three are live. The page's onyx config moves to the new paths only after that.
+
+A later arena version moves no data. To bring one up:
+
+1. Publish it. It takes no match until it is a writer.
+2. As the standings realm's owner, call `AddWriter` with its path, and check that `Writers()` lists it.
+3. As the old arena's owner, call `Retire` on it.
+4. Once every match on the old arena has ended or passed its move's 24-hour deadline, move the page's network config to the new arena.
+
+The page reads one arena. Once it moves, a match still running on the old arena plays out and is rated there, but only a link whose `?realm=` names the old arena reaches it.
+
+The approver charges the storage deposit to the deployer when it enables the package, up to the maximum deposit the deploy named. The standings realm's deploy stores 49,031 bytes on gnodev, 4.90 GNOT at 100 ugnot per byte. The arena's deploy stores 113,091 bytes, 11.31 GNOT; 17,347 of those bytes are in gnotif's registry for its triggers. The arena never goes live with a deploy capped at 10 GNOT, as gnomcp caps them before v0.12.3.
+
+Three things in onyx's release decide whether the arena works there. Each held on 2026-11-03, on v1.7.0-rc.1; check them again after an onyx upgrade:
+- **`runtime.GetSessionInfo` and session accounts.** The realm calls `GetSessionInfo` to lock each session to its match. Without it the lock has to go, and a session is held only to its per-match budget. The realms' tests pass on v1.7.0-rc.1.
 - **Restricted ugnot transfers.** On a chain that restricts them, freed storage deposits go to the storage fee collector (`gno.land/pkg/sdk/vm/keeper.go`) instead of the caller. A call that frees storage then gets nothing back: a reveal that drops a seal, a withdrawn challenge, or a challenge that clears expired ones. Onyx's `bank` parameter `restricted_denoms` is empty.
 - **The gas price and the storage price.** A budget prices gas at the gas price of the session's creation, so a price that keeps rising through a match makes its players renew. The deposits assume gnodev's storage price, the `vm` parameter `storage_price` of 100 ugnot per byte, which the page never reads. Onyx's `auth/gasprice` is 1 ugnot per 1,000 gas and its `storage_price` 100 ugnot per byte, the prices the budgets above were measured at.
 
@@ -219,5 +251,7 @@ Three things in onyx's release decide whether the arena works there. Each held o
 
 ## Tests
 
-- `make test` runs the realm's tests, builds the page, type-checks, lints and format-checks the TypeScript, then runs `go vet`, the Go tests and the TypeScript tests; the TypeScript tests run `engine.wasm`.
-- With `make dev`, `make indexer` and `make gnotif` running, `make e2e` plays its matches and checks each player's live feed. With `make dev` running, `make capture` records the query answers `gnovalue.ts`'s and `arena.ts`'s tests read, and `make record` records the RPC answers the other tests replay.
+- `make test` runs the realms' tests, builds the page, type-checks, lints and format-checks the TypeScript, then runs `go vet`, the Go tests and the TypeScript tests; the TypeScript tests run `engine.wasm`.
+- With `make dev`, `make indexer` and `make gnotif` running, `make e2e` plays its matches and checks each player's live feed. On the local chain it checks the standings realm's owner, writers and result log, and that an arena removed from the writers takes no new match.
+- With `make dev` running, `make capture` records the query answers `gnovalue.ts`'s and `arena.ts`'s tests read. It saves the standings a `make e2e` run left, so run it after one on a fresh `make dev`.
+- With `make dev` running, `make record` records the RPC answers the other tests replay. It expects a chain with nothing played on it: run it alone on another fresh `make dev`.

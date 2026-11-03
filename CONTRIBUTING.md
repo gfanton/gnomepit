@@ -17,7 +17,7 @@ Enter the shell with `nix develop`, or run `direnv allow` once if you use direnv
 
 Online play needs a local chain. Run each command in its own terminal, in this order:
 
-1. Run `make dev`, which starts a gnodev chain with the engine, funds four dev accounts and deploys the arena.
+1. Run `make dev`, which starts a gnodev chain with the engine, funds four dev accounts and deploys the standings realm and the arena.
 2. Run `make indexer`, which indexes the chain for the notification server.
 3. Run `make gnotif`, which serves live updates and push notifications to the page.
 4. If `make serve` is not already running, run it.
@@ -36,6 +36,7 @@ Each directory holds one part of the game.
 | Directory       | Holds                                                                           |
 | --------------- | ------------------------------------------------------------------------------- |
 | `p/engine`      | The duel rules, one source that compiles as Go and as Gno                       |
+| `r/standings`   | The realm that keeps ratings, records and rated results across arena versions   |
 | `r/arena`       | The realm that runs online matches                                              |
 | `cardfile`      | Loads a ruleset from the JSON card file                                         |
 | `cardtext`      | Prints a card's text from its effect data                                       |

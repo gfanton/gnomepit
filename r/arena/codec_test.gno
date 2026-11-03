@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"gno.land/p/gfanton/gnomepit/engine"
+	"gno.land/p/gfanton/gnomepit/engine/v0"
 	"gno.land/p/nt/uassert/v0"
 	"gno.land/p/nt/urequire/v0"
 )
@@ -235,15 +235,11 @@ func TestPlayerRecordRoundTrip(cur realm, t *testing.T) {
 		{session: bob, id: 7, expires: 1_790_000_000},
 		{session: carol, id: 9, expires: 1_790_086_400},
 	}
-	won := &standing{rating: 1016, wins: 1, lastClan: 1, perClan: []int{1, 0, 0}}
-	mixed := &standing{rating: 970, wins: 300, losses: 2, draws: 7, lastClan: 3, perClan: []int{3, 0, 306}}
 	for _, p := range []playerRecord{
 		{},
 		{ids: []int{1, 70000, 3}},
 		{locks: locks},
 		{ids: []int{4, 5, 6}, locks: locks},
-		{ids: []int{4}, standing: won},
-		{ids: []int{4, 5}, standing: mixed, locks: locks},
 	} {
 		s := encodePlayer(p)
 		got := decodePlayer(s)
@@ -255,15 +251,7 @@ func TestPlayerRecordRoundTrip(cur realm, t *testing.T) {
 		for i := range p.locks {
 			uassert.True(t, p.locks[i] == got.locks[i])
 		}
-		standingBytes := 0
-		if p.standing == nil {
-			uassert.True(t, got.standing == nil)
-		} else {
-			standingBytes = 9 + 2*len(p.standing.perClan)
-			urequire.True(t, got.standing != nil)
-			uassert.Equal(t, showStanding(*p.standing), showStanding(*got.standing))
-		}
-		uassert.Equal(t, 2+4*len(p.ids)+1+standingBytes+48*len(p.locks), len(s))
+		uassert.Equal(t, 2+4*len(p.ids)+48*len(p.locks), len(s))
 	}
 	got := decodePlayer("")
 	uassert.Equal(t, 0, len(got.ids)+len(got.locks))
@@ -284,79 +272,6 @@ func TestOpenListRoundTrip(cur realm, t *testing.T) {
 	})
 }
 
-// showStanding writes every field of s, for comparing two standings.
-func showStanding(s standing) string {
-	out := strconv.Itoa(s.rating) + " " + strconv.Itoa(s.wins) + "-" + strconv.Itoa(s.losses) + "-" +
-		strconv.Itoa(s.draws) + " last " + strconv.Itoa(s.lastClan) + " per"
-	for _, n := range s.perClan {
-		out += " " + strconv.Itoa(n)
-	}
-	return out
-}
-
-func TestDecodeStandingSkipsIDs(cur realm, t *testing.T) {
-	uassert.True(t, decodeStanding("") == nil)
-	ids := make([]int, 3000)
-	for i := range ids {
-		ids[i] = i + 1
-	}
-	locks := []sessionLock{{session: bob, id: 7, expires: 1_790_000_000}}
-	uassert.True(t, decodeStanding(encodePlayer(playerRecord{ids: ids, locks: locks})) == nil)
-	want := standing{rating: 1016, wins: 2999, losses: 1, lastClan: 2, perClan: []int{0, 3000, 0}}
-	got := decodeStanding(encodePlayer(playerRecord{ids: ids, standing: &want, locks: locks}))
-	urequire.True(t, got != nil)
-	uassert.Equal(t, showStanding(want), showStanding(*got))
-}
-
-func TestWithStandingKeepsIDsAndLocks(cur realm, t *testing.T) {
-	ids := make([]int, 3000)
-	for i := range ids {
-		ids[i] = i + 1
-	}
-	locks := []sessionLock{{session: bob, id: 7, expires: 1_790_000_000}}
-	won := &standing{rating: 1016, wins: 1, lastClan: 1, perClan: []int{1, 0, 0}}
-	lost := &standing{rating: 984, losses: 1, lastClan: 2, perClan: []int{0, 1}}
-	for _, p := range []playerRecord{{}, {ids: ids, locks: locks}, {ids: ids, standing: lost, locks: locks}} {
-		want := p
-		want.standing = won
-		uassert.True(t, encodePlayer(want) == withStanding(encodePlayer(p), won))
-	}
-	uassert.True(t, encodePlayer(playerRecord{standing: won}) == withStanding("", won))
-}
-
-func TestStandingForFewerClans(cur realm, t *testing.T) {
-	p := decodePlayer(encodePlayer(playerRecord{standing: &standing{rating: 990, losses: 1, lastClan: 2, perClan: []int{0, 1}}}))
-	urequire.True(t, p.standing != nil)
-	urequire.Equal(t, 2, len(p.standing.perClan))
-	uassert.Equal(t, 990, p.standing.rating)
-}
-
-func TestMalformedStanding(cur realm, t *testing.T) {
-	panicsWith(t, "malformed player", func() { decodePlayer("\x00\x00\x08" + strings.Repeat("\x00", 8)) })
-	panicsWith(t, "malformed player", func() { decodePlayer("\x00\x00\x0a" + strings.Repeat("\x00", 10)) })
-	panicsWith(t, "truncated record", func() { decodePlayer("\x00\x00\x0b" + strings.Repeat("\x00", 10)) })
-}
-
-func TestClanRecordsRoundTrip(cur realm, t *testing.T) {
-	c := []clanRecord{{1008, 3, 1, 0}, {992, 1, 3, 0}, {1000, 0, 0, 2}}
-	s := encodeClans(c)
-	uassert.Equal(t, 42, len(s))
-	got := decodeClans(s, 3)
-	urequire.Equal(t, 3, len(got))
-	for i := range c {
-		uassert.True(t, c[i] == got[i])
-	}
-	fresh := decodeClans("", 3)
-	urequire.Equal(t, 3, len(fresh))
-	uassert.True(t, fresh[2] == clanRecord{rating: startRating})
-	grown := decodeClans(encodeClans(c[:2]), 3)
-	uassert.True(t, grown[1] == c[1])
-	uassert.True(t, grown[2] == clanRecord{rating: startRating}, "a clan the records do not hold yet starts fresh")
-	panicsWith(t, "malformed clans", func() { decodeClans("abc", 3) })
-}
-
-func TestLadderKeyOrder(cur realm, t *testing.T) {
-	uassert.True(t, ladderKey(1016, bob) < ladderKey(1000, alice), "higher rating first")
-	uassert.Equal(t, alice < bob, ladderKey(1000, alice) < ladderKey(1000, bob), "address order within a rating")
-	uassert.Equal(t, 42, len(ladderKey(0, alice)))
+func TestMalformedPlayer(cur realm, t *testing.T) {
+	panicsWith(t, "malformed player", func() { decodePlayer("\x00\x00" + strings.Repeat("\x00", 10)) })
 }

@@ -11,7 +11,7 @@
         "Info": ""
       },
       "GasWanted": "100000000",
-      "GasUsed": "624381"
+      "GasUsed": "624442"
     },
     "deliver_tx": {
       "ResponseBase": {
@@ -19,19 +19,34 @@
         "Data": "KCIxIiBzdHJpbmcpCgo=",
         "Events": [
           {
+            "@type": "/tm.Event",
+            "type": "Board",
+            "attrs": [
+              {
+                "key": "match",
+                "value": "1"
+              },
+              {
+                "key": "text",
+                "value": "Pickers posted a challenge."
+              }
+            ],
+            "pkg_path": "gno.land/r/gfanton/gnomepit/arena/v0"
+          },
+          {
             "@type": "/tm.StorageDepositEvent",
-            "bytes_delta": "2305",
-            "fee_delta": "230500ugnot",
-            "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
+            "bytes_delta": "2297",
+            "fee_delta": "229700ugnot",
+            "pkg_path": "gno.land/r/gfanton/gnomepit/arena/v0"
           }
         ],
         "Log": "msg:0,success:true,log:,events:[]",
         "Info": ""
       },
       "GasWanted": "100000000",
-      "GasUsed": "14224009"
+      "GasUsed": "15738701"
     },
-    "hash": "GSxE4IYWxz3rVeTpoK1TTRQnncTr3/x6mWN5liOjN5o=",
-    "height": "3"
+    "hash": "ZuwGGT2kbkje7cOXuUhX4XWbqp55KmHFrb3DSWsNEUY=",
+    "height": "7"
   }
 }

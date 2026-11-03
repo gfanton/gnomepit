@@ -5,6 +5,8 @@ export type Network = {
   readonly chainId: string;
   readonly rpc: string;
   readonly realm: string;
+  // The realm that answers the leaderboard's standings queries.
+  readonly standings: string;
   // The gnotif server the page follows the chain and turns on push through; null polls the
   // node instead.
   readonly gnotif: string | null;
@@ -15,14 +17,17 @@ export const networks = {
   local: {
     chainId: "gnomepit-dev",
     rpc: "http://127.0.0.1:36657",
-    realm: "gno.land/r/gfanton/gnomepit/arena",
+    realm: "gno.land/r/gfanton/gnomepit/arena/v0",
+    standings: "gno.land/r/gfanton/gnomepit/standings/v0",
     gnotif: "http://127.0.0.1:8547",
   },
-  // The arena deployed from scripts/onyx-copy.sh under a gnomcp test key.
+  // The arena deployed from scripts/onyx-copy.sh under a gnomcp test key, which keeps its
+  // own standings.
   onyx: {
     chainId: "onyx-1",
     rpc: "https://rpc.onyx.testnets.gno.land",
     realm: "gno.land/r/g188vafzutzvlfw6wt7u3s62xtuvm0epmu8ufmfz/gnomepit/arena",
+    standings: "gno.land/r/g188vafzutzvlfw6wt7u3s62xtuvm0epmu8ufmfz/gnomepit/arena",
     gnotif: "https://gnotif.xyz/onyx",
   },
   offline: null,
@@ -35,14 +40,15 @@ export function networkFor(name: string): Network | null {
   return networks[name];
 }
 
-// networkFrom is base with the link's ?chain=, ?rpc=, ?realm= and ?gnotif= applied; an
-// empty ?gnotif= clears the gnotif server.
+// networkFrom is base with the link's ?chain=, ?rpc=, ?realm=, ?standings= and ?gnotif=
+// applied; an empty ?gnotif= clears the gnotif server.
 export function networkFrom(params: URLSearchParams, base: Network): Network {
   const gnotif = params.get("gnotif");
   return {
     chainId: params.get("chain") ?? base.chainId,
     rpc: params.get("rpc") ?? base.rpc,
     realm: params.get("realm") ?? base.realm,
+    standings: params.get("standings") ?? base.standings,
     gnotif: gnotif === null ? base.gnotif : gnotif === "" ? null : gnotif,
   };
 }

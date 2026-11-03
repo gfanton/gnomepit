@@ -6,9 +6,18 @@ import * as v from "valibot";
 
 import { ChainError } from "./chain.ts";
 import { type Address, address } from "./ids.ts";
-import { type Standing, type Standings, boardView, createStandings, withOwnStanding } from "./standings.ts";
+import {
+  type ClanStanding,
+  type Standing,
+  type Standings,
+  boardView,
+  clanNamesOf,
+  createStandings,
+  withMissingClans,
+  withOwnStanding,
+} from "./standings.ts";
 
-const realm = "gno.land/r/gfanton/gnomepit/arena";
+const realm = "gno.land/r/gfanton/gnomepit/standings/v0";
 const alice = address("g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w");
 const bob = address("g1h3cka3ya6jw3yr64erpklnhvrgh5l4du6w0faw");
 const unrated = address("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5");
@@ -73,7 +82,8 @@ test("the clan standings and the number of rated players", async () => {
   const clans = await standings.clanStandings();
   assert.deepEqual(
     clans.map((c) => c.Clan),
-    ["Pickers", "Delvers", "Ironhide"],
+    ["Pickers", "Ironhide"],
+    "the standings realm lists only clans with a rated cross-clan match",
   );
   assert.equal(clans[0]?.Wins, 2);
   assert.equal(await standings.ratedPlayers(), 2);
@@ -117,8 +127,57 @@ const nodeDown = async (): Promise<never> => {
   throw new ChainError("failed", "node down");
 };
 
+const clanNames = ["Pickers", "Ironhide", "Delvers"];
+const clanOf = (Clan: string, Rank: number, Rating: number, Wins = 0, Losses = 0): ClanStanding => ({
+  Rank,
+  Clan,
+  Rating,
+  Wins,
+  Losses,
+  Draws: 0,
+});
+
+test("withMissingClans puts every clan of an empty answer at 1000, sharing rank 1, in the page's order", () => {
+  assert.deepEqual(withMissingClans([], clanNames), [
+    clanOf("Pickers", 1, 1000),
+    clanOf("Ironhide", 1, 1000),
+    clanOf("Delvers", 1, 1000),
+  ]);
+});
+
+test("withMissingClans ranks a clan the standings realm never rated between the rated ones", () => {
+  const answer = [clanOf("Pickers", 1, 1008, 1, 0), clanOf("Ironhide", 2, 992, 0, 1)];
+  assert.deepEqual(withMissingClans(answer, clanNames), [
+    clanOf("Pickers", 1, 1008, 1, 0),
+    clanOf("Delvers", 2, 1000),
+    clanOf("Ironhide", 3, 992, 0, 1),
+  ]);
+});
+
+test("clanNamesOf reads the clans of cards.json in file order, and refuses a file without them", () => {
+  const cards: unknown = JSON.parse(readFileSync(new URL("./cards.json", import.meta.url), "utf8"));
+  assert.deepEqual(clanNamesOf(cards), ["Pickers", "Ironhide", "Delvers"]);
+  assert.throws(() => clanNamesOf({}));
+});
+
+test("the board shows every clan of the page, rated or not", async () => {
+  const view = await boardView(stub({ clanStandings: async () => [clanOf("Ironhide", 1, 1008, 1, 0)] }), clanNames);
+  assert.ok(view.status === "ready");
+  assert.deepEqual(
+    view.clans.map((c) => [c.rank, c.clan, c.rating]),
+    [
+      [1, "Ironhide", 1008],
+      [2, "Pickers", 1000],
+      [2, "Delvers", 1000],
+    ],
+  );
+});
+
 test("the board maps names, and an empty name to none", async () => {
-  const view = await boardView(stub({ leaderboard: async () => [standingOf(alice, 1, "alice"), standingOf(bob, 2)] }));
+  const view = await boardView(
+    stub({ leaderboard: async () => [standingOf(alice, 1, "alice"), standingOf(bob, 2)] }),
+    clanNames,
+  );
   assert.ok(view.status === "ready");
   assert.equal(view.preview, false);
   assert.equal(view.ownPlayer, null);
@@ -131,11 +190,11 @@ test("the board maps names, and an empty name to none", async () => {
 });
 
 test("a failed query makes the board an error", async () => {
-  assert.deepEqual(await boardView(stub({ clanStandings: nodeDown })), { status: "error", preview: false });
+  assert.deepEqual(await boardView(stub({ clanStandings: nodeDown }), clanNames), { status: "error", preview: false });
 });
 
 test("the own standing joins a ready board only for a ranked account", async () => {
-  const board = await boardView(stub({ leaderboard: async () => [standingOf(alice, 1)] }));
+  const board = await boardView(stub({ leaderboard: async () => [standingOf(alice, 1)] }), clanNames);
   const ranked = await withOwnStanding(board, stub({ standing: async (p) => standingOf(p, 1) }), alice);
   assert.ok(ranked.status === "ready");
   assert.equal(ranked.ownPlayer?.id, alice);
@@ -154,7 +213,7 @@ test("the own standing joins a ready board only for a ranked account", async () 
 test("an own standing below the first page still shows, with no row marked", async () => {
   const carol = address("g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5");
   const others = Array.from({ length: 50 }, (_, i) => standingOf(i % 2 === 0 ? alice : bob, i + 1));
-  const board = await boardView(stub({ leaderboard: async () => others }));
+  const board = await boardView(stub({ leaderboard: async () => others }), clanNames);
   const view = await withOwnStanding(board, stub({ standing: async (p) => standingOf(p, 75) }), carol);
   assert.ok(view.status === "ready");
   assert.equal(view.ownPlayer?.rank, 75);

@@ -1,12 +1,14 @@
 // Measures what each arena move locks in storage on a running `make dev`: alice and bob
 // play the realm test's worked match twice, then a third that bob resigns after round 1,
 // then carol and dave play the worked match, each through a session for the match, and a
-// table per match gives each move's storage, gas, fee and deposit. On a fresh gnodev the
-// first match carries the one-time costs, two new players, a new chunk, both players' first
-// standings and ladder entries and the clan records, all but the chunk in its last Reveal;
-// the second gives what a match between known players locks, and the third what a
-// resignation costs. The fourth ends two players' first rated match on a ladder that already
-// holds players, which adds more ladder nodes than the first match's ending did.
+// table per match gives each move's storage, gas, fee and deposit, counting the arena and
+// the standings realm together. On a fresh gnodev the first match carries the one-time
+// costs, two new players, a new chunk, both players' first standings and ladder entries and
+// the clan records, all but the chunk in its last Reveal; the second gives what a match
+// between known players locks, the result each rated ending logs in the standings realm
+// included, and the third what a resignation costs. The fourth ends two players' first
+// rated match on a ladder that already holds players, which adds more ladder nodes than
+// the first match's ending did.
 //
 //   [CHAIN=<chain id>] node scripts/measure-storage.ts [rpc url]
 

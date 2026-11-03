@@ -1,13 +1,22 @@
 // Plays arena matches on a running `make dev`, or on the network NETWORK names: one with a
 // session per player and match, alice's renewed mid-match, then one the wallet signs move
 // by move. It also checks that each player's live feed, through a running `make gnotif` or
-// the network's gnotif server, reports their notifications in chain order.
+// the network's gnotif server, reports their notifications in chain order. On the local
+// chain it checks the standings realm's owner, writers and result log, and that an
+// arena the standings realm drops from its writers takes no new match but still ends its
+// running ones, unrated, and that a session key on the arena owner's wallet cannot retire it.
 //
 //   [NETWORK=<name>] [CHAIN=<chain id>] [SESSION_SECONDS=<n>] node client/e2e/match.ts [rpc url] [gnotif server url]
 
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-import { type Arena, type ArenaOptions, type Opening, createArena, sessionLocks } from "../web/arena.ts";
+import * as v from "valibot";
+
+import { type Arena, type ArenaOptions, type Opening, ArenaError, createArena, sessionLocks } from "../web/arena.ts";
 import { ChainError, type Session, createChain, payFor } from "../web/chain.ts";
 import { type devAccounts, devWallet } from "../web/devwallet.ts";
 import { type GameState, type Side, cardOf, startState } from "../web/engine.ts";
@@ -17,7 +26,7 @@ import { createReader } from "../web/gnovalue.ts";
 import type { Address, MatchId } from "../web/ids.ts";
 import { networkFor, networks } from "../web/network.ts";
 import * as signer from "../web/signer.ts";
-import { type ClanStanding, type Standing, createStandings } from "../web/standings.ts";
+import { type ClanStanding, type Standing, createStandings, withMissingClans } from "../web/standings.ts";
 import { type SessionKeys, deriveKeys, generations, rootSignature } from "../web/wallet.ts";
 
 const network =
@@ -195,6 +204,43 @@ async function forceCall(
   assert.fail(`the chain took ${func} from a locked session`);
 }
 
+// gnodev's test1 deploys both realms on the local chain, so it owns them; its mnemonic is
+// public.
+const test1 = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5";
+const test1Mnemonic =
+  "source bonus chronic canvas draft south burst lottery vacant surface solve popular case indicate oppose farm nothing bullet exhibit title speed wink action roast";
+
+// asTest1 calls func(args) on pkgpath as test1, through gnokey.
+function asTest1(pkgpath: string, func: string, ...args: string[]): void {
+  const home = mkdtempSync(join(tmpdir(), "gnomepit-e2e-"));
+  try {
+    const gnokey = (gnokeyArgs: string[], input: string) =>
+      execFileSync("gnokey", gnokeyArgs, { input, stdio: "pipe" });
+    gnokey(["add", "test1", "--recover", "--insecure-password-stdin", "--home", home], `${test1Mnemonic}\n\n\n`);
+    gnokey(
+      [
+        ...["maketx", "call", "-pkgpath", pkgpath, "-func", func, ...args.flatMap((a) => ["-args", a])],
+        ...["-gas-fee", "1000000ugnot", "-gas-wanted", "20000000", "-broadcast", "-chainid", chainId, "-remote", rpc],
+        ...["-insecure-password-stdin", "-home", home, "test1"],
+      ],
+      "\n",
+    );
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+}
+
+const ResultsSchema = v.array(
+  v.object({
+    Writer: v.string(),
+    Challenger: v.string(),
+    Acceptor: v.string(),
+    ChallengerClan: v.string(),
+    AcceptorClan: v.string(),
+  }),
+);
+const resultCount = async (): Promise<number> => v.parse(v.number(), await read(`${network.standings}.ResultCount()`));
+
 // ---- Sessions
 
 const alice = player("alice", { sessionLifetime: shortLifetime });
@@ -221,11 +267,20 @@ for (const [name, arena] of [
   });
 }
 
-const standings = createStandings({ chain, realm });
+const standings = createStandings({ chain, realm: network.standings });
+// The standings realm lists only clans with a rated cross-clan match; the page adds the rest.
+const clanNames = engine.clans.map((c) => c.name);
+const local = network === networks.local;
+if (local) {
+  assert.equal(await read(`${network.standings}.Owner().String()`), test1, "test1 owns the standings realm");
+  assert.equal(await read(`${realm}.Owner().String()`), test1, "test1 owns the arena");
+  assert.deepEqual(await read(`${network.standings}.Writers()`), [realm], "the arena is the one writer");
+}
+const resultsBefore = local ? await resultCount() : 0;
 const standingsBefore = {
   alice: await standings.standing(aliceAddress),
   bob: await standings.standing(bobAddress),
-  clans: await standings.clanStandings(),
+  clans: withMissingClans(await standings.clanStandings(), clanNames),
 };
 
 const id = await post(alice);
@@ -328,7 +383,7 @@ const moved = (after: Standing | ClanStanding, before: Standing | ClanStanding) 
 const standingsAfter = {
   alice: await standings.standing(aliceAddress),
   bob: await standings.standing(bobAddress),
-  clans: await standings.clanStandings(),
+  clans: withMissingClans(await standings.clanStandings(), clanNames),
 };
 assert.equal(
   played(standingsAfter.alice) - played(standingsBefore.alice),
@@ -353,7 +408,17 @@ if ((await standings.ratedPlayers()) === 2) {
   assert.equal(standingsAfter.bob.MainClan, "Ironhide");
 }
 // On a shared arena, other players' matches move the clan records too.
-if (network === networks.local) {
+if (local) {
+  assert.deepEqual(
+    v
+      .parse(ResultsSchema, await read(`${network.standings}.Results(${resultsBefore}, 50)`))
+      .map((r) => [r.Writer, r.Challenger, r.Acceptor, r.ChallengerClan, r.AcceptorClan]),
+    [
+      [realm, aliceAddress, bobAddress, "Pickers", "Ironhide"],
+      [realm, aliceAddress, bobAddress, "Pickers", "Ironhide"],
+    ],
+    "the result log holds both matches, reported by the arena",
+  );
   for (const [clan, player] of [
     ["Pickers", "alice"],
     ["Ironhide", "bob"],
@@ -407,4 +472,72 @@ assert.deepEqual(
   `alice withdrew matches ${second} and ${elsewhere}`,
 );
 log(`alice withdrew matches ${second} and ${elsewhere}`);
+
+// ---- An arena the standings realm drops from its writers is closed
+
+if (local) {
+  const running = await post(aliceByWallet);
+  await accept(bobByWallet, running);
+  const waiting = await post(aliceByWallet);
+  const counted = await resultCount();
+  asTest1(network.standings, "RemoveWriter", realm);
+  assert.deepEqual(await read(`${network.standings}.Writers()`), [], "the arena is no longer a writer");
+  await assert.rejects(
+    aliceByWallet.challenge(openings[0]),
+    (err) => err instanceof ArenaError && /arena not open/.test(err.reason),
+    "a closed arena takes no challenge",
+  );
+  await assert.rejects(
+    bobByWallet.accept(waiting, openings[1]),
+    (err) => err instanceof ArenaError && /arena not open/.test(err.reason),
+    "a closed arena takes no acceptance",
+  );
+  await aliceByWallet.resign(waiting);
+  await bobByWallet.resign(running);
+  assert.equal((await aliceByWallet.match(running)).Phase, "ended", "a closed arena still ends a running match");
+  assert.equal(await resultCount(), counted, "an ending on a closed arena is not rated");
+  log(
+    `with the arena off the writer list, match ${running} ended unrated, match ${waiting} was withdrawn, and no challenge or acceptance was taken`,
+  );
+
+  asTest1(network.standings, "AddWriter", realm);
+  const reopened = await post(aliceByWallet);
+  await aliceByWallet.resign(reopened);
+  log(`added back as a writer, the arena took match ${reopened}, withdrawn`);
+}
+
+// ---- A session key on the owner's wallet cannot use the owner's calls
+
+if (local) {
+  asTest1(realm, "TransferOwnership", aliceAddress);
+  assert.equal(await read(`${realm}.Owner().String()`), aliceAddress, "test1 handed the arena to alice");
+  const owned = await post(alice);
+  const [ownedLock] = await locksOn(aliceAddress, owned);
+  assert.ok(ownedLock !== undefined, `Locks lists alice's lock on match ${owned}`);
+  const ownedSession = (await chain.sessions(aliceAddress)).find(
+    (s) => s.address === ownedLock.Session && s.expiresAt === ownedLock.Expires,
+  );
+  assert.ok(ownedSession !== undefined, `the chain lists the session locked to match ${owned}`);
+  assert.match(await forceCall(aliceAddress, root, ownedSession, "Retire", []), /not a session key/);
+  assert.equal(await read(`${realm}.Retired()`), false, "a session key cannot retire the arena");
+  await alice.resign(owned);
+  const handedBack = await devWallet({ name: "alice", signer, chain, chainId }).DoContract({
+    messages: [
+      {
+        type: "/vm.m_call",
+        value: {
+          caller: aliceAddress,
+          send: "",
+          max_deposit: "",
+          pkg_path: realm,
+          func: "TransferOwnership",
+          args: [test1],
+        },
+      },
+    ],
+  });
+  assert.equal(handedBack.status, "success", `alice's own key hands the arena back: ${handedBack.message}`);
+  assert.equal(await read(`${realm}.Owner().String()`), test1, "test1 owns the arena again");
+  log(`a session key on the arena owner's wallet could not retire the arena`);
+}
 process.exit(0);

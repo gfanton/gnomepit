@@ -40,7 +40,7 @@ const floor = { gas: 1000, amount: 1, denom: "ugnot" };
 const busy = { ...floor, amount: 5 };
 const signature = btoa("a root signature of 64 bytes, as a wallet would return one....");
 const otherSignature = btoa("another root signature, from another wallet or another site....");
-const realm = "gno.land/r/gfanton/gnomepit/arena";
+const realm = "gno.land/r/gfanton/gnomepit/arena/v0";
 const now = 1_800_000_000;
 
 const failure = (type: WalletError["type"]) => (err: unknown) => err instanceof WalletError && err.type === type;
@@ -226,31 +226,32 @@ const reserve = sessionReserve(floor);
 const budget = sessionBudget("challenger", floor);
 
 test("at the floor price, the budgets and reserves are client/ONLINE.md's", () => {
-  assert.equal(sessionBudget("challenger", floor), 1_280_629);
-  assert.equal(sessionBudget("acceptor", floor), 1_140_898);
+  assert.equal(sessionBudget("challenger", floor), 2_545_761);
+  assert.equal(sessionBudget("acceptor", floor), 2_414_146);
   assert.deepEqual(reserve, {
-    opening: { challenger: 264_113, acceptor: 248_206 },
-    later: { challenger: 503_159, acceptor: 463_316 },
+    opening: { challenger: 265_602, acceptor: 249_554 },
+    later: { challenger: 1_198_866, acceptor: 1_163_277 },
   });
 });
 
 test("either side's session keeps enough for the move that ends a first rated match", () => {
   // client/ONLINE.md's Storage per move: the fourth match's last Reveal deposits for two
-  // players' first rated match on a ladder that holds players; the challenger may end a match
-  // with any Reveal, the costliest measured in the third match, and the acceptor with a Resign.
-  const challenger = 398_000 + feeFor(gasWantedFor(49_430_602), floor);
-  const acceptor = 398_000 + feeFor(gasWantedFor(19_246_023), floor);
+  // players' first rated match on a ladder that holds players, and 200,100 more when its result
+  // starts a chunk of the log; the challenger may end a match with any Reveal, the costliest
+  // measured in the fourth match, and the acceptor with a Resign.
+  const challenger = 831_000 + 200_100 + feeFor(gasWantedFor(48_898_008), floor);
+  const acceptor = 831_000 + 200_100 + feeFor(gasWantedFor(21_935_874), floor);
   assert.ok(reserve.later.challenger >= challenger, `challenger reserve ${reserve.later.challenger} < ${challenger}`);
   assert.ok(reserve.later.acceptor >= acceptor, `acceptor reserve ${reserve.later.acceptor} < ${acceptor}`);
 });
 
 // Deposits are priced per byte and stay; only the fees follow the gas price.
 test("at five times the floor price, budgets and reserves pay five times the fees and the same deposits", () => {
-  assert.equal(sessionBudget("challenger", busy), 2_239_141);
-  assert.equal(sessionBudget("acceptor", busy), 1_657_279);
+  assert.equal(sessionBudget("challenger", busy), 3_501_997);
+  assert.equal(sessionBudget("acceptor", busy), 2_960_317);
   assert.deepEqual(sessionReserve(busy), {
-    opening: { challenger: 340_564, acceptor: 377_829 },
-    later: { challenger: 764_593, acceptor: 565_375 },
+    opening: { challenger: 350_010, acceptor: 386_568 },
+    later: { challenger: 1_457_488, acceptor: 1_279_538 },
   });
 });
 

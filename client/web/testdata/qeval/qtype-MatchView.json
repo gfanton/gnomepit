@@ -1,8 +1,8 @@
 {
-  "typeid": "gno.land/r/gfanton/gnomepit/arena.MatchView",
+  "typeid": "gno.land/r/gfanton/gnomepit/arena/v0.MatchView",
   "type": {
     "@type": "/gno.DeclaredType",
-    "PkgPath": "gno.land/r/gfanton/gnomepit/arena",
+    "PkgPath": "gno.land/r/gfanton/gnomepit/arena/v0",
     "Name": "MatchView",
     "Base": {
       "@type": "/gno.StructType",
@@ -11,7 +11,7 @@
           "Name": "MatchSummary",
           "Type": {
             "@type": "/gno.DeclaredType",
-            "PkgPath": "gno.land/r/gfanton/gnomepit/arena",
+            "PkgPath": "gno.land/r/gfanton/gnomepit/arena/v0",
             "Name": "MatchSummary",
             "Base": {
               "@type": "/gno.StructType",

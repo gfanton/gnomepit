@@ -5,7 +5,7 @@
         "@type": "/gno.SliceType",
         "Elt": {
           "@type": "/gno.RefType",
-          "ID": "gno.land/r/gfanton/gnomepit/arena.ClanStanding"
+          "ID": "gno.land/r/gfanton/gnomepit/standings/v0.ClanStanding"
         },
         "Vrd": false
       },
@@ -14,7 +14,7 @@
         "Base": {
           "@type": "/gno.ArrayValue",
           "ObjectInfo": {
-            "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
+            "ID": "071ce6537a46741ce25e7a822aed66b5743af193:0",
             "ModTime": "0",
             "RefCount": "0",
             "LastObjectSize": "0"
@@ -23,12 +23,12 @@
             {
               "T": {
                 "@type": "/gno.RefType",
-                "ID": "gno.land/r/gfanton/gnomepit/arena.ClanStanding"
+                "ID": "gno.land/r/gfanton/gnomepit/standings/v0.ClanStanding"
               },
               "V": {
                 "@type": "/gno.StructValue",
                 "ObjectInfo": {
-                  "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
+                  "ID": "071ce6537a46741ce25e7a822aed66b5743af193:0",
                   "ModTime": "0",
                   "RefCount": "0",
                   "LastObjectSize": "0"
@@ -83,12 +83,12 @@
             {
               "T": {
                 "@type": "/gno.RefType",
-                "ID": "gno.land/r/gfanton/gnomepit/arena.ClanStanding"
+                "ID": "gno.land/r/gfanton/gnomepit/standings/v0.ClanStanding"
               },
               "V": {
                 "@type": "/gno.StructValue",
                 "ObjectInfo": {
-                  "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
+                  "ID": "071ce6537a46741ce25e7a822aed66b5743af193:0",
                   "ModTime": "0",
                   "RefCount": "0",
                   "LastObjectSize": "0"
@@ -100,65 +100,6 @@
                       "value": "32"
                     },
                     "N": "AgAAAAAAAAA="
-                  },
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "16"
-                    },
-                    "V": {
-                      "@type": "/gno.StringValue",
-                      "value": "Delvers"
-                    }
-                  },
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "32"
-                    },
-                    "N": "6AMAAAAAAAA="
-                  },
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "32"
-                    }
-                  },
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "32"
-                    }
-                  },
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "32"
-                    }
-                  }
-                ]
-              }
-            },
-            {
-              "T": {
-                "@type": "/gno.RefType",
-                "ID": "gno.land/r/gfanton/gnomepit/arena.ClanStanding"
-              },
-              "V": {
-                "@type": "/gno.StructValue",
-                "ObjectInfo": {
-                  "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
-                  "ModTime": "0",
-                  "RefCount": "0",
-                  "LastObjectSize": "0"
-                },
-                "Fields": [
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "32"
-                    },
-                    "N": "AwAAAAAAAAA="
                   },
                   {
                     "T": {
@@ -203,8 +144,8 @@
           "Data": null
         },
         "Offset": "0",
-        "Length": "3",
-        "Maxcap": "3"
+        "Length": "2",
+        "Maxcap": "2"
       }
     }
   ]

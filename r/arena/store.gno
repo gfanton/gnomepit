@@ -3,16 +3,14 @@ package arena
 import (
 	"encoding/binary"
 
-	"gno.land/p/gfanton/gnomepit/engine"
+	"gno.land/p/gfanton/gnomepit/engine/v0"
 	"gno.land/p/nt/avl/v0"
 )
 
 var (
-	chunks      avl.Tree  // 4-byte chunk number → chunk string
-	players     avl.Tree  // address → player string
-	ladder      *avl.Node // ladderKey of every rated player → nil
-	clanRecords string
-	openList    string
+	chunks   avl.Tree // 4-byte chunk number → chunk string
+	players  avl.Tree // address → player string
+	openList string
 )
 
 func chunkKey(id int) string {
@@ -66,15 +64,6 @@ func loadPlayer(a address) playerRecord {
 
 func savePlayer(a address, p playerRecord) {
 	players.Set(string(a), encodePlayer(p))
-}
-
-// loadStanding returns a's standing, nil before their first rated match.
-func loadStanding(a address) *standing {
-	return decodeStanding(stringAt(&players, string(a)))
-}
-
-func saveStanding(a address, st *standing) {
-	players.Set(string(a), withStanding(stringAt(&players, string(a)), st))
 }
 
 // add appends id unless the player already has it.

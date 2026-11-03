@@ -14,7 +14,7 @@ func TestRenderBoard(cur realm, t *testing.T) {
 	Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), bob)
 
 	out := Render("")
-	uassert.True(t, strings.Contains(out, "[Match 1](/r/gfanton/gnomepit/arena:match/1)"), out)
+	uassert.True(t, strings.Contains(out, "[Match 1](/r/gfanton/gnomepit/arena/v0:match/1)"), out)
 	uassert.True(t, strings.Contains(out, "Pickers"), out)
 	uassert.True(t, strings.Contains(out, "reserved for "+bob.String()), out)
 }
@@ -40,7 +40,7 @@ func TestRenderPlayer(cur realm, t *testing.T) {
 	testing.SetRealm(testing.NewUserRealm(alice))
 	Challenge(cross(cur), "Pickers", sealOf(saltA, deckA), sealOf(salt1, picks), boxOf("box1"), "")
 	out := Render("player/" + alice.String())
-	uassert.True(t, strings.Contains(out, "[Match 1](/r/gfanton/gnomepit/arena:match/1)"), out)
+	uassert.True(t, strings.Contains(out, "[Match 1](/r/gfanton/gnomepit/arena/v0:match/1)"), out)
 }
 
 func TestRenderNotFound(t *testing.T) {

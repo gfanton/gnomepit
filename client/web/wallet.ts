@@ -14,32 +14,34 @@ export type Role = "challenger" | "acceptor";
 type Move = { gasUsed: number; deposit: number };
 
 // The gas used by each side's costliest later move, Reveal or Play, in any measured match.
-const costliestLaterGas: Record<Role, number> = { challenger: 49_430_602, acceptor: 21_356_839 };
-// What the move that ends two players' first rated match deposits for their standings, ladder
-// entries and clan records, on a ladder that already holds players: the last Reveal of
-// client/ONLINE.md's fourth match. Any ending between two different clans writes the same.
-const firstRatedDeposit = 398_000;
+const costliestLaterGas: Record<Role, number> = { challenger: 48_898_008, acceptor: 20_844_649 };
+// What the move that ends two players' first rated match deposits in the standings realm for
+// their standings, ladder entries, the clan records and the result's log entry, on a ladder
+// that already holds players: the last Reveal of client/ONLINE.md's fourth match, 831,000, and
+// 200,100 more when the result starts a new chunk of the log, as every 64th does. Any ending
+// between two different clans writes the same.
+const firstRatedDeposit = 1_031_100;
 // The move each side pays to end a match, with the first rated deposit. A knockout lets any of
 // the challenger's Reveals end it, so theirs uses the costliest Reveal's gas; the acceptor ends
 // a match with a Resign, measured in the third match, or a ClaimForfeit, which writes the same.
 const endings: Record<Role, Move> = {
   challenger: { gasUsed: costliestLaterGas.challenger, deposit: firstRatedDeposit },
-  acceptor: { gasUsed: 19_246_023, deposit: firstRatedDeposit },
+  acceptor: { gasUsed: 21_935_874, deposit: firstRatedDeposit },
 };
 // Each side's moves in the first match of client/ONLINE.md "Storage per move", which carries
 // the one-time costs, opening first: the gas each used and the ugnot it deposited. The
 // acceptor's list ends with the ending they pay when they resign or claim a forfeit.
 const measuredMoves: Record<Role, readonly [Move, ...Move[]]> = {
   challenger: [
-    { gasUsed: 15_843_919, deposit: 245_000 }, // Challenge
-    { gasUsed: 48_981_438, deposit: 0 }, // Reveal, round 1
-    { gasUsed: 35_586_567, deposit: 0 }, // Reveal, round 2
+    { gasUsed: 17_501_639, deposit: 244_500 }, // Challenge
+    { gasUsed: 48_446_281, deposit: 0 }, // Reveal, round 1
+    { gasUsed: 35_055_120, deposit: 0 }, // Reveal, round 2
     endings.challenger, // Reveal, round 3
   ],
   acceptor: [
-    { gasUsed: 26_921_336, deposit: 215_800 }, // Accept
-    { gasUsed: 20_829_608, deposit: 0 }, // Play, round 2
-    { gasUsed: 20_919_577, deposit: 0 }, // Play, round 3
+    { gasUsed: 28_461_182, deposit: 215_300 }, // Accept
+    { gasUsed: 20_626_652, deposit: 100 }, // Play, round 2
+    { gasUsed: 20_409_451, deposit: 0 }, // Play, round 3
     endings.acceptor, // Resign or ClaimForfeit
   ],
 };

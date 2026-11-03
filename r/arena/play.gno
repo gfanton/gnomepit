@@ -7,12 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"gno.land/p/gfanton/gnomepit/engine"
+	"gno.land/p/gfanton/gnomepit/engine/v0"
 )
 
 // Accept answers open challenge id as clan, with deck and the round-1 plan in plain
 // text. When the challenge names an opponent, only that address may accept.
 func Accept(cur realm, id, clan, deck, plan string) {
+	mustBeOpen()
 	rules := engine.ProofOfConcept()
 	n, m := find(rules, id)
 	now := time.Now().Unix()
@@ -105,7 +106,7 @@ func Reveal(cur realm, id, deck, deckSalt, plan, planSalt, nextSeal, nextBox str
 	if o.Result != engine.Ongoing {
 		m.end(resultName(o.Result), reasonOf(o.State))
 		saveMatch(rules, n, m)
-		rate(rules, m)
+		report(cur, rules, m)
 		tellEnded(m, n, caller)
 		return
 	}
@@ -162,7 +163,7 @@ func Resign(cur realm, id string) {
 			panic("not a player")
 		}
 		saveMatch(rules, n, m)
-		rate(rules, m)
+		report(cur, rules, m)
 		tellEnded(m, n, caller)
 	default:
 		panic("wrong phase")
@@ -190,7 +191,7 @@ func ClaimForfeit(cur realm, id string) {
 	}
 	m.end(result, "forfeit")
 	saveMatch(rules, n, m)
-	rate(rules, m)
+	report(cur, rules, m)
 	tellEnded(m, n, caller)
 }
 

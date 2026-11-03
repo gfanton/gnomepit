@@ -3,12 +3,12 @@
     {
       "T": {
         "@type": "/gno.RefType",
-        "ID": "gno.land/r/gfanton/gnomepit/arena.MatchView"
+        "ID": "gno.land/r/gfanton/gnomepit/arena/v0.MatchView"
       },
       "V": {
         "@type": "/gno.StructValue",
         "ObjectInfo": {
-          "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
+          "ID": "09d441c290da6420d954b6c6271147acadaac324:0",
           "ModTime": "0",
           "RefCount": "0",
           "LastObjectSize": "0"
@@ -17,12 +17,12 @@
           {
             "T": {
               "@type": "/gno.RefType",
-              "ID": "gno.land/r/gfanton/gnomepit/arena.MatchSummary"
+              "ID": "gno.land/r/gfanton/gnomepit/arena/v0.MatchSummary"
             },
             "V": {
               "@type": "/gno.StructValue",
               "ObjectInfo": {
-                "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
+                "ID": "09d441c290da6420d954b6c6271147acadaac324:0",
                 "ModTime": "0",
                 "RefCount": "0",
                 "LastObjectSize": "0"
@@ -35,7 +35,7 @@
                   },
                   "V": {
                     "@type": "/gno.StringValue",
-                    "value": "5"
+                    "value": "9"
                   }
                 },
                 {
@@ -106,7 +106,7 @@
                     "@type": "/gno.PrimitiveType",
                     "value": "1024"
                   },
-                  "N": "DTffagAAAAA="
+                  "N": "AFjyagAAAAA="
                 },
                 {
                   "T": {
@@ -179,7 +179,7 @@
               "Base": {
                 "@type": "/gno.ArrayValue",
                 "ObjectInfo": {
-                  "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
+                  "ID": "09d441c290da6420d954b6c6271147acadaac324:0",
                   "ModTime": "0",
                   "RefCount": "0",
                   "LastObjectSize": "0"
@@ -220,7 +220,7 @@
               "Base": {
                 "@type": "/gno.ArrayValue",
                 "ObjectInfo": {
-                  "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
+                  "ID": "09d441c290da6420d954b6c6271147acadaac324:0",
                   "ModTime": "0",
                   "RefCount": "0",
                   "LastObjectSize": "0"

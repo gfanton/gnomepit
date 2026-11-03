@@ -19,7 +19,7 @@
             "caller": "g10xcqpzrky6eff2g52qdye53xkk9jxkvrjuxlp8",
             "send": "1000000ugnot",
             "max_deposit": "",
-            "pkg_path": "gno.land/r/gfanton/gnomepit/arena",
+            "pkg_path": "gno.land/r/gfanton/gnomepit/arena/v0",
             "func": "Play",
             "args": [
               "12",
@@ -29,7 +29,7 @@
         }
       ]
     },
-    "tx": "CoQBCgovdm0ubV9jYWxsEnYKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSDDEwMDAwMDB1Z25vdCIhZ25vLmxhbmQvci9nZmFudG9uL2dub21lcGl0L2FyZW5hKgRQbGF5MgIxMjIPUGljayxCcmFjZSxQaWNrEhEIwMHAFBIKMjE1MDB1Z25vdBqoAQo6ChMvdG0uUHViS2V5U2VjcDI1NmsxEiMKIQMbhMVWexJkQJldPtWqugVl1x4YNGBIGf+cF/Xp1d0HjxJAC6qdHCJWsAJb0qgcXvzdbHHnj9DoXDLWo+SUflVwP3gJcqkQ5kKD1RDjA6uV27Ik1dBZ65t995gNozt08SY5jBooZzFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFsdXV4ZSIIR25vbWVwaXQ="
+    "tx": "CocBCgovdm0ubV9jYWxsEnkKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSDDEwMDAwMDB1Z25vdCIkZ25vLmxhbmQvci9nZmFudG9uL2dub21lcGl0L2FyZW5hL3YwKgRQbGF5MgIxMjIPUGljayxCcmFjZSxQaWNrEhEIwMHAFBIKMjE1MDB1Z25vdBqoAQo6ChMvdG0uUHViS2V5U2VjcDI1NmsxEiMKIQMbhMVWexJkQJldPtWqugVl1x4YNGBIGf+cF/Xp1d0HjxJAVWhUfE1pMv1KltsH9+gJkyvEM35LY30AGfiRVq0OWugg8DhlvHpAiNeqyYEyRlyPoMVgD+xDPWqJV2WQCL1XExooZzFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFsdXV4ZSIIR25vbWVwaXQ="
   },
   {
     "name": "session-call",
@@ -51,7 +51,7 @@
             "caller": "g10xcqpzrky6eff2g52qdye53xkk9jxkvrjuxlp8",
             "send": "",
             "max_deposit": "",
-            "pkg_path": "gno.land/r/gfanton/gnomepit/arena",
+            "pkg_path": "gno.land/r/gfanton/gnomepit/arena/v0",
             "func": "Challenge",
             "args": [
               "Pickers",
@@ -64,7 +64,7 @@
         }
       ]
     },
-    "tx": "CpACCgovdm0ubV9jYWxsEoECCihnMTB4Y3FwenJreTZlZmYyZzUycWR5ZTUzeGtrOWp4a3ZyanV4bHA4IiFnbm8ubGFuZC9yL2dmYW50b24vZ25vbWVwaXQvYXJlbmEqCUNoYWxsZW5nZTIHUGlja2VyczJANWUzYTFmMGM5YjhkN2U2ZjVhNGIzYzJkMWUwZjlhOGI3YzZkNWU0ZjNhMmIxYzBkOWU4ZjdhNmI1YzRkM2UyZjJANWUzYTFmMGM5YjhkN2U2ZjVhNGIzYzJkMWUwZjlhOGI3YzZkNWU0ZjNhMmIxYzBkOWU4ZjdhNmI1YzRkM2UyZjIYQVFJREJBVUdCd2dKQ2dzTURRNFBFQT09MgASEQiAjs4cEgozMDAwMHVnbm90GqgBCjoKEy90bS5QdWJLZXlTZWNwMjU2azESIwohAk1LbNE2EDLKm9KuudkAqk1F2erYCslCM3TEUaclTQdmEkCOxI7vo67HSkC5hwpxYswjawnUXizlkRRCdGJQnH+PvB/lNOzoi5sWu9Aje1MqnwD+X+GfGctsP6ztneJZ9VF4GihnMWEwcXd1emUyaDg1enc3bnFwc2ozZ2EwejlnZXlyZ3dweXJtM20y"
+    "tx": "CpMCCgovdm0ubV9jYWxsEoQCCihnMTB4Y3FwenJreTZlZmYyZzUycWR5ZTUzeGtrOWp4a3ZyanV4bHA4IiRnbm8ubGFuZC9yL2dmYW50b24vZ25vbWVwaXQvYXJlbmEvdjAqCUNoYWxsZW5nZTIHUGlja2VyczJANWUzYTFmMGM5YjhkN2U2ZjVhNGIzYzJkMWUwZjlhOGI3YzZkNWU0ZjNhMmIxYzBkOWU4ZjdhNmI1YzRkM2UyZjJANWUzYTFmMGM5YjhkN2U2ZjVhNGIzYzJkMWUwZjlhOGI3YzZkNWU0ZjNhMmIxYzBkOWU4ZjdhNmI1YzRkM2UyZjIYQVFJREJBVUdCd2dKQ2dzTURRNFBFQT09MgASEQiAjs4cEgozMDAwMHVnbm90GqgBCjoKEy90bS5QdWJLZXlTZWNwMjU2azESIwohAk1LbNE2EDLKm9KuudkAqk1F2erYCslCM3TEUaclTQdmEkD79N/BmD3mdSRebyCGCOYtecf9gRNt2hVCPNC36dlTGEC69Mwk4+QezrFpOv34bKJsvnS7C2JbpsqQs79Zd58WGihnMWEwcXd1emUyaDg1enc3bnFwc2ozZ2EwejlnZXlyZ3dweXJtM20y"
   },
   {
     "name": "create-and-revoke",
@@ -100,7 +100,7 @@
             },
             "expires_at": "1760086400",
             "allow_paths": [
-              "vm/exec:gno.land/r/gfanton/gnomepit/arena"
+              "vm/exec:gno.land/r/gfanton/gnomepit/arena/v0"
             ],
             "spend_limit": "10000000ugnot",
             "spend_period": "0"
@@ -108,7 +108,7 @@
         }
       ]
     },
-    "tx": "CoABChYvYXV0aC5tX3Jldm9rZV9zZXNzaW9uEmYKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiECTUts0TYQMsqb0q652QCqTUXZ6tgKyUIzdMRRpyVNB2YKwQEKFi9hdXRoLm1fY3JlYXRlX3Nlc3Npb24SpgEKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiECTUts0TYQMsqb0q652QCqTUXZ6tgKyUIzdMRRpyVNB2YYgKbGjg0iKXZtL2V4ZWM6Z25vLmxhbmQvci9nZmFudG9uL2dub21lcGl0L2FyZW5hKg0xMDAwMDAwMHVnbm90EhAIgLbcBRIJNjAwMHVnbm90GqgBCjoKEy90bS5QdWJLZXlTZWNwMjU2azESIwohAxuExVZ7EmRAmV0+1aq6BWXXHhg0YEgZ/5wX9enV3QePEkCee87spA/AyMIVFLGdryy7HUhQjjdLZ30a/D/EXUOUoQ74S3yeT8A82x93DTVTjsBzs/bywhh47cBOhAa0Vt1KGihnMXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcWx1dXhl"
+    "tx": "CoABChYvYXV0aC5tX3Jldm9rZV9zZXNzaW9uEmYKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiECTUts0TYQMsqb0q652QCqTUXZ6tgKyUIzdMRRpyVNB2YKxAEKFi9hdXRoLm1fY3JlYXRlX3Nlc3Npb24SqQEKKGcxMHhjcXB6cmt5NmVmZjJnNTJxZHllNTN4a2s5anhrdnJqdXhscDgSOgoTL3RtLlB1YktleVNlY3AyNTZrMRIjCiECTUts0TYQMsqb0q652QCqTUXZ6tgKyUIzdMRRpyVNB2YYgKbGjg0iLHZtL2V4ZWM6Z25vLmxhbmQvci9nZmFudG9uL2dub21lcGl0L2FyZW5hL3YwKg0xMDAwMDAwMHVnbm90EhAIgLbcBRIJNjAwMHVnbm90GqgBCjoKEy90bS5QdWJLZXlTZWNwMjU2azESIwohAxuExVZ7EmRAmV0+1aq6BWXXHhg0YEgZ/5wX9enV3QePEkBMZoRG7cH0f3RrCzEWdRvs5OOvbAkTV+ssg7leg7S/1GRZ1wrJQTed5vlXjWf2hDHHo6w3pxP8VTZ1Ai3Ob9jpGihnMXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcWx1dXhl"
   },
   {
     "name": "create-with-period",
@@ -134,7 +134,7 @@
             },
             "expires_at": "1760086400",
             "allow_paths": [
-              "vm/exec:gno.land/r/gfanton/gnomepit/arena"
+              "vm/exec:gno.land/r/gfanton/gnomepit/arena/v0"
             ],
             "spend_limit": "10000000ugnot",
             "spend_period": "3600"
@@ -142,7 +142,7 @@
         }
       ]
     },
-    "tx": "CsQBChYvYXV0aC5tX2NyZWF0ZV9zZXNzaW9uEqkBCihnMTB4Y3FwenJreTZlZmYyZzUycWR5ZTUzeGtrOWp4a3ZyanV4bHA4EjoKEy90bS5QdWJLZXlTZWNwMjU2azESIwohAk1LbNE2EDLKm9KuudkAqk1F2erYCslCM3TEUaclTQdmGICmxo4NIil2bS9leGVjOmduby5sYW5kL3IvZ2ZhbnRvbi9nbm9tZXBpdC9hcmVuYSoNMTAwMDAwMDB1Z25vdDCgOBIQCICb7gISCTMwMDB1Z25vdBqoAQo6ChMvdG0uUHViS2V5U2VjcDI1NmsxEiMKIQMbhMVWexJkQJldPtWqugVl1x4YNGBIGf+cF/Xp1d0HjxJAdt8gQu8v+3XOzjWbv5YoZ633Ydz+P56mYGSRiipyDNMQzARXUlduwpbSxCH/xv3h2LhCFLsqYo9Q0EjZ+WcBBhooZzFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFsdXV4ZQ=="
+    "tx": "CscBChYvYXV0aC5tX2NyZWF0ZV9zZXNzaW9uEqwBCihnMTB4Y3FwenJreTZlZmYyZzUycWR5ZTUzeGtrOWp4a3ZyanV4bHA4EjoKEy90bS5QdWJLZXlTZWNwMjU2azESIwohAk1LbNE2EDLKm9KuudkAqk1F2erYCslCM3TEUaclTQdmGICmxo4NIix2bS9leGVjOmduby5sYW5kL3IvZ2ZhbnRvbi9nbm9tZXBpdC9hcmVuYS92MCoNMTAwMDAwMDB1Z25vdDCgOBIQCICb7gISCTMwMDB1Z25vdBqoAQo6ChMvdG0uUHViS2V5U2VjcDI1NmsxEiMKIQMbhMVWexJkQJldPtWqugVl1x4YNGBIGf+cF/Xp1d0HjxJAaShAO1jpQ/Xn3yuih81BSK88bnBjy77UQdIcqN6s4MImnJNHwpG4z2LMorSZsMgRhZlI/u6VcxYUMYK0JQuhnBooZzFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFsdXV4ZQ=="
   },
   {
     "name": "sign-bytes",

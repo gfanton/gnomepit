@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"gno.land/p/nt/testutils/v0"
-	"gno.land/r/gfanton/gnomepit/arena"
+	"gno.land/r/gfanton/gnomepit/arena/v0"
 )
 
 const (
@@ -56,7 +56,7 @@ func main(cur realm) {
 //         "value": "Pickers posted a challenge."
 //       }
 //     ],
-//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
+//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena/v0"
 //   },
 //   {
 //     "type": "Board",
@@ -70,7 +70,7 @@ func main(cur realm) {
 //         "value": "Challenge 1 was taken."
 //       }
 //     ],
-//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
+//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena/v0"
 //   },
 //   {
 //     "type": "Turn",
@@ -88,7 +88,7 @@ func main(cur realm) {
 //         "value": "Ironhide accepted your challenge. Your move within 24 hours."
 //       }
 //     ],
-//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
+//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena/v0"
 //   },
 //   {
 //     "type": "Turn",
@@ -106,7 +106,7 @@ func main(cur realm) {
 //         "value": "Round 1 is over: you 15 HP, them 15. Your move within 24 hours."
 //       }
 //     ],
-//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
+//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena/v0"
 //   },
 //   {
 //     "type": "Turn",
@@ -124,6 +124,6 @@ func main(cur realm) {
 //         "value": "Ironhide played round 2. Your move within 24 hours."
 //       }
 //     ],
-//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena"
+//     "pkg_path": "gno.land/r/gfanton/gnomepit/arena/v0"
 //   }
 // ]

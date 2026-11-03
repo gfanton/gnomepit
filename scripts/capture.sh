@@ -9,7 +9,8 @@ set -o errexit -o nounset -o pipefail
 readonly OUT="${1:?usage: capture.sh <out dir>}"
 readonly RPC="${RPC:-127.0.0.1:36657}"
 readonly CHAIN="${CHAIN:-gnomepit-dev}"
-readonly ARENA="gno.land/r/gfanton/gnomepit/arena"
+readonly ARENA="gno.land/r/gfanton/gnomepit/arena/v0"
+readonly STANDINGS="gno.land/r/gfanton/gnomepit/standings/v0"
 # gnodev premines test1 on every chain it starts; its mnemonic is public.
 readonly MNEMONIC="source bonus chronic canvas draft south burst lottery vacant surface solve popular case indicate oppose farm nothing bullet exhibit title speed wink action roast"
 readonly PLAYER="g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5"
@@ -79,12 +80,15 @@ call Play "${id}" "${BRACES}" >/dev/null
 call Reveal "${id}" "" "" "${PICKS}" "${SALT_3}" "" "" >/dev/null
 snapshot ended
 query vm/qeval_json "${ARENA}.Matches(\"${PLAYER}\", 0, 50)" matches
-query vm/qeval_json "${ARENA}.Leaderboard(0, 50)" leaderboard
-query vm/qeval_json "${ARENA}.StandingOf(\"${ALICE}\")" standing-rated
-query vm/qeval_json "${ARENA}.StandingOf(\"${PLAYER}\")" standing-unrated
-query vm/qeval_json "${ARENA}.RatedPlayers()" rated-players
-query vm/qeval_json "${ARENA}.ClanStandings()" clan-standings
+query vm/qeval_json "${STANDINGS}.Leaderboard(0, 50)" leaderboard
+query vm/qeval_json "${STANDINGS}.StandingOf(\"${ALICE}\")" standing-rated
+query vm/qeval_json "${STANDINGS}.StandingOf(\"${PLAYER}\")" standing-unrated
+query vm/qeval_json "${STANDINGS}.RatedPlayers()" rated-players
+query vm/qeval_json "${STANDINGS}.ClanStandings()" clan-standings
 
-for type in OpenChallenge MatchSummary MatchView Standing ClanStanding; do
+for type in OpenChallenge MatchSummary MatchView; do
   query vm/qtype_json "${ARENA}.${type}" "qtype-${type}"
+done
+for type in Standing ClanStanding; do
+  query vm/qtype_json "${STANDINGS}.${type}" "qtype-${type}"
 done

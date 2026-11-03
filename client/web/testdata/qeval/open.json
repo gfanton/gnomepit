@@ -5,7 +5,7 @@
         "@type": "/gno.SliceType",
         "Elt": {
           "@type": "/gno.RefType",
-          "ID": "gno.land/r/gfanton/gnomepit/arena.OpenChallenge"
+          "ID": "gno.land/r/gfanton/gnomepit/arena/v0.OpenChallenge"
         },
         "Vrd": false
       },
@@ -14,7 +14,7 @@
         "Base": {
           "@type": "/gno.ArrayValue",
           "ObjectInfo": {
-            "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
+            "ID": "09d441c290da6420d954b6c6271147acadaac324:0",
             "ModTime": "0",
             "RefCount": "0",
             "LastObjectSize": "0"
@@ -23,12 +23,12 @@
             {
               "T": {
                 "@type": "/gno.RefType",
-                "ID": "gno.land/r/gfanton/gnomepit/arena.OpenChallenge"
+                "ID": "gno.land/r/gfanton/gnomepit/arena/v0.OpenChallenge"
               },
               "V": {
                 "@type": "/gno.StructValue",
                 "ObjectInfo": {
-                  "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
+                  "ID": "09d441c290da6420d954b6c6271147acadaac324:0",
                   "ModTime": "0",
                   "RefCount": "0",
                   "LastObjectSize": "0"
@@ -41,7 +41,7 @@
                     },
                     "V": {
                       "@type": "/gno.StringValue",
-                      "value": "5"
+                      "value": "9"
                     }
                   },
                   {
@@ -79,156 +79,14 @@
                       "@type": "/gno.PrimitiveType",
                       "value": "1024"
                     },
-                    "N": "jfzVagAAAAA="
+                    "N": "gB3pagAAAAA="
                   },
                   {
                     "T": {
                       "@type": "/gno.PrimitiveType",
                       "value": "1024"
                     },
-                    "N": "DTffagAAAAA="
-                  }
-                ]
-              }
-            },
-            {
-              "T": {
-                "@type": "/gno.RefType",
-                "ID": "gno.land/r/gfanton/gnomepit/arena.OpenChallenge"
-              },
-              "V": {
-                "@type": "/gno.StructValue",
-                "ObjectInfo": {
-                  "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
-                  "ModTime": "0",
-                  "RefCount": "0",
-                  "LastObjectSize": "0"
-                },
-                "Fields": [
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "16"
-                    },
-                    "V": {
-                      "@type": "/gno.StringValue",
-                      "value": "3"
-                    }
-                  },
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "16"
-                    },
-                    "V": {
-                      "@type": "/gno.StringValue",
-                      "value": "g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w"
-                    }
-                  },
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "16"
-                    },
-                    "V": {
-                      "@type": "/gno.StringValue",
-                      "value": "Pickers"
-                    }
-                  },
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "16"
-                    },
-                    "V": {
-                      "@type": "/gno.StringValue",
-                      "value": ""
-                    }
-                  },
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "1024"
-                    },
-                    "N": "jPzVagAAAAA="
-                  },
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "1024"
-                    },
-                    "N": "DDffagAAAAA="
-                  }
-                ]
-              }
-            },
-            {
-              "T": {
-                "@type": "/gno.RefType",
-                "ID": "gno.land/r/gfanton/gnomepit/arena.OpenChallenge"
-              },
-              "V": {
-                "@type": "/gno.StructValue",
-                "ObjectInfo": {
-                  "ID": "00424f1d6a0ff81954af2b87dfafc1704c0c53ba:0",
-                  "ModTime": "0",
-                  "RefCount": "0",
-                  "LastObjectSize": "0"
-                },
-                "Fields": [
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "16"
-                    },
-                    "V": {
-                      "@type": "/gno.StringValue",
-                      "value": "2"
-                    }
-                  },
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "16"
-                    },
-                    "V": {
-                      "@type": "/gno.StringValue",
-                      "value": "g1vzpn5tdhat0vy90eyqncs09474257tgz2uw09w"
-                    }
-                  },
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "16"
-                    },
-                    "V": {
-                      "@type": "/gno.StringValue",
-                      "value": "Pickers"
-                    }
-                  },
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "16"
-                    },
-                    "V": {
-                      "@type": "/gno.StringValue",
-                      "value": ""
-                    }
-                  },
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "1024"
-                    },
-                    "N": "bfzVagAAAAA="
-                  },
-                  {
-                    "T": {
-                      "@type": "/gno.PrimitiveType",
-                      "value": "1024"
-                    },
-                    "N": "7TbfagAAAAA="
+                    "N": "AFjyagAAAAA="
                   }
                 ]
               }
@@ -237,8 +95,8 @@
           "Data": null
         },
         "Offset": "0",
-        "Length": "3",
-        "Maxcap": "3"
+        "Length": "1",
+        "Maxcap": "1"
       }
     }
   ]
